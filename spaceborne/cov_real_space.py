@@ -234,7 +234,7 @@ def project_hs_cov_simps(  # fmt: skip
 
 
 def project_ellspace_cov_helper(    # fmt: skip
-    theta_1_ix, theta_2_ix, mu, nu,    
+    self, theta_1_ix, theta_2_ix, mu, nu,    
     zij, zkl, ind_ab, ind_cd,   
     Amax, ell1_values, ell2_values, cov_ell,   
 ):  # fmt: skip
@@ -259,7 +259,7 @@ def project_ellspace_cov_helper(    # fmt: skip
 
 
 def project_ellspace_cov_vec_helper(
-    theta_1_ix, theta_2_ix, mu, nu, Amax, ell1_values, ell2_values, cov_ell
+    self, theta_1_ix, theta_2_ix, mu, nu, Amax, ell1_values, ell2_values, cov_ell
 ):
     theta_1_l = self.theta_edges[theta_1_ix]
     theta_1_u = self.theta_edges[theta_1_ix + 1]
@@ -304,132 +304,6 @@ def cov_sva_rs(  # fmt: skip
     # Finally multiply the prefactor
     cov_elem = integral / (2.0 * np.pi * Amax)
     return cov_elem
-
-
-def cov_mix_rs(   # fmt: skip
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
-    ell_values, cl_5d,   
-    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zi, zj, zk, zl,  
-    Amax, integration_method='simps',  
-):  # fmt: skip
-    def integrand_func(ell, cl_ij):
-        kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
-        knu = k_mu(ell, theta_2_l, theta_2_u, nu)
-        return ell * kmu * knu * cl_ij
-
-    def integrand_scalar(ell, cl_ij):
-        # Interpolate the value of cl_ij at the current ell value:
-        cl_val = np.interp(ell, ell_values, cl_ij)
-        kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
-        knu = k_mu(ell, theta_2_l, theta_2_u, nu)
-        return ell * kmu * knu * cl_val
-
-    # I write the indices as in Robert's paper
-    def get_prefac(probe_b_ix, probe_d_ix, zj, zn):
-        prefac = (
-            get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zn]
-            * t_mix(probe_b_ix, zbins, sigma_eps_i)[zj]
-            / (2 * np.pi * n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2 * Amax)
-        )
-        return prefac
-
-    # TODO generalize to different survey areas (max(Aij, Akl))
-    # TODO sigma_eps_i should be a vector of length zbins
-    # permutations should be performed as done in the SVA function
-    prefac_1 = get_prefac(probe_a_ix, probe_c_ix, zi, zk)
-    prefac_2 = get_prefac(probe_b_ix, probe_d_ix, zj, zl)
-    prefac_3 = get_prefac(probe_a_ix, probe_d_ix, zi, zl)
-    prefac_4 = get_prefac(probe_b_ix, probe_c_ix, zj, zk)
-
-    if integration_method == 'simps':
-        # as done in the SVA function
-        integrand_1 = integrand_func(
-            ell_values, cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-        )
-        integrand_2 = integrand_func(
-            ell_values, cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-        )
-        integrand_3 = integrand_func(
-            ell_values, cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-        )
-        integrand_4 = integrand_func(
-            ell_values, cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-        )
-
-        integral_1 = simps(y=integrand_1, x=ell_values)
-        integral_2 = simps(y=integrand_2, x=ell_values)
-        integral_3 = simps(y=integrand_3, x=ell_values)
-        integral_4 = simps(y=integrand_4, x=ell_values)
-
-    elif integration_method == 'quad':
-        integral_1 = quad_vec(
-            integrand_scalar,
-            ell_values[0],
-            ell_values[-1],
-            args=(cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],),
-        )[0]
-        integral_2 = quad_vec(
-            integrand_scalar,
-            ell_values[0],
-            ell_values[-1],
-            args=(cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],),
-        )[0]
-        integral_3 = quad_vec(
-            integrand_scalar,
-            ell_values[0],
-            ell_values[-1],
-            args=(cl_5d[probe_a_ix, probe_d_ix, :, zi, zl],),
-        )[0]
-        integral_4 = quad_vec(
-            integrand_scalar,
-            ell_values[0],
-            ell_values[-1],
-            args=(cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],),
-        )[0]
-
-    else:
-        raise ValueError(f'integration_method {integration_method} not recognized.')
-
-    return (
-        prefac_1 * integral_1
-        + prefac_2 * integral_2
-        + prefac_3 * integral_3
-        + prefac_4 * integral_4
-    )
-
-    # TODO generalize to different survey areas (max(Aij, Akl))
-
-    # permutations should be performed as done in the SVA function
-    if integration_method == 'simps':
-        integrand = integrand_func(
-            ell_values,
-            cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-            * get_prefac(probe_b_ix, probe_d_ix, zj, zl)
-            + cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-            * get_prefac(probe_a_ix, probe_c_ix, zi, zk)
-            + cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-            * get_prefac(probe_b_ix, probe_c_ix, zj, zk)
-            + cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-            * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
-        )
-
-        integral = simps(y=integrand, x=ell_values)
-
-    # elif integration_method == 'quad':
-
-    #     integral_1 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],))[0]
-    #     integral_2 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],))[0]
-    #     integral_3 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_a_ix, probe_d_ix, :, zi, zl],))[0]
-    #     integral_4 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],))[0]
-
-    else:
-        raise ValueError(f'integration_method {integration_method} not recognized.')
-
-    return integral
 
 
 def _get_t_munu(mu, nu, sigma_eps_tot):
@@ -581,112 +455,6 @@ def integrate_bessel_single_wrapper(  # fmt: skip
     )
 
     return result_levin
-
-
-def oc_cov_list_to_array(oc_output_path, n_probes_hs, nbl, zbins, df_chunk_size=50_000):
-    import pandas as pd
-
-    probe_idx_dict_ell = {
-        'm': 0,
-        'g': 1,
-    }
-
-    # set df column names
-    with open(oc_output_path) as file:
-        header = (
-            file.readline().strip()
-        )  # Read the first line and strip newline characters
-    header_list = re.split(
-        '\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t')
-    )
-    column_names = header_list
-
-    print('Loading OC ell and z values...')
-    data = pd.read_csv(oc_output_path, usecols=['ell1', 'tomoi'], sep='\s+')
-    ells_oc_load = data['ell1'].unique()
-    tomoi_oc_load = data['tomoi'].unique()
-
-    cov_ell_indices = {ell_out: idx for idx, ell_out in enumerate(ells_oc_load)}
-    # SB tomographic indices start from 0
-    subtract_one = False
-    if min(tomoi_oc_load) == 1:
-        subtract_one = True
-
-    # import .list covariance file
-    shape = (n_probes_hs, n_probes_hs, n_probes_hs, n_probes_hs, # fmt: skip
-            nbl, nbl, zbins, zbins, zbins, zbins)  # fmt: skip
-    cov_g_oc_3x2pt_10D = np.zeros(shape)
-    cov_sva_oc_3x2pt_10D = np.zeros(shape)
-    cov_mix_oc_3x2pt_10D = np.zeros(shape)
-    cov_sn_oc_3x2pt_10D = np.zeros(shape)
-    cov_ssc_oc_3x2pt_10D = np.zeros(shape)
-    # cov_cng_oc_3x2pt_10D = np.zeros(shape)
-    # cov_tot_oc_3x2pt_10D = np.zeros(shape)
-
-    print(f'Loading OneCovariance output from \n{oc_output_path}')
-    for df_chunk in pd.read_csv(
-        oc_output_path,
-        sep='\s+',
-        names=column_names,
-        skiprows=1,
-        chunksize=df_chunk_size,
-    ):
-        probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict_ell).values
-        probe_idx_b = df_chunk['#obs'].str[1].map(probe_idx_dict_ell).values
-        probe_idx_c = df_chunk['#obs'].str[2].map(probe_idx_dict_ell).values
-        probe_idx_d = df_chunk['#obs'].str[3].map(probe_idx_dict_ell).values
-
-        # Map 'ell' values to their corresponding indices
-        ell1_idx = df_chunk['ell1'].map(cov_ell_indices).values
-        ell2_idx = df_chunk['ell2'].map(cov_ell_indices).values
-
-        # Compute z indices
-        if subtract_one:
-            z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
-        else:
-            z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
-
-        # Vectorized assignment to the arrays
-        index_tuple = (  # fmt: skip
-            probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d,
-            ell1_idx, ell2_idx, 
-            z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
-        )  # fmt: skip
-
-        cov_sva_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values
-        cov_mix_oc_3x2pt_10D[index_tuple] = df_chunk['covg mix'].values
-        cov_sn_oc_3x2pt_10D[index_tuple] = df_chunk['covg sn'].values
-        cov_g_oc_3x2pt_10D[index_tuple] = (
-            df_chunk['covg sva'].values
-            + df_chunk['covg mix'].values
-            + df_chunk['covg sn'].values
-        )
-        cov_ssc_oc_3x2pt_10D[index_tuple] = df_chunk['covssc'].values
-        # cov_cng_oc_3x2pt_10D[index_tuple] = df_chunk['covng'].values
-        # cov_tot_oc_3x2pt_10D[index_tuple] = df_chunk['cov'].values
-
-    covs_10d = [
-        cov_sva_oc_3x2pt_10D,
-        cov_mix_oc_3x2pt_10D,
-        cov_sn_oc_3x2pt_10D,
-        cov_g_oc_3x2pt_10D,
-        cov_ssc_oc_3x2pt_10D,
-        # cov_cng_oc_3x2pt_10D,
-        # cov_tot_oc_3x2pt_10D
-    ]
-
-    for cov_10d in covs_10d:
-        cov_10d[0, 0, 1, 1] = deepcopy(
-            np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-        )
-        cov_10d[1, 0, 0, 0] = deepcopy(
-            np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-        )
-        cov_10d[1, 0, 1, 1] = deepcopy(
-            np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-        )
-
-    return covs_10d
 
 
 def dl1dl2_bessel_wrapper(
@@ -1483,7 +1251,7 @@ class CovRealSpace:
                 )
 
             # self.cov_rs_full_2d.append(stack_cov_blocks(self.cov_rs_2d_dict))
-            
+
         self.cov_rs_full_2d = stack_cov_blocks(self.cov_rs_2d_dict)
         # self.cov_rs_full_2d = np.vst
 
@@ -1557,7 +1325,6 @@ class CovRealSpace:
 
         elif term == 'gauss_ell':
             print('Projecting ell-space Gaussian covariance...')
-            start = time.time()
 
             # compute ell-space G cov al volo
             # build noise vector
@@ -1644,6 +1411,8 @@ class CovRealSpace:
         # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
 
         elif term in ['ssc', 'cng']:
+            # TODO this is yet to be checked
+
             # set normalization depending on the term
             norm = 4 * np.pi**2
             if term == 'cng':
@@ -1655,8 +1424,6 @@ class CovRealSpace:
             cov_ng_hs_6d = cov_ng_hs_10d[
                 probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
             ]
-
-            breakpoint()
 
             cov_ng_rs_6d = dl1dl2_bessel_wrapper(
                 cov_hs=cov_ng_hs_6d,
@@ -1672,8 +1439,8 @@ class CovRealSpace:
 
             setattr(self, f'cov_{term}_rs_6d', cov_ng_rs_6d)
 
-        self.cov_rs_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = (
-            getattr(self, f'cov_{term}_rs_6d')
+        self.cov_rs_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = getattr(
+            self, f'cov_{term}_rs_6d'
         )
 
         """

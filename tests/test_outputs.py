@@ -8,6 +8,7 @@ To run these tests:
 2.  Make sure there's no FM-related section at the end of main.py, the code has to finish
     without errors.
 3.  Run the code to generate the benchmark file and the associated yaml cfg file.
+----------------------------------------------------------------------------------------
 4.  Switch branch (for example) and make sure the hardcoded options in main.py are
     consistent with the benchmark version.
     4.1  In particular, in main.py, comment out the lines:

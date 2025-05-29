@@ -17,13 +17,15 @@ cosmology:
     N_eff: 3.046    # Type: float. Effective number of relativistic species
     Om_k0: 0        # Type: float. Curvature density parameter Omega_k, at z=0
 
+
 intrinsic_alignment:
-    Aia: 0.16       # Type: float
-    eIA: 1.66       # Type: float
-    bIA: 0.0        # Type: float
-    CIA: 0.0134     # Type: float
-    z_pivot_IA: 0   # Type: float
+    Aia: 0.16       # Type: float.
+    eIA: 1.66       # Type: float. \eta_{IA}
+    bIA: 0.0        # Type: float. \beta_{IA}
+    CIA: 0.0134     # Type: float.
+    z_pivot_IA: 0   # Type: float.
     lumin_ratio_filename: null  # Type: str | None. null if not used, otherwise path to the file (e.g. ./input/scaledmeanlum-E2Sa.dat)
+
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
 # (see https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology
@@ -36,6 +38,7 @@ extra_parameters:
         num_massive_neutrinos: 1 # Type: int
         dark_energy_model: ppf # Type: str
 
+
 # Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
 # Each parameter maps directly to a CCL class, and has exactly its name
 halo_model:
@@ -43,15 +46,17 @@ halo_model:
     concentration: ConcentrationDuffy08 # Type: str
     mass_function: MassFuncTinker10 # Type: str
     halo_bias: HaloBiasTinker10 # Type: str
-    halo_profile_dm: HaloProfileNFW # Type: str
-    halo_profile_hod: HaloProfileHOD # Type: str
+    halo_profile_dm: HaloProfileNFW # Type: str. 'dm' = 'dark matter'
+    halo_profile_hod: HaloProfileHOD # Type: str.
+
 
 # [NOTE: NOT IMPLEMENTED YET]
 probe_selection:
     LL: True  # Type: str. Whether to compute the weak lensing ('LL') covariance
     GL: True  # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
     GG: True  # Type: str. Whether to compute the photometric clustering ('GG') covariance
-    cross_terms: True  # Type: str. Whether to compute the cross-terms between the selected probes
+    cross_cov: True  # Type: str. Whether to compute the cross-terms between the selected probes
+
 
 C_ell:
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
@@ -77,7 +82,8 @@ C_ell:
     which_gal_bias: "FS2_polynomial_fit" # Type: str.
     which_mag_bias: "FS2_polynomial_fit" # Type: str.
     
-    # Coefficients of the third-order polynomial galaxy and magnification bias
+    # Coefficients of the third-order polynomial galaxy and magnification bias.
+    # The order is [z^0, z^1, z^2, z^3]
     galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
     magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
 
@@ -101,53 +107,38 @@ C_ell:
         limber_integration_method: spline # Type: str
         non_limber_integration_method: FKEM # Type: str
 
+
 nz:
     # Paths to source (for WL) and lens (for GCph) redshift distributions.
     # These must have shape (z_points, zbins + 1)
     nz_sources_filename: ./input/nzTab.txt  # Type: str
     nz_lenses_filename: ./input/nzTab.txt  # Type: str
     # Number of galaxies per arcmin**2 for each redshift bin. 
-    # Should be of len(zbins)
+    # Should be of length 'zbins'
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
     ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
 
     shift_nz: True  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-    dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of len(zbins)
-    dzGC: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of len(zbins)
+    dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
+    dzGC: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
     normalize_shifted_nz: True  # Type: bool. Whether to normalize the shifted n(z) distributions
     clip_zmin: 0  # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
     clip_zmax: 3  # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
+
 
 mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
     mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
+
     # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
     # If null (None), the nside of the input mask will be used, without up/downgrading.
     nside: 1024 # Type: int | None. 
+
     survey_area_deg2: 13245 # Type: int
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
 
-namaster:
-    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-    coupled_cov: False # Type: bool. Whether to compute the (Gaussian) covariance of the coupled or decoupled Cls
-    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
-    use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-    workspace_path: ... # Type: str. Path to the workspace, if already computed
-
-sample_covariance:
-    compute_sample_cov: False  # Type: bool
-    # Which code to use to compute the coupled Cls on the masked maps. The results are 
-    # essentially equivalent, but 'namaster' is a bit faster.
-    # In case the decoupled (sample) covariance is requested, in both cases the 
-    # workspace.decouple_cell() function will be used. 
-    # Documentation: 
-    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
-    # Options: ['namaster', 'healpy']. 
-    which_cls: namaster  # Type: str. 
-    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
-    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 ell_binning:
     binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
@@ -160,18 +151,22 @@ ell_binning:
     ell_max_GC: 3000 # Type: int. Maximum ell for GC
     ell_bins_GC: 29 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
 
+    # ell binning for the reference case; only a subset of these bins, depending on the
+    # desired ell range of WL and GC, will be used in the 'ref_cut' case.
     ell_min_ref: 10 # Type: int. Minimum ell for reference case
     ell_max_ref: 5000 # Type: int. Maximum ell for reference case
     ell_bins_ref: 32 # Type: int. Number of bins for reference case
+
 
 BNT:
     cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
     cov_BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
+
 covariance:
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
     SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-    cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+    cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
     # of the auto-probe (LL, GG) zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
@@ -180,10 +175,7 @@ covariance:
     # Within the upper or lower triangle, count indices in
     # a row-major or column-major order.
     row_col_major: row-major # Type: str. Options: ['row-major', 'column-major']
-    
-    # ordering of the different 3x2pt probes in the covariance matrix
-    probe_ordering: [["L", "L"], ["G", "L"], ["G", "G"]] # Type: list[list[str]]
-    
+
     # Determines the ordering of the covariance matrix in 2D, with the outermost 
     # loop corresponding to the leftmost index.
     # Options: [ell_probe_zpair, probe_ell_zpair, probe_zpair_ell, zpair_probe_ell]
@@ -194,21 +186,22 @@ covariance:
     
     # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping. 
     # In the case of the single probes, this is an array of shape
-    # (ellbins, ellbins, zbins, zbins, zbins, zbins).
+    # (ell_bins, ell_bins, zbins, zbins, zbins, zbins).
     save_full_cov: True # Type: bool
     
     # Whether to split the Gaussian covariance term into the
-    # sample variance, noise and mixed terms
+    # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
     split_gaussian_cov: False # Type: bool
 
     # Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
-    sigma_eps_i: 0.26 # Type: float
+    # Should be of length 'zbins'
+    sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
     
     # Whether to include the noise power spectra in the computation of the 
     # Gaussian covariance matrix.
-    noiseless_spectra: False # Type: bool
+    no_sampling_noise: False # Type: bool
 
     which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
@@ -216,7 +209,7 @@ covariance:
     # Can be one of:
     # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
     # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
-    which_b1g_in_resp: from_HOD # Type: str. Options: ['from_HOD', 'from_input']
+    which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
 
     # Whether or not to include the second-order galaxy bias in the GCph SU responses
     include_b2g: True # Type: bool
@@ -224,7 +217,7 @@ covariance:
     # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses
     include_terasawa_terms: False # Type: bool
 
-    # Integration scheme used for the sigma2_b computation. Options:
+    # Integration scheme used for the SSC survey covariance (sigma2_b) computation. Options:
     # - 'simps': uses simpson integration. This is faster but less accurate
     # - 'levin': uses levin integration. This is slower but more accurate
     sigma2_b_integration_scheme: levin # Type: str. 
@@ -233,17 +226,46 @@ covariance:
     # k grid used for power spectrum and trispectrum computation
     log10_k_min: -5  # Type: float 
     log10_k_max: 2  # Type: float
-    k_steps: 200  # Type: int. Around 100 should be enough
+    k_steps: 100  # Type: int. Around 100 should be enough
     
-    z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
+    z_min: 0.02 # Type: float.
     z_max: 3.0 # Type: float
     z_steps: 7000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
     z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
-    use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
+    use_KE_approximation: True # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
-    # Name of the output covariance file. Change to '.npy' to save as npy file.
+    # Name of the output covariance file. Change suffix to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
+
+
+namaster:
+    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+
+    # Whether to compute the (Gaussian) covariance of the coupled or decoupled Cls.
+    # Note: the coupling is applied coherently to all covariance terms, not only the Gaussian one.
+    coupled_cov: False # Type: bool.
+
+    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+    use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation (recommended)
+    workspace_path: ... # Type: str. Path to the workspace, if already computed
+
+
+sample_covariance:
+    compute_sample_cov: False  # Type: bool
+
+    # Which code to use to compute the coupled Cls on the masked maps. The results are
+    # essentially equivalent, but 'namaster' is a bit faster than 'healpy'.
+    # In case the decoupled (sample) covariance is requested, for both choiches the
+    # workspace.decouple_cell() function will be used.
+    # Documentation:
+    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
+    # Options: ['namaster', 'healpy'].
+    which_cls: namaster  # Type: str.
+
+    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
+    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
+
 
 PyCCL:
     # (from CCL docs): integration method to be used for the Limber integrals.
@@ -257,7 +279,8 @@ PyCCL:
     load_cached_tkka: True # Type: bool.
 
     # Whether or not to use the default k and a grids used in CCL. 
-    # Setting this to True will make the computation of the cNG trispectrum much slower.
+    # Setting this to True will make the computation of the cNG trispectrum slower
+    # with respect to the default values.
     use_default_k_a_grids: False
 
     # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
@@ -270,6 +293,7 @@ PyCCL:
         A_SPLINE_NA_PK: 240 # Type: int
         K_MAX_SPLINE: 300 # Type: int
     gsl_params: null # Type: dict | None
+
 
 misc:
     num_threads: 40 # Type: int. How many threads to use for the parallel computations

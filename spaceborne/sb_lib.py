@@ -1716,6 +1716,7 @@ def compare_arrays(
     plot_diff_threshold=None,
     white_where_zero=True,
     plot_diff_hist=False,
+    matshow_arr_kw={}
 ):
     fontsize = 25
 
@@ -1773,11 +1774,11 @@ def compare_arrays(
         if log_array:
             A_toplot, B_toplot = np.log10(A_toplot), np.log10(B_toplot)
 
-        im = ax[0, 0].matshow(A_toplot)
+        im = ax[0, 0].matshow(A_toplot, **matshow_arr_kw)
         ax[0, 0].set_title(f'{name_A}', fontsize=fontsize)
         fig.colorbar(im, ax=ax[0, 0])
 
-        im = ax[0, 1].matshow(B_toplot)
+        im = ax[0, 1].matshow(B_toplot, **matshow_arr_kw)
         ax[0, 1].set_title(f'{name_B}', fontsize=fontsize)
         fig.colorbar(im, ax=ax[0, 1])
 

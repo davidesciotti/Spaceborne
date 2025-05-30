@@ -42,10 +42,9 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
         print()  # Add a blank line for readability between sections
 
 
-def oc_cov_list_to_array_rs(
-    oc_output_covlist_path,
+def process_cov_from_list_file_rs(
+    oc_output_covlist_fname,
     n_probes_rs,
-    nbt,
     probe_idx_dict_short_oc,
     zbins,
     df_chunk_size=5_000_000,
@@ -54,7 +53,7 @@ def oc_cov_list_to_array_rs(
     import re
 
     # set df column names
-    with open(f'{oc_output_covlist_path}.dat') as file:
+    with open(f'{oc_output_covlist_fname}') as file:
         header = (
             file.readline().strip()
         )  # Read the first line and strip newline characters
@@ -64,7 +63,7 @@ def oc_cov_list_to_array_rs(
     column_names = header_list
 
     data = pd.read_csv(
-        f'{oc_output_covlist_path}.dat', usecols=['theta1', 'tomoi'], sep='\s+'
+        f'{oc_output_covlist_fname}', usecols=['theta1', 'tomoi'], sep='\s+'
     )
 
     thetas_oc_load = data['theta1'].unique()
@@ -97,9 +96,9 @@ def oc_cov_list_to_array_rs(
     cov_cng_oc_3x2pt_8D = np.zeros(shape)
     # cov_tot_oc_3x2pt_8D = np.zeros(shape)
 
-    print(f'Loading OneCovariance output from {oc_output_covlist_path}.dat file...')
+    print(f'Loading OneCovariance output from {oc_output_covlist_fname} file...')
     for df_chunk in pd.read_csv(
-        f'{oc_output_covlist_path}.dat',
+        f'{oc_output_covlist_fname}',
         sep='\s+',
         names=column_names,
         skiprows=1,
@@ -137,28 +136,29 @@ def oc_cov_list_to_array_rs(
         cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
         # cov_tot_oc_3x2pt_8D[index_tuple] = df_chunk['cov'].values
 
-    covs_8d = [
-        cov_sva_oc_3x2pt_8D,
-        cov_mix_oc_3x2pt_8D,
-        cov_sn_oc_3x2pt_8D,
-        cov_g_oc_3x2pt_8D,
-        cov_ssc_oc_3x2pt_8D,
-        cov_cng_oc_3x2pt_8D,
+    covs_8d_dict = {
+        'cov_sva_oc_3x2pt_8D': cov_sva_oc_3x2pt_8D,
+        'cov_mix_oc_3x2pt_8D': cov_mix_oc_3x2pt_8D,
+        'cov_sn_oc_3x2pt_8D': cov_sn_oc_3x2pt_8D,
+        'cov_g_oc_3x2pt_8D': cov_g_oc_3x2pt_8D,
+        'cov_ssc_oc_3x2pt_8D': cov_ssc_oc_3x2pt_8D,
+        'cov_cng_oc_3x2pt_8D': cov_cng_oc_3x2pt_8D,
         # cov_tot_oc_3x2pt_8D
-    ]
+    }
 
-    for cov_8d in covs_8d:
-        cov_8d[0, 0, 1, 1] = deepcopy(
-            np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-        )
-        cov_8d[1, 0, 0, 0] = deepcopy(
-            np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-        )
-        cov_8d[1, 0, 1, 1] = deepcopy(
-            np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-        )
+    # for cov_8d in covs_8d_dict:
+    #     cov_8d[0, 0, 1, 1] = deepcopy(
+    #         np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
+    #     )
+    #     cov_8d[1, 0, 0, 0] = deepcopy(
+    #         np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
+    #     )
+    #     cov_8d[1, 0, 1, 1] = deepcopy(
+    #         np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
+    #     )
 
-    return covs_8d
+    print('...done')
+    return covs_8d_dict
 
 
 class OneCovarianceInterface:
@@ -806,6 +806,9 @@ class OneCovarianceInterface:
         Checks that the .dat and .mat outputs give consistent results
         """
 
+        # TODO why am I processing the output twice?
+        # TODO this should be generalised to real space
+
         self.process_cov_from_mat_file()
 
         cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
@@ -934,7 +937,7 @@ class OneCovarianceInterface:
 
         return cov_llglgg_2d
 
-    def process_cov_from_list_file(self, df_chunk_size=5_000_000):
+    def process_cov_from_list_file_hs(self, df_chunk_size=5_000_000):
         """
         Import and reshape the output of the OneCovariance (OC) .dat
         (aka "list") file into a set of 10d arrays.

@@ -330,10 +330,10 @@ precision:
     # Integration method for the covariance projection to real space. Options:
     # - 'simps': uses simpson integration. This is faster but less accurate
     # - 'levin': uses levin integration. This is slower but more accurate
-    cov_realspace_integration_method: 'levin'  # Type: str.
+    cov_realspace_integration_method: 'simps'  # Type: str.
 
 misc:
-    num_threads: 60 # Type: int. How many threads to use for the parallel computations
+    num_threads: 40 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

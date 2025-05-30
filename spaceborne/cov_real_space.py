@@ -8,17 +8,12 @@ sn = sampling noise
 mix = mixed term
 """
 
-import itertools
-import re
-import time
 import warnings
-from copy import deepcopy
 
 import numpy as np
 import pyccl as ccl
 import pylevin as levin
 from joblib import Parallel, delayed
-from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
 from tqdm import tqdm
 

@@ -16,6 +16,7 @@ import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
 from tqdm import tqdm
+import itertools
 
 from spaceborne import constants
 from spaceborne import sb_lib as sl
@@ -235,10 +236,10 @@ def project_ellspace_cov_helper(    # fmt: skip
 ):  # fmt: skip
     # TODO unify helper funcs
 
-    theta_1_l = self.theta_edges[theta_1_ix]
-    theta_1_u = self.theta_edges[theta_1_ix + 1]
-    theta_2_l = self.theta_edges[theta_2_ix]
-    theta_2_u = self.theta_edges[theta_2_ix + 1]
+    theta_1_l = self.theta_edges_fine[theta_1_ix]
+    theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
+    theta_2_l = self.theta_edges_fine[theta_2_ix]
+    theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
 
     zi, zj = ind_ab[zij, :]
     zk, zl = ind_cd[zkl, :]
@@ -256,10 +257,10 @@ def project_ellspace_cov_helper(    # fmt: skip
 def project_ellspace_cov_vec_helper(
     self, theta_1_ix, theta_2_ix, mu, nu, Amax, ell1_values, ell2_values, cov_ell
 ):
-    theta_1_l = self.theta_edges[theta_1_ix]
-    theta_1_u = self.theta_edges[theta_1_ix + 1]
-    theta_2_l = self.theta_edges[theta_2_ix]
-    theta_2_u = self.theta_edges[theta_2_ix + 1]
+    theta_1_l = self.theta_edges_fine[theta_1_ix]
+    theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
+    theta_2_l = self.theta_edges_fine[theta_2_ix]
+    theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
 
     return (theta_1_ix, theta_2_ix,  # fmt: skip
         project_ellspace_cov_vec_1d(  
@@ -496,8 +497,6 @@ def dl1dl2_bessel_wrapper(
 
     nbl = len(ells)
 
-    breakpoint()
-
     assert cov_hs.shape[0] == cov_hs.shape[1] == nbl, (
         'cov_hs shape must be (ell_bins, ell_bins, ...)'
     )
@@ -584,7 +583,7 @@ def integrate_bessel_double_wrapper(  # fmt: skip
     return result_levin
 
 
-def stack_cov_blocks(cov_2d_dict):
+def stack_probe_blocks(cov_2d_dict):
     row_1 = np.hstack(
         (
             cov_2d_dict['gggg'],
@@ -678,7 +677,7 @@ class CovRealSpace:
         )
 
         self.cov_rs_6d_shape = (  # fmt: skip
-            self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
+            self.nbt_fine, self.nbt_fine, self.zbins, self.zbins, self.zbins, self.zbins
             )  # fmt: skip
 
     def _set_survey_info(self):
@@ -705,15 +704,31 @@ class CovRealSpace:
     def _set_theta_binning(self):
         self.theta_min_arcmin = self.cfg['cov_real_space']['theta_min_arcmin']
         self.theta_max_arcmin = self.cfg['cov_real_space']['theta_max_arcmin']
-        self.nbt = self.cfg['cov_real_space']['theta_bins']
+        self.nbt_coarse = self.cfg['cov_real_space']['theta_bins']
+        self.nbt_fine = self.cfg['precision']['theta_bins_fine']
 
         # TODO in principle this could be changed
-        theta_edges_deg = np.linspace(
-            self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, self.nbt + 1
+        theta_edges_fine_deg = np.linspace(
+            self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, self.nbt_fine + 1
         )
-        self.theta_edges = np.deg2rad(theta_edges_deg)  # in radians
-        self.theta_centers = (self.theta_edges[:-1] + self.theta_edges[1:]) / 2.0
-        assert len(self.theta_centers) == self.nbt, 'theta_centers length mismatch'
+        self.theta_edges_fine = np.deg2rad(theta_edges_fine_deg)  # in radians
+        self.theta_centers_fine = (
+            self.theta_edges_fine[:-1] + self.theta_edges_fine[1:]
+        ) / 2.0
+        assert len(self.theta_centers_fine) == self.nbt_fine, (
+            'theta_centers length mismatch'
+        )
+
+        theta_edges_coarse_deg = np.linspace(
+            self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, self.nbt_coarse + 1
+        )
+        self.theta_edges_coarse = np.deg2rad(theta_edges_coarse_deg)  # in radians
+        self.theta_centers_coarse = (
+            self.theta_edges_coarse[:-1] + self.theta_edges_coarse[1:]
+        ) / 2.0
+        assert len(self.theta_centers_coarse) == self.nbt_coarse, (
+            'theta_centers length mismatch'
+        )
 
     def _set_neff_and_sigma_eps(self):
         self.n_eff_lens = self.cfg['nz']['ngal_lenses']
@@ -743,9 +758,9 @@ class CovRealSpace:
         self.n_probes_rs = 4  # real space
         self.n_probes_hs = 2  # harmonic space
         self.n_split_terms = 3
-        self.cov_rs_dict_8d = np.zeros(  # fmt: skip
+        self.cov_rs_8d = np.zeros(  # fmt: skip
             (self.n_split_terms, self.n_probes_rs, self.n_probes_rs, 
-            self.nbt, self.nbt,
+            self.nbt_coarse, self.nbt_coarse,
             self.zbins,  self.zbins,  self.zbins,  self.zbins,
             ))  # fmt: skip
 
@@ -830,7 +845,7 @@ class CovRealSpace:
                     f'Invalid probe combination: {probe_comb}. '
                     f'Expected one of {list(probe_idx_dict_reversed.keys())}.'
                 )
-        breakpoint()
+
 
     def set_ind_and_zpairs(self, ind, zbins):
         # set indices array
@@ -902,12 +917,12 @@ class CovRealSpace:
 
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         # TODO generalize to different n(z)
-        npair_arr = np.zeros((self.nbt, self.zbins, self.zbins))
-        for theta_ix in range(self.nbt):
+        npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
+        for theta_ix in range(self.nbt_fine):
             for zi in range(self.zbins):
                 for zj in range(self.zbins):
-                    theta_1_l = self.theta_edges[theta_ix]
-                    theta_1_u = self.theta_edges[theta_ix + 1]
+                    theta_1_l = self.theta_edges_fine[theta_ix]
+                    theta_1_u = self.theta_edges_fine[theta_ix + 1]
                     npair_arr[theta_ix, zi, zj] = get_npair(
                         theta_1_u,
                         theta_1_l,
@@ -917,7 +932,7 @@ class CovRealSpace:
                     )
 
         delta_mu_nu = 1.0 if (mu == nu) else 0.0
-        delta_theta = np.eye(self.nbt)
+        delta_theta = np.eye(self.nbt_fine)
         t_arr = t_sn(
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, self.zbins, self.sigma_eps_i
         )
@@ -942,6 +957,7 @@ class CovRealSpace:
             * t_arr[None, None, :, None, :, None]
             / npair_arr[None, :, :, :, None, None]
         )
+
         return cov_sn_rs_6d
 
     def get_delta_tomo(self, probe_a_ix, probe_b_ix):
@@ -993,7 +1009,7 @@ class CovRealSpace:
         result_levin = integrate_bessel_double_wrapper(
             integrand,
             x_values=self.ell_values,
-            bessel_args=self.theta_centers,
+            bessel_args=self.theta_centers_fine,
             bessel_type=3,
             ell_1=mu,
             ell_2=nu,
@@ -1001,10 +1017,12 @@ class CovRealSpace:
             **self.levin_prec_kw,
         )
 
-        cov_sva_rs_4d = result_levin.reshape(self.nbt, self.nbt, zpairs_ab, zpairs_cd)
+        cov_sva_rs_4d = result_levin.reshape(
+            self.nbt_fine, self.nbt_fine, zpairs_ab, zpairs_cd
+        )
         cov_sva_rs_6d = sl.cov_4D_to_6D_blocks(
             cov_sva_rs_4d,
-            nbl=self.nbt,
+            nbl=self.nbt_fine,
             zbins=self.zbins,
             ind_ab=ind_ab,
             ind_cd=ind_cd,
@@ -1036,8 +1054,8 @@ class CovRealSpace:
                 func=cov_sva_rs,  
                 **kwargs,
             )  
-            for theta_1_ix in tqdm(range(self.nbt))
-            for theta_2_ix in range(self.nbt)
+            for theta_1_ix in tqdm(range(self.nbt_fine))
+            for theta_2_ix in range(self.nbt_fine)
             for zij in range(zpairs_ab)
             for zkl in range(zpairs_cd)
         )  # fmt: skip
@@ -1070,8 +1088,8 @@ class CovRealSpace:
                 func=self.cov_g_mix_real_new,
                 **kwargs,
             )
-            for theta_1_ix in tqdm(range(self.nbt))
-            for theta_2_ix in range(self.nbt)
+            for theta_1_ix in tqdm(range(self.nbt_fine))
+            for theta_2_ix in range(self.nbt_fine)
             for zij in range(zpairs_ab)
             for zkl in range(zpairs_cd)
         )  # fmt: skip
@@ -1148,7 +1166,7 @@ class CovRealSpace:
         result_levin = integrate_bessel_double_wrapper(
             integrand_2d,
             x_values=self.ell_values,
-            bessel_args=self.theta_centers,
+            bessel_args=self.theta_centers_fine,
             bessel_type=3,
             ell_1=mu,
             ell_2=nu,
@@ -1156,10 +1174,12 @@ class CovRealSpace:
             **self.levin_prec_kw,
         )
 
-        cov_mix_rs_4d = result_levin.reshape(self.nbt, self.nbt, zpairs_ab, zpairs_cd)
+        cov_mix_rs_4d = result_levin.reshape(
+            self.nbt_fine, self.nbt_fine, zpairs_ab, zpairs_cd
+        )
         cov_mix_rs_6d = sl.cov_4D_to_6D_blocks(
             cov_mix_rs_4d,
-            nbl=self.nbt,
+            nbl=self.nbt_fine,
             zbins=self.zbins,
             ind_ab=ind_ab,
             ind_cd=ind_cd,
@@ -1172,10 +1192,10 @@ class CovRealSpace:
     def cov_parallel_helper(
         self, theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, func, **kwargs
     ):
-        theta_1_l = self.theta_edges[theta_1_ix]
-        theta_1_u = self.theta_edges[theta_1_ix + 1]
-        theta_2_l = self.theta_edges[theta_2_ix]
-        theta_2_u = self.theta_edges[theta_2_ix + 1]
+        theta_1_l = self.theta_edges_fine[theta_1_ix]
+        theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
+        theta_2_l = self.theta_edges_fine[theta_2_ix]
+        theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
 
         zi, zj = ind_ab[zij, :]
         zk, zl = ind_cd[zkl, :]
@@ -1208,8 +1228,42 @@ class CovRealSpace:
             )
             return prefac
 
+        # TODO generalize to different survey areas (max(Aij, Akl))
+        # TODO sigma_eps_i should be a vector of length zbins
+
+        # permutations should be performed as done in the SVA function
+        if integration_method == 'simps':
+            integrand = integrand_func(
+                ell_values,
+                cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
+                * get_prefac(probe_b_ix, probe_d_ix, zj, zl)
+                + cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
+                * get_prefac(probe_a_ix, probe_c_ix, zi, zk)
+                + cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
+                * get_prefac(probe_b_ix, probe_c_ix, zj, zk)
+                + cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
+                * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
+            )
+
+            integral = simps(y=integrand, x=ell_values)
+
+        # elif integration_method == 'quad':
+
+        #     integral_1 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+        #                           args=(cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],))[0]
+        #     integral_2 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+        #                           args=(cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],))[0]
+        #     integral_3 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+        #                           args=(cl_5d[probe_a_ix, probe_d_ix, :, zi, zl],))[0]
+        #     integral_4 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+        #                           args=(cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],))[0]
+
+        else:
+            raise ValueError(f'integration_method {integration_method} not recognized.')
+
+        return integral
+
     def combine_terms_and_probes(self):
-        self.cov_rs_4d_dict = {}
         self.cov_rs_2d_dict = {}
         self.cov_rs_full_2d = []
         for term in self.terms_toloop:
@@ -1233,22 +1287,23 @@ class CovRealSpace:
                 ind_ab = self.ind_cross if twoprobe_ab_ix == 1 else self.ind_auto
                 ind_cd = self.ind_cross if twoprobe_cd_ix == 1 else self.ind_auto
 
-                self.cov_rs_4d_dict[probe] = sl.cov_6D_to_4D_blocks(
-                    self.cov_rs_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix],
-                    self.nbt,
+                self.cov_rs_4d = sl.cov_6D_to_4D_blocks(
+                    self.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix],
+                    self.nbt_coarse,
                     zpairs_ab,
                     zpairs_cd,
                     ind_ab,
                     ind_cd,
                 )
                 self.cov_rs_2d_dict[probe] = sl.cov_4D_to_2D(
-                    self.cov_rs_4d_dict[probe], block_index='zpair', optimize=True
+                    self.cov_rs_4d, block_index='zpair', optimize=True
                 )
 
-            # self.cov_rs_full_2d.append(stack_cov_blocks(self.cov_rs_2d_dict))
+            # sack (join) probes
+            self.cov_rs_full_2d.append(stack_probe_blocks(self.cov_rs_2d_dict))
 
-        self.cov_rs_full_2d = stack_cov_blocks(self.cov_rs_2d_dict)
-        # self.cov_rs_full_2d = np.vst
+        # sum terms
+        self.cov_rs_full_2d = sum(self.cov_rs_full_2d)
 
     def compute_realspace_cov(self, cov_obj, probe, term):
         """
@@ -1363,7 +1418,7 @@ class CovRealSpace:
                 * self.ell_values[:, None]
                 * self.ell_values[:, None],
                 x_values=self.ell_values,
-                bessel_args=self.theta_centers,
+                bessel_args=self.theta_centers_fine,
                 bessel_type=3,
                 ell_1=mu,
                 ell_2=nu,
@@ -1371,7 +1426,12 @@ class CovRealSpace:
                 **self.levin_prec_kw,
             )
             self.cov_g_rs_6d = self.cov_g_rs_6d.reshape(
-                self.nbt, self.nbt, self.zbins, self.zbins, self.zbins, self.zbins
+                self.nbt_fine,
+                self.nbt_fine,
+                self.zbins,
+                self.zbins,
+                self.zbins,
+                self.zbins,
             )
 
             norm = 4 * np.pi**2
@@ -1425,7 +1485,7 @@ class CovRealSpace:
                 mu=mu,
                 nu=nu,
                 ells=self.ell_values,
-                thetas=self.theta_centers,
+                thetas=self.theta_centers_fine,
                 zbins=self.zbins,
                 n_jobs=self.n_jobs,
                 levin_prec_kw=self.levin_prec_kw,
@@ -1434,9 +1494,38 @@ class CovRealSpace:
 
             setattr(self, f'cov_{term}_rs_6d', cov_ng_rs_6d)
 
-        self.cov_rs_dict_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = getattr(
+        # ! bin sb cov 2d
+        if self.nbt_coarse != self.nbt_fine:
+            print(
+                f'Re-binning real space covariance from {self.nbt_fine} to '
+                f'{self.nbt_coarse} theta bins'
+            )
+
+            cov_6d_unbinned = getattr(self, f'cov_{term}_rs_6d')
+            cov_sb_6d_binned = np.zeros(  # fmt: skip
+                (self.nbt_coarse, self.nbt_coarse,
+                 self.zbins, self.zbins, self.zbins, self.zbins)
+            )  # fmt: skip
+
+            zijkl_comb = itertools.product(range(self.zbins), repeat=4)
+            for zi, zj, zk, zl in zijkl_comb:
+                cov_sb_6d_binned[:, :, zi, zj, zk, zl] = sl.bin_2d_array(
+                    cov_6d_unbinned[:, :, zi, zj, zk, zl],
+                    self.theta_centers_fine,
+                    self.theta_centers_coarse,
+                    self.theta_edges_coarse,
+                    weights_in=None,
+                    which_binning='integral',
+                    interpolate=True,
+                )
+
+            setattr(self, f'cov_{term}_rs_6d', cov_sb_6d_binned)
+
+        self.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = getattr(
             self, f'cov_{term}_rs_6d'
         )
+
+        return
 
         """
         # ! ======================================= ONECOVARIANCE ==========================

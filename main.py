@@ -1629,6 +1629,7 @@ cov_mix_oc_3x2pt_8D = covs_8d_dict_oc['cov_mix_oc_3x2pt_8D']
 
 cov_oc_list_8d = cov_sva_oc_3x2pt_8D + cov_sn_oc_3x2pt_8D + cov_mix_oc_3x2pt_8D
 
+# TODO SB and OC MUST have same fmt so I can combine probes and terms with the same function!!!
 cov_oc_dict_2d = {}
 nbt = cfg['cov_real_space']['theta_bins']
 for probe in cov_rs_obj.probe_idx_dict:
@@ -1667,7 +1668,7 @@ for probe in cov_rs_obj.probe_idx_dict:
     cov_oc_dict_2d[probe] = sl.cov_4D_to_2D(
         cov_oc_4d, block_index='zpair', optimize=True
     )
-cov_oc_list_2d = cov_real_space.stack_cov_blocks(cov_oc_dict_2d)
+cov_oc_list_2d = cov_real_space.stack_probe_blocks(cov_oc_dict_2d)
 
 
 cov_oc_mat_2d = np.genfromtxt(
@@ -1683,46 +1684,89 @@ sl.compare_arrays(
     cov_oc_list_2d,
     cov_oc_mat_2d,
     log_array=True,
-    log_diff=True,
+    log_diff=False,
 )
 
 # I will compare SB against the mat fmt
 cov_sb_2d = cov_obj.cov_rs_obj.cov_rs_full_2d
 cov_oc_2d = cov_oc_mat_2d
 
-
-# compare SB against mat - covariance
-sl.compare_arrays(
-    cov_sb_2d,
-    cov_oc_2d,
-    log_array=True,
-    log_diff=True,
-    abs_val=True,
-)
+sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', diff_threshold=10)
 
 
-# compare SB against mat - correlation
-corr_sb = sl.cov2corr(cov_sb_2d)
-corr_oc = sl.cov2corr(cov_oc_2d)
-matshow_arr_kw = dict(cmap='RdBu_r', vmin=-1, vmax=1)
-sl.compare_arrays(
-    corr_sb,
-    corr_oc,
-    log_array=False,
-    log_diff=True,
-    matshow_arr_kw=matshow_arr_kw,
-    plot_diff_hist=True,
-)
+# compare individual terms/probes
 
-# compare SB against mat - spectra
+term = 'mix'
+for probe in cov_rs_obj.probes_toloop:
+    # for probe in ['gmxip', 'gmxim']:
+    integration = cfg['precision']['cov_realspace_integration_method']
+    from spaceborne import cov_real_space
 
-sl.plot_correlation_matrix(corr_oc)
+    split_g_ix = (
+        cov_obj.cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+    )
 
-elem_auto_rs = cfg['cov_real_space']['theta_bins'] * zpairs_auto
-elem_cross_rs = cfg['cov_real_space']['theta_bins'] * zpairs_cross
-elem_apc_rs = elem_auto_rs + elem_cross_rs
-plt.axvline(elem_auto_rs, color='k', ls='--')
-plt.axhline(elem_auto_rs, color='k', ls='--')
-plt.axhline(elem_apc_rs, color='k', ls='--')
-plt.axhline(elem_apc_rs, color='k', ls='--')
-plt.title('corr RS tot')
+    twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
+    twoprobe_ab_ix, twoprobe_cd_ix = (
+        cov_obj.cov_rs_obj.probe_idx_dict_short[twoprobe_ab_str],
+        cov_obj.cov_rs_obj.probe_idx_dict_short[twoprobe_cd_str],
+    )
+    zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
+    zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
+    ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
+    ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
+    
+    if term == 'sva':
+        cov_oc_3x2pt_8D = cov_sva_oc_3x2pt_8D
+    elif term == 'sn':
+        cov_oc_3x2pt_8D = cov_sn_oc_3x2pt_8D
+    elif term == 'mix':
+        cov_oc_3x2pt_8D = cov_mix_oc_3x2pt_8D
+
+    cov_sb_6d = cov_obj.cov_rs_obj.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix]
+    cov_oc_6d = cov_oc_3x2pt_8D[twoprobe_ab_ix, twoprobe_cd_ix]
+
+    if probe in ['gmxip', 'gmxim']:
+        print('I am manually transposing the OC blocks!!')
+        warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
+        cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
+
+    cov_sb_4d = sl.cov_6D_to_4D_blocks(
+        cov_sb_6d,
+        nbt,
+        zpairs_ab,
+        zpairs_cd,
+        ind_ab,
+        ind_cd,
+    )
+    cov_oc_4d = sl.cov_6D_to_4D_blocks(
+        cov_oc_6d,
+        nbt,
+        zpairs_ab,
+        zpairs_cd,
+        ind_ab,
+        ind_cd,
+    )
+
+    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
+    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
+
+    sl.compare_arrays(cov_sb_2d, cov_oc_2d, log_array=True, log_diff=True, abs_val=True)
+
+    sl.compare_funcs(
+        None,
+        {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
+        logscale_y=[True, False],
+        title=f'{probe = }, {term = }, {integration = }',
+    )
+
+    sl.compare_funcs(
+        None,
+        {
+            'SB flat': np.abs(cov_sb_2d).flatten(),
+            'OC flat': np.abs(cov_oc_2d).flatten(),
+        },
+        logscale_y=[True, False],
+        title=f'{probe = }, {term = }, {integration = }',
+    )
+

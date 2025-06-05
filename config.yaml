@@ -326,6 +326,7 @@ precision:
     ell_min_rs: 2
     ell_max_rs: 100000
     ell_bins_rs: 200
+    theta_bins_fine: 50  # number of theta bins used for the fine grid, after which the covariance is rebinned
 
     # Integration method for the covariance projection to real space. Options:
     # - 'simps': uses simpson integration. This is faster but less accurate
@@ -333,7 +334,7 @@ precision:
     cov_realspace_integration_method: 'simps'  # Type: str.
 
 misc:
-    num_threads: 40 # Type: int. How many threads to use for the parallel computations
+    num_threads: 60 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

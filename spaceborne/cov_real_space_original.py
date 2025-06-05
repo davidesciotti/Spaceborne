@@ -7,6 +7,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pyccl as ccl
 import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import quad_vec
@@ -14,9 +15,8 @@ from scipy.integrate import simpson as simps
 from scipy.stats import chi2
 from tqdm import tqdm
 
-import pyccl as ccl
 from spaceborne import sb_lib as sl
-
+from spaceborne import wf_cl_lib
 
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
@@ -300,6 +300,7 @@ def cov_sn_rs(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         * t_arr[None, None, :, None, :, None]
         / npair_arr[None, :, :, :, None, None]
     )
+
     return cov_sn_sb_6d
 
 
@@ -969,30 +970,51 @@ rel_acc = 5e-4  # relative accuracy target  # default 1e-4
 boost_bessel = True
 verbose = True  # should the code talk to you?
 
+theta_min_arcmin = 50
+theta_max_arcmin = 300
+df_chunk_size = 50000
+triu_tril = 'triu'
+row_col_major = 'row-major'  # unit: is gal/arcmin^2
+n_jobs = 40  # leave one thread free?
+n_jobs_lv = 40  # might cause memory issues if too high
+tpcf_ingr_method = 'fftlog'
+
+which_oc_benc = 'old'
+
+if which_oc_benc == 'old':
+    oc_path = '/home/cosmo/davide.sciotti/data/!archive/Spaceborne_bu/realspace_test'
+    cov_list_name = 'covariance_list_3x2_rcf_v2'
+    cov_hs_list_name = 'covariance_list_3x2_rcf'
+    cov_mat_name = 'covariance_matrix_3x2_rcf_v2'
+    n_theta_edges_coarse = 21
+    n_theta_edges = 21
+    survey_area_deg2 = 2500
+    h = 0.67
+    ell_min = 1
+    ia_is_none = True
+    nl_model = 'mead2020'
+
+elif which_oc_benc == 'new':
+    oc_path = '/home/cosmo/davide.sciotti/data/Spaceborne_rs_test/OneCovariance'
+    cov_list_name = 'cov_rcf_mergetest_list'
+    cov_hs_list_name = 'covariance_list_3x2_cl'
+    cov_mat_name = 'cov_rcf_mergetest_matrix'
+    n_theta_edges_coarse = 11
+    n_theta_edges = 11
+    survey_area_deg2 = 13245
+    h = 0.6737
+    ell_min = 2
+    ia_is_none = False
+    nl_model = 'mead2020_feedback'
+
+ell_max = 100_000
+nbl = 200
 zbins = 3
-survey_area_deg2 = 2500
 deg2torad2 = (180 / np.pi) ** 2
 srtoarcmin2 = (180 / np.pi * 60) ** 2
 survey_area_sr = survey_area_deg2 / deg2torad2
 fsky = survey_area_sr / (4 * np.pi)
 Amax = max((survey_area_sr, survey_area_sr))
-covs_oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
-
-ell_min = 1
-ell_max = 100_000
-nbl = 200
-theta_min_arcmin = 50
-theta_max_arcmin = 300
-n_theta_edges = 51
-n_theta_edges_coarse = 21
-df_chunk_size = 50000
-cov_list_name = 'covariance_list_3x2_rcf_v2'
-cov_hs_list_name = 'covariance_list_3x2_cl'
-triu_tril = 'triu'
-row_col_major = 'row-major'  # unit: is gal/arcmin^2
-n_jobs = -1  # leave one thread free?
-n_jobs_lv = 16  # might cause memory issues if too high
-tpcf_ingr_method = 'fftlog'
 
 theta_edges_coarse = np.linspace(
     theta_min_arcmin / 60, theta_max_arcmin / 60, n_theta_edges_coarse
@@ -1059,10 +1081,11 @@ for key in probe_idx_dict:
     )
 
 terms_toloop = ['sva', 'sn', 'mix']
-terms_toloop = ['sva']
-integration_method = 'levin'
+# terms_toloop = ['sn']
+integration_method = 'simps'
 probes_toloop = probe_idx_dict
-probes_toloop = ['gggm']
+# probes_toloop = ['gmxip']
+
 
 assert integration_method in ['simps', 'levin'], 'integration method not implemented'
 
@@ -1087,15 +1110,13 @@ ell_values = np.geomspace(ell_min, ell_max, nbl)
 cosmo = ccl.Cosmology(
     Omega_c=0.27,
     Omega_b=0.05,
-    h=0.67,
+    h=h,
     sigma8=0.816,
     n_s=0.966,
     m_nu=0.06,
     w0=-1.0,
     Neff=3.046,
-    extra_parameters={
-        'camb': {'halofit_version': 'mead2020_feedback', 'HMCode_logT_AGN': 7.75}
-    },
+    extra_parameters={'camb': {'halofit_version': nl_model, 'HMCode_logT_AGN': 7.75}},
 )
 
 # bias_values = [1.1440270903053593, 1.209969007589984, 1.3354449071064036,
@@ -1103,7 +1124,6 @@ cosmo = ccl.Cosmology(
 # # create an array with the bias values in each column, and the first
 # bias_2d = np.tile(bias_values, reps=(len(z_nz_lenses), 1))
 # bias_2d = np.column_stack((z_nz_lenses, bias_2d))
-oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/OneCovariance'
 nz_lenses = np.genfromtxt(
     f'{oc_path}/nzTab-EP03-zedMin02-zedMax25-mag245_dzshiftsTrue.ascii'
 )
@@ -1114,9 +1134,32 @@ bias_2d = np.genfromtxt(f'{oc_path}/gal_bias_table.ascii')
 z_nz_lenses = nz_lenses[:, 0]
 z_nz_sources = nz_sources[:, 0]
 
+ia_dict = {
+    'Aia': 0.16,
+    'eIA': 1.66,
+    'bIA': 0.0,
+    'CIA': 0.0134,
+    'z_pivot_IA': 0,
+    'lumin_ratio_filename': None,
+}
+is_ia_bias_1d = wf_cl_lib.build_ia_bias_1d_arr(
+    z_nz_sources,
+    cosmo_ccl=cosmo,
+    ia_dict=ia_dict,
+    lumin_ratio_2d_arr=None,
+    output_F_IA_of_z=False,
+)
+
+ia_bias_tuple = (z_nz_sources, is_ia_bias_1d)
+
+if ia_is_none:
+    ia_bias_tuple = None
+
 wl_ker = [
     ccl.WeakLensingTracer(  # fmt: skip
-        cosmo=cosmo, dndz=(nz_sources[:, 0], nz_sources[:, zi + 1]), ia_bias=None
+        cosmo=cosmo,
+        dndz=(nz_sources[:, 0], nz_sources[:, zi + 1]),
+        ia_bias=ia_bias_tuple,
     )  # fmt: skip
     for zi in range(zbins)
 ]
@@ -1433,7 +1476,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             return_only_diagonal_ells=True,
         )
 
-        covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
+        covs_oc_hs_npz = np.load(f'{oc_path}/covs_oc_10D.npz')
         cov_sva_oc_hs_10D = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
         cov_mix_oc_hs_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
         cov_sn_oc_hs_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
@@ -1485,7 +1528,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         #     cov_ssc_oc_3x2pt_10D=cov_ssc_oc_3x2pt_10D,
         # )
 
-        covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
+        covs_oc_hs_npz = np.load(f'{oc_path}/covs_oc_10D.npz')
         cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
         # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
 
@@ -1512,13 +1555,12 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         cov_ng_sb_6d /= norm  # TODO Amax still missing
 
     # ! ======================================= ONECOVARIANCE ==========================
-    oc_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/realspace_test'
-    cl_ll_ascii_filename = 'Cell_ll_realsp'
-    cl_gl_ascii_filename = 'Cell_gl_realsp'
-    cl_gg_ascii_filename = 'Cell_gg_realsp'
-    sl.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_ll_3d, ell_values, zbins)
-    sl.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_gl_3d, ell_values, zbins)
-    sl.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_gg_3d, ell_values, zbins)
+    # cl_ll_ascii_filename = 'Cell_ll_realsp_nbl4999'
+    # cl_gl_ascii_filename = 'Cell_gl_realsp_nbl4999'
+    # cl_gg_ascii_filename = 'Cell_gg_realsp_nbl4999'
+    # sl.write_cl_ascii(oc_path, cl_ll_ascii_filename, cl_ll_3d, ell_values, zbins)
+    # sl.write_cl_ascii(oc_path, cl_gl_ascii_filename, cl_gl_3d, ell_values, zbins)
+    # sl.write_cl_ascii(oc_path, cl_gg_ascii_filename, cl_gg_3d, ell_values, zbins)
 
     # set df column names
     with open(f'{oc_path}/{cov_list_name}.dat') as file:
@@ -1698,9 +1740,9 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
     # cov_sb_vec_2d = sl.cov_4D_to_2D(cov_sb_vec_4d, block_index='zpair')
     # cov_sb_gfromsva_2d = sl.cov_4D_to_2D(cov_sb_gfromsva_4d, block_index='zpair')
 
-    if probe in ['gmxip', 'gmxim']:
-        warnings.warn('!!! TRANSPOSING OC COV!!!!!', stacklevel=2)
-        cov_oc_2d = cov_oc_2d.T
+    # if probe in ['gmxip', 'gmxim']:
+    #     warnings.warn('!!! TRANSPOSING OC COV!!!!!', stacklevel=2)
+    #     cov_oc_2d = cov_oc_2d.T
 
     sl.compare_arrays(
         cov_sb_2d,
@@ -1751,7 +1793,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
     # plt.savefig(f'{common_title}, total cov flat.png')
 
     zi, zj, zk, zl = 0, 0, 0, 0
-    theta_2_ix = 17
+    theta_2_ix = len(theta_edges) // 2  # uno a caso
     sl.compare_funcs(
         None,
         {
@@ -1875,16 +1917,21 @@ if term == 'ssc':
     string = 'SSC'
 elif term == 'cng':
     string = 'NG'
-elif term in ['gauss_ell', 'sva', 'mix']:
+elif term in ['gauss_ell', 'sva', 'mix', 'sn']:
     string = 'gauss'
     warnings.warn(
-        'Comparin against the whole Gauss .mat file. You requested', stacklevel=2
+        f'Comparing against the whole Gauss .mat file. You requested {term}',
+        stacklevel=2,
     )
 
-cov_oc_mat = np.genfromtxt(
-    '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
-    f'/realspace_test/covariance_matrix_3x2_rcf_v2_{string}.mat'
-)
+# old
+# cov_oc_mat = np.genfromtxt(
+# '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests'
+# f'/realspace_test/covariance_matrix_3x2_rcf_v2_{string}.mat'
+# )
+
+# new - 30 may 2025
+cov_oc_mat = np.genfromtxt(f'{oc_path}/{cov_mat_name}_{string}.mat')
 
 sl.compare_arrays(
     cov_sb_full_2d, cov_oc_mat, 'SB', 'OC mat', log_diff=False, plot_diff_threshold=10

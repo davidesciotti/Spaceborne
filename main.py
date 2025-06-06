@@ -682,6 +682,7 @@ for wf_idx in range(len(wf_ccl_list)):
 
 
 # ! ======================================== Cls =======================================
+print('Computing Cls...')
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
     ell_obj.ells_WL,
     ccl_obj.p_of_k_a,
@@ -703,6 +704,7 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
     ccl_obj.wf_galaxy_obj,
     cl_ccl_kwargs,
 )
+print('...done')
 
 
 if cfg['C_ell']['use_input_cls']:
@@ -713,7 +715,7 @@ if cfg['C_ell']['use_input_cls']:
     ):
         raise NotImplementedError('Make sure to pass unbinned cls')
 
-    print('Using input Cls')
+    print('Loading input Cls')
     cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
     cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
     cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
@@ -741,15 +743,16 @@ if cfg['C_ell']['use_input_cls']:
         cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
         cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_GC)
 
-    # save the sb cls for the plot below
+    # save the sb cls for the plot comparing sb and input cls
     cl_ll_3d_sb = ccl_obj.cl_ll_3d
     cl_gl_3d_sb = ccl_obj.cl_gl_3d
     cl_gg_3d_sb = ccl_obj.cl_gg_3d
+    # apply m-bias on the _sb cls, again just for the plot
     cl_ll_3d_sb, cl_gl_3d_sb = pyccl_interface.apply_mult_shear_bias(
         cl_ll_3d_sb, cl_gl_3d_sb, np.array(cfg['C_ell']['mult_shear_bias']), zbins
     )
 
-    # assign them to ccl_obj
+    # assign them to ccl_obj; m-bias is applied right below
     ccl_obj.cl_ll_3d = cl_ll_3d_in
     ccl_obj.cl_gl_3d = cl_gl_3d_in
     ccl_obj.cl_gg_3d = cl_gg_3d_in

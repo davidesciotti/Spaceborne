@@ -348,6 +348,7 @@ misc:
     test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: /home/cosmo/davide.sciotti/data/Spaceborne_rs_test # Type: str. Path to the output directory
+    save_figs: True
 
 
 

@@ -76,7 +76,7 @@ mpl_other_dict = {
 }
 
 
-def compare_2d_covs(cov_a, cov_b, name_a, name_b, diff_threshold):
+def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
     # compare covariance
     compare_arrays(
         cov_a,
@@ -87,8 +87,8 @@ def compare_2d_covs(cov_a, cov_b, name_a, name_b, diff_threshold):
         log_diff=False,
         abs_val=True,
         plot_diff_threshold=diff_threshold,
+        title=title,
     )
-
 
     # compare correlation
     corr_a = cov2corr(cov_a)
@@ -104,41 +104,42 @@ def compare_2d_covs(cov_a, cov_b, name_a, name_b, diff_threshold):
         matshow_arr_kw=matshow_arr_kw,
         plot_diff_hist=True,
         plot_diff_threshold=diff_threshold,
+        title=title,
     )
 
     # compare cov diag
     compare_funcs(
         x=None,
         y={
-        f'abs diag {name_a}': np.diag(np.abs(cov_a)),
-        f'abs diag {name_b}': np.diag(np.abs(cov_b))
+            f'abs diag {name_a}': np.diag(np.abs(cov_a)),
+            f'abs diag {name_b}': np.diag(np.abs(cov_b)),
         },
-        logscale_y=[True, False]
+        logscale_y=[True, False],
+        title=title,
     )
-    
+
     # compare cov flat
     compare_funcs(
         x=None,
         y={
-        f'abs flat {name_a}': np.abs(cov_a).flatten(),
-        f'abs flat {name_b}': np.abs(cov_b).flatten()
+            f'abs flat {name_a}': np.abs(cov_a).flatten(),
+            f'abs flat {name_b}': np.abs(cov_b).flatten(),
         },
-        logscale_y=[True, False]
+        logscale_y=[True, False],
+        ylim_diff=[-100, 100],
+        title=title,
     )
-
 
     # compare SB against mat - cov spectrum
     eig_a = np.linalg.eigvals(cov_a)
     eig_b = np.linalg.eigvals(cov_b)
     compare_funcs(
         x=None,
-        y={
-        f'eig {name_a}': eig_a,
-        f'eig {name_b}': eig_b
-        },
-        logscale_y=[True, False]
+        y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
+        logscale_y=[True, False],
+        ylim_diff=[-100, 100],
+        title=title,
     )
-
 
 
 def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
@@ -331,7 +332,7 @@ def timer(msg):
         yield
     finally:
         stop = time.perf_counter()
-        print(msg % (stop - start), flush=True)
+        print(f'{msg} done in {stop - start:.2f} s', flush=True)
 
 
 def bin_2d_array(  # fmt: skip
@@ -617,6 +618,7 @@ def compare_funcs(
     title=None,
     ylim_diff=None,
     plt_kw=None,
+    ax=None,
 ):
     plt_kw = {} if plt_kw is None else plt_kw
 
@@ -627,13 +629,11 @@ def compare_funcs(
     if x is None:
         x = np.arange(len(y_tuple[0]))
 
-    fig, ax = plt.subplots(
-        2,
-        1,
-        sharex=True,
-        height_ratios=[2, 1],
-    )
-    fig.subplots_adjust(hspace=0)
+    if ax is None:
+        fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1])
+        fig.subplots_adjust(hspace=0)
+    else:
+        fig = ax[0].figure
 
     for i, y in enumerate(y_tuple):
         ls = '--' if i > 0 else '-'
@@ -1781,7 +1781,8 @@ def compare_arrays(
     plot_diff_threshold=None,
     white_where_zero=True,
     plot_diff_hist=False,
-    matshow_arr_kw={}
+    matshow_arr_kw={},
+    title='',
 ):
     fontsize = 25
 
@@ -1873,7 +1874,7 @@ def compare_arrays(
 
     fig.suptitle(
         f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}\n'
-        f'plot_diff_threshold={plot_diff_threshold}%',
+        f'plot_diff_threshold={plot_diff_threshold}%\n{title}',
         fontsize=fontsize,
     )
     plt.show()
@@ -3649,7 +3650,7 @@ def cov2corr(covariance):
 
     with np.errstate(divide='ignore', invalid='ignore'):
         correlation = np.divide(covariance, outer_v)
-         # Ensure zero covariance entries are explicitly zero
+        # Ensure zero covariance entries are explicitly zero
         correlation[covariance == 0] = 0
         # correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
 

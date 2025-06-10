@@ -260,7 +260,7 @@ misc:
     test_cholesky_decomposition: True # test if cholesky decomposition fails
     test_symmetry: True # test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper/output_CCL_cNGv3.2
+    output_path: /home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper/output_CCL_cNGv4trispfix
     use_h_units: False # TODO hardcode!
     is_CLOE_validation_run: True
     path_to_jl_integrator: /home/cosmo/davide.sciotti/data/Spaceborne/spaceborne/julia_integrator.jl

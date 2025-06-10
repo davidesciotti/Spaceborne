@@ -683,6 +683,7 @@ for wf_idx in range(len(wf_ccl_list)):
 
 # ! ======================================== Cls =======================================
 print('Computing Cls...')
+t0 = time.perf_counter()
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
     ell_obj.ells_WL,
     ccl_obj.p_of_k_a,
@@ -704,7 +705,7 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
     ccl_obj.wf_galaxy_obj,
     cl_ccl_kwargs,
 )
-print('...done')
+print(f'...done in {(time.perf_counter() - t0):.2f} s')
 
 
 if cfg['C_ell']['use_input_cls']:
@@ -1289,7 +1290,7 @@ if compute_sb_ssc:
         else:
             # depending on the modules installed, integrate with levin or simpson
             # (in the latter case, in parallel or not)
-            s2b_integration_scheme = cfg['covariance']['sigma2_b_integration_scheme']
+            s2b_integration_scheme = cfg['covariance']['sigma2_b_int_method']
             parallel = bool(find_spec('pathos'))
 
             if s2b_integration_scheme == 'levin':
@@ -1694,16 +1695,21 @@ sl.compare_arrays(
 cov_sb_2d = cov_obj.cov_rs_obj.cov_rs_full_2d
 cov_oc_2d = cov_oc_mat_2d
 
-sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', diff_threshold=10)
+title = (
+    f'integration {cfg["precision"]["cov_rs_int_method"]} - '
+    f'ell_bins_rs {cfg["precision"]["ell_bins_rs"]} - '
+    f'theta bins fine {cfg["precision"]["theta_bins_fine"]}'
+)
+sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=10)
 
 
 # compare individual terms/probes
-
-term = 'mix'
+term = 'sva'
 for probe in cov_rs_obj.probes_toloop:
-    # for probe in ['gmxip', 'gmxim']:
-    integration = cfg['precision']['cov_realspace_integration_method']
+    integration = cfg['precision']['cov_rs_int_method']
     from spaceborne import cov_real_space
+
+    title_here = title + f'\n{probe = }, {term = }'
 
     split_g_ix = (
         cov_obj.cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
@@ -1718,7 +1724,7 @@ for probe in cov_rs_obj.probes_toloop:
     zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
     ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
     ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
-    
+
     if term == 'sva':
         cov_oc_3x2pt_8D = cov_sva_oc_3x2pt_8D
     elif term == 'sn':
@@ -1728,6 +1734,9 @@ for probe in cov_rs_obj.probes_toloop:
 
     cov_sb_6d = cov_obj.cov_rs_obj.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix]
     cov_oc_6d = cov_oc_3x2pt_8D[twoprobe_ab_ix, twoprobe_cd_ix]
+
+    if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
+        print(f'{term = } {probe = } is 0')
 
     if probe in ['gmxip', 'gmxim']:
         print('I am manually transposing the OC blocks!!')
@@ -1754,13 +1763,27 @@ for probe in cov_rs_obj.probes_toloop:
     cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
     cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
 
-    sl.compare_arrays(cov_sb_2d, cov_oc_2d, log_array=True, log_diff=True, abs_val=True)
+    # sl.compare_arrays(cov_sb_2d, cov_oc_2d, log_array=True, log_diff=True, abs_val=True)
+
+
+    fig, axs = plt.subplots(
+        2, 2,
+        figsize=(15, 6),
+        sharex='col',
+        height_ratios=[2, 1],
+        gridspec_kw={'hspace': 0, 'wspace': 0.3}
+    )
+
+    # flatten to (2,2) shape
+    axs = axs.reshape(2, 2)
 
     sl.compare_funcs(
         None,
         {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
         logscale_y=[True, False],
-        title=f'{probe = }, {term = }, {integration = }',
+        title=title_here,
+        ylim_diff = [-100, 100],
+        ax=axs[:, 0]
     )
 
     sl.compare_funcs(
@@ -1770,6 +1793,14 @@ for probe in cov_rs_obj.probes_toloop:
             'OC flat': np.abs(cov_oc_2d).flatten(),
         },
         logscale_y=[True, False],
-        title=f'{probe = }, {term = }, {integration = }',
+        title=title_here,
+        ylim_diff = [-100, 100],
+        ax=axs[:, 1]
     )
 
+if cfg['misc']['save_figs']:
+    output_dir = f'{output_path}/figs'
+    os.makedirs(output_dir, exist_ok=True)
+    for i, fig_num in enumerate(plt.get_fignums()):
+        fig = plt.figure(fig_num)
+        fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))

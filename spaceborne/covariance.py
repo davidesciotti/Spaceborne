@@ -525,18 +525,17 @@ class SpaceborneCovariance:
         if self.do_real_space:
         
             print('Computing RS covariance...')
-            start = time.perf_counter()
+            start_rs = time.perf_counter()
             for _probe, _term in itertools.product(
                 self.cov_rs_obj.probes_toloop, self.cov_rs_obj.terms_toloop):
                 print(
                     f'\n***** probe {_probe} - term {_term} - '
                     f'integration {self.cov_rs_obj.integration_method} - '
-                    f'theta bins fine {self.cov_rs_obj.nbt_fine} '
-                    f'theta bins final {self.cov_rs_obj.nbt_coarse} *****'
+                    f'theta bins fine {self.cov_rs_obj.nbt_fine} *****'
                 )
                 self.cov_rs_obj.compute_realspace_cov(self, _probe, _term)
             self.cov_rs_obj.combine_terms_and_probes()
-            print(f'...done in {start - time.perf_counter():.2f} s')
+            print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
         # this part is in common, the split case also sets the total cov
         if self.GL_OR_LG == 'GL':

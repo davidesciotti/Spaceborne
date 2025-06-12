@@ -4,9 +4,8 @@ name: spaceborne
 channels:
   - conda-forge
   - defaults
-channel_priority: strict
 dependencies:
-  - python>=3.9
+  - python>=3.12
   - matplotlib
   - numpy
   - scipy<=1.14
@@ -18,16 +17,17 @@ dependencies:
   - healpy
   - camb
 
-  # PyCCL depenedencies
+  # PyCCL depenedencies - mandatory
   - swig
   - cmake
 
-  # pymaster dependencies
+  # pymaster dependencies - optional
   - cfitsio
   - fftw
   
-  # pylevin dependencies
-  - gsl=2.5
+  # pylevin dependencies - optional
+  # - gsl=2.5
+  - gsl
   - gxx_linux-64
   - gfortran
   - pybind11

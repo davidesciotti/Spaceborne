@@ -139,24 +139,6 @@ mask:
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
 
-namaster:
-    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
-    use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-    workspace_path: ... # Type: str. Path to the workspace, if already computed
-
-sample_covariance:
-    compute_sample_cov: False  # Type: bool
-    # Which code to use to compute the coupled Cls on the masked maps. The results are 
-    # essentially equivalent, but 'namaster' is a bit faster.
-    # In case the decoupled (sample) covariance is requested, in both cases the 
-    # workspace.decouple_cell() function will be used. 
-    # Documentation: 
-    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
-    # Options: ['namaster', 'healpy']. 
-    which_cls: namaster  # Type: str. 
-    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
-    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 ell_binning:
     binning_type: 'ref_cut'  # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
@@ -247,7 +229,7 @@ covariance:
     log10_k_max: 2  # Type: float
     k_steps: 100  # Type: int. Around 100 should be enough
     
-    z_min: 0.02 # Type: float. SU responses' kmax allow for z_min = 0.016, at most.
+    z_min: 0.02 # Type: float.
     z_max: 3.0 # Type: float
     z_steps: 500 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
     z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
@@ -256,6 +238,30 @@ covariance:
 
     # Name of the output covariance file. Change suffix to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 
+
+
+namaster:
+    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+    use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation (recommended)
+    workspace_path: ... # Type: str. Path to the workspace, if already computed
+
+
+sample_covariance:
+    compute_sample_cov: False  # Type: bool
+
+    # Which code to use to compute the coupled Cls on the masked maps. The results are
+    # essentially equivalent, but 'namaster' is a bit faster than 'healpy'.
+    # In case the decoupled (sample) covariance is requested, for both choiches the
+    # workspace.decouple_cell() function will be used.
+    # Documentation:
+    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
+    # Options: ['namaster', 'healpy'].
+    which_cls: namaster  # Type: str.
+
+    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
+    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
+
 
 PyCCL:
     # (from CCL docs): integration method to be used for the Limber integrals.

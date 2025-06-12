@@ -34,6 +34,11 @@ import subprocess
 import numpy as np
 import yaml
 
+# # get working directory with os
+# main_script_path = os.path.abspath(__file__)
+# main_script_dir = os.path.dirname(main_script_path)
+
+
 
 def test_main_script(test_cfg_path):
     # Run the main script with the test config
@@ -114,7 +119,7 @@ bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
 bench_names = [
-    'output_GSpaceborne_SSCSpaceborne_cNGNone_KETrue_resphalo_model_b1gfrom_HOD_pskymerge_refcut',
+    'output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KETrue_resphalo_model_b1gfrom_input_devmerge4',
 ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'

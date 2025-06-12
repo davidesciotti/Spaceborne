@@ -669,6 +669,8 @@ for wf_idx in range(len(wf_ccl_list)):
 
 
 # ! ======================================== Cls =======================================
+print('Computing Cls...')
+t0 = time.perf_counter()
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
     ell_obj.ells_WL,
     ccl_obj.p_of_k_a,
@@ -690,6 +692,7 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
     ccl_obj.wf_galaxy_obj,
     cl_ccl_kwargs,
 )
+print(f'done in {time.perf_counter() - t0:.2f} s')
 
 
 if cfg['C_ell']['use_input_cls']:
@@ -700,7 +703,7 @@ if cfg['C_ell']['use_input_cls']:
     ):
         raise NotImplementedError('Make sure to pass unbinned cls')
 
-    print('Using input Cls')
+    print('Loading input Cls')
     cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
     cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
     cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])

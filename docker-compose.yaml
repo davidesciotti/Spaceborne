@@ -1,0 +1,11 @@
+services:
+  spaceborne:
+    build: .
+    container_name: spaceborne-app
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    tty: true
+    stdin_open: true
+    working_dir: /app

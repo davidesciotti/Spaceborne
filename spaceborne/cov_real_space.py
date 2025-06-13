@@ -8,6 +8,7 @@ sn = sampling noise
 mix = mixed term
 """
 
+import itertools
 import warnings
 
 import numpy as np
@@ -16,7 +17,6 @@ import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
 from tqdm import tqdm
-import itertools
 
 from spaceborne import constants
 from spaceborne import sb_lib as sl
@@ -50,138 +50,17 @@ def b_mu(x, mu):
         raise ValueError('mu must be one of {0,2,4}.')
 
 
-def kmu_nobessel(ell, thetal, thetau, mu):
-    """
-    Returns the prefactors and corresponding Bessel orders for given mu and nu,
-    including the subtraction of bin edges (b_mu(ell * theta_u) - b_mu(ell * theta_l)).
-
-    Parameters
-    ----------
-    mu, nu : int
-        Orders of the kernel.
-    ell : float or array
-        Multipole values.
-    theta_l, theta_u : float
-        Lower and upper bin edges.
-
-    Returns
-    -------
-    list of tuples
-        Each tuple contains (prefactor, bessel_order_mu, bessel_order_nu).
-    """
-
-    def b_mu_nobessel(x, mu):
-        """
-        Implements the piecewise definition of the bracketed term b_mu(x)
-        from Eq. (E.2) in Joachimi et al. (2008).
-        These are just the results of
-        \int_{\theta_l}^{\theta_u} d\theta \theta J_\mu(\ell \theta)
-        """
-        if mu == 0:
-            return x * sl.j1(x)
-        elif mu == 2:
-            return -x * sl.j1(x) - 2.0 * sl.j0(x)
-        elif mu == 4:
-            # be careful with x=0!
-            return (x - 8.0 / x) * sl.j1(x) - 8.0 * sl.j2(x)
-        else:
-            raise ValueError('mu must be one of {0,2,4}.')
-
-    def b_mu_nobessel(mu):
-        """Returns (prefactor, bessel_order) pairs for a given mu."""
-        if mu == 0:
-            return [(1.0, 1)]  # x J1(x)
-        elif mu == 2:
-            return [(-1.0, 1), (-2.0, 0)]  # -x J1(x) - 2 J0(x)
-        elif mu == 4:
-            return [(1.0, 1), (-8.0, 2)]  # (x - 8/x) J1(x) - 8 J2(x)
-        else:
-            raise ValueError('mu must be one of {0,2,4}.')
-
-    # Compute b_mu at both bin edges
-    b_mu = b_mu(ell * theta, mu)
-    b_nu = b_mu(ell * theta, nu)
-
-    # Compute all possible combinations of terms
-    combined_terms = []
-    for pref_mu, j_mu in b_mu_nobessel(mu):
-        for pref_nu, j_nu in b_mu_nobessel(nu):
-            prefactor = (
-                (pref_mu * pref_nu)
-                * (b_mu_upper - b_mu_lower)
-                * (b_nu_upper - b_nu_lower)
-            )
-            combined_terms.append((prefactor, j_mu, j_nu))
-
-    return combined_terms
-
-
-
-
-def _bmu_comps(mu):
-    """
-    Internal: the (coeff, Bessel_order) decomposition of
-      b_mu(x) = ∫θ_l^θ_u dθ θ J_mu(ℓ θ)
-    evaluated symbolically so that
-      b_mu(x) = sum_i coeff_i * J_{order_i}(x)
-    *before* subtracting upper/lower.
-    """
+def b_mu_nobessel(x, mu):
+    """same as b_mu but returning the *order* of the Bessel functions"""
     if mu == 0:
-        # x J1(x)
-        return [(+1.0, 1)]
+        return [(x, 1)]
     elif mu == 2:
-        # - x J1(x)  -  2 J0(x)
-        return [(-1.0, 1), (-2.0, 0)]
+        return [(-x, 1), (-2.0, 0)]
     elif mu == 4:
-        # ( x - 8/x ) J1(x)  -  8 J2(x)
-        #  =  +1 * x J1(x)  + (-8) * J2(x)  +  (-8/x)*J1(x)
-        # but the 1/x piece can be absorbed via recurrence if desired;
-        # here we drop it and treat everything as x·J_m so
-        #    comp1 ≡ +1·J1,   comp2 ≡ -8·J2
-        # the −8/x·J1 term we neglect here (it is a small boundary term
-        # for x≠0 but you may reintroduce it if needed).
-        return [(+1.0, 1), (-8.0, 2)]
+        # be careful with x=0!
+        return [((x - 8.0 / x), 1), (-8.0, 2)]
     else:
-        raise ValueError('μ must be one of {0, 2, 4}.')
-
-
-def get_K_addends(mu, theta_l, theta_u):
-    """
-    Decompose
-      K_mu(ℓ; θ_l, θ_u) = 2/(θ_u^2-θ_l^2) * [b_mu(ℓθ_u) - b_mu(ℓθ_l)]
-    into a list of (prefactor, order, θ).
-    """
-    norm = 2.0 / (theta_u**2 - theta_l**2)
-    base = _bmu_comps(mu)
-
-    terms = []
-    for coeff, order in base:
-        # upper edge
-        terms.append((norm * coeff, order, theta_u))
-        # lower edge gets opposite sign
-        terms.append((-norm * coeff, order, theta_l))
-
-    return terms
-
-
-def get_KK_addends(mu, nu, θl_i, θu_i, θl_j, θu_j):
-    """
-    Build all addends for
-      ∫ dℓ ℓ K_mu(ℓ;θl_i,θu_i) K_nu(ℓ;θl_j,θu_j)
-    returns a list of quintuples
-      (C, m, n, θ_i, θ_j)
-    meaning one term
-      C * J_m(ℓ θ_i) * J_n(ℓ θ_j).
-    """
-    terms_i = get_K_addends(mu, θl_i, θu_i)
-    terms_j = get_K_addends(nu, θl_j, θu_j)
-
-    combined = []
-    for Ci, mi, thetai in terms_i:
-        for Cj, nj, thetaj in terms_j:
-            combined.append((Ci * Cj, mi, nj, thetai, thetaj))
-
-    return combined
+        raise ValueError('mu must be one of {0,2,4}.')
 
 
 def k_mu(ell, thetal, thetau, mu):
@@ -193,6 +72,146 @@ def k_mu(ell, thetal, thetau, mu):
     """
     prefactor = 2.0 / ((thetau**2 - thetal**2) * (ell**2))
     return prefactor * (b_mu(ell * thetau, mu) - b_mu(ell * thetal, mu))
+
+
+def _get_b_mu_terms_decomposed(theta, mu):
+    """
+    Internal helper to get terms for b_μ(ℓ*θ) / ℓ².
+    Returns list of (constant_coefficient, ℓ_power, bessel_order).
+    """
+    if mu == 0:
+        # (θ/ℓ)*J_1(ℓθ)
+        return [(theta, -1, 1)]
+    elif mu == 2:
+        # (-θ/ℓ)*J_1(ℓθ) - (2/ℓ^2)*J_0(ℓθ)
+        return [(-theta, -1, 1), (-2.0, -2, 0)]
+    elif mu == 4:
+        # (θ/ℓ - 8/(ℓ^3θ))*J_1(ℓθ) - (8/ℓ^2)*J_2(ℓθ)
+        # We split the first part into two separate terms
+        return [(theta, -1, 1), (-8.0 / theta, -3, 1), (-8.0, -2, 2)]
+    else:
+        raise ValueError(f'mu must be one of {{0, 2, 4}}, got {mu}')
+
+
+def get_b_mu_terms_decomposed(x, mu):
+    """same as b_mu but returning the *order* of the Bessel functions"""
+    if mu == 0:
+        return [(x, 1)]
+    elif mu == 2:
+        return [(-x, 1), (-2.0, 0)]
+    elif mu == 4:
+        # be careful with x=0!
+        return [((x - 8.0 / x), 1), (-8.0, 2)]
+    else:
+        raise ValueError('mu must be one of {0,2,4}.')
+
+
+def _get_K_mu_terms(thetal, thetau, mu):
+    """
+    Generates a list of decomposed terms for the kernel K_μ.
+    This is the corrected version of your k_mu_nobessel.
+    """
+    prefactor = 2.0 / (thetau**2 - thetal**2)
+
+    terms_u = _get_b_mu_terms_decomposed(thetau, mu)
+    terms_l = _get_b_mu_terms_decomposed(thetal, mu)
+
+    all_terms = []
+    # Add terms for theta_u
+    for const_coeff, ell_power, bessel_order in terms_u:
+        all_terms.append((prefactor * const_coeff, ell_power, bessel_order, thetau))
+
+    # Add terms for theta_l (with a minus sign)
+    for const_coeff, ell_power, bessel_order in terms_l:
+        all_terms.append((-prefactor * const_coeff, ell_power, bessel_order, thetal))
+
+    return all_terms
+
+
+def get_K_mu_terms(ell, thetal, thetau, mu):
+    """
+    Generates a list of decomposed terms for the kernel K_μ.
+
+    Returns: List of tuples (const_coeff, bessel_order, theta)
+    """
+    prefactor = 2.0 / ((thetau**2 - thetal**2) * ell**2)
+
+    terms_u = b_mu_nobessel(ell * thetau, mu)
+    terms_l = b_mu_nobessel(ell * thetal, mu)
+
+    all_terms = []
+    # Add terms for theta_u
+    for const_coeff, bessel_order in terms_u:
+        all_terms.append((prefactor * const_coeff, bessel_order, thetau))
+
+    # Add terms for theta_l (with a minus sign)
+    for const_coeff, bessel_order in terms_l:
+        all_terms.append((-prefactor * const_coeff, bessel_order, thetal))
+
+    return all_terms
+
+
+def _multiply_kernels(k_mu_terms, k_nu_terms):
+    """
+    Computes the product of two expanded kernels K_μ and K_ν.
+    This is the corrected version of your k_mu_k_nu_nobessel.
+    """
+    product_terms = []
+    for term1 in k_mu_terms:
+        for term2 in k_nu_terms:
+            c1, p1, n1, t1 = term1
+            c2, p2, n2, t2 = term2
+
+            # final_coeff is now a CONSTANT
+            final_coeff = c1 * c2
+            # final_ell_power is the power of ℓ in the coefficient
+            final_ell_power = p1 + p2
+
+            product_terms.append((final_coeff, final_ell_power, n1, t1, n2, t2))
+
+    return product_terms
+
+
+def multiply_kernels(k_mu_terms, k_nu_terms):
+    """
+    Computes the product of two expanded kernels K_μ and K_ν.
+
+    Returns: List of tuples (final_coeff, n1, theta1, n2, theta2)
+    """
+    product_terms = []
+    for term1 in k_mu_terms:
+        for term2 in k_nu_terms:
+            c1, n1, t1 = term1
+            c2, n2, t2 = term2
+
+            # Product of constants
+            final_coeff = c1 * c2
+
+            product_terms.append((final_coeff, n1, t1, n2, t2))
+
+    return product_terms
+
+
+# theta_edges_fine = np.linspace(50, 200, 40)
+# theta_1_ix = 0
+# mu = 0
+# nu = 0
+# theta_l = theta_edges_fine[theta_1_ix]
+# theta_u = theta_edges_fine[theta_1_ix + 1]
+# ell = 10
+
+# k_mu_terms = get_K_mu_terms(ell, theta_l, theta_u, mu)
+# k_nu_terms = get_K_mu_terms(ell, theta_l, theta_u, nu)
+# from pprint import pprint
+
+# kmuknu = multiply_kernels(k_mu_terms, k_nu_terms)
+# pprint(kmuknu)
+# print(f'{len(kmuknu) = }')
+
+# assert False
+
+
+
 
 
 def project_ellspace_cov_vec_2d(
@@ -531,7 +550,7 @@ def dl1dl2_bessel_wrapper(
     n_jobs: int,
     levin_prec_kw: dict,
 ):
-    """
+    r"""
     Wrapper function to compute the double Bessel integral of the form
     \int d\ell_1 * \ell_1 * J_mu(\theta_1 \ell_1) *
     \int d\ell_2 * \ell_2 * J_nu(\theta_2 \ell_2) *
@@ -712,6 +731,54 @@ def regularize_by_eigenvalue_cutoff(cov, threshold=1e-14):
     return cov_inv
 
 
+def integrate_single_bessel_pair(
+    integrand, x_values, n1, theta1, n2, theta2,   
+    bessel_type, n_jobs, logx, logy, n_sub, n_bisec_max,
+    rel_acc, boost_bessel, verbose, diagonal
+):  # fmt: skip
+    """
+    A simplified wrapper to integrate f(x) * J_n1(theta1*x) * J_n2(theta2*x).
+    It computes the integral for a single pair of Bessel functions.
+    """
+    assert integrand.ndim == 2, 'The integrand must be 2D [x_values, combinations]'
+    N = integrand.shape[1]  # Number of parallel integrals (e.g., for different z pairs)
+
+    # Constructor of the class
+    lp = levin.pylevin(
+        type=bessel_type,
+        x=x_values,
+        integrand=integrand,
+        logx=logx,
+        logy=logy,
+        nthread=n_jobs,
+        diagonal=diagonal,  # We are always off-diagonal here
+    )
+
+    lp.set_levin(
+        n_col_in=n_sub,
+        maximum_number_bisections_in=n_bisec_max,
+        relative_accuracy_in=rel_acc,
+        super_accurate=boost_bessel,
+        verbose=verbose,
+    )
+
+    # The result will have shape (1, N) because we compute for one (k1, k2) pair
+    result_levin = np.zeros((1, N))
+
+    lp.levin_integrate_bessel_double(
+        x_min=np.array([x_values[0]]),
+        x_max=np.array([x_values[-1]]),
+        k_1=np.array([theta1]),
+        k_2=np.array([theta2]),
+        ell_1=np.array([n1], dtype=int),
+        ell_2=np.array([n2], dtype=int),
+        result=result_levin,
+    )
+
+    # Return the flat 1D array of results
+    return result_levin[0]
+
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -775,27 +842,17 @@ class CovRealSpace:
         self.nbt_fine = self.cfg['precision']['theta_bins_fine']
 
         # TODO in principle this could be changed
-        theta_edges_fine_deg = np.linspace(
-            self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, self.nbt_fine + 1
-        )
-        self.theta_edges_fine = np.deg2rad(theta_edges_fine_deg)  # in radians
-        self.theta_centers_fine = (
-            self.theta_edges_fine[:-1] + self.theta_edges_fine[1:]
-        ) / 2.0
-        assert len(self.theta_centers_fine) == self.nbt_fine, (
-            'theta_centers length mismatch'
-        )
-
-        theta_edges_coarse_deg = np.linspace(
-            self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, self.nbt_coarse + 1
-        )
-        self.theta_edges_coarse = np.deg2rad(theta_edges_coarse_deg)  # in radians
-        self.theta_centers_coarse = (
-            self.theta_edges_coarse[:-1] + self.theta_edges_coarse[1:]
-        ) / 2.0
-        assert len(self.theta_centers_coarse) == self.nbt_coarse, (
-            'theta_centers length mismatch'
-        )
+        # Use a loop to set up fine and coarse theta binning
+        for bin_type in ['fine', 'coarse']:
+            nbt = getattr(self, f'nbt_{bin_type}')
+            theta_edges_deg = np.linspace(
+                self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, nbt + 1
+            )
+            theta_edges = np.deg2rad(theta_edges_deg)  # in radians
+            theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
+            setattr(self, f'theta_edges_{bin_type}', theta_edges)
+            setattr(self, f'theta_centers_{bin_type}', theta_centers)
+            assert len(theta_centers) == nbt, 'theta_centers length mismatch'
 
     def _set_neff_and_sigma_eps(self):
         self.n_eff_lens = self.cfg['nz']['ngal_lenses']
@@ -833,7 +890,8 @@ class CovRealSpace:
 
         self.mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
-        # ! careful: in this representation, xipxip and ximxim (eg) have the same indices!!
+        # ! careful: in this representation, xipxip and ximxim (eg) have 
+        # ! the same indices!!
         self.probe_idx_dict = {
             'xipxip': (0, 0, 0, 0),
             'xipxim': (0, 0, 0, 0),
@@ -875,13 +933,14 @@ class CovRealSpace:
         self.probes_toloop = self.probe_idx_dict
         # for testing purposes
         self.probes_toloop = [
-            'gmxip',
+        'xipxip', 'gggg', 'gmgm', 'ximxim'
         ]
 
     def _set_terms_toloop(self):
         self.terms_toloop = []
         if self.cfg['covariance']['G']:
-            self.terms_toloop.extend(('sva', 'sn', 'mix'))
+            # self.terms_toloop.extend(('sva', 'sn', 'mix'))
+            self.terms_toloop.extend(('sva',))
             # self.terms_toloop.extend(('gauss_ell', ))
         if self.cfg['covariance']['SSC']:
             self.terms_toloop.append('ssc')
@@ -1085,6 +1144,219 @@ class CovRealSpace:
         )
         cov_sva_rs_6d = sl.cov_4D_to_6D_blocks(
             cov_sva_rs_4d,
+            nbl=self.nbt_fine,
+            zbins=self.zbins,
+            ind_ab=ind_ab,
+            ind_cd=ind_cd,
+            symmetrize_output_ab=False,
+            symmetrize_output_cd=False,
+        )
+
+        return cov_sva_rs_6d
+
+    def sva_levin_wrapper_full(
+        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+    ):  # fmt: skip
+        """
+        Calculates the full SVA covariance matrix by looping over all pairs
+        of angular bins (p, q) and performing the term-by-term integration for each.
+        """
+        # --- Part 1: Prepare the common power spectrum part of the integrand ---
+        a = np.einsum(
+            'Lik,Ljl->Lijkl',
+            self.cl_5d[probe_a_ix, probe_c_ix],
+            self.cl_5d[probe_b_ix, probe_d_ix],
+        )
+        b = np.einsum(
+            'Lil,Ljk->Lijkl',
+            self.cl_5d[probe_a_ix, probe_d_ix],
+            self.cl_5d[probe_b_ix, probe_c_ix],
+        )
+        base_integrand = a + b
+
+        # remove repeated zi, zj combinations
+        base_integrand = sl.cov_6D_to_4D_blocks(
+            cov_6D=base_integrand,
+            nbl=self.nbl,
+            npairs_AB=zpairs_ab,
+            npairs_CD=zpairs_cd,
+            ind_AB=ind_ab,
+            ind_CD=ind_cd,
+        )
+        # shape is now [nbl, zpairs_ab, zpairs_cd]
+
+        # Apply common prefactors including ell from the integration measure
+        base_integrand *= self.ell_values[:, None, None] / (2.0 * np.pi * self.amax)
+        # base_integrand /= self.ell_values[:, None, None] ** 2
+
+        n_theta_bins = self.nbt_fine
+        result_shape = base_integrand.shape[1:]
+
+        final_cov_matrix = np.zeros((n_theta_bins, n_theta_bins, *result_shape))
+
+        print(
+            f'Calculating SVA covariance for K_mu={mu}, K_nu={nu} across {n_theta_bins}x{n_theta_bins} angular bins...'
+        )
+
+        # --- Part 2: Loop over all pairs of angular bins (p, q) ---
+        # TODO use symmetry for auto blocks
+        for p in tqdm(range(n_theta_bins)):
+            for q in range(n_theta_bins):
+                theta_p_lower = self.theta_edges_fine[p]
+                theta_p_upper = self.theta_edges_fine[p + 1]
+                theta_q_lower = self.theta_edges_fine[q]
+                theta_q_upper = self.theta_edges_fine[q + 1]
+
+                k_mu_terms = get_K_mu_terms(self.ell_values, theta_p_lower, theta_p_upper, mu)
+                k_nu_terms = get_K_mu_terms(self.ell_values, theta_q_lower, theta_q_upper, nu)
+                product_expansion = multiply_kernels(k_mu_terms, k_nu_terms)
+
+                cov_pq_element = np.zeros(result_shape)
+
+                # --- Part 3: Loop over each term in the expansion ---
+                for term in product_expansion:
+                    const_coeff, n1, theta1, n2, theta2 = term
+                    
+                    # Apply the constant coefficient from the kernel expansion
+                    term_integrand = base_integrand * const_coeff[:, None, None]
+
+                    # Flatten for integration
+                    term_integrand_flat = term_integrand.reshape(self.nbl, -1)
+
+                    # Integrate this term
+                    term_integral_result = integrate_single_bessel_pair(
+                        term_integrand_flat,
+                        x_values=self.ell_values,
+                        n1=n1,
+                        theta1=theta1,
+                        n2=n2,
+                        theta2=theta2,
+                        bessel_type=3,
+                        n_jobs=self.n_jobs,
+                        **self.levin_prec_kw,
+                    )
+
+                    cov_pq_element += term_integral_result.reshape(result_shape)
+
+                final_cov_matrix[p, q] = cov_pq_element
+
+        cov_sva_rs_6d = sl.cov_4D_to_6D_blocks(
+            final_cov_matrix,
+            nbl=self.nbt_fine,
+            zbins=self.zbins,
+            ind_ab=ind_ab,
+            ind_cd=ind_cd,
+            symmetrize_output_ab=False,
+            symmetrize_output_cd=False,
+        )
+
+        return cov_sva_rs_6d
+
+    def _sva_levin_wrapper_full(
+        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+    ):  # fmt: skip
+        """
+        Calculates the full SVA covariance matrix by looping over all pairs
+        of angular bins (p, q) and performing the term-by-term integration for each.
+        """
+        # --- Part 1: Prepare the common power spectrum part of the integrand ---
+        a = np.einsum(
+            'Lik,Ljl->Lijkl',
+            self.cl_5d[probe_a_ix, probe_c_ix],
+            self.cl_5d[probe_b_ix, probe_d_ix],
+        )
+        b = np.einsum(
+            'Lil,Ljk->Lijkl',
+            self.cl_5d[probe_a_ix, probe_d_ix],
+            self.cl_5d[probe_b_ix, probe_c_ix],
+        )
+        base_integrand = a + b
+
+        # remove repeated zi, zj combinations
+        base_integrand = sl.cov_6D_to_4D_blocks(
+            cov_6D=base_integrand,
+            nbl=self.nbl,
+            npairs_AB=zpairs_ab,
+            npairs_CD=zpairs_cd,
+            ind_AB=ind_ab,
+            ind_CD=ind_cd,
+        )
+        # shape is now [nbl, zpairs_ab, zpairs_cd]
+
+        # flatten the integrand to [ells, whatever = zpairs_ab * zpairs_cd]
+        # base_integrand = base_integrand.reshape(self.nbl, -1)
+        # base_integrand *= self.ell_values[:, None]
+        # base_integrand /= 2.0 * np.pi * self.amax
+
+        # Apply common prefactors
+        #
+        # =============================== FIX #1 ===============================
+        # Reshape ell_values to (n_ells, 1, 1) to match the 3D base_integrand
+        base_integrand *= self.ell_values[:, None, None] / (2.0 * np.pi * self.amax)
+        # ======================================================================
+
+        n_theta_bins = self.nbt_fine
+        result_shape = base_integrand.shape[1:]
+
+        final_cov_matrix = np.zeros((n_theta_bins, n_theta_bins, *result_shape))
+
+        print(
+            f'Calculating SVA covariance for K_mu={mu}, K_nu={nu} across {n_theta_bins}x{n_theta_bins} angular bins...'
+        )
+
+        # --- Part 2: Loop over all pairs of angular bins (p, q) ---
+        for p in tqdm(range(n_theta_bins)):
+            for q in range(
+                n_theta_bins
+            ):  # Optimization: Calculate only the upper triangle
+                theta_p_lower = self.theta_edges_fine[p]
+                theta_p_upper = self.theta_edges_fine[p + 1]
+                theta_q_lower = self.theta_edges_fine[q]
+                theta_q_upper = self.theta_edges_fine[q + 1]
+
+                k_mu_terms = get_K_mu_terms(theta_p_lower, theta_p_upper, mu)
+                k_nu_terms = get_K_mu_terms(theta_q_lower, theta_q_upper, nu)
+                product_expansion = multiply_kernels(k_mu_terms, k_nu_terms)
+
+                cov_pq_element = np.zeros(result_shape)
+
+                # --- Part 3: Loop over each term in the expansion ---
+                for term in product_expansion:
+                    const_coeff, ell_power, n1, theta1, n2, theta2 = term
+
+                    #
+                    # =============================== FIX #2 ===============================
+                    # Also use (n_ells, 1, 1) reshaping here for the ell_power term
+                    term_integrand = base_integrand * (
+                        const_coeff * (self.ell_values[:, None, None] ** ell_power)
+                        # const_coeff * (self.ell_values[:, None, None] ** (-2))
+                    )
+                    # ======================================================================
+
+                    term_integrand_flat = term_integrand.reshape(self.nbl, -1)
+
+                    term_integral_result = integrate_single_bessel_pair(
+                        term_integrand_flat,
+                        x_values=self.ell_values,
+                        n1=n1,
+                        theta1=theta1,
+                        n2=n2,
+                        theta2=theta2,
+                        bessel_type=3,
+                        n_jobs=self.n_jobs,
+                        **self.levin_prec_kw,
+                    )
+
+                    cov_pq_element += term_integral_result.reshape(result_shape)
+
+                final_cov_matrix[p, q] = cov_pq_element
+
+        print('SVA calculation complete.')
+
+        cov_sva_rs_6d = sl.cov_4D_to_6D_blocks(
+            final_cov_matrix,
             nbl=self.nbt_fine,
             zbins=self.zbins,
             ind_ab=ind_ab,
@@ -1413,7 +1685,7 @@ class CovRealSpace:
                 )  # fmt: skip
 
             elif self.integration_method == 'levin':
-                self.cov_sva_rs_6d = self.sva_levin_wrapper(
+                self.cov_sva_rs_6d = self.sva_levin_wrapper_full(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
                 )  # fmt: skip
@@ -1587,7 +1859,7 @@ class CovRealSpace:
                 ells_out=self.theta_centers_coarse,
                 ells_out_edges=self.theta_edges_coarse,
                 weights_in=None,
-                which_binning='integral',
+                which_binning='sum',
                 interpolate=True,
             )
 

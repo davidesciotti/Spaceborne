@@ -1763,15 +1763,16 @@ for probe in cov_rs_obj.probes_toloop:
     cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
     cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
 
-    # sl.compare_arrays(cov_sb_2d, cov_oc_2d, log_array=True, log_diff=True, abs_val=True)
-
+    sl.compare_arrays(cov_sb_2d, cov_oc_2d, log_array=True, log_diff=False, abs_val=True, 
+                      plot_diff_threshold=5)
 
     fig, axs = plt.subplots(
-        2, 2,
+        2,
+        2,
         figsize=(15, 6),
         sharex='col',
         height_ratios=[2, 1],
-        gridspec_kw={'hspace': 0, 'wspace': 0.3}
+        gridspec_kw={'hspace': 0, 'wspace': 0.3},
     )
 
     # flatten to (2,2) shape
@@ -1782,8 +1783,8 @@ for probe in cov_rs_obj.probes_toloop:
         {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
         logscale_y=[True, False],
         title=title_here,
-        ylim_diff = [-100, 100],
-        ax=axs[:, 0]
+        ylim_diff=[-100, 100],
+        ax=axs[:, 0],
     )
 
     sl.compare_funcs(
@@ -1794,8 +1795,8 @@ for probe in cov_rs_obj.probes_toloop:
         },
         logscale_y=[True, False],
         title=title_here,
-        ylim_diff = [-100, 100],
-        ax=axs[:, 1]
+        ylim_diff=[-100, 100],
+        ax=axs[:, 1],
     )
 
 if cfg['misc']['save_figs']:
@@ -1804,3 +1805,6 @@ if cfg['misc']['save_figs']:
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
+
+
+print('done')

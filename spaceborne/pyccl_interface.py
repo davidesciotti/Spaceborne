@@ -5,9 +5,9 @@ from functools import partial
 
 import healpy as hp
 import numpy as np
+import pyccl as ccl
 from tqdm import tqdm
 
-import pyccl as ccl
 from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
 from spaceborne import sb_lib as sl
 

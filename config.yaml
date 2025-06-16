@@ -313,9 +313,9 @@ precision:
     # Precision settings for pylevin. See the official documentation for more details:
     # https://levin-bessel.readthedocs.io/en/latest/index.html
     # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-    n_sub: 8  # number of collocation points in each bisection  # default: 8
-    n_bisec_max: 80  # maximum number of bisections used  # default: 32
-    rel_acc: 1.e-4  # relative accuracy target  # default: 1.e-4
+    n_sub: 32  # number of collocation points in each bisection  # default: 8
+    n_bisec_max: 128  # maximum number of bisections used  # default: 32
+    rel_acc: 1.e-5  # relative accuracy target  # default: 1.e-4
     boost_bessel: True  # compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
     verbose: True  # Whether to display warnings
 
@@ -325,7 +325,7 @@ precision:
     ell_min_rs: 2
     ell_max_rs: 100000
     ell_bins_rs: 500
-    theta_bins_fine: 40  # number of theta bins used for the fine grid, after which the covariance is rebinned
+    theta_bins_fine: 10  # number of theta bins used for the fine grid, after which the covariance is rebinned
 
     # Integration method for the covariance projection to real space. Options:
     # - 'simps': uses simpson integration. This is faster but less accurate
@@ -333,7 +333,7 @@ precision:
     cov_rs_int_method: 'levin'  # Type: str.
 
 misc:
-    num_threads: 40 # Type: int. How many threads to use for the parallel computations
+    num_threads: 20 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 

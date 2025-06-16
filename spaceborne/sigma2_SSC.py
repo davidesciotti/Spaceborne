@@ -149,7 +149,7 @@ def sigma2_z1z2_wrap_parallel(
     else:
         raise ValueError('Invalid combination of "parallel" and "integration_scheme". ')
 
-    print(f'done in {time.perf_counter() - start} s')
+    print(f'done in {time.perf_counter() - start:.2f} s')
 
     return sigma2_b
 

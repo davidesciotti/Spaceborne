@@ -940,7 +940,7 @@ class NmtCov:
         self.zbins = pvt_cfg['zbins']
         self.n_probes = pvt_cfg['n_probes']
         self.coupled_cov = cfg['covariance']['coupled_cov']
-        self.output_folder = self.cfg['misc']['output_folder']
+        self.output_folder = self.cfg['misc']['output_path']
 
         self.cov_blocks_names_all = (  # fmt: skip
             'LLLL', 'LLGL', 'LLGG',

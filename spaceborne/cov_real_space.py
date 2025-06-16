@@ -17,6 +17,7 @@ import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
 from tqdm import tqdm
+from pprint import pprint
 
 from spaceborne import constants
 from spaceborne import sb_lib as sl
@@ -117,21 +118,21 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
     return product_terms
 
 
-theta_edges_fine = np.linspace(50, 200, 40)
-theta_1_ix = 0
-mu = 0
-nu = 0
-theta_l = theta_edges_fine[theta_1_ix]
-theta_u = theta_edges_fine[theta_1_ix + 1]
-ell = 10
+# theta_edges_fine = np.linspace(50, 200, 40)
+# theta_1_ix = 0
+# mu = 0
+# nu = 4
+# theta_l = theta_edges_fine[theta_1_ix]
+# theta_u = theta_edges_fine[theta_1_ix + 1]
+# ell = 10
 
-k_mu_terms = k_mu_nobessel(ell, theta_l, theta_u, mu)
-k_nu_terms = k_mu_nobessel(ell, theta_l, theta_u, nu)
-from pprint import pprint
+# k_mu_terms = k_mu_nobessel(ell, theta_l, theta_u, mu)
+# k_nu_terms = k_mu_nobessel(ell, theta_l, theta_u, nu)
 
-kmuknu = kmuknu_nobessel(k_mu_terms, k_nu_terms)
-pprint(kmuknu)
-print(f'{len(kmuknu) = }')
+# kmuknu = kmuknu_nobessel(k_mu_terms, k_nu_terms)
+# pprint(k_mu_terms)
+# pprint(kmuknu)
+# print(f'{len(kmuknu) = }')
 
 # assert False
 
@@ -629,9 +630,9 @@ def stack_probe_blocks(cov_2d_dict):
     return np.vstack((row_1, row_2, row_3, row_4))
 
 
-def twopcf_wrapper(zi, zj, ell_grid, theta_grid, cl_3D, correlation_type, method):
+def twopcf_wrapper(cosmo, zi, zj, ell_grid, theta_grid, cl_3D, correlation_type, method):
     return ccl.correlation(
-        cosmo=self.cosmo,
+        cosmo=cosmo,
         ell=ell_grid,
         C_ell=cl_3D[:, zi, zj],
         theta=theta_grid,
@@ -654,7 +655,7 @@ def regularize_by_eigenvalue_cutoff(cov, threshold=1e-14):
 
 
 def integrate_single_bessel_pair(
-    integrand, x_values, n1, theta1, n2, theta2,   
+    integrand, x_values, ord_bes_1, theta1, ord_bes_2, theta2,   
     bessel_type, n_jobs, logx, logy, n_sub, n_bisec_max,
     rel_acc, boost_bessel, verbose, diagonal
 ):  # fmt: skip
@@ -692,8 +693,8 @@ def integrate_single_bessel_pair(
         x_max=np.array([x_values[-1]]),
         k_1=np.array([theta1]),
         k_2=np.array([theta2]),
-        ell_1=np.array([n1], dtype=int),
-        ell_2=np.array([n2], dtype=int),
+        ell_1=np.array([ord_bes_1], dtype=int),
+        ell_2=np.array([ord_bes_2], dtype=int),
         result=result_levin,
     )
 
@@ -1111,7 +1112,6 @@ class CovRealSpace:
 
         # Apply common prefactors including ell from the integration measure
         base_integrand *= self.ell_values[:, None, None] / (2.0 * np.pi * self.amax)
-        # base_integrand /= self.ell_values[:, None, None] ** 2
 
         n_theta_bins = self.nbt_fine
         result_shape = base_integrand.shape[1:]
@@ -1155,9 +1155,9 @@ class CovRealSpace:
                     term_integral_result = integrate_single_bessel_pair(
                         term_integrand_flat,
                         x_values=self.ell_values,
-                        n1=n1,
+                        ord_bes_1=n1,
                         theta1=theta1,
-                        n2=n2,
+                        ord_bes_2=n2,
                         theta2=theta2,
                         bessel_type=3,
                         n_jobs=self.n_jobs,

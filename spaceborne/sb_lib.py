@@ -3660,9 +3660,9 @@ def cov2corr(covariance):
 def build_noise(
     zbins: int,
     n_probes: int,
-    sigma_eps2: list | tuple | np.ndarray,
-    ng_shear: list | tuple | np.ndarray,
-    ng_clust: list | tuple | np.ndarray,
+    sigma_eps2,#: list | tuple | np.ndarray,
+    ng_shear,#: list | tuple | np.ndarray,
+    ng_clust,#: list | tuple | np.ndarray,
     is_noiseless: bool = False,
 ) -> np.ndarray:
     """Builds the noise power spectra.

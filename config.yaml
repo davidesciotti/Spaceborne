@@ -161,7 +161,7 @@ sample_covariance:
     fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 OneCovariance:
-    path_to_oc_executable: '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
+    path_to_oc_executable: '/u/dsciotti/code/OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 
@@ -347,7 +347,7 @@ misc:
     test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
     test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /home/cosmo/davide.sciotti/data/Spaceborne_rs_test # Type: str. Path to the output directory
+    output_path: /u/dsciotti/code/Spaceborne_rs_test # Type: str. Path to the output directory
     save_figs: True
 
 

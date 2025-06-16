@@ -67,4 +67,4 @@ ENV PATH="/root/.juliaup/bin:$PATH"
 COPY . .
 
 # Define the default command to run when the container starts.
-CMD ["conda", "run", "-n", "spaceborne", "python", "main.py"]
+CMD ["conda", "run", "--no-capture-output", "-n", "spaceborne", "python", "main.py"]

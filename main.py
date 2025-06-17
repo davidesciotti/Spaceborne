@@ -1,4 +1,5 @@
 import argparse
+import gc
 import os
 import pprint
 import sys
@@ -1660,6 +1661,16 @@ for probe in cov_rs_obj.probe_idx_dict:
 
     # no need to assign 6d and 4d to dedicated dictionary
     cov_oc_6d = cov_oc_list_8d[*cov_rs_obj.probe_idx_dict_short_oc[probe], ...]
+
+    # check theta simmetry
+    if np.allclose(cov_oc_6d, cov_oc_6d.transpose(1, 0, 2, 3, 4, 5), atol=0, rtol=1e-5):
+        print(f'probe {probe} is symmetric in theta_1, theta_2')
+    
+    if probe in ['gmxip', 'gmxim']:
+        print('I am manually transposing the OC blocks!!')
+        warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
+        cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
+
     cov_oc_4d = sl.cov_6D_to_4D_blocks(
         cov_oc_6d,
         nbt,
@@ -1672,8 +1683,10 @@ for probe in cov_rs_obj.probe_idx_dict:
     cov_oc_dict_2d[probe] = sl.cov_4D_to_2D(
         cov_oc_4d, block_index='zpair', optimize=True
     )
+    
+    
+    
 cov_oc_list_2d = cov_real_space.stack_probe_blocks(cov_oc_dict_2d)
-
 
 cov_oc_mat_2d = np.genfromtxt(
     oc_output_covlist_fname.replace('list.dat', 'matrix_gauss.mat')
@@ -1683,12 +1696,16 @@ cov_oc_mat_2d_2 = np.genfromtxt(
 )
 np.testing.assert_allclose(cov_oc_mat_2d, cov_oc_mat_2d_2, atol=0, rtol=1e-5)
 
+del cov_oc_mat_2d_2
+gc.collect()
+
 # compare OC list against mat - transposition issue is still present!
 sl.compare_arrays(
     cov_oc_list_2d,
     cov_oc_mat_2d,
     log_array=True,
-    log_diff=False,
+    log_diff=True,
+    plot_diff_threshold=1,
 )
 
 # I will compare SB against the mat fmt
@@ -1698,9 +1715,15 @@ cov_oc_2d = cov_oc_mat_2d
 title = (
     f'integration {cfg["precision"]["cov_rs_int_method"]} - '
     f'ell_bins_rs {cfg["precision"]["ell_bins_rs"]} - '
-    f'theta bins fine {cfg["precision"]["theta_bins_fine"]}'
+    f'theta bins fine {cfg["precision"]["theta_bins_fine"]}\n'
+    f'n_sub {cfg["precision"]["n_sub"]} - '
+    f'n_bisec_max {cfg["precision"]["n_bisec_max"]} - '
+    f'rel_acc {cfg["precision"]["rel_acc"]}'
 )
 sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=10)
+sl.compare_2d_covs(
+    cov_oc_list_2d, cov_oc_mat_2d, 'list', 'mat', title=title, diff_threshold=1
+)
 
 
 # compare individual terms/probes
@@ -1763,8 +1786,15 @@ for probe in cov_rs_obj.probes_toloop:
     cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
     cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
 
-    sl.compare_arrays(cov_sb_2d, cov_oc_2d, log_array=True, log_diff=False, abs_val=True, 
-                      plot_diff_threshold=5)
+    sl.compare_arrays(
+        cov_sb_2d,
+        cov_oc_2d,
+        log_array=True,
+        log_diff=True,
+        abs_val=True,
+        plot_diff_threshold=10,
+        title=title
+    )
 
     fig, axs = plt.subplots(
         2,

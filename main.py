@@ -206,7 +206,7 @@ cfg['covariance']['cNG_code'] = 'PyCCL'
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
     cfg['OneCovariance']['path_to_oc_executable'] = (
-        '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
+        '/u/dsciotti/code/OneCovariance/covariance.py'
     )
     cfg['OneCovariance']['consistency_checks'] = False
     cfg['OneCovariance']['oc_output_filename'] = 'cov_rcf_mergetest'

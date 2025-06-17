@@ -982,7 +982,7 @@ tpcf_ingr_method = 'fftlog'
 which_oc_benc = 'old'
 
 if which_oc_benc == 'old':
-    oc_path = '/home/cosmo/davide.sciotti/data/!archive/Spaceborne_bu/realspace_test'
+    oc_path = '/u/dsciotti/code/!archive/Spaceborne_bu/realspace_test'
     cov_list_name = 'covariance_list_3x2_rcf_v2'
     cov_hs_list_name = 'covariance_list_3x2_rcf'
     cov_mat_name = 'covariance_matrix_3x2_rcf_v2'
@@ -995,7 +995,7 @@ if which_oc_benc == 'old':
     nl_model = 'mead2020'
 
 elif which_oc_benc == 'new':
-    oc_path = '/home/cosmo/davide.sciotti/data/Spaceborne_rs_test/OneCovariance'
+    oc_path = '/u/dsciotti/code/Spaceborne_rs_test/OneCovariance'
     cov_list_name = 'cov_rcf_mergetest_list'
     cov_hs_list_name = 'covariance_list_3x2_cl'
     cov_mat_name = 'cov_rcf_mergetest_matrix'

@@ -10,9 +10,8 @@
 ---
 [![Documentation Status](https://readthedocs.org/projects/spaceborne/badge/?version=latest)](https://spaceborne.readthedocs.io/en/latest/?badge=latest)
 
+## Installation
 For detailed instructions on how to install and use Spaceborne, please refer to the [documentation](https://spaceborne.readthedocs.io/en/latest/).
-
-# TL;DR
 
 To install the code, we recommend using a dedicated Conda environment. Clone the repository, then checkout the latest release (e.g. `v2025.05.1`) with
 
@@ -43,9 +42,9 @@ Then, install the required Julia packages:
 julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
 ```
 
-# Using Docker
+### Using Docker 🐋
 
-You can happily disregard all the above instructions and run the code through a Docker image. To do this, install Docker Desktop or the Docker engine; then, in the root of the repository, run:
+You can happily disregard all the above instructions and run the code through a Docker image. To do this, install Docker Desktop or the Docker engine; then, in the root of the cloned repository (again, remember to checkout the latest release), run:
 
 ```bash
 docker-compose up --build
@@ -67,7 +66,7 @@ That's it! The container will use your local `config.yaml` file and output to th
 
 ---
 
-# Running the Code
+## Running the Code
 
 All the available options and configurations can be found, along with their explanation, in the `config.yaml` file. To run `Spaceborne` *with the configuration specified in the* `Spaceborne/config.yaml` *file*, simply execute the following command:
 

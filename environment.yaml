@@ -38,7 +38,7 @@ dependencies:
     # It can be ignored, in which case some functions will run serially
     - pathos  
     - pymaster
-    - pyccl
+    - pyccl>=3.2.1
     - pylevin
     - pyfiglet # for the fancy ascii art, not strictly necessary
 

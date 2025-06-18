@@ -72,7 +72,7 @@ Additionally, in the `config.yaml` file you can set `save_figs: True` to save th
 
 ### Using Docker 🐋
 
-If you find issues with the installation, you can happily disregard the above instructions and run the code through Docker. To do this, install [Docker Desktop]([url](https://www.docker.com/products/docker-desktop/)) or the Docker engine; then, in the root of the cloned repository (again, remember to checkout the latest release), run:
+If you find issues with the installation, you can happily disregard the above instructions and run the code through Docker. To do this, install [Docker Desktop](https://www.docker.com/products/docker-desktop/) or the Docker [engine](https://docs.docker.com/engine/); then, in the root of the cloned repository (again, remember to checkout the latest release), run:
 
 ```bash
 docker-compose up --build

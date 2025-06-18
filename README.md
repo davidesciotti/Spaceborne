@@ -14,8 +14,13 @@ For detailed instructions on how to install and use Spaceborne, please refer to 
 
 # TL;DR
 
-To install the code, we recommend using a dedicated Conda environment. Clone the 
-repository and run
+To install the code, we recommend using a dedicated Conda environment. Clone the repository, then checkout the latest release (e.g. `2025.5.1`) with
+
+```bash
+git checkout <latest_version_tag>
+```
+
+and run
 
 ```bash
 conda env create -f environment.yaml

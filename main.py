@@ -24,6 +24,7 @@ from spaceborne import (
     responses,
     sigma2_SSC,
     wf_cl_lib,
+    cloelib_interface,
 )
 from spaceborne import covariance as sb_cov
 from spaceborne import onecovariance_interface as oc_interface
@@ -518,7 +519,16 @@ ccl_obj.set_nz(
 )
 ccl_obj.check_nz_tuple(zbins)
 
+np.testing.assert_allclose(
+    zgrid_nz_src,
+    zgrid_nz_lns,
+    rtol=1e-6,
+    atol=0,
+    err_msg='z grids for sources and lenses should be the same (this might be relaxed in the future)',
+)
+
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
+
 
 # ! ========================================= IA =======================================
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
@@ -548,9 +558,9 @@ single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 # ! ============================ Magnification bias ====================================
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
-        mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
+        mag_bias_tab = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
         ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(
-            mag_bias_input, z_grid, zbins
+            mag_bias_tab, z_grid, zbins
         )
         ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
     elif cfg['C_ell']['which_mag_bias'] == 'FS2_polynomial_fit':
@@ -566,6 +576,7 @@ if cfg['C_ell']['has_magnification_bias']:
         )
 else:
     ccl_obj.mag_bias_tuple = None
+    mag_bias_tab = None
 
 plt.figure()
 for zi in range(zbins):
@@ -574,8 +585,44 @@ plt.xlabel(r'$z$')
 plt.ylabel(r'$b_{g, i}(z)$')
 plt.legend()
 
+# ! ========================== Radial kernels: CLOE ====================================
 
-# ! ============================ Radial kernels ========================================
+
+# ! TEST CLOELIB INTERFACE !
+# TODO compute As to sigma8 and back
+
+cloe_obj = cloelib_interface.CloelibInterface(
+    cfg=cfg, pvt_cfg=pvt_cfg, z_grid=z_grid, k_grid=k_grid
+)
+cloe_obj.cfg_sanity_checks()
+cloe_obj.preprocess_cosmo_pars()
+cloe_obj.set_background()
+cloe_obj.set_perturbations()
+cloe_obj.set_nuisance_dict_pos(mag_bias_table=mag_bias_tab)
+cloe_obj.set_nuisance_dict_she()
+cloe_obj.set_nz(
+    z_nz=zgrid_nz_src, nz_pos_sb=nz_lns, nz_she_sb=nz_src
+)
+cloe_obj.set_pos_tracer()
+cloe_obj.set_she_tracer()
+cloe_obj.set_wf_arrays(znew=z_grid)
+
+cl_ll_3d_cloe = cloe_obj.get_cl_3d(
+    ell_obj.ells_WL, cloe_obj.tracer_she, cloe_obj.tracer_she
+)
+cl_gl_3d_cloe = cloe_obj.get_cl_3d(
+    ell_obj.ells_XC, cloe_obj.tracer_pos, cloe_obj.tracer_she
+)
+cl_gg_3d_cloe = cloe_obj.get_cl_3d(
+    ell_obj.ells_GC, cloe_obj.tracer_pos, cloe_obj.tracer_pos
+)
+
+cloe_obj.cl_ll_3d = cl_ll_3d_cloe
+cloe_obj.cl_gl_3d = cl_gl_3d_cloe
+cloe_obj.cl_gg_3d = cl_gg_3d_cloe
+
+
+# ! ========================== Radial kernels: CCL =====================================
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
 ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
@@ -642,30 +689,43 @@ wf_lensing = ccl_obj.wf_lensing_arr
 # plot
 wf_names_list = [
     'delta',
+    'magnification',
+    gal_kernel_plt_title,
     'gamma',
     'IA',
-    'magnification',
     'lensing',
-    gal_kernel_plt_title,
 ]
 wf_ccl_list = [
     ccl_obj.wf_delta_arr,
+    ccl_obj.wf_mu_arr,
+    ccl_obj.wf_galaxy_arr,
     ccl_obj.wf_gamma_arr,
     ccl_obj.wf_ia_arr,
-    ccl_obj.wf_mu_arr,
     ccl_obj.wf_lensing_arr,
-    ccl_obj.wf_galaxy_arr,
+]
+# ! Important note: the IA wf is different in cloelib, it includes the H(z)/c*n(z) factor
+wf_cloe_list = [
+    cloe_obj.wf_delta,
+    cloe_obj.wf_mu,
+    cloe_obj.wf_galaxy,
+    cloe_obj.wf_gamma,
+    cloe_obj.wf_ia,
+    cloe_obj.wf_lensing,
 ]
 
 plt.figure()
 for wf_idx in range(len(wf_ccl_list)):
     for zi in range(zbins):
-        plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
+        kw = dict(c=clr[zi], alpha=0.6)
+        plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], **kw)
+        plt.plot(z_grid, wf_cloe_list[wf_idx][:, zi], ls='--', **kw)
     plt.xlabel('$z$')
     plt.ylabel(r'$W_i^X(z)$')
     plt.suptitle(f'{wf_names_list[wf_idx]}')
     plt.tight_layout()
     plt.show()
+
+
 
 
 # ! ======================================== Cls =======================================
@@ -761,6 +821,37 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
 
 plot_cls()
+
+
+fig, ax = plt.subplots(2, 3, figsize=(12, 8), sharex=True)
+for zi in range(zbins):
+    zj = zi
+    kw = dict(c=clr[zi], alpha=.7)
+    ax[0, 0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], ls='-', **kw)
+    ax[0, 1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], ls='-', **kw)
+    ax[0, 2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], ls='-', **kw)
+    ax[0, 0].loglog(ell_obj.ells_WL, cloe_obj.cl_ll_3d[:, zi, zj], ls='--', **kw)
+    ax[0, 1].loglog(ell_obj.ells_XC, cloe_obj.cl_gl_3d[:, zi, zj], ls='--', **kw)
+    ax[0, 2].loglog(ell_obj.ells_GC, cloe_obj.cl_gg_3d[:, zi, zj], ls='--', **kw)
+
+
+    diff_ll = sl.percent_diff(
+        ccl_obj.cl_ll_3d[:, zi, zj], cloe_obj.cl_ll_3d[:, zi, zj]
+    )
+    diff_gl = sl.percent_diff(
+        ccl_obj.cl_gl_3d[:, zi, zj], cloe_obj.cl_gl_3d[:, zi, zj]
+    )
+    diff_gg = sl.percent_diff(
+        ccl_obj.cl_gg_3d[:, zi, zj], cloe_obj.cl_gg_3d[:, zi, zj]
+    )
+    ax[1, 0].loglog(ell_obj.ells_WL, diff_ll, ls='-', **kw)
+    ax[1, 1].loglog(ell_obj.ells_XC, diff_gl, ls='-', **kw)
+    ax[1, 2].loglog(ell_obj.ells_GC, diff_gg, ls='-', **kw)
+
+
+
+
+assert False, 'stop here'
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to

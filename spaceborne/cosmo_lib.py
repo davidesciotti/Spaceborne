@@ -48,16 +48,16 @@ def map_keys(input_dict, key_mapping):
     # expected keys
     if key_mapping is None:
         key_mapping = {
-            'Om': 'Om_m0',
-            'ODE': 'Om_Lambda0',
-            'Ob': 'Om_b0',
-            'wz': 'w_0',
+            'Omega_m0': 'Om_m0',
+            'Omega_de0': 'Om_Lambda0',
+            'Omega_b0': 'Om_b0',
+            'w0': 'w_0',
             'wa': 'w_a',
             'h': 'h',
             'ns': 'n_s',
             's8': 'sigma_8',
             'm_nu': 'm_nu',
-            'N_eff': 'N_eff',
+            'Neff': 'Neff',
         }
 
     new_dict = {}
@@ -253,12 +253,12 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
     Omega_nu = get_omega_nu0(
         fiducial_pars_dict['m_nu'],
         fiducial_pars_dict['h'],
-        n_eff=fiducial_pars_dict['N_eff'],
+        n_eff=fiducial_pars_dict['Neff'],
     )
     Omega_c = fiducial_pars_dict['Om_m0'] - fiducial_pars_dict['Om_b0'] - Omega_nu
 
-    if 'Om_k0' in fiducial_pars_dict:
-        Omega_k = fiducial_pars_dict['Om_k0']
+    if 'Omega_k0' in fiducial_pars_dict:
+        Omega_k = fiducial_pars_dict['Omega_k0']
     else:
         Omega_k = get_omega_k0(
             omega_m0=fiducial_pars_dict['Om_m0'],

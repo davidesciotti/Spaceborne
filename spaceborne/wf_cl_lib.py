@@ -19,13 +19,13 @@ from spaceborne import constants
 c = constants.SPEED_OF_LIGHT
 
 dav_to_vinc_par_names = {
-    'Om': 'Omega_M',
-    'Ob': 'Omega_B',
+    'Omega_m0': 'Omega_M',
+    'Omega_b0': 'Omega_B',
     'logT': 'HMCode_logT_AGN',
     'ns': 'n_s',
-    'ODE': 'Omega_DE',
+    'Omega_de0': 'Omega_DE',
     's8': 'sigma8',
-    'wz': 'w0',
+    'w0': 'w0',
 }
 
 
@@ -305,9 +305,9 @@ def build_ia_bias_1d_arr(
 
     ia_dict : dict
         A dictionary containing intrinsic alignment parameters. The required keys are:
-        - `Aia`: Amplitude of the IA bias.
-        - `eIA`: Redshift dependence of the IA bias.
-        - `bIA`: Luminosity dependence of the IA bias.
+        - `AIA`: Amplitude of the IA bias.
+        - `EtaIA`: Redshift dependence of the IA bias.
+        - `BetaIA`: Luminosity dependence of the IA bias.
         - `z_pivot_IA`: Pivot redshift for scaling the IA bias.
         - `CIA`: Normalization constant for the IA bias.
 
@@ -343,9 +343,9 @@ def build_ia_bias_1d_arr(
     - The growth factor is evaluated using the `pyccl.growth_factor` function.
     """
 
-    A_IA = ia_dict['Aia']
-    eta_IA = ia_dict['eIA']
-    beta_IA = ia_dict['bIA']
+    A_IA = ia_dict['AIA']
+    eta_IA = ia_dict['EtaIA']
+    beta_IA = ia_dict['BetaIA']
     z_pivot_IA = ia_dict['z_pivot_IA']
     C_IA = ia_dict['CIA']
 

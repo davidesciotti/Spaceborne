@@ -203,21 +203,21 @@ class OneCovarianceInterface:
 
         cfg_onecov_ini['cosmo']['h'] = str(self.cfg['cosmology']['h'])
         cfg_onecov_ini['cosmo']['ns'] = str(self.cfg['cosmology']['ns'])
-        cfg_onecov_ini['cosmo']['omega_m'] = str(self.cfg['cosmology']['Om'])
-        cfg_onecov_ini['cosmo']['omega_b'] = str(self.cfg['cosmology']['Ob'])
-        cfg_onecov_ini['cosmo']['omega_de'] = str(self.cfg['cosmology']['ODE'])
+        cfg_onecov_ini['cosmo']['omega_m'] = str(self.cfg['cosmology']['Omega_m0'])
+        cfg_onecov_ini['cosmo']['omega_b'] = str(self.cfg['cosmology']['Omega_b0'])
+        cfg_onecov_ini['cosmo']['omega_de'] = str(self.cfg['cosmology']['Omega_de0'])
         cfg_onecov_ini['cosmo']['sigma8'] = str(self.cfg['cosmology']['s8'])
-        cfg_onecov_ini['cosmo']['w0'] = str(self.cfg['cosmology']['wz'])
+        cfg_onecov_ini['cosmo']['w0'] = str(self.cfg['cosmology']['w0'])
         cfg_onecov_ini['cosmo']['wa'] = str(self.cfg['cosmology']['wa'])
-        cfg_onecov_ini['cosmo']['neff'] = str(self.cfg['cosmology']['N_eff'])
+        cfg_onecov_ini['cosmo']['neff'] = str(self.cfg['cosmology']['Neff'])
         cfg_onecov_ini['cosmo']['m_nu'] = str(self.cfg['cosmology']['m_nu'])
 
         if self.cfg['covariance']['which_b1g_in_resp'] == 'from_input':
             gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
             cfg_onecov_ini['bias']['bias_files'] = gal_bias_ascii_filename
 
-        cfg_onecov_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['Aia'])
-        cfg_onecov_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['eIA'])
+        cfg_onecov_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['AIA'])
+        cfg_onecov_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['EtaIA'])
         cfg_onecov_ini['IA']['z_pivot_IA'] = str(
             self.cfg['intrinsic_alignment']['z_pivot_IA']
         )

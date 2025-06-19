@@ -35,7 +35,7 @@ configuration file.
    .. code-block:: yaml
 
       intrinsic_alignment:
-         bIA: 0.0        
+         BetaIA: 0.0        
          lumin_ratio_filename: null
 
 

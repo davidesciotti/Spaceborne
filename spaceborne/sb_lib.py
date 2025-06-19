@@ -61,7 +61,7 @@ mpl_other_dict = {
     # 'galaxy_bias_labels_TeX': build_labels_TeX(zbins)[0],
     # 'shear_bias_labels_TeX': build_labels_TeX(zbins)[1],
     # 'zmean_shift_labels_TeX': build_labels_TeX(zbins)[2],
-    'cosmo_labels': ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'logT'],
+    'cosmo_labels': ['Omega_m0', 'Omega_b0', 'w0', 'wa', 'h', 'ns', 's8', 'logT'],
     'IA_labels': ['AIA', 'etaIA', 'betaIA'],
     # 'galaxy_bias_labels': build_labels(zbins)[0],
     # 'shear_bias_labels': build_labels(zbins)[1],
@@ -963,7 +963,7 @@ def compare_fm_constraints(
                 )
             ]
         )
-        w0wa_idxs = (param_names.index('wz'), param_names.index('wa'))
+        w0wa_idxs = (param_names.index('w0'), param_names.index('wa'))
         fom_dict[key] = np.array(
             [
                 compute_FoM(masked_fm_dict[key], w0wa_idxs=w0wa_idxs)
@@ -2483,11 +2483,11 @@ def dC_dict_to_4D_array(
     dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2
 ):
     """
-    :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
+    :param param_names: filename of the parameter, e.g. 'Omega_m0'; dCldOm = d(C(l))/d(Omega_m0)
     :param dC_dict_3D:
     :param nbl:
     :param zbins:
-    :param obs_name: filename of the observable, e.g. 'Cl'; dCldOm = d(C(l))/d(Om)
+    :param obs_name: filename of the observable, e.g. 'Cl'; dCldOm = d(C(l))/d(Omega_m0)
     :param is_3x2pt: whether to will the 5D derivatives vector
     :param n_probes:
     :return:

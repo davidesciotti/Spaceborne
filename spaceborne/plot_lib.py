@@ -373,7 +373,7 @@ IST['GC_opt'] = np.array((0, 0, 0, 0, 0, 0, 0))
 
 
 # xxx attento, non stai normalizzando wa (come posso farlo?)
-# params = [Om, Ob, wz, wa, h, ns, s8, mn, ga, 7, 8, 9, 10]
+# params = [Omega_m0, Omega_b0, w0, wa, h, ns, s8, mn, ga, 7, 8, 9, 10]
 # xxx occhio a ga e mn
 
 def plot_FM_constr(FM, label, uncert_kind='relative'):

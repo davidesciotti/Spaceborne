@@ -5,23 +5,25 @@
 # Note: `None` is `null` in YAML
 
 cosmology:
-    Om: 0.32        # Type: float. Total matter density parameter Omega_m, at z=0
-    Ob: 0.05        # Type: float. Baryonic density parameter Omega_b, at z=0
-    wz: -1.0        # Type: float. Dark energy equation of state parameter (w0)
-    wa: 0.0         # Type: float. Evolution of the dark energy equation of state parameter
-    h: 0.6737       # Type: float. Dimensionless Hubble parameter (H0 / 100)
-    ns: 0.966       # Type: float. Scalar spectral index of the primordial power spectrum
-    s8: 0.816       # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
-    ODE: 0.68       # Type: float. Dark energy density parameter Omega_DE, at z=0
-    m_nu: 0.06      # Type: float. Total mass of neutrinos in eV
-    N_eff: 3.046    # Type: float. Effective number of relativistic species
-    Om_k0: 0        # Type: float. Curvature density parameter Omega_k, at z=0
+    Omega_m0: 0.32      # Type: float. Total matter density parameter Omega_m, at z=0
+    Omega_b0: 0.05      # Type: float. Baryonic density parameter Omega_b, at z=0
+    w0: -1.0            # Type: float. Dark energy equation of state parameter (w0)
+    wa: 0.0             # Type: float. Evolution of the dark energy equation of state parameter
+    h: 0.6737           # Type: float. Dimensionless Hubble parameter (H0 / 100)
+    ns: 0.966           # Type: float. Scalar spectral index of the primordial power spectrum
+    s8: 0.816           # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
+    As: 2.e-9           # Type: float. Scalar amplitude of primordial fluctuations. Used by cloelib.
+    Omega_de0: 0.68     # Type: float. Dark energy density parameter Omega_DE, at z=0
+    m_nu: 0.06          # Type: float. Total mass of neutrinos in eV
+    Neff: 3.046         # Type: float. Effective number of relativistic species
+    Omega_k0: 0         # Type: float. Curvature density parameter Omega_k, at z=0
+    gamma_MG: 0.545     # Type: float. Modified gravity growth parameter 
 
 
 intrinsic_alignment:
-    Aia: 0.16       # Type: float.
-    eIA: 1.66       # Type: float. \eta_{IA}
-    bIA: 0.0        # Type: float. \beta_{IA}
+    AIA: 0.16       # Type: float.
+    EtaIA: 1.66       # Type: float. \eta_{IA}
+    BetaIA: 0.0        # Type: float. \beta_{IA}
     CIA: 0.0134     # Type: float.
     z_pivot_IA: 0   # Type: float.
     lumin_ratio_filename: null  # Type: str | None. null if not used, otherwise path to the file (e.g. ./input/scaledmeanlum-E2Sa.dat)
@@ -98,7 +100,7 @@ C_ell:
     # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
     has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
     has_IA: True # Type: bool. Enable/disable intrinsic alignment.
-    has_magnification_bias: True # Type: bool. Enable/disable magnification bias.
+    has_magnification_bias: False # Type: bool. Enable/disable magnification bias.
 
     # Keyword arguments for CCL Cl calculation (excluding `p_of_k_a`), described in
     # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl
@@ -119,7 +121,7 @@ nz:
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
     ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
 
-    shift_nz: True  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
+    shift_nz: False  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
     dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
     dzGC: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
     normalize_shifted_nz: True  # Type: bool. Whether to normalize the shifted n(z) distributions

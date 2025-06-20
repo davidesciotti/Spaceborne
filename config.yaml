@@ -293,7 +293,7 @@ PyCCL:
 precision:
     # Number of iterations when computing the alms of the input map. See 
     # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-    n_iter_nmt: null # Type: None | int. 
+    n_iter_nmt: null # Type: None | int
 
 misc:
     num_threads: 40 # Type: int. How many threads to use for the parallel computations
@@ -302,7 +302,7 @@ misc:
     # the sigma^2_b(z_1, z_2) function with pylevin. 
     # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
     # while computing sigma2_b), decrease this or num_threads.
-    levin_batch_size: 1000 # Type: int. 
+    levin_batch_size: 1000 # Type: int
 
     # some sanity checks on the covariance matrix. These could take a while to run.
     test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv

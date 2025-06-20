@@ -1565,5 +1565,4 @@ for which_cov in cov_dict:
             else:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
 
-
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')

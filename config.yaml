@@ -69,6 +69,8 @@ probe_selection:
 
 C_ell:
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
+    # These should be the theoretical, decoupled Cls.
+    # Note: the multiplicative shear bias specified below will NOT be applied to the input Cls. 
     # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
     # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology 
     # and n(z) used to generate the input Cls and the ones specified in this cfg file are compatible.
@@ -101,8 +103,9 @@ C_ell:
     gal_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
     mag_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
     
-    # Multiplicative shear bias per redshift bin
-    mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
+    # Multiplicative shear bias per redshift bin.
+    # This is NOT applied to the input Cls, in case they are provided.
+    mult_shear_bias: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # Type: list[float]
 
     # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
     has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
@@ -120,13 +123,14 @@ C_ell:
 nz:
     # Paths to source (for WL) and lens (for GCph) redshift distributions.
     # These must have shape (z_points, zbins + 1)
-    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
-    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
+    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/nztab_Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.dat  # Type: str
+    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/nztab_Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.dat  # Type: str
 
     # Number of galaxies per arcmin**2 for each redshift bin.
     # Should be of length 'zbins'
-    ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
-    ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
+    # TODO get actual values
+    ngal_sources: [8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215]  # Type: list[float]
+    ngal_lenses: [8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215]  # Type: list[float]
 
     shift_nz: False  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
     dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
@@ -137,9 +141,10 @@ nz:
 
 
 mask:
-    load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-    mask_path: ./home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
-    generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
+    load_mask: True # Type: bool. Whether to load the mask from a fits or npy file
+    mask_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits # Type: str. Path to the mask file (.FITS or .npy)
+    generate_polar_cap: False # Type: bool. Whether to generate a polar cap mask on the fly.
+    
     # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
     # If null (None), the nside of the input mask will be used, without up/downgrading.
     nside: 1024 # Type: int | None. 
@@ -207,7 +212,8 @@ covariance:
     # total ellipticity dispersion = sigma_eps
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
     # Should be of length 'zbins'
-    sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
+    # TODO get actual values
+    sigma_eps_i: [0.26, 0.26, 0.26, 0.26, 0.26, 0.26] # Type: list[float]
     
     # Whether to include the noise power spectra in the computation of the 
     # Gaussian covariance matrix.
@@ -319,4 +325,4 @@ misc:
     test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
     test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: ./home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/output # Type: str. Path to the output directory
+    output_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/output # Type: str. Path to the output directory

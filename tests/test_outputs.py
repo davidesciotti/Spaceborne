@@ -1,9 +1,9 @@
 """
 To run these tests:
 1.  Decide on a branch/commit/version you wish to use as benchmark.
-    Then, set `save_output_as_benchmark` to `True` in the config file and choose a
-    unique benchmark filename. *Note that these options are in main.py, as of now*.
-    Also, pay attention to all of the hardcoded configs in main.py, they need to match
+    Then, set `save_output_as_benchmark` to `True` in main.py and choose a
+    unique benchmark filename. 
+    Pay attention to all of the hardcoded configs in main.py, they need to match
     between the different versions you're testing.
 2.  Make sure there's no FM-related section at the end of main.py, the code has to finish
     without errors.
@@ -14,8 +14,6 @@ To run these tests:
     4.1  In particular, in main.py, comment out the lines:
            # cfg['misc']['save_output_as_benchmark'] = ...
            # cfg['misc']['bench_filename'] = ...
-    4.2  If you're testing the main branch, don't worry about 
-         config/example_config separation (UPDATE 15/05/2025: I removed example_config)
 5.  Open this script and make sure you indicate the relevant benchmark file name
     in the `bench_names` list, then run it.
 6.  If some configs are missing, check the benchmark .yaml file and manually paste them

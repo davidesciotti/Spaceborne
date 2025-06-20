@@ -10,10 +10,12 @@ dependencies:
   - matplotlib
   - numpy
   - scipy
+  # - scipy<=1.14
   - tqdm
   - pyyaml
   - joblib
   - healpy
+  - camb
 
   # PyCCL depenedencies - mandatory
   - swig
@@ -27,7 +29,6 @@ dependencies:
   # pylevin dependencies - optional
   # - gsl=2.5
   - gsl
-  - gxx_linux-64
   - gfortran
   - pybind11
   - boost
@@ -36,8 +37,6 @@ dependencies:
     # pathos is needed to parallelize the computations involving non-pickleable objects.
     # It can be ignored, in which case some functions will run serially
     - pathos
-    - camb
-    # - pymaster
     - pyccl>=3.2.1
     - pylevin
     - pyfiglet # for the fancy ascii art, not strictly necessary

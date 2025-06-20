@@ -129,12 +129,12 @@ nz:
     # Number of galaxies per arcmin**2 for each redshift bin.
     # Should be of length 'zbins'
     # TODO get actual values
-    ngal_sources: [8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215]  # Type: list[float]
-    ngal_lenses: [8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215]  # Type: list[float]
+    ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
+    ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
 
     shift_nz: False  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-    dzWL: [-0.008848, 0.051368, 0.059484, -0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
-    dzGC: [-0.008848, 0.051368, 0.059484, -0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
+    dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
+    dzGC: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
     normalize_shifted_nz: True  # Type: bool. Whether to normalize the shifted n(z) distributions
     clip_zmin: 0  # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
     clip_zmax: 3  # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
@@ -182,7 +182,7 @@ covariance:
     SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
     cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
-    coupled_cov: True # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
+    coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
     # of the auto-probe (LL, GG) zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
@@ -213,7 +213,7 @@ covariance:
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
     # Should be of length 'zbins'
     # TODO get actual values
-    sigma_eps_i: [0.26, 0.26, 0.26, 0.26, 0.26, 0.26] # Type: list[float]
+    sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
     
     # Whether to include the noise power spectra in the computation of the 
     # Gaussian covariance matrix.
@@ -246,10 +246,10 @@ covariance:
     
     z_min: 0.02 # Type: float
     z_max: 3.0 # Type: float
-    z_steps: 300 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
+    z_steps: 5000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
     z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
-    use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
+    use_KE_approximation: True # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
     # Name of the output covariance file. Change suffix to '.npy' to save as npy file.
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str. 

@@ -491,14 +491,10 @@ class EllBinning:
             # test that ell_max retrieved with the two methods coincide
             assert self.nmt_bin_obj_WL.lmax == self.nmt_bin_obj_WL.get_ell_max(
                 self.nbl_WL - 1
-            ), (
-                'ell_max from nmt_bin_obj_WL does not match ell_max from get_ell_max'
-            )
+            ), 'ell_max from nmt_bin_obj_WL does not match ell_max from get_ell_max'
             assert self.nmt_bin_obj_GC.lmax == self.nmt_bin_obj_GC.get_ell_max(
                 self.nbl_GC - 1
-            ), (
-                'ell_max from nmt_bin_obj_GC does not match ell_max from get_ell_max'
-            )
+            ), 'ell_max from nmt_bin_obj_GC does not match ell_max from get_ell_max'
 
         # XC follows GC
         self.ells_XC = np.copy(self.ells_GC)
@@ -520,6 +516,15 @@ class EllBinning:
         self.nbl_GC = len(self.ells_GC)
         self.nbl_XC = len(self.ells_XC)
         self.nbl_3x2pt = len(self.ells_3x2pt)
+
+    def compute_ells_3x2pt_unbinned(self):
+        # recompute Cls ell by ell
+        self.ells_3x2pt_unb = np.arange(self.ell_max_3x2pt + 1)
+        self.nbl_3x2pt_unb = len(self.ells_3x2pt_unb)
+        self.ell_max_3x2pt_unb = self.ells_3x2pt_unb[-1]
+        assert self.nbl_3x2pt_unb == self.ell_max_3x2pt + 1, (
+            'nbl_tot does not match ell_max_3x2pt + 1'
+        )
 
     def _validate_bins(self):
         for probe in ['WL', 'GC', 'XC', '3x2pt']:

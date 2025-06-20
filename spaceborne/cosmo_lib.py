@@ -157,7 +157,7 @@ def fsky_to_deg2(f_sky):
 
 
 def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
-    """this is the integration "prefactor" for the cl integral, without the dz, 
+    r"""this is the integration "prefactor" for the cl integral, without the dz, 
     which is "added"
     afterwards in the actual integration, for example when using simps or trapz.
 

@@ -60,6 +60,8 @@ probe_selection:
 
 C_ell:
     # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
+    # These should be the theoretical, decoupled Cls.
+    # Note: the multiplicative shear bias specified below will NOT be applied to the input Cls.
     # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
     # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology 
     # and n(z) used to generate the input Cls and the ones specified in this cfg file are compatible.
@@ -92,7 +94,8 @@ C_ell:
     gal_bias_table_filename: ./input/gal_bias.txt # Type: str
     mag_bias_table_filename: ./input/mag_bias.txt # Type: str
     
-    # Multiplicative shear bias per redshift bin
+    # Multiplicative shear bias per redshift bin.
+    # This is NOT applied to the input Cls, in case they are provided.
     mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
 
     # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
@@ -131,6 +134,7 @@ mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
     mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
+
     # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
     # If null (None), the nside of the input mask will be used, without up/downgrading.
     nside: 1024 # Type: int | None. 

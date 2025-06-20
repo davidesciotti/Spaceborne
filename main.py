@@ -144,6 +144,19 @@ def plot_cls():
     plt.show()
 
 
+def check_ells_in(ells_in, ells_out):
+    if len(ells_in) < len(ells_out) // 2:
+        warnings.warn(
+            f'The input cls are computed over {len(ells_in)} ell points in '
+            f'[{ells_in[0]}, {ells_in[-1]}], but for the partial-sky covariance'
+            'the unbinned cls are required. Because of this, the input cls will '
+            f'be interpolated over the unbinned ell range [{ells_out[0]}, '
+            f'{ells_out[-1]}]. Please make sure to provide finely sampled cls '
+            'ell binning to make sure the interpolation is accurate.',
+            stacklevel=2,
+        )
+
+
 # ! ====================================================================================
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
@@ -450,6 +463,8 @@ pvt_cfg = {
 # ! ===================================== \ells ========================================
 ell_obj = ell_utils.EllBinning(cfg)
 ell_obj.build_ell_bins()
+# not always required, but in this way it's simpler
+ell_obj.compute_ells_3x2pt_unbinned()
 ell_obj._validate_bins()
 
 
@@ -691,14 +706,16 @@ ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
     cl_ccl_kwargs,
 )
 
+# ! ============================ Multiplicative shear bias =============================
+# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
+# ! in the .ini file
+ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
+    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
+)
+
 
 if cfg['C_ell']['use_input_cls']:
     # TODO NMT here you should ask the user for unbinned cls
-    if (
-        cfg['namaster']['use_namaster']
-        or cfg['sample_covariance']['compute_sample_cov']
-    ):
-        raise NotImplementedError('Make sure to pass unbinned cls')
 
     print('Using input Cls')
     cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
@@ -709,45 +726,33 @@ if cfg['C_ell']['use_input_cls']:
     ells_XC_in, cl_gl_3d_in = sl.import_cl_tab(cl_gl_tab)
     ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
 
+    # make sure ells are sorted and unique for spline interpolation
     for _ells in [  # fmt: skip
         ells_WL_in, ell_obj.ells_WL,
         ells_XC_in, ell_obj.ells_XC,
         ells_GC_in, ell_obj.ells_GC,
     ]:  # fmt: skip
         assert np.all(np.diff(_ells)) > 0, 'ells are not sorted'
+        assert len(np.unique(_ells)) == len(_ells), 'ells are not unique'
 
-    if not np.allclose(ells_WL_in, ell_obj.ells_WL, atol=0, rtol=1e-5):
-        cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
-        cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_WL)
-
-    if not np.allclose(ells_XC_in, ell_obj.ells_XC, atol=0, rtol=1e-5):
-        cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
-        cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_XC)
-
-    if not np.allclose(ells_GC_in, ell_obj.ells_GC, atol=0, rtol=1e-5):
-        cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
-        cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_GC)
+    # interpolate input Cls on the desired ell grid
+    cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
+    cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
+    cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
+    cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_WL)
+    cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_XC)
+    cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_GC)
 
     # save the sb cls for the plot below
     cl_ll_3d_sb = ccl_obj.cl_ll_3d
     cl_gl_3d_sb = ccl_obj.cl_gl_3d
     cl_gg_3d_sb = ccl_obj.cl_gg_3d
-    cl_ll_3d_sb, cl_gl_3d_sb = pyccl_interface.apply_mult_shear_bias(
-        cl_ll_3d_sb, cl_gl_3d_sb, np.array(cfg['C_ell']['mult_shear_bias']), zbins
-    )
 
     # assign them to ccl_obj
     ccl_obj.cl_ll_3d = cl_ll_3d_in
     ccl_obj.cl_gl_3d = cl_gl_3d_in
     ccl_obj.cl_gg_3d = cl_gg_3d_in
 
-
-# ! ============================ Multiplicative shear bias =============================
-# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
-# ! in the .ini file
-ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
-    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
-)
 # TODO this simple cut will not work for different binning schemes!
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, ell_obj.nbl_3x2pt, zbins, zbins))
 ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[: ell_obj.nbl_3x2pt, :, :]
@@ -835,47 +840,52 @@ else:
 if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
+    # check that the input cls are computed over a fine enough grid
+    for ells_in, ells_out in zip(
+        [ells_WL_in, ells_XC_in, ells_GC_in],
+        [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
+    ):
+        check_ells_in(ells_in, ells_out)
+
     # initialize nmt_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
 
-    # recompute Cls ell by ell
-    ell_max_3x2pt = ell_obj.ell_max_3x2pt
-    ells_3x2pt_unb = np.arange(ell_max_3x2pt + 1)
-    nbl_3x2pt_unb = len(ells_3x2pt_unb)
-    assert nbl_3x2pt_unb == ell_max_3x2pt + 1, (
-        'nbl_tot does not match ell_max_3x2pt + 1'
-    )
-
     # set unbinned ells in nmt_obj
-    nmt_cov_obj.ells_3x2pt_unb = ells_3x2pt_unb
-    nmt_cov_obj.nbl_3x2pt_unb = nbl_3x2pt_unb
+    nmt_cov_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
+    nmt_cov_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
-    cl_ll_unb_3d = ccl_obj.compute_cls(
-        ells_3x2pt_unb,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_lensing_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gl_unb_3d = ccl_obj.compute_cls(
-        ells_3x2pt_unb,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gg_unb_3d = ccl_obj.compute_cls(
-        ells_3x2pt_unb,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_galaxy_obj,
-        cl_ccl_kwargs,
-    )
+    if cfg['C_ell']['use_input_cls']:
+        cl_ll_unb_3d = cl_ll_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_gl_unb_3d = cl_gl_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_gg_unb_3d = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
 
-    # don't forget to apply mult shear bias
-    cl_ll_unb_3d, cl_gl_unb_3d = pyccl_interface.apply_mult_shear_bias(
-        cl_ll_unb_3d, cl_gl_unb_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
-    )
+    else:
+        cl_ll_unb_3d = ccl_obj.compute_cls(
+            ell_obj.ells_3x2pt_unb,
+            ccl_obj.p_of_k_a,
+            ccl_obj.wf_lensing_obj,
+            ccl_obj.wf_lensing_obj,
+            cl_ccl_kwargs,
+        )
+        cl_gl_unb_3d = ccl_obj.compute_cls(
+            ell_obj.ells_3x2pt_unb,
+            ccl_obj.p_of_k_a,
+            ccl_obj.wf_galaxy_obj,
+            ccl_obj.wf_lensing_obj,
+            cl_ccl_kwargs,
+        )
+        cl_gg_unb_3d = ccl_obj.compute_cls(
+            ell_obj.ells_3x2pt_unb,
+            ccl_obj.p_of_k_a,
+            ccl_obj.wf_galaxy_obj,
+            ccl_obj.wf_galaxy_obj,
+            cl_ccl_kwargs,
+        )
+
+        # apply mult shear bias
+        cl_ll_unb_3d, cl_gl_unb_3d = pyccl_interface.apply_mult_shear_bias(
+            cl_ll_unb_3d, cl_gl_unb_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
+        )
 
     nmt_cov_obj.cl_ll_unb_3d = cl_ll_unb_3d
     nmt_cov_obj.cl_gl_unb_3d = cl_gl_unb_3d

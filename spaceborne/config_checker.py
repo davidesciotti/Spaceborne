@@ -134,22 +134,22 @@ class SpaceborneConfigChecker:
             'magnification_bias_fit_coeff must be of length 4'
         )
 
-        assert len(self.cfg['C_ell']['mult_shear_bias'] == self.zbins), (
+        assert len(self.cfg['C_ell']['mult_shear_bias']) == self.zbins, (
             f'mult_shear_bias must be of length zbins = {self.zbins}'
         )
-        assert len(self.cfg['nz']['ngal_sources'] == self.zbins), (
+        assert len(self.cfg['nz']['ngal_sources']) == self.zbins, (
             f'ngal_sources must be of length zbins = {self.zbins}'
         )
-        assert len(self.cfg['nz']['ngal_lenses'] == self.zbins), (
+        assert len(self.cfg['nz']['ngal_lenses']) == self.zbins, (
             f'ngal_lenses must be of length zbins = {self.zbins}'
         )
-        assert len(self.cfg['nz']['dzWL'] == self.zbins), (
+        assert len(self.cfg['nz']['dzWL']) == self.zbins, (
             f'dzWL must be of length zbins = {self.zbins}'
         )
-        assert len(self.cfg['nz']['dzGC'] == self.zbins), (
+        assert len(self.cfg['nz']['dzGC']) == self.zbins, (
             f'dzGC must be of length zbins = {self.zbins}'
         )
-        assert len(self.cfg['covariance']['sigma_eps_i'] == self.zbins), (
+        assert len(self.cfg['covariance']['sigma_eps_i']) == self.zbins, (
             f'sigma_eps_i must be of length zbins = {self.zbins}'
         )
 

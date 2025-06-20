@@ -325,7 +325,7 @@ if not cfg['ell_cuts']['apply_ell_cuts']:
 
 # ! sanity checks on the configs
 # TODO update this when cfg are done
-cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg)
+cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg, zbins)
 cfg_check_obj.run_all_checks()
 
 # ! instantiate CCL object

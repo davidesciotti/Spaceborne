@@ -5,8 +5,9 @@ from spaceborne import sb_lib as sl
 
 
 class SpaceborneConfigChecker:
-    def __init__(self, cfg: dict):
+    def __init__(self, cfg: dict, zbins: int):
         self.cfg = cfg
+        self.zbins = zbins
 
     def check_h_units(self) -> tuple[str, str]:
         if self.cfg['misc']['use_h_units']:
@@ -125,6 +126,33 @@ class SpaceborneConfigChecker:
             'n_gal_clust must be a list'
         )
 
+    def check_lists(self) -> None:
+        assert len(self.cfg['C_ell']['galaxy_bias_fit_coeff']) == 4, (
+            'galaxy_bias_fit_coeff must be of length 4'
+        )
+        assert len(self.cfg['C_ell']['magnification_bias_fit_coeff']) == 4, (
+            'magnification_bias_fit_coeff must be of length 4'
+        )
+
+        assert len(self.cfg['C_ell']['mult_shear_bias'] == self.zbins), (
+            f'mult_shear_bias must be of length zbins = {self.zbins}'
+        )
+        assert len(self.cfg['nz']['ngal_sources'] == self.zbins), (
+            f'ngal_sources must be of length zbins = {self.zbins}'
+        )
+        assert len(self.cfg['nz']['ngal_lenses'] == self.zbins), (
+            f'ngal_lenses must be of length zbins = {self.zbins}'
+        )
+        assert len(self.cfg['nz']['dzWL'] == self.zbins), (
+            f'dzWL must be of length zbins = {self.zbins}'
+        )
+        assert len(self.cfg['nz']['dzGC'] == self.zbins), (
+            f'dzGC must be of length zbins = {self.zbins}'
+        )
+        assert len(self.cfg['covariance']['sigma_eps_i'] == self.zbins), (
+            f'sigma_eps_i must be of length zbins = {self.zbins}'
+        )
+
     def check_cosmo(self) -> None:
         if 'logT' in self.cfg['cosmology']:
             assert (
@@ -161,6 +189,7 @@ class SpaceborneConfigChecker:
         self.check_nmt()
         self.check_BNT_transform()
         self.check_KE_approximation()
+        self.check_lists()
         # self.check_fsky()
         self.check_types()
         self.check_ell_binning()

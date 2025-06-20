@@ -117,7 +117,7 @@ bench_names = [os.path.basename(file) for file in bench_names]
 bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
 # ... or run specific tests
 bench_names = [
-    'output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KETrue_resphalo_model_b1gfrom_input_devmerge4',
+    'output_GSpaceborne_SSCSpaceborne_cNGNone_KETrue_resphalo_model_b1gfrom_input_devmerge3',
 ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'

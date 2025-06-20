@@ -244,11 +244,7 @@ covariance:
     log10_k_max: 2  # Type: float
     k_steps: 200  # Type: int. Around 100 should be enough
     
-<<<<<<<<< Temporary merge branch 1
-    z_min: 0.02 # Type: float.
-=========
     z_min: 0.02 # Type: float
->>>>>>>>> Temporary merge branch 2
     z_max: 3.0 # Type: float
     z_steps: 5000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
     z_steps_trisp: 50  # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough

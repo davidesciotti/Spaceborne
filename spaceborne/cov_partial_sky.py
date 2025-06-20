@@ -940,7 +940,7 @@ class NmtCov:
         self.zbins = pvt_cfg['zbins']
         self.n_probes = pvt_cfg['n_probes']
         self.coupled_cov = cfg['covariance']['coupled_cov']
-        self.output_folder = self.cfg['misc']['output_path']
+        self.output_path = self.cfg['misc']['output_path']
 
         self.cov_blocks_names_all = (  # fmt: skip
             'LLLL', 'LLGL', 'LLGG',
@@ -1009,10 +1009,10 @@ class NmtCov:
         w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
 
         # store in cache for later reuse, if required (TODO)
-        os.makedirs(f'{self.output_folder}/cache/nmt', exist_ok=True)
-        w00.write_to(f'{self.output_folder}/cache/nmt/w00_workspace.fits')
-        w02.write_to(f'{self.output_folder}/cache/nmt/w02_workspace.fits')
-        w22.write_to(f'{self.output_folder}/cache/nmt/w22_workspace.fits')
+        os.makedirs(f'{self.output_path}/cache/nmt', exist_ok=True)
+        w00.write_to(f'{self.output_path}/cache/nmt/w00_workspace.fits')
+        w02.write_to(f'{self.output_path}/cache/nmt/w02_workspace.fits')
+        w22.write_to(f'{self.output_path}/cache/nmt/w22_workspace.fits')
 
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices

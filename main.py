@@ -205,11 +205,16 @@ cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/P
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
 
-cfg['misc']['save_output_as_benchmark'] = False
-cfg['misc']['bench_filename'] = (
-    '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-    '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3'
-)
+if (
+    'save_output_as_benchmark' not in cfg['misc']
+    or 'bench_filename' not in cfg['misc']
+):
+    cfg['misc']['save_output_as_benchmark'] = True
+    cfg['misc']['bench_filename'] = (
+        '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
+        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3_nmt'
+    )
+    
 
 cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool

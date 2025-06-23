@@ -7,6 +7,8 @@ import warnings
 from copy import deepcopy
 from functools import partial
 from importlib.util import find_spec
+import gc
+
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -247,6 +249,12 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.464158
 # - flat_sky: use the flat-sky expression (valid for PyCCL only)
 #   has to be rescaled by fsky
 cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
+# Integration scheme used for the SSC survey covariance (sigma2_b) computation. Options:
+# - 'simps': uses simpson integration. This is faster but less accurate
+# - 'levin': uses levin integration. This is slower but more accurate
+cfg['covariance']['sigma2_b_integration_scheme'] = 'fft'  # Type: str.
+#  Whether to load the previously computed sigma2_b. No need anymore since it's quite fast
+cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
 
 # ordering of the different 3x2pt probes in the covariance matrix
 cfg['covariance']['probe_ordering'] = [

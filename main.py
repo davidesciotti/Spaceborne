@@ -1271,33 +1271,31 @@ if compute_sb_ssc:
                 integration_scheme='fft',
                 batch_size=cfg['misc']['levin_batch_size'],
                 parallel=True,
-                fft_type='lin',
             )
 
-            sigma2_b_simps = sigma2_SSC.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_s2b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
-                n_jobs=cfg['misc']['num_threads'],
-                integration_scheme='simps',
-                batch_size=cfg['misc']['levin_batch_size'],
-                parallel=True,
-            )
+            # sigma2_b_simps = sigma2_SSC.sigma2_z1z2_wrap_parallel(
+            #     z_grid=z_grid,
+            #     k_grid_sigma2=k_grid_s2b,
+            #     cosmo_ccl=ccl_obj.cosmo_ccl,
+            #     which_sigma2_b=which_sigma2_b,
+            #     mask_obj=mask_obj,
+            #     n_jobs=cfg['misc']['num_threads'],
+            #     integration_scheme='simps',
+            #     batch_size=cfg['misc']['levin_batch_size'],
+            #     parallel=True,
+            # )
 
-            sigma2_b_levin = sigma2_SSC.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_s2b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
-                n_jobs=cfg['misc']['num_threads'],
-                integration_scheme='levin',
-                batch_size=cfg['misc']['levin_batch_size'],
-                parallel=False,
-            )
-
+            # sigma2_b_levin = sigma2_SSC.sigma2_z1z2_wrap_parallel(
+            #     z_grid=z_grid,
+            #     k_grid_sigma2=k_grid_s2b,
+            #     cosmo_ccl=ccl_obj.cosmo_ccl,
+            #     which_sigma2_b=which_sigma2_b,
+            #     mask_obj=mask_obj,
+            #     n_jobs=cfg['misc']['num_threads'],
+            #     integration_scheme='levin',
+            #     batch_size=cfg['misc']['levin_batch_size'],
+            #     parallel=False,
+            # )
 
             for k in range(3):
                 sl.compare_funcs(

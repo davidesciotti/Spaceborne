@@ -170,7 +170,7 @@ BNT:
 
 covariance:
     G: True # Type: bool. Enable/disable the Gaussian covariance term.
-    SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+    SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
     cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
     coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls

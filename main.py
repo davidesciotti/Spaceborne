@@ -1261,19 +1261,7 @@ if compute_sb_ssc:
             elif s2b_integration_scheme == 'simps':
                 k_grid_s2b = k_grid_s2b_simps
 
-            sigma2_b_fft = sigma2_SSC.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_s2b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
-                n_jobs=cfg['misc']['num_threads'],
-                integration_scheme='fft',
-                batch_size=cfg['misc']['levin_batch_size'],
-                parallel=False,
-            )
-
-            sigma2_b_fftvec = sigma2_SSC.sigma2_z1z2_wrap_parallel(
+            sigma2_b_fftlin = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
                 k_grid_sigma2=k_grid_s2b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
@@ -1283,6 +1271,7 @@ if compute_sb_ssc:
                 integration_scheme='fft',
                 batch_size=cfg['misc']['levin_batch_size'],
                 parallel=True,
+                fft_type='lin',
             )
 
             sigma2_b_simps = sigma2_SSC.sigma2_z1z2_wrap_parallel(
@@ -1294,7 +1283,7 @@ if compute_sb_ssc:
                 n_jobs=cfg['misc']['num_threads'],
                 integration_scheme='simps',
                 batch_size=cfg['misc']['levin_batch_size'],
-                parallel=False,
+                parallel=True,
             )
 
             sigma2_b_levin = sigma2_SSC.sigma2_z1z2_wrap_parallel(
@@ -1308,27 +1297,28 @@ if compute_sb_ssc:
                 batch_size=cfg['misc']['levin_batch_size'],
                 parallel=False,
             )
-            
-            np.testing.assert_allclose(sigma2_b_fft, sigma2_b_fftvec, rtol=1e-6, atol=0)
 
-            sl.compare_funcs(
-                z_grid,
-                dict(
-                    fft=np.diag(sigma2_b_fft),
-                    fftvec=np.diag(sigma2_b_fftvec),
-                    simps=np.diag(sigma2_b_simps),
-                    levin=np.diag(sigma2_b_levin),
-                ),
-                logscale_y=[True, False],
-                title='sigma2_b',
-            )
-            
+
+            for k in range(3):
+                sl.compare_funcs(
+                    x=None,
+                    y=dict(
+                        # fft=np.diag(sigma2_b_fft, k=k),
+                        fftlin=np.diag(np.abs(sigma2_b_fftlin), k=k),
+                        # fftlog=np.diag(sigma2_b_fftlog, k=k),
+                        simps=np.diag(sigma2_b_simps, k=k),
+                        levin=np.diag(np.abs(sigma2_b_levin), k=k),
+                    ),
+                    logscale_y=[True, False],
+                    title=f'sigma2_b, {k = } diag',
+                )
+
             ix = len(z_grid) // 2
             sl.compare_funcs(
                 z_grid,
                 dict(
-                    fft=np.abs(sigma2_b_fft[:, ix]),
-                    fftvec=np.abs(sigma2_b_fftvec[:, ix]),
+                    # fft=np.abs(sigma2_b_fft[:, ix]),
+                    fftlin=np.abs(sigma2_b_fftlin[:, ix]),
                     simps=np.abs(sigma2_b_simps[:, ix]),
                     levin=np.abs(sigma2_b_levin[:, ix]),
                 ),
@@ -1337,7 +1327,7 @@ if compute_sb_ssc:
             )
 
             sl.compare_arrays(
-                np.abs(sigma2_b), np.abs(sigma2_b_simps), plot_diff_threshold=1
+                np.abs(sigma2_b_fftlin), np.abs(sigma2_b_levin), plot_diff_threshold=5
             )
 
         assert False

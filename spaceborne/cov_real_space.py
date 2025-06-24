@@ -137,6 +137,7 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
 # assert False
 
+
 # ! __ = 'no longer used'
 def __project_ellspace_cov_vec_2d(
     theta_1_l, theta_1_u, mu,                           
@@ -320,6 +321,7 @@ def cov_mix_simps(
     zi, zj, zk, zl, Amax  
 ):  # fmt: skip
     """This function accepts self as an argument, but it's not a class method"""
+
     def integrand_func(ell, inner_integrand):
         kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
         knu = k_mu(ell, theta_2_l, theta_2_u, nu)
@@ -917,7 +919,7 @@ class CovRealSpace:
         self.terms_toloop = []
         if self.cfg['covariance']['G']:
             # self.terms_toloop.extend(('sva', 'sn', 'mix'))
-            self.terms_toloop.extend(('sva',))
+            self.terms_toloop.extend(('mix',))
             # self.terms_toloop.extend(('gauss_ell', ))
         if self.cfg['covariance']['SSC']:
             self.terms_toloop.append('ssc')
@@ -1124,49 +1126,8 @@ class CovRealSpace:
         )
         integrand_5d = a + b
 
-        # remove repeated zi, zj combinations
-        integrand_3d = sl.cov_6D_to_4D_blocks(
-            cov_6D=integrand_5d,
-            nbl=self.nbl,
-            npairs_AB=zpairs_ab,
-            npairs_CD=zpairs_cd,
-            ind_AB=ind_ab,
-            ind_CD=ind_cd,
-        )
-
-        # flatten the integrand to [ells, whatever]
-        integrand_2d = integrand_3d.reshape(self.nbl, -1)
-        integrand_2d *= self.ell_values[:, None]
-        integrand_2d /= 2.0 * np.pi * self.amax
-
-        if self.levin_bin_avg:
-            cov_sva_rs_4d = self.levin_binavg_helper(
-                integrand_2d, mu, nu, zpairs_ab, zpairs_cd
-            )
-        else:
-            result_levin = levin_integrate_bessel_double_wrapper(
-                integrand_2d,
-                x_values=self.ell_values,
-                bessel_args=self.theta_centers_fine,
-                bessel_type=3,
-                ell_1=mu,
-                ell_2=nu,
-                n_jobs=self.n_jobs,
-                **self.levin_prec_kw,
-            )
-
-            cov_sva_rs_4d = result_levin.reshape(
-                self.nbt_fine, self.nbt_fine, zpairs_ab, zpairs_cd
-            )
-
-        cov_sva_rs_6d = sl.cov_4D_to_6D_blocks(
-            cov_sva_rs_4d,
-            nbl=self.nbt_fine,
-            zbins=self.zbins,
-            ind_ab=ind_ab,
-            ind_cd=ind_cd,
-            symmetrize_output_ab=False,
-            symmetrize_output_cd=False,
+        cov_sva_rs_6d = self.cov_levin_wrapper(
+            integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
         )
 
         return cov_sva_rs_6d
@@ -1222,6 +1183,18 @@ class CovRealSpace:
             "ind_cd must have two columns, maybe you didn't cut it"
         )
 
+        cov_mix_rs_6d = self.cov_levin_wrapper(
+            integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+        )
+
+        return cov_mix_rs_6d
+
+    def cov_levin_wrapper(
+        self, integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+    ):
+        """This function abstracts the reshaping of the integral before and after the 
+        integration, as well as encapsulating the two different functions to call
+        depending on the levin_bin_avg value"""
         integrand_3d = sl.cov_6D_to_4D_blocks(
             cov_6D=integrand_5d,
             nbl=self.nbl,
@@ -1234,10 +1207,10 @@ class CovRealSpace:
 
         integrand_2d = integrand_3d.reshape(self.nbl, -1)
         integrand_2d *= self.ell_values[:, None]
-        integrand_2d /= 2 * np.pi * self.amax
+        integrand_2d /= 2.0 * np.pi * self.amax
 
         if self.levin_bin_avg:
-            cov_mix_rs_4d = self.levin_binavg_helper(
+            cov_rs_4d = self.levin_binavg_helper(
                 integrand_2d, mu, nu, zpairs_ab, zpairs_cd
             )
         else:
@@ -1252,12 +1225,12 @@ class CovRealSpace:
                 **self.levin_prec_kw,
             )
 
-            cov_mix_rs_4d = result_levin.reshape(
+            cov_rs_4d = result_levin.reshape(
                 self.nbt_fine, self.nbt_fine, zpairs_ab, zpairs_cd
             )
 
-        cov_mix_rs_6d = sl.cov_4D_to_6D_blocks(
-            cov_mix_rs_4d,
+        cov_rs_6d = sl.cov_4D_to_6D_blocks(
+            cov_rs_4d,
             nbl=self.nbt_fine,
             zbins=self.zbins,
             ind_ab=ind_ab,
@@ -1266,7 +1239,7 @@ class CovRealSpace:
             symmetrize_output_cd=False,
         )
 
-        return cov_mix_rs_6d
+        return cov_rs_6d
 
     def levin_binavg_helper(self, integrand_2d, mu, nu, zpairs_ab, zpairs_cd):
         """Takes care of looping over and assembling the different terms needed for

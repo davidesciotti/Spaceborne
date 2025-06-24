@@ -161,7 +161,7 @@ sample_covariance:
     fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 OneCovariance:
-    path_to_oc_executable: '/u/dsciotti/code/OneCovariance/covariance.py'
+    path_to_oc_executable: '/home/cosmo/davide.sciotti/data//OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 
@@ -302,7 +302,6 @@ PyCCL:
 
 
 precision:
-
     # ==================================== NaMaster ====================================
     # Number of iterations when computing the alms of the input map. See 
     # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
@@ -313,7 +312,7 @@ precision:
     # Precision settings for pylevin. See the official documentation for more details:
     # https://levin-bessel.readthedocs.io/en/latest/index.html
     # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-    n_sub: 40  # number of collocation points in each bisection  # default: 8
+    n_sub: 20  # number of collocation points in each bisection  # default: 8
     n_bisec_max: 500  # maximum number of bisections used  # default: 32
     rel_acc: 1.e-7  # relative accuracy target  # default: 1.e-4
     boost_bessel: True  # compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
@@ -325,15 +324,18 @@ precision:
     ell_min_rs: 2  # Type: int
     ell_max_rs: 100000  # Type: int
     ell_bins_rs: 500  # Type: int
+    
+    # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
     theta_bins_fine: 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
 
     # Integration method for the covariance projection to real space. Options:
     # - 'simps': uses simpson integration. This is faster but less accurate
     # - 'levin': uses levin integration. This is slower but more accurate
     cov_rs_int_method: 'levin'  # Type: str.
+    levin_bin_avg: True  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
 
 misc:
-    num_threads: 30 # Type: int. How many threads to use for the parallel computations
+    num_threads: 20 # Type: int. How many threads to use for the parallel computations
 
     # How many integrals to compute at once for the  numerical integration of
     # the sigma^2_b(z_1, z_2) function with pylevin. 
@@ -347,7 +349,7 @@ misc:
     test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
     test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /u/dsciotti/code/Spaceborne_rs_test # Type: str. Path to the output directory
+    output_path: /home/cosmo/davide.sciotti/data//Spaceborne_rs_test # Type: str. Path to the output directory
     save_figs: True
 
 

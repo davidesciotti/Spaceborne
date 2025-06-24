@@ -631,8 +631,8 @@ class SpaceborneCovariance:
 
         if self.g_code == 'OneCovariance':
             raise NotImplementedError(
-                'OneCovariance g term not yet implemented: split terms '
-                'and probe-specific ell binning missing'
+                'OneCovariance g term not fully implemented: split terms '
+                'and probe-specific ell binning still missing.'
             )
             self.cov_WL_g_6D = oc_obj.cov_g_oc_3x2pt_10D[0, 0, 0, 0]
             self.cov_GC_g_6D = oc_obj.cov_g_oc_3x2pt_10D[1, 1, 1, 1]

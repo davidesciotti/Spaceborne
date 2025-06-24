@@ -206,10 +206,10 @@ cfg['covariance']['cNG_code'] = 'PyCCL'
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
     cfg['OneCovariance']['path_to_oc_executable'] = (
-        '/u/dsciotti/code/OneCovariance/covariance.py'
+        '/home/cosmo/davide.sciotti/data//OneCovariance/covariance.py'
     )
     cfg['OneCovariance']['consistency_checks'] = False
-    cfg['OneCovariance']['oc_output_filename'] = 'cov_rcf_mergetest'
+    cfg['OneCovariance']['oc_output_filename'] = 'cov_rcf_mergetest_v2_'
 
 if 'save_output_as_benchmark' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
@@ -1665,11 +1665,11 @@ for probe in cov_rs_obj.probe_idx_dict:
     # check theta simmetry
     if np.allclose(cov_oc_6d, cov_oc_6d.transpose(1, 0, 2, 3, 4, 5), atol=0, rtol=1e-5):
         print(f'probe {probe} is symmetric in theta_1, theta_2')
-    
-    if probe in ['gmxip', 'gmxim']:
-        print('I am manually transposing the OC blocks!!')
-        warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
-        cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
+
+    # if probe in ['gmxip', 'gmxim']:
+    #     print('I am manually transposing the OC blocks!!')
+    #     warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
+    #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
 
     cov_oc_4d = sl.cov_6D_to_4D_blocks(
         cov_oc_6d,
@@ -1683,9 +1683,8 @@ for probe in cov_rs_obj.probe_idx_dict:
     cov_oc_dict_2d[probe] = sl.cov_4D_to_2D(
         cov_oc_4d, block_index='zpair', optimize=True
     )
-    
-    
-    
+
+
 cov_oc_list_2d = cov_real_space.stack_probe_blocks(cov_oc_dict_2d)
 
 cov_oc_mat_2d = np.genfromtxt(
@@ -1700,13 +1699,9 @@ del cov_oc_mat_2d_2
 gc.collect()
 
 # compare OC list against mat - transposition issue is still present!
-sl.compare_arrays(
-    cov_oc_list_2d,
-    cov_oc_mat_2d,
-    log_array=True,
-    log_diff=True,
-    plot_diff_threshold=1,
-)
+# sl.compare_2d_covs(
+#     cov_oc_list_2d, cov_oc_mat_2d, 'list', 'mat', title=title, diff_threshold=1
+# )
 
 # I will compare SB against the mat fmt
 cov_sb_2d = cov_obj.cov_rs_obj.cov_rs_full_2d
@@ -1715,19 +1710,17 @@ cov_oc_2d = cov_oc_mat_2d
 title = (
     f'integration {cfg["precision"]["cov_rs_int_method"]} - '
     f'ell_bins_rs {cfg["precision"]["ell_bins_rs"]} - '
+    f'ell_max_rs {cfg["precision"]["ell_max_rs"]} - '
     f'theta bins fine {cfg["precision"]["theta_bins_fine"]}\n'
     f'n_sub {cfg["precision"]["n_sub"]} - '
     f'n_bisec_max {cfg["precision"]["n_bisec_max"]} - '
     f'rel_acc {cfg["precision"]["rel_acc"]}'
 )
-sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=10)
-sl.compare_2d_covs(
-    cov_oc_list_2d, cov_oc_mat_2d, 'list', 'mat', title=title, diff_threshold=1
-)
+sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=10, )
 
 
 # compare individual terms/probes
-term = 'sva'
+term = cov_rs_obj.terms_toloop[0]
 for probe in cov_rs_obj.probes_toloop:
     integration = cfg['precision']['cov_rs_int_method']
     from spaceborne import cov_real_space
@@ -1759,12 +1752,12 @@ for probe in cov_rs_obj.probes_toloop:
     cov_oc_6d = cov_oc_3x2pt_8D[twoprobe_ab_ix, twoprobe_cd_ix]
 
     if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
-        print(f'{term = } {probe = } is 0')
+        print(f'{term = } {probe = } is identically 0')
 
-    if probe in ['gmxip', 'gmxim']:
-        print('I am manually transposing the OC blocks!!')
-        warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
-        cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
+    # if probe in ['gmxip', 'gmxim']:
+    #     print('I am manually transposing the OC blocks!!')
+    #     warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
+    #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
 
     cov_sb_4d = sl.cov_6D_to_4D_blocks(
         cov_sb_6d,
@@ -1789,11 +1782,13 @@ for probe in cov_rs_obj.probes_toloop:
     sl.compare_arrays(
         cov_sb_2d,
         cov_oc_2d,
+        'SB',
+        'OC',
         log_array=True,
         log_diff=True,
         abs_val=True,
         plot_diff_threshold=10,
-        title=title
+        title=title,
     )
 
     fig, axs = plt.subplots(

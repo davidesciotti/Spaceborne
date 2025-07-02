@@ -4,6 +4,47 @@ import numpy as np
 import itertools
 
 
+def load_nz_el(nz_filename):
+    """basically, tis function turns the nz dict into a np array"""
+    import euclidlib as el
+
+    z, nz = el.photo.redshift_distributions(nz_filename)
+    nztab = np.zeros((len(z), len(nz)))
+    for zi in nz:
+        nztab[:, zi - 1] = nz[zi]  # array is 0-based, dict is 1-based
+    return z, nztab
+
+
+def import_cl_tab(cl_tab_in: np.ndarray):
+    assert cl_tab_in.shape[1] == 4, 'input cls should have 4 columns'
+    assert np.min(cl_tab_in[:, 1]) == 0, (
+        'tomographic redshift indices should start from 0'
+    )
+    assert np.min(cl_tab_in[:, 2]) == 0, (
+        'tomographic redshift indices should start from 0'
+    )
+    assert np.max(cl_tab_in[:, 1]) == np.max(cl_tab_in[:, 2]), (
+        'tomographic redshift indices should be \
+        the same for both z_i and z_j'
+    )
+
+    zbins = int(np.max(cl_tab_in[:, 1]) + 1)
+    ell_values = np.unique(cl_tab_in[:, 0])
+
+    cl_3d = np.zeros((len(ell_values), zbins, zbins))
+
+    for row in range(cl_tab_in.shape[0]):
+        ell_val, zi, zj = (
+            cl_tab_in[row, 0],
+            int(cl_tab_in[row, 1]),
+            int(cl_tab_in[row, 2]),
+        )
+        ell_ix = np.where(ell_values == ell_val)[0][0]
+        cl_3d[ell_ix, zi, zj] = cl_tab_in[row, 3]
+
+    return ell_values, cl_3d
+
+
 def load_cl_euclidlib(filename, key_a, key_b):
     import euclidlib as el
 
@@ -19,6 +60,7 @@ def load_cl_euclidlib(filename, key_a, key_b):
 
     # extract ells
     ells = cl_dict[key_a, key_b, 1, 1].ell
+
     nbl = ells.size
 
     # extract zbins (check consistency of columns first)
@@ -27,25 +69,70 @@ def load_cl_euclidlib(filename, key_a, key_b):
     assert zbins_i == zbins_j, 'zbins are not the same for all columns'
     zbins = zbins_i
 
-    cl_3d = np.zeros((nbl, zbins, zbins))
+    # check that they match no matter the redshift bin combination
+    triu_ix = np.triu_indices(zbins)
 
+    idxs = (
+        zip(*triu_ix)
+        if is_auto_spectrum
+        else itertools.product(range(zbins), range(zbins))
+    )
+
+    for zi, zj in idxs:
+        assert np.all(ells == cl_dict[key_a, key_b, zi + 1, zj + 1].ell), (
+            'ells are not the same for (zi, zj) combinations'
+        )
+
+    # populate 3D array
+    cl_3d = np.zeros((nbl, zbins, zbins))
     for zi, zj in itertools.product(range(zbins), range(zbins)):
         if zj >= zi:
-            cl_3d[:, zi, zj] = cl_dict[(key_a, key_b, zi + 1, zj + 1)][0]
+            cl_3d[:, zi, zj] = _select_spin_component(
+                cl_dict, key_a, key_b, zi + 1, zj + 1
+            )
         else:
             if is_auto_spectrum:
                 cl_3d[:, zi, zj] = cl_3d[:, zj, zi]
             else:
-                cl_3d[:, zi, zj] = cl_dict[key_a, key_b, zi + 1, zj + 1][0]
+                cl_3d[:, zi, zj] = _select_spin_component(
+                    cl_dict, key_a, key_b, zi + 1, zj + 1
+                )
 
     return ells, cl_3d
+
+
+def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
+    """
+    Selects the spin components, aka homogenises the dimensions to assign data to cl_3d. 
+    Important note: E-modes are hardcoded at the moment;
+    index 1 is for B modes, but you would have to change the structure of the cl_5d
+    array (at the moment it's:
+    cl_5d[0, 0, ...] = SHE_E x SHE_E
+    cl_5d[1, 0, ...] = POS   x SHE_E
+    cl_5d[0, 1, ...] = SHE_E x POS
+    cl_5d[1, 1, ...] = POS   x POS
+    BUT: Theory B modes should always be 0...
+    """
+    arr = cl_dict[(key_a, key_b, ziplus1, zjplus1)]
+    
+    # in case there are no B modes, e.g. in the input spectra passed by Guada
+    if arr.ndim == 1:
+        return arr
+    
+    if key_a == 'POS' and key_b == 'POS':
+        return arr  # POS x POS
+    elif (key_a == 'POS' and key_b == 'SHE') or (key_a == 'SHE' and key_b == 'POS'):
+        return arr[0]  # POS × E
+    elif key_a == 'SHE' and key_b == 'SHE':
+        return arr[0][0]  # E × E
+    else:
+        raise ValueError(f'Unexpected probe combination: {key_a}, {key_b}')
 
 
 def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     """
     SB = 'Spaceborne'
     HC = 'Heracles'
-
 
     this dictionary specifies, within the 2 axes assigned to SHE, which ones
     correspond to the E and B modes. This is not used since the analytical covariance
@@ -231,28 +318,53 @@ class IOHandler:
             self._load_nz_el()
 
     def _load_nz_sb(self):
-        pass
+        # The shape of these input files should be `(zpoints, zbins + 1)`, with `zpoints` the
+        # number of points over which the distribution is measured and zbins the number of
+        # redshift bins. The first column should contain the redshifts values.
+        # We also define:
+        # - `nz_full`: nz table including a column for the z values
+        # - `nz`:      nz table excluding a column for the z values
+        # - `nz_original`: nz table as imported (it may be subjected to shifts later on)
+        nz_src_tab_full = np.genfromtxt(self.cfg['nz']['nz_sources_filename'])
+        nz_lns_tab_full = np.genfromtxt(self.cfg['nz']['nz_lenses_filename'])
+        self.zgrid_nz_src = nz_src_tab_full[:, 0]
+        self.zgrid_nz_lns = nz_lns_tab_full[:, 0]
+        self.nz_src = nz_src_tab_full[:, 1:]
+        self.nz_lns = nz_lns_tab_full[:, 1:]
 
     def _load_nz_el(self):
-        pass
+        """this is just to assign src and lns data to self"""
+        self.zgrid_nz_src, self.nz_src = load_nz_el(
+            self.cfg['nz']['nz_sources_filename']
+        )
+        self.zgrid_nz_lns, self.nz_lns = load_nz_el(
+            self.cfg['nz']['nz_lenses_filename']
+        )
 
     def load_cls(self):
-        """Wrapper for loading cl files"""
+        """Wrapper for loading cl files, which calls either the sb or el reading
+        routines"""
         if self.cl_fmt == 'spaceborne':
             self._load_cls_sb()
         elif self.cl_fmt == 'euclidlib':
             self._load_cls_el()
 
     def _load_cls_sb(self):
-        pass
+        cl_ll_tab = np.genfromtxt(self.cell_cfg['cl_LL_path'])
+        cl_gl_tab = np.genfromtxt(self.cell_cfg['cl_GL_path'])
+        cl_gg_tab = np.genfromtxt(self.cell_cfg['cl_GG_path'])
+
+        self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
+        self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)
+        self.ells_GC_in, self.cl_gg_3d_in = import_cl_tab(cl_gg_tab)
 
     def _load_cls_el(self):
-        self.ells_WL_in, self.cl_ll_3d_in = self.load_cl_euclidlib(
+        self.ells_WL_in, self.cl_ll_3d_in = load_cl_euclidlib(
             self.cl_cfg['cl_LL_path'], 'SHE', 'SHE'
         )
-        self.ells_XC_in, self.cl_gl_3d_in = self.load_cl_euclidlib(
+        self.ells_XC_in, self.cl_gl_3d_in = load_cl_euclidlib(
             self.cl_cfg['cl_GL_path'], 'POS', 'SHE'
         )
-        self.ells_GG_in, self.cl_gg_3d_in = self.load_cl_euclidlib(
+        self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
             self.cl_cfg['cl_GG_path'], 'POS', 'POS'
         )

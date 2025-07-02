@@ -457,17 +457,16 @@ pvt_cfg = {
 }
 
 # instantiate data handler class
-data_io_obj = io_handler.IOHandler(cfg, pvt_cfg)
-data_io_obj.get_nz_fmt()
-data_io_obj.get_cl_fmt()
-data_io_obj.load_cls()
+io_obj = io_handler.IOHandler(cfg, pvt_cfg)
+io_obj.get_nz_fmt()
+io_obj.get_cl_fmt()
+io_obj.load_nz()
+io_obj.load_cls()
 
-assert False, 'stop here'
 
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
 # ! ====================================================================================
-
 
 # ! ===================================== \ells ========================================
 ell_obj = ell_utils.EllBinning(cfg)
@@ -490,19 +489,11 @@ pvt_cfg['fsky'] = mask_obj.fsky
 
 
 # ! ===================================== n(z) =========================================
-# The shape of these input files should be `(zpoints, zbins + 1)`, with `zpoints` the
-# number of points over which the distribution is measured and zbins the number of
-# redshift bins. The first column should contain the redshifts values.
-# We also define:
-# - `nz_full`: nz table including a column for the z values
-# - `nz`:      nz table excluding a column for the z values
-# - `nz_original`: nz table as imported (it may be subjected to shifts later on)
-nz_src_tab_full = np.genfromtxt(cfg['nz']['nz_sources_filename'])
-nz_lns_tab_full = np.genfromtxt(cfg['nz']['nz_lenses_filename'])
-zgrid_nz_src = nz_src_tab_full[:, 0]
-zgrid_nz_lns = nz_lns_tab_full[:, 0]
-nz_src = nz_src_tab_full[:, 1:]
-nz_lns = nz_lns_tab_full[:, 1:]
+zgrid_nz_src = io_obj.zgrid_nz_src
+zgrid_nz_lns = io_obj.zgrid_nz_lns
+nz_src = io_obj.nz_src
+nz_lns = io_obj.nz_lns
+
 
 # nz may be subjected to a shift: save the original arrays
 nz_unshifted_src = nz_src
@@ -730,27 +721,9 @@ if cfg['C_ell']['use_input_cls']:
     print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_path"]}')
     print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_path"]}')
 
-    if cl_fmt == 'spaceborne':
-        cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
-        cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
-        cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
-
-        ells_WL_in, cl_ll_3d_in = sl.import_cl_tab(cl_ll_tab)
-        ells_XC_in, cl_gl_3d_in = sl.import_cl_tab(cl_gl_tab)
-        ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
-
-    elif cl_fmt == 'euclidlib':
-        ells_WL_in, cl_ll_3d_in = sl.load_cl_euclidlib(
-            cfg['C_ell']['cl_LL_path'], 'SHE', 'SHE'
-        )
-        ells_XC_in, cl_gl_3d_in = sl.load_cl_euclidlib(
-            cfg['C_ell']['cl_GL_path'], 'POS', 'SHE'
-        )
-        ells_GC_in, cl_gg_3d_in = sl.load_cl_euclidlib(
-            cfg['C_ell']['cl_GG_path'], 'POS', 'POS'
-        )
-
-    assert False, 'stop here'
+    ells_WL_in, cl_ll_3d_in = io_obj.ells_WL_in, io_obj.cl_ll_3d_in
+    ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in
+    ells_GC_in, cl_gg_3d_in = io_obj.ells_GC_in, io_obj.cl_gg_3d_in
 
     # make sure ells are sorted and unique for spline interpolation
     for _ells in [  # fmt: skip
@@ -790,6 +763,7 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
 
 plot_cls()
 
+assert False, 'stop here'
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to
 # ! transform the noise spectra, better to transform directly the covariance matrix

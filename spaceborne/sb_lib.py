@@ -377,34 +377,6 @@ def j2(x):
     return jv(2, x)
 
 
-def import_cl_tab(cl_tab_in: np.ndarray):
-    assert cl_tab_in.shape[1] == 4, 'input cls should have 4 columns'
-    assert np.min(cl_tab_in[:, 1]) == 0, (
-        'tomographic redshift indices should start from 0'
-    )
-    assert np.min(cl_tab_in[:, 2]) == 0, (
-        'tomographic redshift indices should start from 0'
-    )
-    assert np.max(cl_tab_in[:, 1]) == np.max(cl_tab_in[:, 2]), (
-        'tomographic redshift indices should be \
-        the same for both z_i and z_j'
-    )
-
-    zbins = int(np.max(cl_tab_in[:, 1]) + 1)
-    ell_values = np.unique(cl_tab_in[:, 0])
-
-    cl_3d = np.zeros((len(ell_values), zbins, zbins))
-
-    for row in range(cl_tab_in.shape[0]):
-        ell_val, zi, zj = (
-            cl_tab_in[row, 0],
-            int(cl_tab_in[row, 1]),
-            int(cl_tab_in[row, 2]),
-        )
-        ell_ix = np.where(ell_values == ell_val)[0][0]
-        cl_3d[ell_ix, zi, zj] = cl_tab_in[row, 3]
-
-    return ell_values, cl_3d
 
 
 def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):

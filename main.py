@@ -91,8 +91,8 @@ def load_config(_config_path):
 
 
 def plot_cls():
-    fig, ax = plt.subplots(1, 3, figsize=(13, 4))
-    plt.tight_layout()
+    fig, ax = plt.subplots(1, 3, figsize=(15, 4))
+    # plt.tight_layout()
     for zi in range(zbins):
         zj = zi
         kw = dict(c=clr[zi], ls='-', marker='.')
@@ -717,7 +717,7 @@ ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
 if cfg['C_ell']['use_input_cls']:
     # TODO NMT here you should ask the user for unbinned cls
 
-    print('Using input Cls')
+    print(f'Using input Cls from file\n{cfg["C_ell"]["cl_LL_path"]}')
     cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
     cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
     cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
@@ -1332,7 +1332,6 @@ if compute_ccl_ssc or compute_ccl_cng:
             probe_ordering=probe_ordering,
             ind_dict=ind_dict,
         )
-
 
 # ! ========================== Combine covariance terms ================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)

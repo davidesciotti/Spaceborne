@@ -86,24 +86,21 @@ def load_cl_euclidlib(filename, key_a, key_b):
     # populate 3D array
     cl_3d = np.zeros((nbl, zbins, zbins))
     for zi, zj in itertools.product(range(zbins), range(zbins)):
+        args = (cl_dict, key_a, key_b, zi + 1, zj + 1)
         if zj >= zi:
-            cl_3d[:, zi, zj] = _select_spin_component(
-                cl_dict, key_a, key_b, zi + 1, zj + 1
-            )
+            cl_3d[:, zi, zj] = _select_spin_component(*args)
         else:
             if is_auto_spectrum:
                 cl_3d[:, zi, zj] = cl_3d[:, zj, zi]
             else:
-                cl_3d[:, zi, zj] = _select_spin_component(
-                    cl_dict, key_a, key_b, zi + 1, zj + 1
-                )
+                cl_3d[:, zi, zj] = _select_spin_component(*args)
 
     return ells, cl_3d
 
 
 def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
     """
-    Selects the spin components, aka homogenises the dimensions to assign data to cl_3d. 
+    Selects the spin components, aka homogenises the dimensions to assign data to cl_3d.
     Important note: E-modes are hardcoded at the moment;
     index 1 is for B modes, but you would have to change the structure of the cl_5d
     array (at the moment it's:
@@ -114,11 +111,11 @@ def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
     BUT: Theory B modes should always be 0...
     """
     arr = cl_dict[(key_a, key_b, ziplus1, zjplus1)]
-    
+
     # in case there are no B modes, e.g. in the input spectra passed by Guada
     if arr.ndim == 1:
         return arr
-    
+
     if key_a == 'POS' and key_b == 'POS':
         return arr  # POS x POS
     elif (key_a == 'POS' and key_b == 'SHE') or (key_a == 'SHE' and key_b == 'POS'):

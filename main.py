@@ -24,6 +24,7 @@ from spaceborne import (
     responses,
     sigma2_SSC,
     wf_cl_lib,
+    io_handler,
 )
 from spaceborne import covariance as sb_cov
 from spaceborne import onecovariance_interface as oc_interface
@@ -455,6 +456,14 @@ pvt_cfg = {
     'jl_integrator_path': './spaceborne/julia_integrator.jl',
 }
 
+# instantiate data handler class
+data_io_obj = io_handler.IOHandler(cfg, pvt_cfg)
+data_io_obj.get_nz_fmt()
+data_io_obj.get_cl_fmt()
+data_io_obj.load_cls()
+
+assert False, 'stop here'
+
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
 # ! ====================================================================================
@@ -717,14 +726,31 @@ ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
 if cfg['C_ell']['use_input_cls']:
     # TODO NMT here you should ask the user for unbinned cls
 
-    print(f'Using input Cls from file\n{cfg["C_ell"]["cl_LL_path"]}')
-    cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
-    cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
-    cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
+    print(f'Using input Cls for LL from file\n{cfg["C_ell"]["cl_LL_path"]}')
+    print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_path"]}')
+    print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_path"]}')
 
-    ells_WL_in, cl_ll_3d_in = sl.import_cl_tab(cl_ll_tab)
-    ells_XC_in, cl_gl_3d_in = sl.import_cl_tab(cl_gl_tab)
-    ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
+    if cl_fmt == 'spaceborne':
+        cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
+        cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
+        cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
+
+        ells_WL_in, cl_ll_3d_in = sl.import_cl_tab(cl_ll_tab)
+        ells_XC_in, cl_gl_3d_in = sl.import_cl_tab(cl_gl_tab)
+        ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
+
+    elif cl_fmt == 'euclidlib':
+        ells_WL_in, cl_ll_3d_in = sl.load_cl_euclidlib(
+            cfg['C_ell']['cl_LL_path'], 'SHE', 'SHE'
+        )
+        ells_XC_in, cl_gl_3d_in = sl.load_cl_euclidlib(
+            cfg['C_ell']['cl_GL_path'], 'POS', 'SHE'
+        )
+        ells_GC_in, cl_gg_3d_in = sl.load_cl_euclidlib(
+            cfg['C_ell']['cl_GG_path'], 'POS', 'POS'
+        )
+
+    assert False, 'stop here'
 
     # make sure ells are sorted and unique for spline interpolation
     for _ells in [  # fmt: skip

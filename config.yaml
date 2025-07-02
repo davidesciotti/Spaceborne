@@ -81,9 +81,9 @@ C_ell:
     # section of this cfg file.
     use_input_cls: True  # Type: bool
 
-    cl_LL_path: /u/dsciotti/code/common_data/RR2/cl_ll.txt # Type: str. Path to the shear-shear angular PS. 
-    cl_GL_path: /u/dsciotti/code/common_data/RR2/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS. 
-    cl_GG_path: /u/dsciotti/code/common_data/RR2/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS. 
+    cl_LL_path: /u/dsciotti/code/common_data/RR2/spectra-RR2-metacal-unbinned.fits # Type: str. Path to the shear-shear angular PS. 
+    cl_GL_path: /u/dsciotti/code/common_data/RR2/spectra-RR2-metacal-unbinned.fits # Type: str. Path to the galaxy-shear angular PS. 
+    cl_GG_path: /u/dsciotti/code/common_data/RR2/spectra-RR2-metacal-unbinned.fits # Type: str. Path to the galaxy-galaxy angular PS. 
 
     # Which galaxy and magnification bias to use. Options:
     # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -123,8 +123,8 @@ C_ell:
 nz:
     # Paths to source (for WL) and lens (for GCph) redshift distributions.
     # These must have shape (z_points, zbins + 1)
-    nz_sources_filename: /u/dsciotti/code/common_data/RR2/nztab_Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.dat  # Type: str
-    nz_lenses_filename: /u/dsciotti/code/common_data/RR2/nztab_Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.dat  # Type: str
+    nz_sources_filename: /u/dsciotti/code/common_data/RR2/Guada/nztab_Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits  # Type: str
+    nz_lenses_filename: /u/dsciotti/code/common_data/RR2/Guada/nztab_Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits  # Type: str
 
     # Number of galaxies per arcmin**2 for each redshift bin.
     # Should be of length 'zbins'

@@ -6,9 +6,6 @@ from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
 
 
-from spaceborne import sb_lib as sl
-
-
 mpl_rcParams_dict = {
     'lines.linewidth': 1.5,
     'font.size': 17,

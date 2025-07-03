@@ -143,12 +143,13 @@ class SpaceborneConfigChecker:
         assert len(self.cfg['nz']['ngal_lenses']) == self.zbins, (
             f'ngal_lenses must be of length zbins = {self.zbins}'
         )
-        assert len(self.cfg['nz']['dzWL']) == self.zbins, (
-            f'dzWL must be of length zbins = {self.zbins}'
-        )
-        assert len(self.cfg['nz']['dzGC']) == self.zbins, (
-            f'dzGC must be of length zbins = {self.zbins}'
-        )
+        if self.cfg['nz']['shift_nz']:
+            assert len(self.cfg['nz']['dzWL']) == self.zbins, (
+                f'dzWL must be of length zbins = {self.zbins}'
+            )
+            assert len(self.cfg['nz']['dzGC']) == self.zbins, (
+                f'dzGC must be of length zbins = {self.zbins}'
+            )
         assert len(self.cfg['covariance']['sigma_eps_i']) == self.zbins, (
             f'sigma_eps_i must be of length zbins = {self.zbins}'
         )

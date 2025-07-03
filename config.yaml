@@ -1,12 +1,3 @@
-# ! ####################################################################################
-# ! Configuration file for 3x2pt RR2 covariance. Some caveats
-# ! - double-check the cosmology and the value of HMCode_logT_AGN
-# ! - there is no dz shift, no magnification bias, no m-bias for the moment
-# ! [Note for me]: send Guada the cov in the updated fmt
-# ! [Missing]: footprint, sigma_eps, n_eff
-# ! ####################################################################################
-
-
 # Example configuration file for Spaceborne. A further explanation of the different 
 # options can be found in the official documentation, at https://spaceborne.readthedocs.io/en/latest/
 # The type of the different values is given in the comments, and is checked at runtime.

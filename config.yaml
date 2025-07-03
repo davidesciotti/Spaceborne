@@ -34,7 +34,7 @@ extra_parameters:
     camb:
         halofit_version: mead2020_feedback # Type: str
         kmax: 100 # Type: float | int
-        HMCode_logT_AGN: 8 # Type: float
+        HMCode_logT_AGN: 7.75 # Type: float
         num_massive_neutrinos: 1 # Type: int
         dark_energy_model: ppf # Type: str
 

@@ -110,18 +110,18 @@ def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
     cl_5d[1, 1, ...] = POS   x POS
     BUT: Theory B modes should always be 0...
     """
-    arr = cl_dict[(key_a, key_b, ziplus1, zjplus1)]
+    cl_array = cl_dict[(key_a, key_b, ziplus1, zjplus1)].array
 
     # in case there are no B modes, e.g. in the input spectra passed by Guada
-    if arr.ndim == 1:
-        return arr
+    if cl_array.ndim == 1:
+        return cl_array
 
     if key_a == 'POS' and key_b == 'POS':
-        return arr  # POS x POS
+        return cl_array  # POS x POS
     elif (key_a == 'POS' and key_b == 'SHE') or (key_a == 'SHE' and key_b == 'POS'):
-        return arr[0]  # POS × E
+        return cl_array[0]  # POS × E
     elif key_a == 'SHE' and key_b == 'SHE':
-        return arr[0][0]  # E × E
+        return cl_array[0][0]  # E × E
     else:
         raise ValueError(f'Unexpected probe combination: {key_a}, {key_b}')
 

@@ -347,9 +347,9 @@ class IOHandler:
             self._load_cls_el()
 
     def _load_cls_sb(self):
-        cl_ll_tab = np.genfromtxt(self.cell_cfg['cl_LL_path'])
-        cl_gl_tab = np.genfromtxt(self.cell_cfg['cl_GL_path'])
-        cl_gg_tab = np.genfromtxt(self.cell_cfg['cl_GG_path'])
+        cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_path'])
+        cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_path'])
+        cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_path'])
 
         self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
         self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)

@@ -7,6 +7,7 @@ import warnings
 from copy import deepcopy
 from functools import partial
 from importlib.util import find_spec
+from scipy.ndimage import gaussian_filter1d
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -29,6 +30,7 @@ from spaceborne import (
 from spaceborne import covariance as sb_cov
 from spaceborne import onecovariance_interface as oc_interface
 from spaceborne import sb_lib as sl
+from spaceborne import plot_lib as sb_plt
 
 try:
     import pyfiglet
@@ -94,6 +96,9 @@ def load_config(_config_path):
 def plot_cls():
     fig, ax = plt.subplots(1, 3, figsize=(15, 4))
     # plt.tight_layout()
+
+    # cls are (for the moment) in the ccl obj, whether they are imported from input
+    # files or not
     for zi in range(zbins):
         zj = zi
         kw = dict(c=clr[zi], ls='-', marker='.')
@@ -101,18 +106,19 @@ def plot_cls():
         ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
         ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
 
+    # if input cls are used, then overplot the sb predictions on top
     if cfg['C_ell']['use_input_cls']:
         for zi in range(zbins):
             zj = zi
-            kw = dict(c=clr[zi], ls='', marker='x')
-            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **kw)
-            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **kw)
-            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **kw)
+            sb_kw = dict(c=clr[zi], ls='', marker='x')
+            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **sb_kw)
+            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **sb_kw)
+            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **sb_kw)
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[
-                plt.Line2D([], [], color='gray', ls='-', label='SB'),
-                plt.Line2D([], [], color='gray', ls='', marker='x', label='Input'),
+                plt.Line2D([], [], label='input', **kw),
+                plt.Line2D([], [], label='SB', **sb_kw),
             ],
             loc='upper right',
             fontsize=16,
@@ -156,6 +162,8 @@ def check_ells_in(ells_in, ells_out):
             'ell binning to make sure the interpolation is accurate.',
             stacklevel=2,
         )
+
+
 
 
 # ! ====================================================================================
@@ -527,6 +535,16 @@ if shift_nz:
         plt_title='$n_i(z)$ lenses shifts ',
     )
 
+if cfg['nz']['smooth_nz']:
+    for zi in range(zbins):
+        nz_src[:, zi] = gaussian_filter1d(
+            nz_src[:, zi], sigma=cfg['nz']['sigma_smoothing']
+        )
+        nz_lns[:, zi] = gaussian_filter1d(
+            nz_lns[:, zi], sigma=cfg['nz']['sigma_smoothing']
+        )
+
+
 ccl_obj.set_nz(
     nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
     nz_full_lns=np.hstack((zgrid_nz_lns[:, None], nz_lns)),
@@ -762,6 +780,29 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
 
 plot_cls()
+
+
+sb_plt.cls_triangle_plot(
+    dict(SB=ell_obj.ells_WL, input=ell_obj.ells_WL),
+    dict(SB=cl_ll_3d_sb, input=ccl_obj.cl_ll_3d),
+    is_auto=True,
+    zbins=zbins,
+    suptitle='WL'
+)
+sb_plt.cls_triangle_plot(
+    dict(SB=ell_obj.ells_XC, input=ell_obj.ells_XC),
+    dict(SB=cl_gl_3d_sb, input=ccl_obj.cl_gl_3d),
+    is_auto=True,
+    zbins=zbins,
+    suptitle='GGL'
+)
+sb_plt.cls_triangle_plot(
+    dict(SB=ell_obj.ells_GC, input=ell_obj.ells_GC),
+    dict(SB=cl_gg_3d_sb, input=ccl_obj.cl_gg_3d),
+    is_auto=True,
+    zbins=zbins,
+    suptitle='GCph'
+)
 
 assert False, 'stop here'
 
@@ -1336,7 +1377,6 @@ if compute_ccl_ssc or compute_ccl_cng:
 # ! ========================== Combine covariance terms ================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
-
 
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):

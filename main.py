@@ -804,7 +804,6 @@ sb_plt.cls_triangle_plot(
     suptitle='GCph'
 )
 
-assert False, 'stop here'
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to
 # ! transform the noise spectra, better to transform directly the covariance matrix

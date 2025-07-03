@@ -123,6 +123,10 @@ nz:
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
     ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
 
+    # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
+    #        generally better to perform all of these steps outside of Spaceborne and to avoid any
+    #        modification to the n(z) by setting shift_nz and smooth_nz to False.
+    # [NOTE] The cuts defined by clip_zmin/zmax are only applied if shift_nz is True
     shift_nz: False  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
     dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
     dzGC: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
@@ -130,6 +134,8 @@ nz:
     clip_zmin: 0  # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
     clip_zmax: 3  # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
 
+    smooth_nz: False  # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
+    sigma_smoothing: 10  # Type: int | float. Standard deviation of the Gaussian kernel.
 
 mask:
     load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
@@ -295,7 +301,7 @@ PyCCL:
 precision:
     # Number of iterations when computing the alms of the input map. See 
     # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-    n_iter_nmt: null # Type: None | int 
+    n_iter_nmt: null # Type: None | int.
 
 misc:
     num_threads: 40 # Type: int. How many threads to use for the parallel computations
@@ -304,7 +310,7 @@ misc:
     # the sigma^2_b(z_1, z_2) function with pylevin. 
     # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
     # while computing sigma2_b), decrease this or num_threads.
-    levin_batch_size: 1000 # Type: int 
+    levin_batch_size: 1000 # Type: int.
 
     # some sanity checks on the covariance matrix. These could take a while to run.
     test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv

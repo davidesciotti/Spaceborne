@@ -99,10 +99,14 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None):
     )
 
     # Axis limits
-    max_cl = np.max((cls_dict['input'], cls_dict['SB']))
-    min_cl = np.min((cls_dict['input'], cls_dict['SB']))
-    max_ell = np.max(ells_dict['input'])
-    min_ell = 5 if np.min(ells_dict['input']) > 5 else np.min(ells_dict['input'])
+    max_cl = np.max([cls_dict[key] for key in cls_dict])
+    min_cl = np.min([cls_dict[key] for key in cls_dict])
+    max_ell = np.max([ells_dict[key] for key in ells_dict])
+    min_ell = (
+        5
+        if np.min([ells_dict[key] for key in ells_dict]) > 5
+        else np.min([ells_dict[key] for key in cls_dict])
+    )  # this is admittedly a bit arbitrary
     ax[0, 0].set_ylim(min_cl - 5 * min_cl, 5 * max_cl)
     ax[0, 0].set_xlim(min_ell, 2 * max_ell)
 

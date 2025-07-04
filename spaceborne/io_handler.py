@@ -229,34 +229,19 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
 
 class IOHandler:
     """Handles loading of input data (n(z) and Cls) from various file formats.
-    
+
     Supports both Spaceborne (.txt/.dat) and Euclidlib (.fits) formats,
     automatically detecting the format based on file extensions.
-    
+
     Args:
         cfg: Configuration dictionary
         pvt_cfg: Private configuration dictionary
     """
+
     def __init__(self, cfg, pvt_cfg):
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
         self.cl_cfg = cfg['C_ell']
-
-        # Initialize attributes
-        self.zgrid_nz_src = None
-        self.zgrid_nz_lns = None
-        self.nz_src = None
-        self.nz_lns = None
-
-        self.ells_WL_in = None
-        self.cl_ll_3d_in = None
-        self.ells_XC_in = None
-        self.cl_gl_3d_in = None
-        self.ells_GC_in = None
-        self.cl_gg_3d_in = None
-
-        self.nz_fmt = None
-        self.cl_fmt = None
 
     def print_cl_path(self):
         """

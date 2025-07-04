@@ -258,7 +258,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
     z_combinations = list(itertools.product(range(zbins), repeat=4))
     for zi, zj, zk, zl in tqdm(z_combinations):
         covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_tt[:, zi, zk]],  # TT
                                               [cl_tt[:, zi, zl]],  # TT
                                               [cl_tt[:, zj, zk]],  # TT
@@ -268,7 +268,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TT_TT = covar_00_00
 
         covar_00_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_tt[:, zi, zk]],  # TT
                                               [cl_te[:, zi, zl]],  # TE, TB
                                               [cl_tt[:, zj, zk]],  # TT
@@ -278,7 +278,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TT_TE = covar_00_02
 
         covar_02_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_tt[:, zi, zk]],  # TT
                                               [cl_tt[:, zi, zl]],  # TT
                                               [cl_et[:, zj, zk]],  # TE, TB
@@ -288,7 +288,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TE_TT = covar_02_00
 
         covar_02_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_tt[:, zi, zk]],  # TT
                                               [cl_te[:, zi, zl]],  # TE, TB
                                               [cl_et[:, zj, zk]],  # ET, BT
@@ -298,7 +298,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TE_TE = covar_02_02
 
         covar_00_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_te[:, zi, zk]],  # TE, TB
                                               [cl_te[:, zi, zl]],  # TE, TB
                                               [cl_te[:, zj, zk]],  # TE, TB
@@ -308,7 +308,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TT_EE = covar_00_22
 
         covar_02_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_te[:, zi, zk]],  # TE, TB
                                               [cl_te[:, zi, zl]],  # TE, TB
                                               [cl_ee[:, zj, zk]],
@@ -318,7 +318,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TE_EE = covar_02_22
 
         covar_22_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_ee[:, zi, zk]],
                                               [cl_ee[:, zi, zl]],
                                               [cl_ee[:, zj, zk]],
@@ -328,7 +328,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_EE_EE = covar_22_22
 
         covar_22_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_et[:, zi, zk]],
                                               [cl_ee[:, zi, zl]],
                                               [cl_et[:, zj, zk]],
@@ -338,7 +338,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_EE_TE = covar_22_02
 
         covar_22_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_et[:, zi, zk]],
                                               [cl_et[:, zi, zl]],
                                               [cl_et[:, zj, zk]],
@@ -509,9 +509,9 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
 
 
 def sample_covariance( # fmt: skip
-    cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned, 
-    cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned, 
-    nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, nmt_bin_obj, 
+    cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned,
+    cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned,
+    nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, nmt_bin_obj,
     w00, w02, w22, lmax=None, n_probes=2, fix_seed=True, n_iter=None, lite=True,
 ):  # fmt: skip
     if lmax is None:
@@ -652,7 +652,7 @@ def sample_covariance( # fmt: skip
 
 
 def pcls_from_maps(  # fmt: skip
-    corr_maps_gg, corr_maps_ll, zi, zj, f0, f2, mask, coupled_cls, which_cls, 
+    corr_maps_gg, corr_maps_ll, zi, zj, f0, f2, mask, coupled_cls, which_cls,
     w00, w02, w22, lmax_eff,
 ):  # fmt: skip
     """
@@ -1001,7 +1001,7 @@ class NmtCov:
         f2_mask = nmt.NmtField(
             mask=self.mask_obj.mask, maps=None, spin=2, lite=True, lmax=ell_max_eff
         )
-        
+
         print('Computing the coupling matrices')
         start = time.time()
         w00 = nmt.NmtWorkspace()
@@ -1102,7 +1102,7 @@ class NmtCov:
                     which_binning='sum',
                 )
 
-            elif not nmt_cfg['spin0']:
+            else:
                 cov_10d_out = nmt_gaussian_cov(
                     cl_tt=cl_tt_4covnmt,
                     cl_te=cl_te_4covnmt,

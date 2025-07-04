@@ -170,3 +170,6 @@ for bench_name in bench_yaml_names:
     for file_path in glob.glob(f'{temp_output_folder}/*'):
         if os.path.isfile(file_path):
             os.remove(file_path)
+
+
+print('Done.')

@@ -9,56 +9,21 @@ from spaceborne import cosmo_lib
 def get_mask_cl(mask: np.ndarray) -> tuple:
     cl_mask = hp.anafast(mask)
     ell_mask = np.arange(len(cl_mask))
-    fsky_mask = np.mean(mask**2)  # TODO 2 different masks
+
+    # new
+    nside = hp.get_nside(mask)
+    pixel_area_arcmin2 = hp.nside2pixarea(nside, degrees=True) * 3600
+    eff_area_arcmin2 = np.sum(mask[mask > 0]) * pixel_area_arcmin2
+    eff_area_deg2 = eff_area_arcmin2 / 60**2
+    deg2_in_sphere = (180 / np.pi) ** 2 * 4 * np.pi
+    fsky_mask = eff_area_deg2 / deg2_in_sphere
+
+    # old
+    # fsky_mask = np.mean(mask**2)  # TODO 2 different masks
+
     return ell_mask, cl_mask, fsky_mask
 
 
-def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
-    """Auxiliary routine to search the best lmax for all later sums on multipoles.
-
-    Computes the smallest lmax so that we reach convergence of the variance
-    ..math ::
-        var = \sum_\ell  \\frac{(2\ell + 1)}{4\pi} C_\ell^{mask}
-
-    Parameters
-    ----------
-    ell : array_like
-        Full vector of multipoles. As large as possible of shape (nell,)
-    cl_mask : array_like
-        power spectrum of the mask at the supplied multipoles of shape (nell,).
-    var_tol : float, default 0.05
-         Float that drives the target precision for the sum over angular multipoles.
-         Default is 5%. Lowering it means increasing the number of multipoles
-         thus increasing computational time.
-
-    Returns
-    -------
-    float
-        lmax
-    """
-
-    assert ell.ndim == 1, 'ell must be a 1-dimensional array'
-    assert cl_mask.ndim == 1, 'cl_mask must be a 1-dimensional array'
-    assert len(ell) == len(cl_mask), 'ell and cl_mask must have the same size'
-    lmaxofcl = ell.max()
-    summand = (2 * ell + 1) / (4 * np.pi) * cl_mask
-    var_target = np.sum(summand)
-    # Initialisation
-    lmax = 0
-    var_est = np.sum(summand[: (lmax + 1)])
-    while abs(var_est - var_target) / var_target > var_tol and lmax < lmaxofcl:
-        lmax = lmax + 1
-        var_est = np.sum(summand[: (lmax + 1)])
-        if debug:
-            print(
-                'In lmax search',
-                lmax,
-                abs(var_est - var_target) / var_target,
-                var_target,
-                var_est,
-            )
-    lmax = min(lmax, lmaxofcl)  # make sure we didnt overshoot at the last iteration
-    return lmax
 
 
 def generate_polar_cap_func(area_deg2, nside):

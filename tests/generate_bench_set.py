@@ -1,73 +1,66 @@
 """
 This script performs the following operations:
-1. Defines combinations of parameters to test with tuples and automatically generates
-the different possible combinations
-2. saves the set of cfg dicts to yaml files
-3. runs SB with these yaml files, generating a large set of benchmarks to use as
-an exhaustive reference to test the code against.
+1. Imports the cfg yaml file in the Spaceborne root directory (as a baseline cfg)
+2. It changes some settings (for example, to speed up the code), and stores this updated
+   baseline config in base_cfg
+1. Defines combinations of parameters to test with lists of dictionaries,
+   allowing for "zipped" iteration through sets of changes.
+2. Saves the set of cfg dicts to yaml files. in the folder
+    /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_cfg
+3. Runs SB with these yaml files, generating a set of benchmarks to use as
+   an exhaustive reference to test the code against. The benchmarks are stored in
+   /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output
+   [NOTE] the code will raise an error if the benchmark files are already
+   present. If this is the case, delete the existing ones or change the filenames for
+   the new bench files
+   [NOTE] the SB output is in
+   /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output/_sb_output,
+   but you don't need to care about this
 """
 
-import yaml
-import itertools
 import gc
-import os
-from copy import deepcopy
-import subprocess
 import json
+import os
+import subprocess
+from copy import deepcopy
 from datetime import datetime
 
+import yaml
 
-def generate_configs(base_config, param_space, output_dir):
+
+def generate_zipped_configs(base_config, changes_list, output_dir):
     """
-    Generate configs by:
-    1. First updating base_config with non-iterable params from param_space
-    2. Then varying only the parameters marked with tuples/lists in param_space
+    Generate configurations by applying a predefined list of changes
+    to the base configuration. Each item in changes_list is a dictionary
+    representing a set of specific updates to apply.
+
+    Args:
+        base_config (dict): The initial base configuration.
+        changes_list (list): A list of dictionaries, where each dictionary
+                             specifies a set of changes to apply to the base config.
+        output_dir (str): Directory to save the generated configuration YAML files.
+
+    Returns:
+        list: A list of full configuration dictionaries.
     """
     os.makedirs(output_dir, exist_ok=True)
 
-    # Step 1: Update base_config with non-iterable params from param_space
-    # (This ensures e.g., `cNG: False` in test_g_space overrides `cNG: True` in base_config)
-    def update_config(target, updates):
-        for key, value in updates.items():
-            if isinstance(value, dict):
-                if key not in target:
-                    target[key] = {}
-                update_config(target[key], value)
-            elif not isinstance(
-                value, (tuple, list)
-            ):  # Only update non-iterable values
-                target[key] = value
-
-    updated_base_config = deepcopy(base_config)
-    update_config(updated_base_config, param_space)
-
-    # Step 2: Extract parameters to vary (only those with tuples/lists)
-    flat_param_names = []
-    flat_param_values = []
-
-    for key, value in param_space.items():
-        if isinstance(value, dict):
-            for subkey, subvalue in value.items():
-                if isinstance(subvalue, (tuple, list)):
-                    flat_param_names.append((key, subkey))
-                    flat_param_values.append(subvalue)
-        elif isinstance(value, (tuple, list)):
-            flat_param_names.append(key)
-            flat_param_values.append(value)
-
-    # Generate all combinations
     configs = []
-    for combination in itertools.product(*flat_param_values):
-        config = deepcopy(updated_base_config)  # Start with updated base
 
-        # Apply the varying parameters
-        for param_name, param_value in zip(flat_param_names, combination):
-            if isinstance(param_name, tuple):
-                key, subkey = param_name
-                config[key][subkey] = param_value
-            else:
-                config[param_name] = param_value
+    for change_set in changes_list:
+        config = deepcopy(base_config)
 
+        # Function to recursively update the dictionary
+        def apply_changes(target_dict, changes_dict):
+            for key, value in changes_dict.items():
+                if isinstance(value, dict):
+                    if key not in target_dict or not isinstance(target_dict[key], dict):
+                        target_dict[key] = {}
+                    apply_changes(target_dict[key], value)
+                else:
+                    target_dict[key] = value
+
+        apply_changes(config, change_set)
         configs.append(config)
 
     return configs
@@ -143,19 +136,15 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
 
             # Run the main script with the current configuration
             start_time = datetime.now()
-            try:
-                result = subprocess.run(
-                    ['python', 'main.py', '--config', yaml_file],
-                    capture_output=False,
-                    text=True,
-                )
-                stdout = result.stdout
-                stderr = result.stderr
-                exit_code = result.returncode
-            except Exception as e:
-                stdout = ''
-                stderr = str(e)
-                exit_code = -1
+            result = subprocess.run(
+                ['python', 'main.py', '--config', yaml_file],
+                capture_output=False,
+                # text=True,
+                check=True,
+            )
+            stdout = result.stdout
+            stderr = result.stderr
+            exit_code = result.returncode
 
             end_time = datetime.now()
 
@@ -186,73 +175,150 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
 
     # Save the summary of all benchmark runs
     if output_dir:
-        with open(os.path.join(output_dir, 'benchmark_summary.json'), 'w') as f:
+        with open(
+            os.path.join(output_dir, 'benchmark_summary.json'), 'w', encoding='utf-8'
+        ) as f:
             json.dump(results, f, indent=2)
 
     return results
 
 
 # Example usage
-bench_set_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/tests/bench_set'
-bench_set_path_cfg = f'{bench_set_path}/cfg'
-bench_set_path_results = f'{bench_set_path}/results'
-output_path = f'{bench_set_path}/_outputs'
-sb_root_path = '/home/davide/Documenti/Lavoro/Programmi/Spaceborne'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+bench_set_path = f'{ROOT}/Spaceborne_bench'
+bench_set_path_cfg = f'{bench_set_path}/bench_set_cfg'
+bench_set_path_results = f'{bench_set_path}/bench_set_output'
+output_path = f'{bench_set_path_results}/_sb_output'
+sb_root_path = f'{ROOT}/Spaceborne'
 
 # start by importing a cfg file
-with open(f'{sb_root_path}/config.yaml', 'r') as f:
-    base_config = yaml.safe_load(f)
+with open(f'{sb_root_path}/config.yaml', 'r', encoding='utf-8') as f:
+    base_cfg = yaml.safe_load(f)
 
-# Base configuration (common parameters)
-base_config['covariance']['z_steps'] = 20
-base_config['covariance']['z_steps_trisp'] = 10
-base_config['covariance']['k_steps'] = 20
-base_config['misc']['test_numpy_inversion'] = False
-base_config['misc']['test_condition_number'] = False
-base_config['misc']['test_cholesky_decomposition'] = False
-base_config['misc']['test_symmetry'] = False
-base_config['misc']['save_output_as_benchmark'] = True
-base_config['ell_binning']['binning_type'] = 'log'
-base_config['ell_binning']['ell_max_WL'] = 1500
-base_config['ell_binning']['ell_max_GC'] = 1500
-base_config['ell_binning']['ell_max_3x2pt'] = 1500
+# Base configuration (common parameters) - these will be applied first
+base_cfg['covariance']['z_steps'] = 20
+base_cfg['covariance']['z_steps_trisp'] = 10
+base_cfg['covariance']['k_steps'] = 50
+# disable runtime tests for speed
+base_cfg['misc']['test_numpy_inversion'] = False
+base_cfg['misc']['test_condition_number'] = False
+base_cfg['misc']['test_cholesky_decomposition'] = False
+base_cfg['misc']['test_symmetry'] = False
+base_cfg['misc']['save_output_as_benchmark'] = True
+# the base cfg has systematics on
+base_cfg['C_ell']['has_IA'] = True
+base_cfg['C_ell']['has_rsd'] = True
+base_cfg['C_ell']['has_magnification_bias'] = True
+base_cfg['nz']['shift_nz'] = True
+
+base_cfg['ell_binning']['binning_type'] = 'ref_cut'
+base_cfg['ell_binning']['ell_max_WL'] = 1500
+base_cfg['ell_binning']['ell_max_GC'] = 1500
+base_cfg['ell_binning']['ell_max_3x2pt'] = 1500
+base_cfg['ell_binning']['ell_bins_ref'] = 20
+# base_cfg['C_ell']['cl_LL_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_ll.txt'
+# base_cfg['C_ell']['cl_GL_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_gl.txt'
+# base_cfg['C_ell']['cl_GG_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_gg.txt'
+base_cfg['C_ell']['which_gal_bias'] = 'FS2_polynomial_fit'
+base_cfg['C_ell']['which_mag_bias'] = 'FS2_polynomial_fit'
+
+# Define your "zipped" sets of changes as a list of dictionaries
+# Each dictionary represents one configuration to test
+test_g_space_zipped = [
+    # Configuration 1:
+    {
+        'covariance': {
+            'G': True,
+            'SSC': True,
+            'cNG': False,
+            'no_sampling_noise': True,
+            'use_KE_approximation': True,
+        },
+    },
+    # Configuration 2: use input files [TODO]
+    {
+        # 'C_ell': {
+        # 'use_input_cls': 'from_input',
+        # },
+        'covariance': {
+            'G': True,
+            'SSC': False,
+            'cNG': False,
+            'no_sampling_noise': False,
+            'use_KE_approximation': False,
+        },
+    },
+    # Configuration 3: no systematics
+    {
+        'C_ell': {
+            'has_IA': False,
+            'has_rsd': False,
+            'has_magnification_bias': False,
+        },
+        'nz': {'shift_nz': False},
+        'covariance': {
+            'G': True,
+            'SSC': False,
+            'cNG': False,
+            'no_sampling_noise': True,
+        },
+    },
+]
+
+test_ssc_space_zipped = [
+    {
+        'covariance': {
+            'G': False,
+            'SSC': True,
+            'cNG': False,
+            'which_pk_responses': 'halo_model',
+            'include_b2g': True,
+            'which_sigma2_b': 'full_curved_sky',
+            'include_terasawa_terms': True,
+            'use_KE_approximation': True,
+        }
+    },
+    {
+        'covariance': {
+            'G': False,
+            'SSC': True,
+            'cNG': False,
+            'which_pk_responses': 'separate_universe',
+            'include_b2g': False,
+            'which_sigma2_b': 'polar_cap_on_the_fly',
+            'include_terasawa_terms': False,
+            'use_KE_approximation': False,
+        }
+    },
+]
+
+test_cng_space_zipped = [
+    {
+        'covariance': {
+            'G': True,
+            'SSC': False,
+            'cNG': True,
+            'z_steps_trisp': 20,
+        }
+    },
+    # Add other cNG-specific configurations here if needed
+    {
+        'covariance': {
+            'G': True,
+            'SSC': False,
+            'cNG': True,
+            'z_steps_trisp': 30,  # Example of another cNG config
+        }
+    },
+]
 
 
-test_g_space = {'C_ell': {}, 'nz': {}, 'ell_binning': {}, 'covariance': {}, 'misc': {}}
-test_g_space['C_ell']['which_gal_bias'] = ('FS2_polynomial_fit', 'from_input')
-test_g_space['C_ell']['which_mag_bias'] = ('FS2_polynomial_fit', 'from_input')
-test_g_space['C_ell']['has_IA'] = (True, False)
-test_g_space['C_ell']['has_magnification_bias'] = (True, False)
-test_g_space['nz']['shift_nz'] = (True, False)
-test_g_space['covariance']['G'] = True
-test_g_space['covariance']['SSC'] = False
-test_g_space['covariance']['cNG'] = False
-test_g_space['covariance']['no_sampling_noise'] = (True, False)
+# Choose which parameter space to use for zipped iteration
+param_space_to_use = test_g_space_zipped
 
 
-test_ssc_space = {
-    'G': True,
-    'SSC': True,
-    'cNG': False,
-    'which_pk_responses': ('halo_model', 'separate_universe'),
-    'include_b2g': (True, False),
-    'which_sigma2_b': ('full_curved_sky', 'polar_cap_on_the_fly', 'flat_sky'),
-    'include_terasawa_terms': (True, False),
-    'use_KE_approximation': (True, False),
-}
-
-test_cng_space = {
-    'G': True,
-    'SSC': False,
-    'cNG': True,
-    'z_steps_trisp': 20,
-}
-
-# Choose which parameter space to use
-param_space = test_g_space
-
-# Generate configurations
-configs = generate_configs(base_config, param_space, bench_set_path_cfg)
+# Generate configurations using the new function
+configs = generate_zipped_configs(base_cfg, param_space_to_use, bench_set_path_cfg)
 print(f'Generated {len(configs)} configurations')
 
 # Save configurations to YAML files
@@ -262,5 +328,5 @@ yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path)
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)
 
 # Or you can manually run specific configurations
-for yaml_file in yaml_files[:3]:  # Run only the first 3 configs as an example
+for yaml_file in yaml_files[:1]:  # Run only the first config as an example
     print(f'To run a specific config: python main.py --config {yaml_file}')

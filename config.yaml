@@ -116,6 +116,10 @@ C_ell:
 nz:
     # Paths to source (for WL) and lens (for GCph) redshift distributions.
     # These must have shape (z_points, zbins + 1)
+    # where z_points is the number of 
+    # redshift values over which the n(z) is measured, and format .txt or .dat
+    # OR
+    # as .fits files, following the LE3/Heracles/euclidlib format
     nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
     nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
 

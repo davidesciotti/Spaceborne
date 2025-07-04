@@ -1361,7 +1361,6 @@ if compute_ccl_ssc:
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
     ccl_obj.set_sigma2_b(
         z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
-        fsky=cfg['mask']['fsky'],
         which_sigma2_b=which_sigma2_b,
         mask_obj=mask_obj,
     )

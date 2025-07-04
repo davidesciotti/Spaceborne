@@ -1312,6 +1312,8 @@ if compute_sb_ssc:
                 k_grid_s2b = k_grid
             elif s2b_integration_scheme == 'simps':
                 k_grid_s2b = k_grid_s2b_simps
+            elif s2b_integration_scheme == 'fft':
+                k_grid_s2b = k_grid_s2b_simps
             else:
                 raise ValueError(
                     f'Unknown sigma2_b_integration_scheme: {s2b_integration_scheme}'

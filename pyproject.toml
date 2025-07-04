@@ -14,3 +14,14 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff.format]
 # Prefer single quotes over double quotes.
 quote-style = "single"
+
+[tool.pylint]
+disable = [
+  "C0302",  # Too many lines
+  "C0111",  # Missing docstring
+  "W0621",  # Redefining name from outer scope
+  "C0415",  # Import outside top-level
+  "C0301",  # Line too long
+  "C0412",  # Ungrouped imports
+  "C0103",  # Constant naming
+]

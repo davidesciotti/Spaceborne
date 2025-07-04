@@ -1308,6 +1308,10 @@ if compute_sb_ssc:
                 k_grid_s2b = k_grid
             elif s2b_integration_scheme == 'simps':
                 k_grid_s2b = k_grid_s2b_simps
+            else:
+                raise ValueError(
+                    f'Unknown sigma2_b_integration_scheme: {s2b_integration_scheme}'
+                )
 
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
@@ -1399,7 +1403,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
         ax[0].set_title('log10 cov')
         ax[1].set_title('corr')
         fig.suptitle(f'{cov_name.replace("cov_", "")}', y=0.9)
-        
+
 for key, cov in cov_dict.items():
     probe = key.split('_')[1]
     which_ng_cov = key.split('_')[2]
@@ -1611,12 +1615,8 @@ for cov_name, cov in cov_dict.items():
                 )
 
         if cfg['misc']['test_symmetry']:
-            if not np.allclose(
-                cov, cov.T, atol=0, rtol=1e-7
-            ):
-                print(
-                    f'Warning: Matrix {cov_name} is not symmetric. atol=0, rtol=1e-7'
-                )
+            if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
+                print(f'Warning: Matrix {cov_name} is not symmetric. atol=0, rtol=1e-7')
             else:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
 

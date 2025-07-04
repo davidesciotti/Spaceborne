@@ -14,7 +14,7 @@ To run these tests:
     4.1  In particular, in main.py, comment out the lines:
            # cfg['misc']['save_output_as_benchmark'] = ...
            # cfg['misc']['bench_filename'] = ...
-    4.2  If you're testing the main branch, don't worry about 
+    4.2  If you're testing the main branch, don't worry about
          config/example_config separation (UPDATE 15/05/2025: I removed example_config)
 5.  Open this script and make sure you indicate the relevant benchmark file name
     in the `bench_names` list, then run it.
@@ -37,7 +37,6 @@ import yaml
 # # get working directory with os
 # main_script_path = os.path.abspath(__file__)
 # main_script_dir = os.path.dirname(main_script_path)
-
 
 
 def test_main_script(test_cfg_path):

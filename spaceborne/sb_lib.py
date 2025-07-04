@@ -479,6 +479,7 @@ def check_interpolate_input_tab(
     """
     assert input_tab.shape[1] == zbins + 1, (
         'The input table should have shape (z_points, zbins + 1)'
+        f', but has shape {input_tab.shape} and zbins = {zbins}'
     )
 
     # Perform cubic spline interpolation

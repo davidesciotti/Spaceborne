@@ -184,6 +184,11 @@ class SpaceborneConfigChecker:
                 'cfg["namaster"]["use_namaster"] or '
                 'cfg["sample_covariance"]["compute_sample_cov"] must be True'
             )
+        if self.cfg['namaster']['use_namaster']:
+            assert self.cfg['ell_binning']['binning_type'] != 'ref_cut', (
+                'ref_cut case incompatible with nmt for the moment. '
+                'Please use a different binning type.'
+            )
 
     def run_all_checks(self) -> None:
         self.check_ell_cuts()

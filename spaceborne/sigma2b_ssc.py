@@ -13,15 +13,29 @@ from spaceborne import sb_lib as sl
 from scipy.fft import rfft, irfft, fft
 
 
-# * pylevin hyperparameters
-n_sub = 12  # number of collocation points in each bisection
-n_bisec_max = 100  # maximum number of bisections used
-rel_acc = 1e-5  # relative accuracy target
-boost_bessel = True  # should the bessel functions be calculated with boost
-# instead of GSL, higher accuracy at high Bessel orders
-verbose = True  # should the code talk to you?
-logx = True  # Tells the code to create a logarithmic spline in x for f(x)
-logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)
+class Sigma2bSSC:
+    def __init__(self, cfg, pvt_cfg, ccl_obj, mask_obj):
+        self.cfg = cfg
+        self.pvt_cfg = pvt_cfg
+        self.ccl_obj = ccl_obj
+        self.mask_obj = mask_obj
+
+    def set_levin_precision(self):
+        # * pylevin hyperparameters
+        self.n_sub = 12  # number of collocation points in each bisection
+        self.n_bisec_max = 100  # maximum number of bisections used
+        self.rel_acc = 1e-5  # relative accuracy target
+        # should the bessel functions be calculated with boost
+        # instead of GSL, higher accuracy at high Bessel orders
+        self.boost_bessel = True
+        self.verbose = True  # should the code talk to you?
+        self.logx = True  # Tells the code to create a logarithmic spline in x for f(x)
+        self.logy = (
+            True  # Tells the code to create a logarithmic spline in y for y = f(x)
+        )
+        
+    def process_s2b(self):
+        
 
 
 # This is defined globally because of parallelization issues

@@ -402,10 +402,7 @@ def get_luminosity_ratio_interpolator(lumin_ratio_2d_arr):
 
 
 def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
-    is_auto_spectrum = False
-    if wf_A == wf_B:
-        is_auto_spectrum = True
-
+    is_auto_spectrum = wf_A == wf_B
     nbl = len(ell)
 
     if p_of_k_a is None:
@@ -420,7 +417,7 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
         for ell in range(nbl):
             cl_3D[ell, :, :] = sl.symmetrize_2d_array(cl_3D[ell, :, :])
 
-    elif not is_auto_spectrum:
+    else:
         # be very careful with the order of the zi, zj loops: you have to revert them in NESTED list comprehensions to
         # have zi as first axis and zj as second axis (the code below is tested and works)
         cl_3D = np.array(
@@ -439,9 +436,6 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
                 for zi in range(zbins)
             ]
         ).transpose(2, 0, 1)  # transpose to have ell as first axis
-    else:
-        raise ValueError('is_auto_spectrum must be either True or False')
-
     return cl_3D
 
 

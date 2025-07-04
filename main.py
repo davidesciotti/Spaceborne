@@ -1390,7 +1390,7 @@ cov_dict = cov_obj.cov_dict
 
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):
-    for cov_name, cov in cov_dict:
+    for cov_name, cov in cov_dict.items():
         fig, ax = plt.subplots(1, 2, figsize=(10, 6))
         ax[0].matshow(np.log10(cov))
         ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
@@ -1400,8 +1400,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
         ax[0].set_title('log10 cov')
         ax[1].set_title('corr')
         fig.suptitle(f'{cov_name.replace("cov_", "")}', y=0.9)
-
-for key, cov in cov_dict:
+        
+for key, cov in cov_dict.items():
     probe = key.split('_')[1]
     which_ng_cov = key.split('_')[2]
     ndim = key.split('_')[3]

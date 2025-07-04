@@ -39,7 +39,6 @@ import yaml
 # main_script_dir = os.path.dirname(main_script_path)
 
 
-
 def test_main_script(test_cfg_path):
     # Run the main script with the test config
     subprocess.run(['python', main_script_path, '--config', test_cfg_path], check=True)
@@ -170,3 +169,6 @@ for bench_name in bench_yaml_names:
     for file_path in glob.glob(f'{temp_output_folder}/*'):
         if os.path.isfile(file_path):
             os.remove(file_path)
+
+
+print('Done.')

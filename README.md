@@ -26,6 +26,7 @@ conda env create -f environment.yaml
 conda activate spaceborne
 pip install .
 ```
+**As the code is evolving quite quickly at the moment, please make sure to check for new [releases](https://github.com/davidesciotti/Spaceborne/releases) periodically**
 
 🐍 note: using `mamba` instead of `conda` in the first line will significantly speed up the environment creation. To install `mamba`, run `conda install mamba` in your `base` environment.
 

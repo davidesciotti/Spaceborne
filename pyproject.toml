@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "Spaceborne"
 readme = "README.md"
-version = "2025.06.0"
+version = "2025.07.0"
 license = "MIT License"
 description = "Code to compute the covariance matrix for the 3x2pt photometric survey in harmonic and real space."
 authors = ["davidesciotti <84071067+davidesciotti@users.noreply.github.com>"]

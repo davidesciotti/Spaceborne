@@ -152,7 +152,7 @@ def plot_cls():
 
 
 def check_ells_in(ells_in, ells_out):
-    if len(ells_in) < len(ells_out) // 2:
+    if len(ells_in) < len(ells_out) // 1.5:  # random fraction
         warnings.warn(
             f'The input cls are computed over {len(ells_in)} ell points in '
             f'[{ells_in[0]}, {ells_in[-1]}], but for the partial-sky covariance'
@@ -225,13 +225,14 @@ cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/P
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
 
-if 'save_output_as_benchmark' not in cfg['misc']:
+if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
-if 'bench_filename' not in cfg['misc']:
     cfg['misc']['bench_filename'] = (
         '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3'
+        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3_nmt'
     )
+
+
 
 cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
@@ -1310,6 +1311,8 @@ if compute_sb_ssc:
             if s2b_integration_scheme == 'levin':
                 k_grid_s2b = k_grid
             elif s2b_integration_scheme == 'simps':
+                k_grid_s2b = k_grid_s2b_simps
+            elif s2b_integration_scheme == 'fft':
                 k_grid_s2b = k_grid_s2b_simps
             else:
                 raise ValueError(

@@ -24,7 +24,7 @@ intrinsic_alignment:
     bIA: 0.0        # Type: float. \beta_{IA}
     CIA: 0.0134     # Type: float.
     z_pivot_IA: 0   # Type: float.
-    lumin_ratio_filename: null  # Type: str | None. null if not used, otherwise path to the file (e.g. /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/scaledmeanlum-E2Sa.dat)
+    lumin_ratio_filename: null  # Type: str | None. null if not used, otherwise path to the file (e.g. ./input/scaledmeanlum-E2Sa.dat)
 
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
@@ -188,7 +188,7 @@ covariance:
     coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
-    # of the auto-probe (LL, GG) zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
+    # of the auto-spectra (LL, GG) zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
     triu_tril: triu # Type: str. Options: ['triu', 'tril']
     
     # Within the upper or lower triangle, count indices in
@@ -323,4 +323,4 @@ misc:
     test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     output_path: ./output # Type: str. Path to the output directory
-    save_figs: False # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
+    save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

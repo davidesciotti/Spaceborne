@@ -1,9 +1,17 @@
 # ! ####################################################################################
-# ! Configuration file for 3x2pt RR2 covariance. Some caveats
+# ! Configuration file for 3x2pt RR2 covariance. Some caveats:
 # ! - double-check the cosmology and the value of HMCode_logT_AGN
-# ! - there is no dz shift, no magnification bias, no m-bias for the moment
-# ! [Note for me]: send Guada the cov in the updated fmt
-# ! [Missing]: footprint, sigma_eps, n_eff
+# ! - there is no dz shift, magnification bias, galaxy bias(check polynomial coeffs), m-bias and rsds 
+# !   for the moment
+# ! - You should compute simgma_eps and n_eff from the catalogues using Laila's function
+# ! - The input Cls should be the theoretical, (ideally unbinned, otherwise finely binned) *decoupled* Cls
+# ! - log ell binning could be problematic for the partial-sky (decoupled) covariance
+
+# ! tip: for testing purposes, the spin0 approximation (in the namaster cfg section) seems to work well
+# !      and speeds up the computation quite a lot
+# ! tip: from v2027.07.0 you can input the n(z) and the Cls directly in the euclidlib format
+# ! tip: from v2027.07.0 you can smooth the n(z) distribution at runtime
+# ! tip: from v2027.07.0 you can save the plots in the output folder (check 'misc')
 # ! ####################################################################################
 
 
@@ -80,11 +88,9 @@ C_ell:
     # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
     # section of this cfg file.
     use_input_cls: True  # Type: bool
-
     cl_LL_path: /home/davide/Documenti/Lavoro/Programmi/common_data/RR2/Guada/theory-spectra-unconvolved-unbinned.fits # Type: str. Path to the shear-shear angular PS. 
     cl_GL_path: /home/davide/Documenti/Lavoro/Programmi/common_data/RR2/Guada/theory-spectra-unconvolved-unbinned.fits # Type: str. Path to the galaxy-shear angular PS. 
     cl_GG_path: /home/davide/Documenti/Lavoro/Programmi/common_data/RR2/Guada/theory-spectra-unconvolved-unbinned.fits # Type: str. Path to the galaxy-galaxy angular PS. 
-
 
     # Which galaxy and magnification bias to use. Options:
     # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -211,6 +217,10 @@ covariance:
     # In the case of the single probes, this is an array of shape
     # (ell_bins, ell_bins, zbins, zbins, zbins, zbins).
     save_full_cov: False # Type: bool
+
+    # Whether to save the covariance matrix as a euclidlib-compatible .fits file
+    # [NOTE: NOT IMPLEMENTED YET]
+    save_cov_euclidlib_fmt: False # Type: bool
     
     # Whether to split the Gaussian covariance term into the
     # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms

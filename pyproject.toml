@@ -24,4 +24,5 @@ disable = [
   "C0301",  # Line too long
   "C0412",  # Ungrouped imports
   "C0103",  # Constant naming
+  "W0201",  # Attribute-defined-outside-init
 ]

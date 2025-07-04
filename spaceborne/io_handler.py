@@ -157,7 +157,7 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     }
 
     # just a check
-    print('Translating covariance from Spaceborne to Heracles format...')
+    print('Translating covariance from Spaceborne to euclidlib format...')
 
     assert cov_10d.ndim == 10, 'input covariance is not 10-dimensional'
     assert (

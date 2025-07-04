@@ -1457,6 +1457,9 @@ for key, cov in cov_dict.items():
             )
             save_func(f'{output_path}/cov_{abcd_str}_TOT_6D', cov_tot_6d)
 
+if cfg['covariance']['save_cov_euclidlib_fmt']:
+    raise ValueError('not implemented yet')
+
 print(f'Covariance matrices saved in {output_path}\n')
 
 # save cfg file
@@ -1576,6 +1579,7 @@ if cfg['misc']['save_output_as_benchmark']:
         metadata=metadata,
     )
 
+# ! TESTS
 for cov_name, cov in cov_dict.items():
     if '3x2pt' in cov_name and 'tot' in cov_name:
         if cfg['misc']['test_condition_number']:

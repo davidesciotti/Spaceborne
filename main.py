@@ -1463,6 +1463,8 @@ if cfg['misc']['save_output_as_benchmark']:
     # better to work with empty arrays than None
     if bnt_matrix is None:
         _bnt_matrix = np.array([])
+        
+    _mag_bias_2d = ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
 
     # I don't fully remember why I don't save these
     _ell_dict = vars(ell_obj)
@@ -1509,7 +1511,7 @@ if cfg['misc']['save_output_as_benchmark']:
         **_ell_dict,
         bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
-        mag_bias_2d=ccl_obj.mag_bias_2d,
+        mag_bias_2d=_mag_bias_2d,
         wf_delta=ccl_obj.wf_delta_arr,
         wf_gamma=ccl_obj.wf_gamma_arr,
         wf_ia=ccl_obj.wf_ia_arr,

@@ -49,7 +49,7 @@ def sigma2_z1z2_wrap_parallel(
     Parallelized version of sigma2_z1z2_wrap using joblib.
     """
 
-    print('Computing sigma^2_b(z_1, z_2). This may take a while...')
+    print('Computing sigma^2_b(z_1, z_2)...')
     start = time.perf_counter()
 
     if integration_scheme == 'simps':

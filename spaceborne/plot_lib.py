@@ -79,6 +79,7 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None):
                     alpha=1,
                     ls='--' if label == 'input' else '-',
                     # zorder=2.0,
+                    lw=1.5,
                 )
             ax[zi, zj].axhline(0.0, c='k', lw=0.8, zorder=0)
             ax[zi, zj].tick_params(axis='both', which='both', direction='in')
@@ -107,7 +108,7 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None):
         if np.min([ells_dict[key] for key in ells_dict]) > 5
         else np.min([ells_dict[key] for key in cls_dict])
     )  # this is admittedly a bit arbitrary
-    ax[0, 0].set_ylim(min_cl - 5 * min_cl, 5 * max_cl)
+    ax[0, 0].set_ylim(min_cl - np.abs(5 * min_cl), 5 * max_cl)
     ax[0, 0].set_xlim(min_ell, 2 * max_ell)
 
     fig.subplots_adjust(

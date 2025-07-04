@@ -233,7 +233,6 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
     )
 
 
-
 cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
 # Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]

@@ -2,19 +2,19 @@ import argparse
 import os
 import pprint
 import sys
+import contextlib
 import time
 import warnings
 from copy import deepcopy
 from functools import partial
 from importlib.util import find_spec
 from scipy.ndimage import gaussian_filter1d
-import contextlib
+from scipy.interpolate import CubicSpline, RectBivariateSpline
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from scipy.interpolate import CubicSpline, RectBivariateSpline
 from spaceborne import (
     bnt,
     cl_utils,
@@ -179,7 +179,7 @@ magnification_bias_fit_fiducials = np.array(
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
 output_path = cfg['misc']['output_path']
-clr = cm.rainbow(np.linspace(0, 1, zbins))
+clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
 shift_nz = cfg['nz']['shift_nz']
 
 # ! check/create paths
@@ -225,11 +225,13 @@ cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/P
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
 
-cfg['misc']['save_output_as_benchmark'] = False
-cfg['misc']['bench_filename'] = (
-    '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-    '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3'
-)
+if 'save_output_as_benchmark' not in cfg['misc']:
+    cfg['misc']['save_output_as_benchmark'] = False
+if 'bench_filename' not in cfg['misc']:
+    cfg['misc']['bench_filename'] = (
+        '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
+        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3'
+    )
 
 cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
@@ -381,7 +383,7 @@ k_limber_func = partial(
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
-z_grid = np.linspace(  # fmt: skip
+z_grid = np.linspace(
     cfg['covariance']['z_min'], 
     cfg['covariance']['z_max'], 
     cfg['covariance']['z_steps']
@@ -397,9 +399,9 @@ k_grid = np.logspace(
     cfg['covariance']['k_steps'],
 )
 # in this case we need finer k binning because of the bessel functions
-k_grid_s2b_simps = np.logspace(  # fmt: skip
-    cfg['covariance']['log10_k_min'], 
-    cfg['covariance']['log10_k_max'], 
+k_grid_s2b_simps = np.logspace(
+    cfg['covariance']['log10_k_min'],
+    cfg['covariance']['log10_k_max'],
     k_steps_sigma2
 )  # fmt: skip
 if len(z_grid) < 1000:
@@ -964,6 +966,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     start_time = time.perf_counter()
 
     # * 1. save ingredients in ascii format
+    # TODO this should me moved to io_handler.py
     oc_path = f'{output_path}/OneCovariance'
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
@@ -1490,6 +1493,7 @@ for probe in ['WL', 'GC', '3x2pt']:
 
 if cfg['misc']['save_output_as_benchmark']:
     # some of the test quantities are not defined in some cases
+    # better to work with empty arrays than None
     if not compute_sb_ssc:
         sigma2_b = np.array([])
         dPmm_ddeltab = np.array([])
@@ -1499,9 +1503,10 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
 
-    # better to work with empty arrays than None
-    if bnt_matrix is None:
-        _bnt_matrix = np.array([])
+    _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
+    _mag_bias_2d = (
+        ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
+    )
 
     # I don't fully remember why I don't save these
     _ell_dict = vars(ell_obj)
@@ -1548,7 +1553,7 @@ if cfg['misc']['save_output_as_benchmark']:
         **_ell_dict,
         bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
-        mag_bias_2d=ccl_obj.mag_bias_2d,
+        mag_bias_2d=_mag_bias_2d,
         wf_delta=ccl_obj.wf_delta_arr,
         wf_gamma=ccl_obj.wf_gamma_arr,
         wf_ia=ccl_obj.wf_ia_arr,

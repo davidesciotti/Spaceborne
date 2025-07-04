@@ -306,6 +306,8 @@ class IOHandler:
                     'use the .txt, .dat, or .fits extensions (and all extensions must be '
                     'the same)'
                 )
+        else:
+            self.cl_fmt = None
 
     def load_nz(self):
         """Wrapper for loading nz files"""
@@ -365,3 +367,13 @@ class IOHandler:
         self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
             self.cl_cfg['cl_GG_path'], 'POS', 'POS'
         )
+
+    def check_ells_in(self, ell_obj):
+        """make sure ells are sorted and unique for spline interpolation"""
+        for _ells in [  # fmt: skip
+            self.ells_WL_in, ell_obj.ells_WL,
+            self.ells_XC_in, ell_obj.ells_XC,
+            self.ells_GC_in, ell_obj.ells_GC,
+        ]:  # fmt: skip
+            assert np.all(np.diff(_ells)) > 0, 'ells are not sorted'
+            assert len(np.unique(_ells)) == len(_ells), 'ells are not unique'

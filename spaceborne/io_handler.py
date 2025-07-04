@@ -1,11 +1,11 @@
 """Class for reading in data in various formats"""
 
-import numpy as np
 import itertools
+import numpy as np
 
 
 def load_nz_el(nz_filename):
-    """basically, tis function turns the nz dict into a np array"""
+    """basically, this function turns the nz dict into a np array"""
     import euclidlib as el
 
     z, nz = el.photo.redshift_distributions(nz_filename)
@@ -228,10 +228,35 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
 
 
 class IOHandler:
+    """Handles loading of input data (n(z) and Cls) from various file formats.
+    
+    Supports both Spaceborne (.txt/.dat) and Euclidlib (.fits) formats,
+    automatically detecting the format based on file extensions.
+    
+    Args:
+        cfg: Configuration dictionary
+        pvt_cfg: Private configuration dictionary
+    """
     def __init__(self, cfg, pvt_cfg):
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
         self.cl_cfg = cfg['C_ell']
+
+        # Initialize attributes
+        self.zgrid_nz_src = None
+        self.zgrid_nz_lns = None
+        self.nz_src = None
+        self.nz_lns = None
+
+        self.ells_WL_in = None
+        self.cl_ll_3d_in = None
+        self.ells_XC_in = None
+        self.cl_gl_3d_in = None
+        self.ells_GC_in = None
+        self.cl_gg_3d_in = None
+
+        self.nz_fmt = None
+        self.cl_fmt = None
 
     def print_cl_path(self):
         """
@@ -268,9 +293,9 @@ class IOHandler:
 
         else:
             raise ValueError(
-                'Unsupported or inconsistent format for input nz: all input files should'
-                'use the .txt, .dat, or .fits extensions (and all extensions must be '
-                'the same)'
+                'Unsupported or inconsistent format for input nz: all input files '
+                'should use the .txt, .dat, or .fits extensions (and all extensions '
+                'must be the same)'
             )
 
     def get_cl_fmt(self):
@@ -302,9 +327,9 @@ class IOHandler:
 
             else:
                 raise ValueError(
-                    'Unsupported or inconsistent format for input cls: all input files should'
-                    'use the .txt, .dat, or .fits extensions (and all extensions must be '
-                    'the same)'
+                    'Unsupported or inconsistent format for input cls: all input files '
+                    'should use the .txt, .dat, or .fits extensions (and all extensions'
+                    ' must be the same)'
                 )
         else:
             self.cl_fmt = None
@@ -375,5 +400,5 @@ class IOHandler:
             self.ells_XC_in, ell_obj.ells_XC,
             self.ells_GC_in, ell_obj.ells_GC,
         ]:  # fmt: skip
-            assert np.all(np.diff(_ells)) > 0, 'ells are not sorted'
+            assert np.all(np.diff(_ells) > 0), 'ells are not sorted'
             assert len(np.unique(_ells)) == len(_ells), 'ells are not unique'

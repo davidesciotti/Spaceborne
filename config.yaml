@@ -34,7 +34,7 @@ extra_parameters:
     camb:
         halofit_version: mead2020_feedback # Type: str
         kmax: 100 # Type: float | int
-        HMCode_logT_AGN: 8 # Type: float
+        HMCode_logT_AGN: 7.75 # Type: float
         num_massive_neutrinos: 1 # Type: int
         dark_energy_model: ppf # Type: str
 
@@ -68,6 +68,8 @@ C_ell:
     # The Cls should be passed in a .txt, .dat or .ascii file with columns corresponding to 
     # ell, zi, zj, Cl[ell, zi, zj]
     # with `ell` the ell value, zi the i-th tomographic bin index, and zj the j-th tomographic bin index.
+    # OR 
+    # as .fits files, following the LE3/Heracles/euclidlib format
     # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
     # section of this cfg file.
     use_input_cls: False  # Type: bool
@@ -123,12 +125,19 @@ nz:
     ngal_sources: [8.09216, 8.09215, 8.09215]  # Type: list[float]
     ngal_lenses: [8.09216, 8.09215, 8.09215]  # Type: list[float]
 
+    # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
+    #        generally better to perform all of these steps outside of Spaceborne and to avoid any
+    #        modification to the n(z) by setting shift_nz and smooth_nz to False.
+    # [NOTE] The cuts defined by clip_zmin/zmax are only applied if shift_nz is True
     shift_nz: False  # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
     dzWL: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
     dzGC: [-0.008848, 0.051368, 0.059484]  # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
     normalize_shifted_nz: True  # Type: bool. Whether to normalize the shifted n(z) distributions
     clip_zmin: 0  # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
     clip_zmax: 3  # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
+
+    smooth_nz: False  # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
+    sigma_smoothing: 10  # Type: int | float. Standard deviation of the Gaussian kernel.
 
 
 mask:

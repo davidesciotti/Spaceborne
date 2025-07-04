@@ -2,19 +2,19 @@ import argparse
 import os
 import pprint
 import sys
+import contextlib
 import time
 import warnings
 from copy import deepcopy
 from functools import partial
 from importlib.util import find_spec
-import gc
-
+from scipy.ndimage import gaussian_filter1d
+from scipy.interpolate import CubicSpline, RectBivariateSpline
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
-from scipy.interpolate import CubicSpline, RectBivariateSpline
 from spaceborne import (
     bnt,
     cl_utils,
@@ -26,19 +26,20 @@ from spaceborne import (
     responses,
     sigma2_SSC,
     wf_cl_lib,
+    io_handler,
 )
 from spaceborne import covariance as sb_cov
 from spaceborne import onecovariance_interface as oc_interface
 from spaceborne import sb_lib as sl
+from spaceborne import plot_lib as sb_plt
 
-try:
+
+with contextlib.suppress(ImportError):
     import pyfiglet
 
     text = 'Spaceborne'
     ascii_art = pyfiglet.figlet_format(text, font='slant')
     print(ascii_art)
-except ImportError:
-    pass
 
 
 # Get the current script's directory
@@ -93,8 +94,11 @@ def load_config(_config_path):
 
 
 def plot_cls():
-    fig, ax = plt.subplots(1, 3, figsize=(13, 4))
-    plt.tight_layout()
+    _, ax = plt.subplots(1, 3, figsize=(15, 4))
+    # plt.tight_layout()
+
+    # cls are (for the moment) in the ccl obj, whether they are imported from input
+    # files or not
     for zi in range(zbins):
         zj = zi
         kw = dict(c=clr[zi], ls='-', marker='.')
@@ -102,18 +106,19 @@ def plot_cls():
         ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
         ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
 
+    # if input cls are used, then overplot the sb predictions on top
     if cfg['C_ell']['use_input_cls']:
         for zi in range(zbins):
             zj = zi
-            kw = dict(c=clr[zi], ls='', marker='x')
-            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **kw)
-            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **kw)
-            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **kw)
+            sb_kw = dict(c=clr[zi], ls='', marker='x')
+            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **sb_kw)
+            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **sb_kw)
+            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **sb_kw)
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[
-                plt.Line2D([], [], color='gray', ls='-', label='SB'),
-                plt.Line2D([], [], color='gray', ls='', marker='x', label='Input'),
+                plt.Line2D([], [], label='input', **kw),
+                plt.Line2D([], [], label='SB', **sb_kw),
             ],
             loc='upper right',
             fontsize=16,
@@ -174,7 +179,7 @@ magnification_bias_fit_fiducials = np.array(
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
 output_path = cfg['misc']['output_path']
-clr = cm.rainbow(np.linspace(0, 1, zbins))
+clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
 shift_nz = cfg['nz']['shift_nz']
 
 # ! check/create paths
@@ -226,6 +231,7 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
         '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
         '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3_nmt'
     )
+
 
 
 cfg['ell_cuts'] = {}
@@ -378,7 +384,7 @@ k_limber_func = partial(
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
-z_grid = np.linspace(  # fmt: skip
+z_grid = np.linspace(
     cfg['covariance']['z_min'], 
     cfg['covariance']['z_max'], 
     cfg['covariance']['z_steps']
@@ -394,9 +400,9 @@ k_grid = np.logspace(
     cfg['covariance']['k_steps'],
 )
 # in this case we need finer k binning because of the bessel functions
-k_grid_s2b_simps = np.logspace(  # fmt: skip
-    cfg['covariance']['log10_k_min'], 
-    cfg['covariance']['log10_k_max'], 
+k_grid_s2b_simps = np.logspace(
+    cfg['covariance']['log10_k_min'],
+    cfg['covariance']['log10_k_max'],
     k_steps_sigma2
 )  # fmt: skip
 if len(z_grid) < 1000:
@@ -465,10 +471,12 @@ pvt_cfg = {
     'jl_integrator_path': './spaceborne/julia_integrator.jl',
 }
 
+# instantiate data handler class
+io_obj = io_handler.IOHandler(cfg, pvt_cfg)
+
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
 # ! ====================================================================================
-
 
 # ! ===================================== \ells ========================================
 ell_obj = ell_utils.EllBinning(cfg)
@@ -491,19 +499,16 @@ pvt_cfg['fsky'] = mask_obj.fsky
 
 
 # ! ===================================== n(z) =========================================
-# The shape of these input files should be `(zpoints, zbins + 1)`, with `zpoints` the
-# number of points over which the distribution is measured and zbins the number of
-# redshift bins. The first column should contain the redshifts values.
-# We also define:
-# - `nz_full`: nz table including a column for the z values
-# - `nz`:      nz table excluding a column for the z values
-# - `nz_original`: nz table as imported (it may be subjected to shifts later on)
-nz_src_tab_full = np.genfromtxt(cfg['nz']['nz_sources_filename'])
-nz_lns_tab_full = np.genfromtxt(cfg['nz']['nz_lenses_filename'])
-zgrid_nz_src = nz_src_tab_full[:, 0]
-zgrid_nz_lns = nz_lns_tab_full[:, 0]
-nz_src = nz_src_tab_full[:, 1:]
-nz_lns = nz_lns_tab_full[:, 1:]
+# load
+io_obj.get_nz_fmt()
+io_obj.load_nz()
+
+# assign to variables
+zgrid_nz_src = io_obj.zgrid_nz_src
+zgrid_nz_lns = io_obj.zgrid_nz_lns
+nz_src = io_obj.nz_src
+nz_lns = io_obj.nz_lns
+
 
 # nz may be subjected to a shift: save the original arrays
 nz_unshifted_src = nz_src
@@ -536,6 +541,16 @@ if shift_nz:
         clip_max=cfg['nz']['clip_zmax'],
         plt_title='$n_i(z)$ lenses shifts ',
     )
+
+if cfg['nz']['smooth_nz']:
+    for zi in range(zbins):
+        nz_src[:, zi] = gaussian_filter1d(
+            nz_src[:, zi], sigma=cfg['nz']['sigma_smoothing']
+        )
+        nz_lns[:, zi] = gaussian_filter1d(
+            nz_lns[:, zi], sigma=cfg['nz']['sigma_smoothing']
+        )
+
 
 ccl_obj.set_nz(
     nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
@@ -730,23 +745,20 @@ ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
 if cfg['C_ell']['use_input_cls']:
     # TODO NMT here you should ask the user for unbinned cls
 
-    print('Loading input Cls')
-    cl_ll_tab = np.genfromtxt(cfg['C_ell']['cl_LL_path'])
-    cl_gl_tab = np.genfromtxt(cfg['C_ell']['cl_GL_path'])
-    cl_gg_tab = np.genfromtxt(cfg['C_ell']['cl_GG_path'])
+    # load input cls
+    io_obj.get_cl_fmt()
+    io_obj.load_cls()
 
-    ells_WL_in, cl_ll_3d_in = sl.import_cl_tab(cl_ll_tab)
-    ells_XC_in, cl_gl_3d_in = sl.import_cl_tab(cl_gl_tab)
-    ells_GC_in, cl_gg_3d_in = sl.import_cl_tab(cl_gg_tab)
+    # check ells before spline interpolation
+    io_obj.check_ells_in(ell_obj)
 
-    # make sure ells are sorted and unique for spline interpolation
-    for _ells in [  # fmt: skip
-        ells_WL_in, ell_obj.ells_WL,
-        ells_XC_in, ell_obj.ells_XC,
-        ells_GC_in, ell_obj.ells_GC,
-    ]:  # fmt: skip
-        assert np.all(np.diff(_ells)) > 0, 'ells are not sorted'
-        assert len(np.unique(_ells)) == len(_ells), 'ells are not unique'
+    print(f'Using input Cls for LL from file\n{cfg["C_ell"]["cl_LL_path"]}')
+    print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_path"]}')
+    print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_path"]}')
+
+    ells_WL_in, cl_ll_3d_in = io_obj.ells_WL_in, io_obj.cl_ll_3d_in
+    ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in
+    ells_GC_in, cl_gg_3d_in = io_obj.ells_GC_in, io_obj.cl_gg_3d_in
 
     # interpolate input Cls on the desired ell grid
     cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
@@ -775,7 +787,36 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
 ].transpose(0, 2, 1)
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
 
+# cls plots
 plot_cls()
+
+# this is a lil bit convoluted: the cls used by the code (wither from input or from sb)
+# are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
+# is True and are only plotted in that case
+_key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
+_ell_dict_wl = {_key: ell_obj.ells_WL}
+_ell_dict_xc = {_key: ell_obj.ells_XC}
+_ell_dict_gc = {_key: ell_obj.ells_GC}
+_cl_dict_wl = {_key: ccl_obj.cl_ll_3d}
+_cl_dict_xc = {_key: ccl_obj.cl_gl_3d}
+_cl_dict_gc = {_key: ccl_obj.cl_gg_3d}
+if cfg['C_ell']['use_input_cls']:
+    _ell_dict_wl['SB'] = ell_obj.ells_WL
+    _ell_dict_xc['SB'] = ell_obj.ells_XC
+    _ell_dict_gc['SB'] = ell_obj.ells_GC
+    _cl_dict_wl['SB'] = cl_ll_3d_sb
+    _cl_dict_xc['SB'] = cl_gl_3d_sb
+    _cl_dict_gc['SB'] = cl_gg_3d_sb
+
+sb_plt.cls_triangle_plot(
+    _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
+)
+sb_plt.cls_triangle_plot(
+    _ell_dict_xc, _cl_dict_xc, is_auto=True, zbins=zbins, suptitle='GGL'
+)
+sb_plt.cls_triangle_plot(
+    _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
+)
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to
@@ -926,6 +967,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     start_time = time.perf_counter()
 
     # * 1. save ingredients in ascii format
+    # TODO this should me moved to io_handler.py
     oc_path = f'{output_path}/OneCovariance'
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
@@ -1270,6 +1312,10 @@ if compute_sb_ssc:
                 k_grid_s2b = k_grid
             elif s2b_integration_scheme == 'simps':
                 k_grid_s2b = k_grid_s2b_simps
+            else:
+                raise ValueError(
+                    f'Unknown sigma2_b_integration_scheme: {s2b_integration_scheme}'
+                )
 
             sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
@@ -1323,7 +1369,6 @@ if compute_ccl_ssc:
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
     ccl_obj.set_sigma2_b(
         z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
-        fsky=cfg['mask']['fsky'],
         which_sigma2_b=which_sigma2_b,
         mask_obj=mask_obj,
     )
@@ -1346,29 +1391,27 @@ if compute_ccl_ssc or compute_ccl_cng:
             ind_dict=ind_dict,
         )
 
-
 # ! ========================== Combine covariance terms ================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
 cov_dict = cov_obj.cov_dict
 
-
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):
-    for key in cov_dict:
+    for cov_name, cov in cov_dict.items():
         fig, ax = plt.subplots(1, 2, figsize=(10, 6))
-        ax[0].matshow(np.log10(cov_dict[key]))
-        ax[1].matshow(sl.cov2corr(cov_dict[key]), vmin=-1, vmax=1, cmap='RdBu_r')
+        ax[0].matshow(np.log10(cov))
+        ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
 
         plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
         plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
         ax[0].set_title('log10 cov')
         ax[1].set_title('corr')
-        fig.suptitle(f'{key.replace("cov_", "")}', y=0.9)
+        fig.suptitle(f'{cov_name.replace("cov_", "")}', y=0.9)
 
-for which_cov in cov_dict:
-    probe = which_cov.split('_')[1]
-    which_ng_cov = which_cov.split('_')[2]
-    ndim = which_cov.split('_')[3]
+for key, cov in cov_dict.items():
+    probe = key.split('_')[1]
+    which_ng_cov = key.split('_')[2]
+    ndim = key.split('_')[3]
     cov_filename = cfg['covariance']['cov_filename'].format(
         which_ng_cov=which_ng_cov, probe=probe, ndim=ndim
     )
@@ -1386,7 +1429,7 @@ for which_cov in cov_dict:
             f'the extension for cov_filename = {cov_filename} should be .npz or .npy'
         )
 
-    save_func(f'{output_path}/{cov_filename}', cov_dict[which_cov])
+    save_func(f'{output_path}/{cov_filename}', cov)
 
     if cfg['covariance']['save_full_cov']:
         for a, b, c, d in probe_comb_idxs:
@@ -1451,6 +1494,7 @@ for probe in ['WL', 'GC', '3x2pt']:
 
 if cfg['misc']['save_output_as_benchmark']:
     # some of the test quantities are not defined in some cases
+    # better to work with empty arrays than None
     if not compute_sb_ssc:
         sigma2_b = np.array([])
         dPmm_ddeltab = np.array([])
@@ -1460,11 +1504,10 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
 
-    # better to work with empty arrays than None
-    if bnt_matrix is None:
-        _bnt_matrix = np.array([])
-        
-    _mag_bias_2d = ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
+    _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
+    _mag_bias_2d = (
+        ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
+    )
 
     # I don't fully remember why I don't save these
     _ell_dict = vars(ell_obj)
@@ -1532,16 +1575,16 @@ if cfg['misc']['save_output_as_benchmark']:
         metadata=metadata,
     )
 
-for which_cov in cov_dict:
-    if '3x2pt' in which_cov and 'tot' in which_cov:
+for cov_name, cov in cov_dict.items():
+    if '3x2pt' in cov_name and 'tot' in cov_name:
         if cfg['misc']['test_condition_number']:
-            cond_number = np.linalg.cond(cov_dict[which_cov])
-            print(f'Condition number of {which_cov} = {cond_number:.4e}')
+            cond_number = np.linalg.cond(cov)
+            print(f'Condition number of {cov_name} = {cond_number:.4e}')
 
         if cfg['misc']['test_cholesky_decomposition']:
-            print(f'Performing Cholesky decomposition of {which_cov}...')
+            print(f'Performing Cholesky decomposition of {cov_name}...')
             try:
-                np.linalg.cholesky(cov_dict[which_cov])
+                np.linalg.cholesky(cov)
                 print('Cholesky decomposition successful')
             except np.linalg.LinAlgError:
                 print(
@@ -1550,14 +1593,14 @@ for which_cov in cov_dict:
                 )
 
         if cfg['misc']['test_numpy_inversion']:
-            print(f'Computing numpy inverse of {which_cov}...')
+            print(f'Computing numpy inverse of {cov_name}...')
             try:
-                inv_cov = np.linalg.inv(cov_dict[which_cov])
+                inv_cov = np.linalg.inv(cov)
                 print('Numpy inversion successful.')
                 # Test correctness of inversion:
                 identity_check = np.allclose(
-                    np.dot(cov_dict[which_cov], inv_cov),
-                    np.eye(cov_dict[which_cov].shape[0]),
+                    np.dot(cov, inv_cov),
+                    np.eye(cov.shape[0]),
                     atol=1e-9,
                     rtol=1e-7,
                 )
@@ -1568,23 +1611,26 @@ for which_cov in cov_dict:
                     )
                 else:
                     print(
-                        f'Warning: Inverse test failed for {which_cov} (M @ M^{-1} '
+                        f'Warning: Inverse test failed for {cov_name} (M @ M^{-1} '
                         'deviates from identity). atol=0, rtol=1e-7'
                     )
             except np.linalg.LinAlgError:
                 print(
-                    f'Numpy inversion failed for {which_cov} : '
+                    f'Numpy inversion failed for {cov_name} : '
                     'Matrix is singular or near-singular.'
                 )
 
         if cfg['misc']['test_symmetry']:
-            if not np.allclose(
-                cov_dict[which_cov], cov_dict[which_cov].T, atol=0, rtol=1e-7
-            ):
-                print(
-                    f'Warning: Matrix {which_cov} is not symmetric. atol=0, rtol=1e-7'
-                )
+            if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
+                print(f'Warning: Matrix {cov_name} is not symmetric. atol=0, rtol=1e-7')
             else:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
+
+if cfg['misc']['save_figs']:
+    output_dir = f'{output_path}/figs'
+    os.makedirs(output_dir, exist_ok=True)
+    for i, fig_num in enumerate(plt.get_fignums()):
+        fig = plt.figure(fig_num)
+        fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')

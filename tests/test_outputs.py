@@ -112,15 +112,17 @@ def test_main_script(test_cfg_path):
 
 # Path
 ROOT = '/home/davide/Documenti/Lavoro/Programmi'
-bench_path = f'{ROOT}/Spaceborne_bench'
+bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
+
 # run all tests...
-bench_names = glob.glob(f'{bench_path}/*.npz')
-bench_names = [os.path.basename(file) for file in bench_names]
-bench_names = [bench_name.replace('.npz', '') for bench_name in bench_names]
+bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
+bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
+bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
+
 # ... or run specific tests
-bench_names = [
-    'output_GSpaceborne_SSCSpaceborne_cNGPyCCL_KETrue_resphalo_model_b1gfrom_input_devmerge4',
-]
+# bench_yaml_names = [
+#     'config_0000.yaml',
+# ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'
@@ -142,7 +144,7 @@ if os.path.exists(f'{temp_output_filename}.npz'):
     else:
         os.remove(f'{temp_output_filename}.npz')
 
-for bench_name in bench_names:
+for bench_name in bench_yaml_names:
     print(f'Testing {bench_name}...')
 
     # ! update the cfg file to avoid overwriting the benchmarks
@@ -157,7 +159,7 @@ for bench_name in bench_names:
     cfg['misc']['output_path'] = temp_output_folder
 
     # Save the updated test config
-    test_cfg_path = f'{bench_path}/tmp/test_config.yaml'
+    test_cfg_path = f'{bench_path}/_tmp/test_config.yaml'
     with open(test_cfg_path, 'w') as f:
         yaml.dump(cfg, f)
 

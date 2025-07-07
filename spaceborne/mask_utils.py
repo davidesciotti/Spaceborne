@@ -82,7 +82,7 @@ class Mask:
 
         # check they are not both True
         assert self.load_mask or self.generate_polar_cap, (
-            'Please choose whether to load or generate the mask, not both.'
+            'Exactly one of `load_mask` or `generate_polar_cap` must be set to True.'
         )
 
         if self.load_mask:

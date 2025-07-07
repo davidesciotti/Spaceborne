@@ -68,6 +68,7 @@ def _read_masking_map(path, nside, *, nest=False):
 
     If *nest* is true, returns the map in NESTED ordering.
     """
+    # TODO does using only this function cause backwards-compatibility issues? [@gcanasherrera]
     data, header = fitsio.read(path, header=True)
     nside_in = header["NSIDE"]
     fact = (nside_in // nside) ** 2

@@ -2,8 +2,6 @@ import warnings
 from matplotlib import gridspec
 import numpy as np
 import matplotlib.pyplot as plt
-from getdist import plots
-from getdist.gaussian_mixtures import GaussianND
 
 
 mpl_rcParams_dict = {
@@ -370,7 +368,10 @@ def triangle_plot_old(
     param_names_labels_toplot,
     param_names_labels_tex=None,
     rotate_param_labels=False,
-):
+):  
+    from getdist import plots
+    from getdist.gaussian_mixtures import GaussianND
+    
     idxs_tokeep = [
         param_names_labels.index(param) for param in param_names_labels_toplot
     ]
@@ -469,6 +470,9 @@ def triangle_plot(
     contour_colors=None,
     line_colors=None,
 ):
+    from getdist import plots
+    from getdist.gaussian_mixtures import GaussianND
+    
     idxs_tokeep = [
         param_names_labels.index(param) for param in param_names_labels_toplot
     ]

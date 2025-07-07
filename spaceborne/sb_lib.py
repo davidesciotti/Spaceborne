@@ -67,45 +67,6 @@ symmetrize_output_dict = {
 #     return binned_cov
 
 
-def get_neff_sigmaeps_from_catalogue(
-    she_weights, pos_weights, e1, e2, eff_area_she_arcmin2, eff_area_pos_arcmin2
-):
-    """This function has been written by Laila Linke
-
-    Parameters
-    ----------
-    she_weights : np.ndarray
-        Array of weights for the shear component.
-    pos_weights : np.ndarray
-        Array of weights for the position component.
-    e1 : np.ndarray
-        Array of e1 values.
-    e2 : np.ndarray
-        Array of e2 values.
-    eff_area_she_arcmin2 : float
-        Effective area of the shear component in arcmin^2.
-    eff_area_pos_arcmin2 : float
-        Effective area of the position component in arcmin^2.
-
-    Returns
-    -------
-    dict
-        Dictionary containing the effective number densities and intrinsic ellipticity
-        dispersion.
-    """
-
-    neff_she = np.sum(she_weights) ** 2 / np.sum(she_weights**2) / eff_area_she_arcmin2
-    neff_pos = np.sum(pos_weights) ** 2 / np.sum(pos_weights**2) / eff_area_pos_arcmin2
-    # Sqrt of 2 to get per component shapenoise
-    sigma_eps = np.sqrt(
-        np.sum(she_weights**2 * (e1**2 + e2**2)) / np.sum(she_weights**2)
-    ) / np.sqrt(2)
-
-    print(f'{neff_she = }')
-    print(f'{neff_pos = }')
-    print(f'{sigma_eps = }')
-
-    return dict(neff_she=neff_she, neff_pos=neff_pos, sigma_eps=sigma_eps)
 
 
 def build_probe_list(probes, include_cross_terms=False):

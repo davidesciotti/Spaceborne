@@ -131,22 +131,8 @@ nz:
     # Number of galaxies per arcmin**2 for each redshift bin.
     # Should be of length 'zbins'
     # TODO get actual values
-    ngal_sources: [
-            2.4668955093958425,
-            5.073831823789757,
-            7.850282976606696,
-            8.769466292395393,
-            6.93278613959662,
-            3.9018226980141346,
-        ] # Type: list[float]
-    ngal_lenses: [
-            2.4668955093958425,
-            5.073831823789757,
-            7.850282976606696,
-            8.769466292395393,
-            6.93278613959662,
-            3.9018226980141346,
-        ] # Type: list[float]
+    ngal_sources: [2.1279869461396435, 2.8237964415236063, 2.564394831195362, 1.2930977380060946, 0.4702026378518463, 0.1069525663290778] # Type: list[float]
+    ngal_lenses: [2.87799343223134, 2.098809385748583, 1.8471870250265632, 1.3455375854538179, 0.36423337434626685, 0.09234518996285011] # Type: list[float]
 
     # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
     #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -164,7 +150,7 @@ nz:
 
 mask:
     load_mask: True # Type: bool. Whether to load the mask from a fits or npy file
-    mask_path: /home/davide/Documenti/Lavoro/Programmi/common_data/RR2/Davide/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits # Type: str. Path to the mask file (.FITS or .npy)
+    mask_path: /home/davide/Documenti/Lavoro/Programmi/common_data/RR2/Davide/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00.fits.gz # Type: str. Path to the mask file (.FITS or .npy)
     generate_polar_cap: False # Type: bool. Whether to generate a polar cap mask on the fly.
 
     # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
@@ -242,14 +228,8 @@ covariance:
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
     # Should be of length 'zbins'
     # TODO get actual values
-    sigma_eps_i: [
-            0.26519051971496843,
-            0.27405512077963445,
-            0.2808533046301882,
-            0.28922932975334664,
-            0.2943753961049494,
-            0.3024036850513869,
-        ] # Type: list[float]
+    sigma_eps_i: [0.2622497313110638, 0.2633852240634032, 0.24754310628764617, 0.2326297440704344, 0.22633031526404115, 0.25061916023249875] # Type: list[float]
+
 
     # Whether to include the noise power spectra in the computation of the
     # Gaussian covariance matrix.
@@ -292,7 +272,7 @@ covariance:
 
 namaster:
     use_namaster: True # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+    spin0: True # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation (recommended)
     workspace_path: ... # Type: str. Path to the workspace, if already computed
 

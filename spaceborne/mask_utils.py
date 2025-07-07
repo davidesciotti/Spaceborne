@@ -58,6 +58,7 @@ def generate_polar_cap_func(area_deg2, nside):
 
     return mask
 
+
 def _read_masking_map(path, nside, *, nest=False):
     """
     Read a HEALPix map in "partial" format from *path* and return it at
@@ -70,24 +71,23 @@ def _read_masking_map(path, nside, *, nest=False):
     """
     # TODO does using only this function cause backwards-compatibility issues? [@gcanasherrera]
     data, header = fitsio.read(path, header=True)
-    nside_in = header["NSIDE"]
+    nside_in = header['NSIDE']
     fact = (nside_in // nside) ** 2
     if fact == 0:
-        raise ValueError(
-            f"requested NSIDE={nside} greater than map NSIDE={nside_in}"
-        )
+        raise ValueError(f'requested NSIDE={nside} greater than map NSIDE={nside_in}')
     out = np.zeros(12 * nside**2)
-    ipix, wht = data["PIXEL"], data["WEIGHT"]
-    order = header["ORDERING"]
-    if order == "RING":
+    ipix, wht = data['PIXEL'], data['WEIGHT']
+    order = header['ORDERING']
+    if order == 'RING':
         ipix = hp.ring2nest(nside, ipix)
-    elif order != "NESTED":
-        raise ValueError(f"unknown pixel ordering {order} in map")
+    elif order != 'NESTED':
+        raise ValueError(f'unknown pixel ordering {order} in map')
     ipix = ipix // fact
     if not nest:
         ipix = hp.nest2ring(nside, ipix)
     np.add.at(out, ipix, wht / fact)
     return out
+
 
 class Mask:
     def __init__(self, mask_cfg):
@@ -104,17 +104,33 @@ class Mask:
             raise FileNotFoundError(f'{self.mask_path} does not exist.')
 
         print(f'Loading mask file from {self.mask_path}')
-        if self.mask_path.endswith('.fits'):
-            #self.mask = hp.read_map(self.mask_path)
-            self.mask = _read_masking_map(self.mask_path, self.nside)
+        
+        if self.mask_path.endswith('.fits') or self.mask_path.endswith('.fits.gz'):
+            try:
+                # function provided by VMPZ team to read very high resolution map
+                # and downgrade it on the fly
+                self.mask = _read_masking_map(self.mask_path, self.nside)
+            except ValueError as ve:
+                self.mask = hp.read_map(self.mask_path)
+                print(
+                    f'ValueError raised: {ve}, \n'
+                    'falling back on hp.read_map to read input map'
+                )
+
         elif self.mask_path.endswith('.npy'):
             self.mask = np.load(self.mask_path)
+            
+        else:
+            raise ValueError(
+                f'Unsupported file format for mask file: {self.mask_path}'
+                'Supported formats are .fits, .fits.gz and .npy'
+            )
 
     def process(self):
         # 1. load or generate mask
 
         # check they are not both True
-        assert self.load_mask or self.generate_polar_cap, (
+        assert self.load_mask ^ self.generate_polar_cap, (
             'Exactly one of `load_mask` or `generate_polar_cap` must be set to True.'
         )
 
@@ -133,7 +149,7 @@ class Mask:
             )
             self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
 
-        # 1.b check if the area is compatible with the full sky case and, if this is 
+        # 1.b check if the area is compatible with the full sky case and, if this is
         # the case, set all entries of the mask to 1
         is_full_sky = (
             np.abs(sl.percent_diff(self.survey_area_deg2, constants.DEG2_IN_SPHERE))

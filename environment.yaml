@@ -14,6 +14,7 @@ dependencies:
   - pyyaml
   - joblib
   - healpy
+  - fitsio
 
   # PyCCL depenedencies - mandatory
   - swig

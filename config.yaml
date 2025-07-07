@@ -171,7 +171,13 @@ mask:
     # If null (None), the nside of the input mask will be used, without up/downgrading.
     nside: 1024 # Type: int | None.
 
+    # Note that the given survey area will only be used if generate_polar_cap is True.
+    # Otherwise, the area of the input mask will be used.
+    # If you want to compute the full-sky covariance, then set this to the
+    # full-sky area (within 1% of 41252.96124941928), and set load_mask and apodize to
+    # False.
     survey_area_deg2: 13245 # Type: int
+
     apodize: False # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
 

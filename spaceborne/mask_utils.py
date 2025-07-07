@@ -4,6 +4,10 @@ import healpy as hp
 import numpy as np
 
 from spaceborne import cosmo_lib
+from spaceborne import sb_lib as sl
+from spaceborne import constants
+
+# TODO add option to input 2 different masks for she and pos?
 
 
 def get_mask_cl(mask: np.ndarray) -> tuple:
@@ -12,23 +16,20 @@ def get_mask_cl(mask: np.ndarray) -> tuple:
 
     # new
     nside = hp.get_nside(mask)
-    pixel_area_arcmin2 = hp.nside2pixarea(nside, degrees=True) * 3600
+    pixel_area_arcmin2 = hp.nside2pixarea(nside, degrees=True) * 60**2
     eff_area_arcmin2 = np.sum(mask[mask > 0]) * pixel_area_arcmin2
     eff_area_deg2 = eff_area_arcmin2 / 60**2
-    deg2_in_sphere = (180 / np.pi) ** 2 * 4 * np.pi
-    fsky_mask = eff_area_deg2 / deg2_in_sphere
+    fsky_mask = eff_area_deg2 / constants.DEG2_IN_SPHERE
 
     # old
-    # fsky_mask = np.mean(mask**2)  # TODO 2 different masks
+    # fsky_mask = np.mean(mask**2)
 
     return ell_mask, cl_mask, fsky_mask
 
 
-
-
 def generate_polar_cap_func(area_deg2, nside):
     fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
-    print(f'Generating a polar cap mask with area {area_deg2} deg^2 and nside {nside}')
+    print(f'Generating a polar cap mask with area {area_deg2} deg^2 and {nside = }')
 
     # Convert the area to radians squared for the angular radius calculation
     area_rad2 = area_deg2 * (np.pi / 180) ** 2
@@ -92,12 +93,26 @@ class Mask:
         elif self.generate_polar_cap:
             self.mask = generate_polar_cap_func(self.survey_area_deg2, self.nside)
 
+        # 1a. up/downgrade resolution
         if self.load_mask and self.nside is not None and self.nside != self.nside_mask:
             print(
                 f'Changing mask resolution from nside = '
                 f'{self.nside_mask} to nside = {self.nside}'
             )
             self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
+
+        # 1.b check if the area is compatible with the full sky case and, if this is 
+        # the case, set all entries of the mask to 1
+        is_full_sky = (
+            np.abs(sl.percent_diff(self.survey_area_deg2, constants.DEG2_IN_SPHERE))
+            < 1e-2
+        )
+        if self.generate_polar_cap and is_full_sky:
+            print(
+                'The requested survey area for the polar cap is within 1% of the '
+                'full sky area. Setting all entries of the mask to 1.'
+            )
+            self.mask = np.ones_like(self.mask)
 
         # 2. apodize
         if hasattr(self, 'mask') and self.apodize:

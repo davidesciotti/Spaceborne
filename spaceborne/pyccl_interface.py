@@ -644,7 +644,7 @@ class PycclClass:
         kernel_D,
         ell,
         tkka,
-        f_sky,
+        fsky,
         ind_AB,
         ind_CD,
         integration_method,
@@ -676,7 +676,7 @@ class PycclClass:
                     tracer2=kernel_B[ind_AB[ij, -1]],
                     ell=ell,
                     t_of_kk_a=tkka,
-                    fsky=f_sky,
+                    fsky=fsky,
                     tracer3=kernel_C[ind_CD[kl, -2]],
                     tracer4=kernel_D[ind_CD[kl, -1]],
                     ell2=None,
@@ -692,7 +692,7 @@ class PycclClass:
         return cov_ng_4D
 
     def compute_ng_cov_3x2pt(
-        self, which_ng_cov, ell, f_sky, integration_method, probe_ordering, ind_dict
+        self, which_ng_cov, ell, fsky, integration_method, probe_ordering, ind_dict
     ):
         cov_ng_3x2pt_dict_8D = {}
 
@@ -717,7 +717,7 @@ class PycclClass:
                             kernel_D=kernel_dict[probe_d],
                             ell=ell,
                             tkka=self.tkka_dict[probe_a, probe_b, probe_c, probe_d],
-                            f_sky=f_sky,
+                            fsky=fsky,
                             ind_AB=ind_dict[probe_a, probe_b],
                             ind_CD=ind_dict[probe_c, probe_d],
                             integration_method=integration_method,

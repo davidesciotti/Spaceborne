@@ -2404,7 +2404,7 @@ def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_diagonal_ells):
 def covariance_einsum(
     cl_5d,
     noise_5d,
-    f_sky,
+    fsky,
     ell_values,
     delta_ell,
     split_terms,
@@ -2423,7 +2423,7 @@ def covariance_einsum(
     assert noise_5d.shape == cl_5d.shape, 'noise_5d must have the same shape as cl_5d'
 
     # Prefactor setup
-    prefactor = 1 / ((2 * ell_values + 1) * f_sky * delta_ell)
+    prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell)
     if not return_only_diagonal_ells:
         prefactor = np.diag(prefactor)
 

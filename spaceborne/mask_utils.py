@@ -87,7 +87,7 @@ def generate_polar_cap_func(area_deg2, nside):
 
     # Calculate the actual sky fraction of the generated mask
     # fsky_actual = np.sum(mask) / len(mask)
-    # print(f'Measured f_sky from the mask: {fsky_actual:.4f}')
+    # print(f'Measured fsky from the mask: {fsky_actual:.4f}')
 
     return mask
 

@@ -744,7 +744,7 @@ def build_cl_ring_ordering(cl_3d):
     )
     cl_ring_list = []
 
-    for offset in range(0, zbins):  # offset defines the distance from the main diagonal
+    for offset in range(zbins):  # offset defines the distance from the main diagonal
         for zi in range(zbins - offset):
             zj = zi + offset
             cl_ring_list.append(cl_3d[:, zi, zj])
@@ -769,10 +769,10 @@ def build_cl_tomo_TEB_ring_ord(
     # matrix of combinations
     row_idx = 0
     matrix = []
-    for zi in range(0, zbins):
+    for zi in range(zbins):
         for s1 in spectra_types:
             row = []
-            for zj in range(0, zbins):
+            for zj in range(zbins):
                 for s2 in spectra_types:
                     row.append(f'{s1}-{zi}-{s2}-{zj}')
             matrix.append(row)

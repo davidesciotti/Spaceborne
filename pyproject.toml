@@ -20,7 +20,7 @@ quote-style = "single"
 # skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
-select = [    
+select = [
     "E",    # pycodestyle errors
     "F",    # Pyflakes
     "UP",   # pyupgrade
@@ -34,8 +34,10 @@ select = [
 ]
 
 ignore = [
-    "Q000", 
-    "COM812", 
+    "Q000",
+    "COM812",
     "ERA001",
     "PLR0913", # too many args in function
+    "D100", # missing docstring in public method
+    "D104", # missing docstring in package
 ]

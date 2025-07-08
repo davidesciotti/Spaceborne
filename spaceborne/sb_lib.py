@@ -160,7 +160,6 @@ def bin_2d_array(  # fmt: skip
             ell2_max = ells_edges_high[ell2_idx]
 
             # isolate the relevant ranges of ell values from the original ells_in grid
-
             ell1_in_ix = np.where((ell1_min <= ells_in) & (ells_in < ell1_max))[0]
             ell2_in_ix = np.where((ell2_min <= ells_in) & (ells_in < ell2_max))[0]
             ell1_in = ells_in[ell1_in_ix]

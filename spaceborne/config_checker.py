@@ -174,6 +174,21 @@ class SpaceborneConfigChecker:
             'row_col_major must be either "row-major" or "col-major"'
         )
 
+        if self.cfg['covariance']['split_gaussian_cov'] and (
+            self.cfg['namaster']['use_namaster']
+            or self.cfg['sample_covariance']['compute_sample_cov']
+        ):
+            raise ValueError(
+                'cfg["covariance"]["split_gaussian_cov"] cannot be '
+                'set to True with either '
+                'cfg["namaster"]["use_namaster"] or '
+                'cfg["sample_covariance"]["compute_sample_cov"].'
+            )
+        assert not (
+            self.cfg['namaster']['use_namaster']
+            and self.cfg['sample_covariance']['compute_sample_cov']
+        ), 'Only one of `use_namaster` and `compute_sample_cov` can be True — not both.'
+
     def check_nmt(self) -> None:
         if self.cfg['covariance']['coupled_cov'] and self.cfg['covariance']['G']:
             assert (

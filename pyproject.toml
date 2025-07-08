@@ -11,6 +11,31 @@ authors = ["davidesciotti <84071067+davidesciotti@users.noreply.github.com>"]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+
+[tool.ruff]
+line-length = 88
+
 [tool.ruff.format]
-# Prefer single quotes over double quotes.
 quote-style = "single"
+# skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+select = [    
+    "E",    # pycodestyle errors
+    "F",    # Pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+    "PL",   # Pylint rules implemented in Ruff
+    "C",    # flake8-comprehensions
+    "N",    # pep8-naming
+    "D",    # pydocstyle (docstring conventions)
+]
+
+ignore = [
+    "Q000", 
+    "COM812", 
+    "ERA001",
+    "PLR0913", # too many args in function
+]

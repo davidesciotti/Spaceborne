@@ -233,7 +233,6 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
     )
 
 
-
 cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
 # Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
@@ -258,6 +257,12 @@ cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
 cfg['covariance']['sigma2_b_integration_scheme'] = 'fft'  # Type: str.
 #  Whether to load the previously computed sigma2_b. No need anymore since it's quite fast
 cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
+
+# How many integrals to compute at once for the  numerical integration of
+# the sigma^2_b(z_1, z_2) function with pylevin.
+# IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
+# while computing sigma2_b), decrease this or num_threads.
+cfg['misc']['levin_batch_size'] = 1000  # Type: int.
 
 # ordering of the different 3x2pt probes in the covariance matrix
 cfg['covariance']['probe_ordering'] = [

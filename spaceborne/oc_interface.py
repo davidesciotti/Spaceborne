@@ -1,5 +1,4 @@
-"""
-OneCovariance Interface Module
+"""OneCovariance Interface Module
 
 This module provides an interface to the OneCovariance (OC) covariance matrix
 calculator.
@@ -33,8 +32,7 @@ from spaceborne import sb_lib as sl
 
 class OneCovarianceInterface:
     def __init__(self, cfg, pvt_cfg, do_g, do_ssc, do_cng):
-        """
-        Initializes the OneCovarianceInterface class with the provided configuration
+        """Initializes the OneCovarianceInterface class with the provided configuration
         and private configuration
         dictionaries.
 
@@ -60,8 +58,8 @@ class OneCovarianceInterface:
             path_to_oc_executable (str): The path to the OneCovariance executable.
             path_to_config_oc_ini (str): The path to the OneCovariance configuration
             INI file.
-        """
 
+        """
         self.cfg = cfg
         self.oc_cfg = self.cfg['OneCovariance']
         self.pvt_cfg = pvt_cfg
@@ -318,7 +316,6 @@ class OneCovarianceInterface:
 
     def call_oc_from_bash(self):
         """This function runs OneCovariance"""
-
         activate_and_run = f"""
         source {self.conda_base_path}/activate cov20_env
         python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
@@ -331,8 +328,7 @@ class OneCovarianceInterface:
         process.communicate()
 
     def call_oc_from_class(self):
-        """
-        This interface was originally created by Robert Reischke.
+        """This interface was originally created by Robert Reischke.
         Pros:
             - Streamlines the call to the code by instantiating and calling the
             CovELLSpace class directly
@@ -342,7 +338,6 @@ class OneCovarianceInterface:
         Cons:
             - Less maintainable than the bash call
         """
-
         import sys
 
         sys.path.append(os.path.dirname(self.path_to_oc_executable))
@@ -368,7 +363,7 @@ class OneCovarianceInterface:
         )
         fileinp = FileInput(bias)
         read_in_tables = fileinp.read_input(f'{self.oc_path}/input_configs.ini')
-        setup = Setup(
+        _setup = Setup(
             cosmo_dict=cosmo,
             bias_dict=bias,
             survey_params_dict=survey_params,
@@ -538,10 +533,7 @@ class OneCovarianceInterface:
         self.cov_mat_tot_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
 
     def output_sanity_check(self, rtol=1e-4):
-        """
-        Checks that the .dat and .mat outputs give consistent results
-        """
-
+        """Checks that the .dat and .mat outputs give consistent results"""
         self.process_cov_from_mat_file()
 
         cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
@@ -632,8 +624,7 @@ class OneCovarianceInterface:
     def cov_ggglll_to_llglgg(
         self, cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
     ) -> np.ndarray:
-        """
-        Transforms a covariance matrix from gg-gl-ll format to llglgg format.
+        """Transforms a covariance matrix from gg-gl-ll format to llglgg format.
 
         Parameters
         ----------
@@ -648,8 +639,8 @@ class OneCovarianceInterface:
         -------
         np.ndarray
             Transformed covariance matrix in mm-gm-gg format.
-        """
 
+        """
         elem_apc = elem_auto + elem_cross
 
         cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
@@ -671,13 +662,11 @@ class OneCovarianceInterface:
         return cov_llglgg_2d
 
     def process_cov_from_list_file(self, df_chunk_size=5000000):
-        """
-        Import and reshape the output of the OneCovariance (OC) .dat
+        """Import and reshape the output of the OneCovariance (OC) .dat
         (aka "list") file into a set of 10d arrays.
         The function also performs some additional processing,
         such as symmetrizing the output dictionary.
         """
-
         import re
 
         import pandas as pd
@@ -868,8 +857,7 @@ class OneCovarianceInterface:
     def find_optimal_ellmax_oc(self, target_ell_array):
         upper_lim = self.ells_sb[-1] + 300
         lower_lim = self.ells_sb[-1] - 300
-        if lower_lim < 0:
-            lower_lim = 0
+        lower_lim = max(lower_lim, 0)
 
         # Perform the minimization
         result = minimize_scalar(
@@ -949,7 +937,7 @@ class OneCovarianceInterface:
         covterms['nongauss'] = False
         fileinp = FileInput(bias)
         read_in_tables = fileinp.read_input(ini_filename)
-        setup = Setup(cosmo, bias, survey_params, prec, read_in_tables)
+        _setup = Setup(cosmo, bias, survey_params, prec, read_in_tables)
         ellspace = CovELLSpace(
             covterms,
             observables,
@@ -962,7 +950,7 @@ class OneCovarianceInterface:
             prec,
             read_in_tables,
         )
-        ssc = ellspace.covELL_ssc(
+        _ssc = ellspace.covELL_ssc(
             bias, hod, prec, survey_params, observables['ELLspace']
         )
 

@@ -32,20 +32,19 @@ def nmt_log_binning(lmin, lmax, nbl, w=None):
 
 
 def get_lmid(ells, k):
-    """returns the effective ell values for the k-th diagonal"""
+    """Returns the effective ell values for the k-th diagonal"""
     return 0.5 * (ells[k:] + ells[:-k])
 
 
 def load_ell_cuts(
     kmax_h_over_Mpc, z_values_a, z_values_b, cosmo_ccl, zbins, h, kmax_h_over_Mpc_ref
 ):
-    """loads ell_cut values, rescales them and load into a dictionary.
+    """Loads ell_cut values, rescales them and load into a dictionary.
     z_values_a: redshifts at which to compute the ell_max for a given Limber
     wavenumber, for probe A
     z_values_b: redshifts at which to compute the ell_max for a given Limber
     wavenumber, for probe B
     """
-
     if kmax_h_over_Mpc is None:
         kmax_h_over_Mpc = kmax_h_over_Mpc_ref
 
@@ -69,8 +68,8 @@ def load_ell_cuts(
 
 def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
     """ell_values can be the bin center or the bin lower edge; Francis
-    suggests the second option is better"""
-
+    suggests the second option is better
+    """
     if is_auto_spectrum:
         idxs_to_delete = []
         count = 0
@@ -97,9 +96,9 @@ def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
 
 
 def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_cfg):
-    """this function tries to implement the indexing for the
-    flattening ell_probe_zpair"""
-
+    """This function tries to implement the indexing for the
+    flattening ell_probe_zpair
+    """
     if (covariance_cfg['triu_tril'], covariance_cfg['row_col_major']) != (
         'triu',
         'row-major',
@@ -136,7 +135,7 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_
 def get_idxs_to_delete_3x2pt_v0(
     ell_values_3x2pt, ell_cuts_dict, nbl_3x2pt, zpairs_auto, zpairs_cross
 ):
-    """this implements the indexing for the flattening probe_ell_zpair"""
+    """This implements the indexing for the flattening probe_ell_zpair"""
     raise Exception(
         'Concatenation must be done *before* flattening, this function '
         'is not compatible with the '
@@ -169,7 +168,7 @@ def get_idxs_to_delete_3x2pt_v0(
 
 
 def generate_ell_and_deltas(general_config):
-    """old function, but useful to compute ell and delta_ell for Wadd!"""
+    """Old function, but useful to compute ell and delta_ell for Wadd!"""
     nbl_WL = general_config['nbl_WL']
     nbl_GC = general_config['nbl_GC']
     assert nbl_WL == nbl_GC, 'nbl_WL and nbl_GC must be the same'
@@ -277,6 +276,7 @@ def compute_ells(
         Bin widths
     ell_bin_edges : np.ndarray, optional
         ell bin edges. Returned only if output_ell_bin_edges is True.
+
     """
     if recipe == 'ISTF':
         ell_bin_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
@@ -304,8 +304,7 @@ def compute_ells(
 
 
 class EllBinning:
-    """
-    Handles the setup of ell bins based on configuration.
+    """Handles the setup of ell bins based on configuration.
 
     Calculates and stores ell bin centers, edges, and widths for different
     probe combinations (WL, GC, XC, 3x2pt) based on the specified
@@ -313,11 +312,11 @@ class EllBinning:
     """
 
     def __init__(self, cfg: dict):
-        """
-        Initializes the EllBinning object.
+        """Initializes the EllBinning object.
 
         Args:
             config: The 'ell_binning' section of the main configuration dictionary.
+
         """
         self.binning_type = cfg['ell_binning']['binning_type']
 
@@ -337,10 +336,7 @@ class EllBinning:
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
     def build_ell_bins(self):
-        """
-        Builds ell bins based on the specified configuration.
-        """
-
+        """Builds ell bins based on the specified configuration."""
         # if self.use_namaster:
         #     # 1. instantiate nmt bin object
         #     if self.binning_type == 'lin':

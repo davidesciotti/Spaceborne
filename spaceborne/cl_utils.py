@@ -17,8 +17,8 @@ def build_3x2pt_datavector_5D(
 def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
     """This function reshapes the SPV3 cls, which have a different format wrt
     the usual input files, from 1 to 3
-    dimensions (5 dimensions for the 3x2pt case)"""
-
+    dimensions (5 dimensions for the 3x2pt case)
+    """
     zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
 
     # the checks on zpairs in the if statements can only be done for the
@@ -88,9 +88,9 @@ def cl_SPV3_1D_to_3D(cl_1d, probe: str, nbl: int, zbins: int):
 
 
 def cl_ell_cut(cl_3D, ell_values, ell_cuts_matrix):
-    """cut (sets to zero) the cl_3D array at the ell values
-    specified in ell_cuts_matrix"""
-
+    """Cut (sets to zero) the cl_3D array at the ell values
+    specified in ell_cuts_matrix
+    """
     # TODO call get_ell_cuts_indices function here to avoid repeating code
 
     nbl = cl_3D.shape[0]
@@ -120,10 +120,10 @@ def cl_ell_cut(cl_3D, ell_values, ell_cuts_matrix):
 
 
 def cl_ell_cut_v2(cl_3D, ell_values, ell_cuts_matrix):
-    """cut (sets to zero) the cl_3D array at the ell values
+    """Cut (sets to zero) the cl_3D array at the ell values
     specified in ell_cuts_matrix.
-    Smarter version, without for loops - only marginally faster"""
-
+    Smarter version, without for loops - only marginally faster
+    """
     nbl = cl_3D.shape[0]
     zbins = cl_3D.shape[1]
 
@@ -151,9 +151,9 @@ def cl_ell_cut_v2(cl_3D, ell_values, ell_cuts_matrix):
 
 
 def cl_ell_cut_3x2pt(cl_3x2pt_5D, ell_cuts_dict, ell_values_3x2pt):
-    """wrapper function to quickly implement the cl (or derivatives) ell cut
-    for the 3x2pt datavector"""
-
+    """Wrapper function to quickly implement the cl (or derivatives) ell cut
+    for the 3x2pt datavector
+    """
     cl_LLfor3x2pt_3D = cl_3x2pt_5D[0, 0, :, :, :]
     cl_LGfor3x2pt_3D = cl_3x2pt_5D[0, 1, :, :, :]
     cl_GLfor3x2pt_3D = cl_3x2pt_5D[1, 0, :, :, :]

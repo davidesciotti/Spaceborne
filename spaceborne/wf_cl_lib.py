@@ -1,20 +1,14 @@
-import warnings
-
-import scipy
+import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
 import numpy as np
 import pyccl as ccl
-import matplotlib.pyplot as plt
+import scipy
 from matplotlib import cm
-import matplotlib.lines as mlines
-from scipy.integrate import quad
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d
-from scipy.ndimage import gaussian_filter1d
 
-from spaceborne import sb_lib as sl
-from spaceborne import cosmo_lib
 from spaceborne import constants
-
+from spaceborne import sb_lib as sl
 
 c = constants.SPEED_OF_LIGHT
 
@@ -36,9 +30,7 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
     _, ax = plt.subplots(2, 1, sharex=True)
     colors = cm.rainbow(np.linspace(0, 1, zbins))
     for zi in range(zbins):
-        ax[0].plot(
-            zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1)
-        )
+        ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
         # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
         ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
         ax[0].set_xlabel('$z$')
@@ -46,9 +38,7 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
     ax[0].legend(ncol=2)
 
     for zi in range(zbins):
-        ax[1].plot(
-            zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=r'$z_{%d}$' % (zi + 1)
-        )
+        ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
         # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
         ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
         ax[1].set_xlabel('$z$')
@@ -78,25 +68,25 @@ def n_of_z(z, z_0, n_gal):
 
 
 # @njit
-def F_IA(z, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func):
+def f_ia(z, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func):
     result = ((1 + z) / (1 + z_pivot_IA)) ** eta_IA * (lumin_ratio_func(z)) ** beta_IA
     return result
 
 
 def b_of_z_analytical(z):
-    """simple analytical prescription for the linear galaxy bias:
+    """Simple analytical prescription for the linear galaxy bias:
     b(z) = sqrt(1 + z)
     """
     return np.sqrt(1 + z)
 
 
 def b_of_z_fs1_leporifit(z):
-    """fit to the linear galaxy bias measured from FS1"""
+    """Fit to the linear galaxy bias measured from FS1"""
     return 0.5125 + 1.377 * z + 0.222 * z**2 - 0.249 * z**3
 
 
 def b_of_z_fs1_pocinofit(z):
-    """fit to the linear galaxy bias measured from FS1."""
+    """Fit to the linear galaxy bias measured from FS1."""
     a, b, c = 0.81, 2.80, 1.02
     return a * z**b / (1 + z) + c
 
@@ -108,15 +98,14 @@ def b_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
         b0_gal, b1_gal, b2_gal, b3_gal = poly_fit_values
 
+    elif magcut_lens == 24.5:
+        b0_gal, b1_gal, b2_gal, b3_gal = 1.33291, -0.72414, 1.0183, -0.14913
+    elif magcut_lens == 23:
+        b0_gal, b1_gal, b2_gal, b3_gal = 1.88571, -2.73925, 3.24688, -0.73496
     else:
-        if magcut_lens == 24.5:
-            b0_gal, b1_gal, b2_gal, b3_gal = 1.33291, -0.72414, 1.0183, -0.14913
-        elif magcut_lens == 23:
-            b0_gal, b1_gal, b2_gal, b3_gal = 1.88571, -2.73925, 3.24688, -0.73496
-        else:
-            raise ValueError(
-                'magcut_lens, i.e. the limiting magnitude of the GCph sample, must be 23 or 24.5'
-            )
+        raise ValueError(
+            'magcut_lens, i.e. the limiting magnitude of the GCph sample, must be 23 or 24.5'
+        )
 
     return b0_gal + (b1_gal * z) + (b2_gal * z**2) + (b3_gal * z**3)
 
@@ -127,21 +116,20 @@ def magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
         b0_mag, b1_mag, b2_mag, b3_mag = poly_fit_values
 
+    elif magcut_lens == 24.5:
+        b0_mag, b1_mag, b2_mag, b3_mag = -1.50685, 1.35034, 0.08321, 0.04279
+    elif magcut_lens == 23:
+        b0_mag, b1_mag, b2_mag, b3_mag = -2.34493, 3.73098, 0.12500, -0.01788
     else:
-        if magcut_lens == 24.5:
-            b0_mag, b1_mag, b2_mag, b3_mag = -1.50685, 1.35034, 0.08321, 0.04279
-        elif magcut_lens == 23:
-            b0_mag, b1_mag, b2_mag, b3_mag = -2.34493, 3.73098, 0.12500, -0.01788
-        else:
-            raise ValueError(
-                'magcut_lens, i.e. the limiting magnitude of the GCph sample, must be 23 or 24.5'
-            )
+        raise ValueError(
+            'magcut_lens, i.e. the limiting magnitude of the GCph sample, must be 23 or 24.5'
+        )
 
     return b0_mag + (b1_mag * z) + (b2_mag * z**2) + (b3_mag * z**3)
 
 
 def s_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
-    """wrapper function to output the magnification bias as needed in ccl; function written by Marco"""
+    """Wrapper function to output the magnification bias as needed in ccl; function written by Marco"""
     # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
     return (
         magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=poly_fit_values) + 2
@@ -153,26 +141,26 @@ def b2g_fs2_fit(z):
     z_meas = [0.395, 0.7849999999999999, 1.1749999999999998, 1.565, 1.9549999999999998, 2.3449999999999998]
     b2_meas = [-0.25209754,  0.14240271,  0.56409318,  1.06597924,  2.84258843,  4.8300518 ]
     """
-
     c0, c1, c2, c3 = -0.69682803, 1.60320679, -1.31676159, 0.70271383
     b2g_ofz = c0 + c1 * z + c2 * z**2 + c3 * z**3
     return b2g_ofz
 
 
 def stepwise_bias(z, gal_bias_vs_zmean, z_edges):
-    """
-    Returns the bias value for a given redshift, based on stepwise bias values per redshift bin.
+    """Returns the bias value for a given redshift, based on stepwise bias values per redshift bin.
 
-    Parameters:
+    Parameters
+    ----------
     z (float): The redshift value.
     gal_bias_vs_zmean (list or array): Array containing one bias value per redshift bin.
     z_minus (list or array): Array containing the lower edge of each redshift bin.
     z_plus (list or array): Array containing the upper edge of each redshift bin.
 
-    Returns:
+    Returns
+    -------
     float: Bias value corresponding to the given redshift.
-    """
 
+    """
     assert np.all(np.diff(z_edges) > 0), 'z_edges must be sorted in ascending order'
     z_minus = z_edges[:-1]
     z_plus = z_edges[1:]
@@ -200,8 +188,7 @@ def build_galaxy_bias_2d_arr(
     bias_fit_function=None,
     kwargs_bias_fit_function=None,
 ):
-    """
-    Builds a 2d array of shape (len(z_grid), zbins) containing the bias values for each redshift bin. The bias values
+    """Builds a 2d array of shape (len(z_grid), zbins) containing the bias values for each redshift bin. The bias values
     can be given as a function of z, or as a constant value for each redshift bin. Each weight funcion will
 
     :param gal_bias_vs_zmean: the values of the bias computed in each bin (usually, in the mean).
@@ -212,7 +199,6 @@ def build_galaxy_bias_2d_arr(
     :param plot_bias: whether to plot the bias values for the different redshift bins.
     :return: gal_bias_2d_arr: array of shape (len(z_grid), zbins) containing the bias values for each redshift bin.
     """
-
     if bias_model != 'unbiased':
         # this check can skipped in the unbiased case
         assert len(gal_bias_vs_zmean) == zbins, (
@@ -285,8 +271,7 @@ def build_galaxy_bias_2d_arr(
 def build_ia_bias_1d_arr(
     z_grid_out, cosmo_ccl, ia_dict, lumin_ratio_2d_arr, output_F_IA_of_z=False
 ):
-    """
-    Computes the intrinsic alignment (IA) bias as a function of redshift.
+    """Computes the intrinsic alignment (IA) bias as a function of redshift.
 
     This function evaluates the IA bias on a given redshift grid based on the
     cosmology, intrinsic alignment parameters, and an optional luminosity ratio.
@@ -341,8 +326,8 @@ def build_ia_bias_1d_arr(
       .. math::
          \text{IA Bias} = - A_\text{IA} C_\text{IA} \Omega_m \frac{F_\text{IA}(z)}{\text{Growth Factor}}
     - The growth factor is evaluated using the `pyccl.growth_factor` function.
-    """
 
+    """
     A_IA = ia_dict['Aia']
     eta_IA = ia_dict['eIA']
     beta_IA = ia_dict['bIA']
@@ -363,18 +348,14 @@ def build_ia_bias_1d_arr(
     )
 
     omega_m = cosmo_ccl.cosmo.params.Omega_m
-    F_IA_of_z = F_IA(z_grid_out, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func)
+    F_IA_of_z = f_ia(z_grid_out, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func)
     ia_bias = -1 * A_IA * C_IA * omega_m * F_IA_of_z / growth_factor
 
-    if output_F_IA_of_z:
-        return (ia_bias, F_IA_of_z)
-
-    return ia_bias
+    return (ia_bias, F_IA_of_z) if output_F_IA_of_z else ia_bias
 
 
 def get_luminosity_ratio_interpolator(lumin_ratio_2d_arr):
-    """
-    Returns an interpolator function for the luminosity ratio or a default constant function.
+    """Returns an interpolator function for the luminosity ratio or a default constant function.
     :param lumin_ratio_2d_arr: A 2D numpy array with shape (N, 2) where column 0 is z and column 1 is the ratio.
     :return: Interpolator function for luminosity ratio.
     """
@@ -401,33 +382,33 @@ def get_luminosity_ratio_interpolator(lumin_ratio_2d_arr):
     return func
 
 
-def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
-    is_auto_spectrum = wf_A == wf_B
-    nbl = len(ell)
+def cl_ccl(wf_a, wf_b, ells, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
+    is_auto_spectrum = wf_a == wf_b
+    nbl = len(ells)
 
     if p_of_k_a is None:
         p_of_k_a = 'delta_matter:delta_matter'
 
     if is_auto_spectrum:
-        cl_3D = np.zeros((nbl, zbins, zbins))
+        cl_3d = np.zeros((nbl, zbins, zbins))
         for zi, zj in zip(np.triu_indices(zbins)[0], np.triu_indices(zbins)[1]):
-            cl_3D[:, zi, zj] = ccl.angular_cl(
-                cosmo, wf_A[zi], wf_B[zj], ell, p_of_k_a=p_of_k_a, **cl_ccl_kwargs
+            cl_3d[:, zi, zj] = ccl.angular_cl(
+                cosmo, wf_a[zi], wf_b[zj], ells, p_of_k_a=p_of_k_a, **cl_ccl_kwargs
             )
-        for ell in range(nbl):
-            cl_3D[ell, :, :] = sl.symmetrize_2d_array(cl_3D[ell, :, :])
+        for ell_ix in range(nbl):
+            cl_3d[ell_ix, :, :] = sl.symmetrize_2d_array(cl_3d[ell_ix, :, :])
 
     else:
         # be very careful with the order of the zi, zj loops: you have to revert them in NESTED list comprehensions to
         # have zi as first axis and zj as second axis (the code below is tested and works)
-        cl_3D = np.array(
+        cl_3d = np.array(
             [
                 [
                     ccl.angular_cl(
                         cosmo,
-                        wf_A[zi],
-                        wf_B[zj],
-                        ell,
+                        wf_a[zi],
+                        wf_b[zj],
+                        ells,
                         p_of_k_a=p_of_k_a,
                         **cl_ccl_kwargs,
                     )
@@ -436,7 +417,7 @@ def cl_PyCCL(wf_A, wf_B, ell, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
                 for zi in range(zbins)
             ]
         ).transpose(2, 0, 1)  # transpose to have ell as first axis
-    return cl_3D
+    return cl_3d
 
 
 def stem(cl_4d, variations_arr, zbins, nbl, percent_tolerance=1):
@@ -489,30 +470,6 @@ def stem(cl_4d, variations_arr, zbins, nbl, percent_tolerance=1):
                 dcl_3d[ell, zi, zj] = angular_coefficient
 
     return dcl_3d
-
-
-def gaussian_smmothing_nz(
-    zgrid_nz, nz_original, nz_gaussian_smoothing_sigma, plot=True
-):
-    print(
-        f'Applying a Gaussian filter of sigma = {nz_gaussian_smoothing_sigma} to the n(z)'
-    )
-
-    zbins = nz_original.shape[1]
-    colors = cm.rainbow(np.linspace(0, 1, zbins))
-
-    nz_smooth = gaussian_filter1d(nz_original, nz_gaussian_smoothing_sigma, axis=0)
-
-    if plot:
-        plt.figure()
-        for zi in range(zbins):
-            plt.plot(
-                zgrid_nz, nz_smooth[:, zi], label=f'zbin {zi}', c=colors[zi], ls='-'
-            )
-            plt.plot(zgrid_nz, nz_smooth[:, zi], c=colors[zi], ls='--')
-        plt.title(f'Gaussian filter w/ sigma = {nz_gaussian_smoothing_sigma}')
-
-    return nz_smooth
 
 
 def shift_nz(
@@ -581,7 +538,7 @@ def shift_nz(
 
 
 def get_z_means(zgrid, kernel):
-    """compute the mean of the wf distribution"""
+    """Compute the mean of the wf distribution"""
     assert kernel.shape[0] == zgrid.shape[0], (
         'kernel and zgrid must have the same length'
     )
@@ -593,18 +550,20 @@ def get_z_means(zgrid, kernel):
 
 
 def get_z_effective_isaac(zgrid_nz, n_of_z):
-    """
-    Calculate the effective redshift at which to evaluate the bias.
+    """Calculate the effective redshift at which to evaluate the bias.
 
     The effective redshift is defined as the median of the redshift distribution
     considering only the part of the distribution that is at least 10% of its maximum.
 
-    Parameters:
+    Parameters
+    ----------
     z (array-like): Array of redshifts corresponding to the n(z) distribution.
     n_of_z (array-like): The n(z) redshift distribution.
 
-    Returns:
+    Returns
+    -------
     float: The effective redshift.
+
     """
     zbins = n_of_z.shape[1]
     effective_z = np.zeros(zbins)

@@ -1,5 +1,6 @@
-"""
-To run these tests:
+"""Script to test SB outputs.
+
+To run them:
 1.  Decide on a branch/commit/version you wish to use as benchmark.
     Then, set `save_output_as_benchmark` to `True` in the config file and choose a
     unique benchmark filename. *Note that these options are in main.py, as of now*.
@@ -14,7 +15,7 @@ To run these tests:
     4.1  In particular, in main.py, comment out the lines:
            # cfg['misc']['save_output_as_benchmark'] = ...
            # cfg['misc']['bench_filename'] = ...
-    4.2  If you're testing the main branch, don't worry about 
+    4.2  If you're testing the main branch, don't worry about
          config/example_config separation (UPDATE 15/05/2025: I removed example_config)
 5.  Open this script and make sure you indicate the relevant benchmark file name
     in the `bench_names` list, then run it.
@@ -30,6 +31,7 @@ Note:  if all checks are run, the content of the tmp folder is deleted, preventi
 import glob
 import os
 import subprocess
+import sys
 
 import numpy as np
 import yaml
@@ -139,7 +141,7 @@ if os.path.exists(f'{temp_output_filename}.npz'):
     )
     if input(message) != 'y':
         print('Exiting...')
-        exit()
+        sys.exit()
     else:
         os.remove(f'{temp_output_filename}.npz')
 

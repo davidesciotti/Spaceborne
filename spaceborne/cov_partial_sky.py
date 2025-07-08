@@ -1,15 +1,16 @@
-import numpy as np
 import itertools
 import os
 import time
-import pymaster as nmt
-import healpy as hp
-from tqdm import tqdm
-from spaceborne import sb_lib as sl
-from spaceborne import constants
 import warnings
 
+import healpy as hp
+import numpy as np
 import pyccl as ccl
+import pymaster as nmt
+from tqdm import tqdm
+
+from spaceborne import constants
+from spaceborne import sb_lib as sl
 
 DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
@@ -53,9 +54,7 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
                      cw, w00, w02, w22,
                      coupled=False, ells_in=None, ells_out=None,
                      ells_out_edges=None, which_binning=None, weights=None):  # fmt: skip
-    """
-    Unified function to compute Gaussian covariance using NaMaster.
-
+    """Unified function to compute Gaussian covariance using NaMaster.
 
     # NOTE: the order of the arguments (in particular for the cls) is the following
     # spin_a1, spin_a2, spin_b1, spin_b2,
@@ -65,7 +64,8 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
     # covar_TT_TE = covar_00_02[:, 0, :, 0]x
     # covar_TT_TB = covar_00_02[:, 0, :, 1]
 
-    Parameters:
+    Parameters
+    ----------
     - cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb: Input power spectra.
     - zbins: Number of redshift bins.
     - nbl: Number of bandpower bins.
@@ -75,8 +75,8 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
     - ells_in, ells_out, ells_out_edges: Binning parameters for coupled covariance.
     - which_binning: Binning method for coupled covariance.
     - weights: Weights for binning.
-    """
 
+    """
     cl_et = cl_te.transpose(0, 2, 1)
     cl_bt = cl_tb.transpose(0, 2, 1)
     cl_be = cl_eb.transpose(0, 2, 1)
@@ -123,7 +123,7 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
                                               coupled=coupled,
                                               wa=w00, wb=w02).reshape([nell, 1, nell, 2])  # fmt: skip
         covar_TT_TE = covar_00_02[:, 0, :, 0]
-        covar_TT_TB = covar_00_02[:, 0, :, 1]
+        _covar_TT_TB = covar_00_02[:, 0, :, 1]
 
         covar_00_22 = nmt.gaussian_covariance(cw,  # fmt: skip
                                               0, 0, 2, 2,
@@ -134,9 +134,9 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
                                               coupled=coupled,
                                               wa=w00, wb=w22).reshape([nell, 1, nell, 4])  # fmt: skip
         covar_TT_EE = covar_00_22[:, 0, :, 0]
-        covar_TT_EB = covar_00_22[:, 0, :, 1]
-        covar_TT_BE = covar_00_22[:, 0, :, 2]
-        covar_TT_BB = covar_00_22[:, 0, :, 3]
+        _covar_TT_EB = covar_00_22[:, 0, :, 1]
+        _covar_TT_BE = covar_00_22[:, 0, :, 2]
+        _covar_TT_BB = covar_00_22[:, 0, :, 3]
 
         covar_02_02 = nmt.gaussian_covariance(cw,  # fmt: skip
                                               0, 2, 0, 2,
@@ -147,9 +147,9 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
                                               coupled=coupled,
                                               wa=w02, wb=w02).reshape([nell, 2, nell, 2])  # fmt: skip
         covar_TE_TE = covar_02_02[:, 0, :, 0]
-        covar_TE_TB = covar_02_02[:, 0, :, 1]
-        covar_TB_TE = covar_02_02[:, 1, :, 0]
-        covar_TB_TB = covar_02_02[:, 1, :, 1]
+        _covar_TE_TB = covar_02_02[:, 0, :, 1]
+        _covar_TB_TE = covar_02_02[:, 1, :, 0]
+        _covar_TB_TB = covar_02_02[:, 1, :, 1]
 
         covar_02_22 = nmt.gaussian_covariance(cw,  # fmt: skip
                                               0, 2, 2, 2,
@@ -160,13 +160,13 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
                                               coupled=coupled,
                                               wa=w02, wb=w22).reshape([nell, 2, nell, 4])  # fmt: skip
         covar_TE_EE = covar_02_22[:, 0, :, 0]
-        covar_TE_EB = covar_02_22[:, 0, :, 1]
-        covar_TE_BE = covar_02_22[:, 0, :, 2]
-        covar_TE_BB = covar_02_22[:, 0, :, 3]
-        covar_TB_EE = covar_02_22[:, 1, :, 0]
-        covar_TB_EB = covar_02_22[:, 1, :, 1]
-        covar_TB_BE = covar_02_22[:, 1, :, 2]
-        covar_TB_BB = covar_02_22[:, 1, :, 3]
+        _covar_TE_EB = covar_02_22[:, 0, :, 1]
+        _covar_TE_BE = covar_02_22[:, 0, :, 2]
+        _covar_TE_BB = covar_02_22[:, 0, :, 3]
+        _covar_TB_EE = covar_02_22[:, 1, :, 0]
+        _covar_TB_EB = covar_02_22[:, 1, :, 1]
+        _covar_TB_BE = covar_02_22[:, 1, :, 2]
+        _covar_TB_BB = covar_02_22[:, 1, :, 3]
 
         covar_22_22 = nmt.gaussian_covariance(cw,  # fmt: skip
                                               2, 2, 2, 2,
@@ -178,21 +178,21 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
                                               wa=w22, wb=w22).reshape([nell, 4, nell, 4])  # fmt: skip
 
         covar_EE_EE = covar_22_22[:, 0, :, 0]
-        covar_EE_EB = covar_22_22[:, 0, :, 1]
-        covar_EE_BE = covar_22_22[:, 0, :, 2]
-        covar_EE_BB = covar_22_22[:, 0, :, 3]
-        covar_EB_EE = covar_22_22[:, 1, :, 0]
-        covar_EB_EB = covar_22_22[:, 1, :, 1]
-        covar_EB_BE = covar_22_22[:, 1, :, 2]
-        covar_EB_BB = covar_22_22[:, 1, :, 3]
-        covar_BE_EE = covar_22_22[:, 2, :, 0]
-        covar_BE_EB = covar_22_22[:, 2, :, 1]
-        covar_BE_BE = covar_22_22[:, 2, :, 2]
-        covar_BE_BB = covar_22_22[:, 2, :, 3]
-        covar_BB_EE = covar_22_22[:, 3, :, 0]
-        covar_BB_EB = covar_22_22[:, 3, :, 1]
-        covar_BB_BE = covar_22_22[:, 3, :, 2]
-        covar_BB_BB = covar_22_22[:, 3, :, 3]
+        _covar_EE_EB = covar_22_22[:, 0, :, 1]
+        _covar_EE_BE = covar_22_22[:, 0, :, 2]
+        _covar_EE_BB = covar_22_22[:, 0, :, 3]
+        _covar_EB_EE = covar_22_22[:, 1, :, 0]
+        _covar_EB_EB = covar_22_22[:, 1, :, 1]
+        _covar_EB_BE = covar_22_22[:, 1, :, 2]
+        _covar_EB_BB = covar_22_22[:, 1, :, 3]
+        _covar_BE_EE = covar_22_22[:, 2, :, 0]
+        _covar_BE_EB = covar_22_22[:, 2, :, 1]
+        _covar_BE_BE = covar_22_22[:, 2, :, 2]
+        _covar_BE_BB = covar_22_22[:, 2, :, 3]
+        _covar_BB_EE = covar_22_22[:, 3, :, 0]
+        _covar_BB_EB = covar_22_22[:, 3, :, 1]
+        _covar_BB_BE = covar_22_22[:, 3, :, 2]
+        _covar_BB_BB = covar_22_22[:, 3, :, 3]
 
         common_kw = {
             'ells_in': ells_in,
@@ -258,7 +258,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
     z_combinations = list(itertools.product(range(zbins), repeat=4))
     for zi, zj, zk, zl in tqdm(z_combinations):
         covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_tt[:, zi, zk]],  # TT
                                               [cl_tt[:, zi, zl]],  # TT
                                               [cl_tt[:, zj, zk]],  # TT
@@ -268,7 +268,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TT_TT = covar_00_00
 
         covar_00_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_tt[:, zi, zk]],  # TT
                                               [cl_te[:, zi, zl]],  # TE, TB
                                               [cl_tt[:, zj, zk]],  # TT
@@ -278,7 +278,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TT_TE = covar_00_02
 
         covar_02_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_tt[:, zi, zk]],  # TT
                                               [cl_tt[:, zi, zl]],  # TT
                                               [cl_et[:, zj, zk]],  # TE, TB
@@ -288,7 +288,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TE_TT = covar_02_00
 
         covar_02_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_tt[:, zi, zk]],  # TT
                                               [cl_te[:, zi, zl]],  # TE, TB
                                               [cl_et[:, zj, zk]],  # ET, BT
@@ -298,7 +298,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TE_TE = covar_02_02
 
         covar_00_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_te[:, zi, zk]],  # TE, TB
                                               [cl_te[:, zi, zl]],  # TE, TB
                                               [cl_te[:, zj, zk]],  # TE, TB
@@ -308,7 +308,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TT_EE = covar_00_22
 
         covar_02_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_te[:, zi, zk]],  # TE, TB
                                               [cl_te[:, zi, zl]],  # TE, TB
                                               [cl_ee[:, zj, zk]],
@@ -318,7 +318,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_TE_EE = covar_02_22
 
         covar_22_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_ee[:, zi, zk]],
                                               [cl_ee[:, zi, zl]],
                                               [cl_ee[:, zj, zk]],
@@ -328,7 +328,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_EE_EE = covar_22_22
 
         covar_22_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_et[:, zi, zk]],
                                               [cl_ee[:, zi, zl]],
                                               [cl_et[:, zj, zk]],
@@ -338,7 +338,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
         covar_EE_TE = covar_22_02
 
         covar_22_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0, 
+                                              0, 0, 0, 0,
                                               [cl_et[:, zi, zk]],
                                               [cl_et[:, zi, zl]],
                                               [cl_et[:, zj, zk]],
@@ -400,11 +400,10 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
 
 
 def linear_lmin_binning(NSIDE, lmin, bw):
-    """
-    Generate a linear binning scheme based on a minimum multipole 'lmin' and bin width 'bw'.
+    """Generate a linear binning scheme based on a minimum multipole 'lmin' and bin width 'bw'.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     NSIDE : int
         The NSIDE parameter of the HEALPix grid.
 
@@ -414,14 +413,14 @@ def linear_lmin_binning(NSIDE, lmin, bw):
     bw : int
         The bin width, i.e., the number of multipoles in each bin.
 
-    Returns:
-    --------
+    Returns
+    -------
     nmt_bins
         A binning scheme object defining linearly spaced bins starting from 'lmin' with
         a width of 'bw' multipoles.
 
-    Notes:
-    ------
+    Notes
+    -----
     This function generates a binning scheme for the pseudo-Cl power spectrum estimation
     using the Namaster library. It divides the multipole range from 'lmin' to 2*NSIDE
     into bins of width 'bw'.
@@ -430,6 +429,7 @@ def linear_lmin_binning(NSIDE, lmin, bw):
     --------
     # Generate a linear binning scheme for an NSIDE of 64, starting from l=10, with bin width of 20
     bin_scheme = linear_lmin_binning(NSIDE=64, lmin=10, bw=20)
+
     """
     lmax = 2 * NSIDE
     nbl = (lmax - lmin) // bw + 1
@@ -445,12 +445,11 @@ def linear_lmin_binning(NSIDE, lmin, bw):
 
 
 def coupling_matrix(bin_scheme, mask, wkspce_name):
-    """
-    Compute the mixing matrix for coupling spherical harmonic modes using
+    """Compute the mixing matrix for coupling spherical harmonic modes using
     the provided binning scheme and mask.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     bin_scheme : nmt_bins
         A binning scheme object defining the bins for the coupling matrix.
 
@@ -461,13 +460,13 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
         The file name for storing or retrieving the computed workspace containing
         the coupling matrix.
 
-    Returns:
-    --------
+    Returns
+    -------
     nmt_workspace
         A workspace object containing the computed coupling matrix.
 
-    Notes:
-    ------
+    Notes
+    -----
     This function computes the coupling matrix necessary for the pseudo-Cl power
     spectrum estimation using the NmtField and NmtWorkspace objects from the
     Namaster library.
@@ -486,6 +485,7 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
 
     # Compute the coupling matrix and store it in 'coupling_matrix.bin'
     coupling_matrix = coupling_matrix(bin_scheme, mask, 'coupling_matrix.bin')
+
     """
     print('Compute the mixing matrix')
     start = time.time()
@@ -509,9 +509,9 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
 
 
 def sample_covariance( # fmt: skip
-    cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned, 
-    cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned, 
-    nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, nmt_bin_obj, 
+    cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned,
+    cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned,
+    nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, nmt_bin_obj,
     w00, w02, w22, lmax=None, n_probes=2, fix_seed=True, n_iter=None, lite=True,
 ):  # fmt: skip
     if lmax is None:
@@ -521,7 +521,7 @@ def sample_covariance( # fmt: skip
         SEEDVALUE = np.arange(nreal)
 
     # NmtField kwargs
-    nmt_field_kw = dict(n_iter=n_iter, lite=lite, lmax=lmax)
+    nmt_field_kw = {'n_iter': n_iter, 'lite': lite, 'lmax': lmax}
 
     # TODO use only independent z pairs
     cov_sim_10d = np.zeros(
@@ -619,7 +619,7 @@ def sample_covariance( # fmt: skip
     for zi, zj, zk, zl in tqdm(zijkl_combinations):
         # ! compute the sample covariance
         # you could also cut the mixed cov terms, but for cross-redshifts it becomes a bit tricky
-        kwargs = dict(rowvar=False, bias=False)
+        kwargs = {'rowvar': False, 'bias': False}
         cov_sim_10d[0, 0, 0, 0, :, :, zi, zj, zk, zl] = np.cov(
             sim_cl_LL[:, :, zi, zj], sim_cl_LL[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
@@ -652,15 +652,13 @@ def sample_covariance( # fmt: skip
 
 
 def pcls_from_maps(  # fmt: skip
-    corr_maps_gg, corr_maps_ll, zi, zj, f0, f2, mask, coupled_cls, which_cls, 
+    corr_maps_gg, corr_maps_ll, zi, zj, f0, f2, mask, coupled_cls, which_cls,
     w00, w02, w22, lmax_eff,
 ):  # fmt: skip
-    """
-    Note: both healpy anafast and nmt.compute_coupled_cell return the coupled
+    """Note: both healpy anafast and nmt.compute_coupled_cell return the coupled
     ("pseudo") cls. Dividing by fsky gives a rough approximation of the true Cls.
 
     """
-
     if which_cls == 'namaster':
         # pseudo-Cls. Becomes an ok estimator for the true Cls if divided by fsky
         pcl_tt = nmt.compute_coupled_cell(f0[zi], f0[zj])
@@ -787,7 +785,7 @@ def build_cl_tomo_TEB_ring_ord(
         for zi in range(len(row) - offset):
             zj = zi + offset
 
-            probe_a, zi, probe_b, zj = matrix[zi][zj].split('-')
+            probe_a, _zi, probe_b, zj = matrix[zi][zj].split('-')
 
             if probe_a == 'T' and probe_b == 'T':
                 cl = cl_TT
@@ -810,7 +808,7 @@ def build_cl_tomo_TEB_ring_ord(
             else:
                 raise ValueError(f'Invalid combination: {probe_a}-{probe_b}')
 
-            cl_ring_ord_list.append(cl[:, int(zi), int(zj)])
+            cl_ring_ord_list.append(cl[:, int(_zi), int(zj)])
 
     return cl_ring_ord_list
 
@@ -827,8 +825,7 @@ def get_sample_field_bu(cl_TT, cl_EE, cl_BB, cl_TE, nside, mask):
 
 
 def cls_to_maps(cl_TT, cl_EE, cl_BB, cl_TE, nside, lmax=None):
-    """
-    This routine generates maps for spin-0 and a spin-2 Gaussian random field based
+    """This routine generates maps for spin-0 and a spin-2 Gaussian random field based
     on the input power spectra.
 
     Args:
@@ -840,6 +837,7 @@ def cls_to_maps(cl_TT, cl_EE, cl_BB, cl_TE, nside, lmax=None):
 
     Returns:
         numpy.ndarray, numpy.ndarray, numpy.ndarray: Temperature map, Q-mode polarization map, U-mode polarization map.
+
     """
     if lmax is None:
         # note: this seems to be causing issues for EE when lmax_eff is significantly
@@ -855,8 +853,7 @@ def cls_to_maps(cl_TT, cl_EE, cl_BB, cl_TE, nside, lmax=None):
 
 
 def masked_maps_to_nmtFields(map_T, map_Q, map_U, mask, lmax, n_iter=None, lite=True):
-    """
-    Create NmtField objects from masked maps.
+    """Create NmtField objects from masked maps.
 
     Args:
         map_T (numpy.ndarray): Temperature map.
@@ -866,6 +863,7 @@ def masked_maps_to_nmtFields(map_T, map_Q, map_U, mask, lmax, n_iter=None, lite=
 
     Returns:
         nmt.NmtField, nmt.NmtField: NmtField objects for the temperature and polarization maps.
+
     """
     f0 = nmt.NmtField(mask, [map_T], n_iter=n_iter, lite=lite, lmax=lmax)
     f2 = nmt.NmtField(mask, [map_Q, map_U], spin=2, n_iter=n_iter, lite=lite, lmax=lmax)
@@ -969,7 +967,7 @@ class NmtCov:
         ells_eff = self.ell_obj.ells_3x2pt
         nbl_eff = self.ell_obj.nbl_3x2pt
         ells_eff_edges = self.ell_obj.ell_edges_3x2pt
-        ell_min_eff = self.ell_obj.ell_min_3x2pt
+        _ell_min_eff = self.ell_obj.ell_min_3x2pt
         ell_max_eff = self.ell_obj.ell_max_3x2pt
 
         # notice that bin_obj.get_ell_list(nbl_eff) is out of bounds
@@ -1038,7 +1036,6 @@ class NmtCov:
         if nmt_cfg['use_INKA']:
             z_combinations = list(itertools.product(range(self.zbins), repeat=2))
             for zi, zj in z_combinations:
-                #
                 list_gg = [
                     self.cl_gg_unb_3d[:, zi, zj],
                 ]

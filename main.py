@@ -1,38 +1,38 @@
 import argparse
+import contextlib
 import os
 import pprint
 import sys
-import contextlib
 import time
 import warnings
 from copy import deepcopy
 from functools import partial
 from importlib.util import find_spec
-from scipy.ndimage import gaussian_filter1d
-from scipy.interpolate import CubicSpline, RectBivariateSpline
 
-import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
+from matplotlib import cm
+from scipy.interpolate import CubicSpline, RectBivariateSpline
+from scipy.ndimage import gaussian_filter1d
+
 from spaceborne import (
     bnt,
+    ccl_interface,
     cl_utils,
     config_checker,
     cosmo_lib,
     ell_utils,
-    mask_utils,
-    pyccl_interface,
-    responses,
-    sigma2_SSC,
-    wf_cl_lib,
     io_handler,
+    mask_utils,
+    oc_interface,
+    responses,
+    sigma2_ssc,
+    wf_cl_lib,
 )
 from spaceborne import covariance as sb_cov
-from spaceborne import onecovariance_interface as oc_interface
-from spaceborne import sb_lib as sl
 from spaceborne import plot_lib as sb_plt
-
+from spaceborne import sb_lib as sl
 
 with contextlib.suppress(ImportError):
     import pyfiglet
@@ -101,7 +101,7 @@ def plot_cls():
     # files or not
     for zi in range(zbins):
         zj = zi
-        kw = dict(c=clr[zi], ls='-', marker='.')
+        kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
         ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], **kw)
         ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
         ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
@@ -110,7 +110,7 @@ def plot_cls():
     if cfg['C_ell']['use_input_cls']:
         for zi in range(zbins):
             zj = zi
-            sb_kw = dict(c=clr[zi], ls='', marker='x')
+            sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
             ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **sb_kw)
             ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **sb_kw)
             ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **sb_kw)
@@ -233,7 +233,6 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
     )
 
 
-
 cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
 # Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
@@ -345,7 +344,7 @@ cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg, zbins)
 cfg_check_obj.run_all_checks()
 
 # ! instantiate CCL object
-ccl_obj = pyccl_interface.PycclClass(
+ccl_obj = ccl_interface.PycclClass(
     cfg['cosmology'],
     cfg['extra_parameters'],
     cfg['intrinsic_alignment'],
@@ -385,8 +384,8 @@ k_limber_func = partial(
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
 z_grid = np.linspace(
-    cfg['covariance']['z_min'], 
-    cfg['covariance']['z_max'], 
+    cfg['covariance']['z_min'],
+    cfg['covariance']['z_max'],
     cfg['covariance']['z_steps']
 )  # fmt: skip
 z_grid_trisp = np.linspace(
@@ -737,7 +736,7 @@ print(f'done in {time.perf_counter() - t0:.2f} s')
 # ! ============================ Multiplicative shear bias =============================
 # ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
 # ! in the .ini file
-ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
+ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = ccl_interface.apply_mult_shear_bias(
     ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
 )
 
@@ -937,7 +936,7 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
         )
 
         # apply mult shear bias
-        cl_ll_unb_3d, cl_gl_unb_3d = pyccl_interface.apply_mult_shear_bias(
+        cl_ll_unb_3d, cl_gl_unb_3d = ccl_interface.apply_mult_shear_bias(
             cl_ll_unb_3d, cl_gl_unb_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
         )
 
@@ -1310,16 +1309,14 @@ if compute_sb_ssc:
 
             if s2b_integration_scheme == 'levin':
                 k_grid_s2b = k_grid
-            elif s2b_integration_scheme == 'simps':
-                k_grid_s2b = k_grid_s2b_simps
-            elif s2b_integration_scheme == 'fft':
+            elif s2b_integration_scheme in ('simps', 'fft'):
                 k_grid_s2b = k_grid_s2b_simps
             else:
                 raise ValueError(
                     f'Unknown sigma2_b_integration_scheme: {s2b_integration_scheme}'
                 )
 
-            sigma2_b = sigma2_SSC.sigma2_z1z2_wrap_parallel(
+            sigma2_b = sigma2_ssc.sigma2_z1z2_wrap_parallel(
                 z_grid=z_grid,
                 k_grid_sigma2=k_grid_s2b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,

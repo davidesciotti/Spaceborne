@@ -2,40 +2,25 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pyccl as ccl
+from scipy.fft import rfft
 from scipy.integrate import simpson as simps
-from scipy.special import spherical_jn, loggamma
 from scipy.interpolate import interp1d
+from scipy.special import spherical_jn
 from tqdm import tqdm
 
-import pyccl as ccl
 from spaceborne import cosmo_lib
 from spaceborne import sb_lib as sl
-from scipy.fft import rfft, irfft, fft
 
-
-class Sigma2bSSC:
-    def __init__(self, cfg, pvt_cfg, ccl_obj, mask_obj):
-        self.cfg = cfg
-        self.pvt_cfg = pvt_cfg
-        self.ccl_obj = ccl_obj
-        self.mask_obj = mask_obj
-
-    def set_levin_precision(self):
-        # * pylevin hyperparameters
-        self.n_sub = 12  # number of collocation points in each bisection
-        self.n_bisec_max = 100  # maximum number of bisections used
-        self.rel_acc = 1e-5  # relative accuracy target
-        # should the bessel functions be calculated with boost
-        # instead of GSL, higher accuracy at high Bessel orders
-        self.boost_bessel = True
-        self.verbose = True  # should the code talk to you?
-        self.logx = True  # Tells the code to create a logarithmic spline in x for f(x)
-        self.logy = (
-            True  # Tells the code to create a logarithmic spline in y for y = f(x)
-        )
-        
-    def process_s2b(self):
-        
+# * pylevin hyperparameters
+n_sub = 12  # number of collocation points in each bisection
+n_bisec_max = 100  # maximum number of bisections used
+rel_acc = 1e-5  # relative accuracy target
+boost_bessel = True  # should the bessel functions be calculated with boost
+# instead of GSL, higher accuracy at high Bessel orders
+verbose = True  # should the code talk to you?
+logx = True  # Tells the code to create a logarithmic spline in x for f(x)
+logy = True  # Tells the code to create a logarithmic spline in y for y = f(x)
 
 
 # This is defined globally because of parallelization issues
@@ -43,7 +28,7 @@ COSMO_CCL = None
 
 
 def init_cosmo(cosmo):
-    global COSMO_CCL
+    global COSMO_CCL  # noqa: PLW0603
     COSMO_CCL = cosmo
 
 
@@ -59,10 +44,7 @@ def sigma2_z1z2_wrap_parallel(
     parallel: bool = True,
     h=None,
 ) -> np.ndarray:
-    """
-    Parallelized version of sigma2_z1z2_wrap using joblib.
-    """
-
+    """Parallelized version of sigma2_z1z2_wrap using joblib."""
     print('Computing sigma^2_b(z_1, z_2). This may take a while...')
     start = time.perf_counter()
 
@@ -73,7 +55,7 @@ def sigma2_z1z2_wrap_parallel(
             # Create a list of arguments—one per z2 value in z_grid
             # Build the argument list without cosmo_ccl:
             arg_list = [
-                (z2, z_grid, k_grid_sigma2, which_sigma2_b, 
+                (z2, z_grid, k_grid_sigma2, which_sigma2_b,
                 mask_obj.ell_mask, mask_obj.cl_mask, mask_obj.fsky)
                 for z2 in z_grid
             ]  # fmt: skip
@@ -142,9 +124,7 @@ def sigma2_z1z2_wrap_parallel(
 def compute_sigma2_b(
     z2, z_grid, k_grid_sigma2, which_sigma2_b, ell_mask, cl_mask, fsky_in
 ):
-    """
-    Wrapper for sigma2_z2_func_vectorized without the unpickleable cosmo_ccl argument.
-    """
+    """Wrapper for sigma2_z2_func_vectorized without the unpickleable cosmo_ccl argument."""
     return sigma2_z2_func_vectorized(
         z1_arr=z_grid,
         z2=z2,
@@ -158,9 +138,7 @@ def compute_sigma2_b(
 
 
 def pool_compute_sigma2_b(args):
-    """
-    Helper function to be used with pathos processing pool
-    """
+    """Helper function to be used with pathos processing pool"""
     return compute_sigma2_b(*args)
 
 
@@ -175,8 +153,7 @@ def sigma2_b_levin_batched(
     n_jobs: int,
     batch_size: int,
 ) -> np.ndarray:
-    """
-    Compute sigma2_b using the Levin integration method. The computation leverages the
+    """Compute sigma2_b using the Levin integration method. The computation leverages the
     symmetry in z1, z2 to reduce the number of integrals
     (only the upper triangle of the z1, z2 matrix is actually computed).
 
@@ -205,8 +182,8 @@ def sigma2_b_levin_batched(
     -------
     np.ndarray
         2D array of sigma2_b values, of shape (len(z_grid), len(z_grid)).
-    """
 
+    """
     import pylevin as levin
 
     a_arr = cosmo_lib.z_to_a(z_grid)
@@ -354,15 +331,13 @@ def sigma2_z2_func_vectorized(
     n_jobs=1,
     h=None,
 ):
+    """Vectorized version of sigma2_func in z1. Implements the formula
+    \sigma^2_{\rm b, \, fullsky}(z_{1}, z_{2}) = \frac{1}{2 \pi^{2}} \int_0^{\infty}
+    \diff k \, k^{2} \,
+    {\rm j}_{0}(k \chi_1)\,
+    {\rm j}_{0}(k \chi_2) \,
+    P_{\rm L}(k \, | \, z_1, z_2)
     """
-    Vectorized version of sigma2_func in z1. Implements the formula
-       \sigma^2_{\rm b, \, fullsky}(z_{1}, z_{2}) = \frac{1}{2 \pi^{2}} \int_0^{\infty}
-       \diff k \, k^{2} \,
-       {\rm j}_{0}(k \chi_1)\,
-       {\rm j}_{0}(k \chi_2) \,
-       P_{\rm L}(k \, | \, z_1, z_2)
-    """
-
     a1_arr = cosmo_lib.z_to_a(z1_arr)
     a2 = cosmo_lib.z_to_a(z2)
 
@@ -435,7 +410,8 @@ def sigma2_z2_func_vectorized(
 
 def integrate_levin(r1_arr, r2, integrand, k_grid_sigma2, n_jobs):
     """This can probably be further optimized by not instantiating
-    the class at evey value of r2"""
+    the class at evey value of r2
+    """
     import pylevin as levin
 
     # Constructor of the class

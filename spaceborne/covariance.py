@@ -157,10 +157,13 @@ class SpaceborneCovariance:
         )
 
         assert (
-            (self.cov_terms_list == ['G', 'SSC', 'cNG'])
-            or (self.cov_terms_list == ['G', 'SSC'])
-            or (self.cov_terms_list == ['G', 'cNG'])
-            or (self.cov_terms_list == ['G'])  # TODO finish testing this?
+            self.cov_terms_list
+            in (
+                ['G', 'SSC', 'cNG'],
+                ['G', 'SSC'],
+                ['G', 'cNG'],
+                ['G'],
+            )  # TODO finish testing this?
         ), 'cov_terms_list not recognised'
 
         assert self.ssc_code in ['Spaceborne', 'PyCCL', 'OneCovariance'], (
@@ -180,8 +183,7 @@ class SpaceborneCovariance:
         ind_probe=None,
         is_3x2pt=False,
     ):
-        """
-        Reshape a covariance matrix between dimensions (6/2D -> 4/2D).
+        """Reshape a covariance matrix between dimensions (6/2D -> 4/2D).
 
         Parameters
         ----------
@@ -209,8 +211,8 @@ class SpaceborneCovariance:
         ------
         ValueError
             If the combination of ndim_in, ndim_out, and is_3x2pt is not supported.
-        """
 
+        """
         # raise NotImplementedError('Is this function really useful?')
 
         # Validate inputs
@@ -571,7 +573,6 @@ class SpaceborneCovariance:
 
     def _cov_8d_dict_to_10d_arr(self, cov_dict_8D):
         """Helper function to process a single covariance component"""
-
         cov_dict_10D = sl.cov_3x2pt_dict_8d_to_10d(
             cov_dict_8D,
             self.nbl_3x2pt,
@@ -586,8 +587,7 @@ class SpaceborneCovariance:
         )
 
     def build_covs(self, ccl_obj, oc_obj):
-        """
-        Combines, reshaped and returns the Gaussian (g), non-Gaussian (ng) and
+        """Combines, reshaped and returns the Gaussian (g), non-Gaussian (ng) and
         Gaussian+non-Gaussian (tot) covariance matrices
         for different probe combinations.
 
@@ -607,8 +607,8 @@ class SpaceborneCovariance:
             - cov_{probe}_tot_2D: g + ng covariance
             where {probe} can be: WL (weak lensing), GC (galaxy clustering),
             3x2pt (WL + XC + GC), XC (cross-correlation), 2x2pt (XC + GC)
-        """
 
+        """
         self.cov_dict = {}
 
         if self.g_code == 'OneCovariance':
@@ -914,17 +914,17 @@ class SpaceborneCovariance:
             ('cov_WL_g_2D', self.cov_WL_g_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
             ('cov_WL_ssc_2D', cov_WL_ssc_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
             ('cov_WL_cng_2D', cov_WL_cng_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-            
+
             # GC
             ('cov_GC_g_2D', self.cov_GC_g_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
             ('cov_GC_ssc_2D', cov_GC_ssc_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
             ('cov_GC_cng_2D', cov_GC_cng_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-            
+
             # XC
             ('cov_XC_g_2D', cov_XC_g_6D, 6, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross, False),
             ('cov_XC_ssc_2D', cov_XC_ssc_6D, 6, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross, False),
             ('cov_XC_cng_2D', cov_XC_cng_6D, 6, self.nbl_3x2pt, self.zpairs_cross, self.ind_cross, False),
-            
+
             # 3x2pt
             ('cov_3x2pt_g_2D', self.cov_3x2pt_g_10D, 10, self.nbl_3x2pt, self.zpairs_auto, self.ind, True),
             ('cov_3x2pt_ssc_2D', self.cov_3x2pt_ssc_10D,10, self.nbl_3x2pt, self.zpairs_auto, self.ind, True),
@@ -1051,8 +1051,8 @@ class SpaceborneCovariance:
         num_threads=16,
     ):
         """Kernel to compute the 4D integral optimized using Simpson's rule using
-        Julia."""
-
+        Julia.
+        """
         suffix = 0
         folder_name = 'tmp'
         unique_folder_name = folder_name

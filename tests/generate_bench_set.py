@@ -1,5 +1,5 @@
-"""
-This script performs the following operations:
+"""This script performs the following operations.
+
 1. Imports the cfg yaml file in the Spaceborne root directory (as a baseline cfg)
 2. It changes some settings (for example, to speed up the code), and stores this updated
    baseline config in base_cfg
@@ -15,7 +15,7 @@ This script performs the following operations:
    the new bench files
    [NOTE] the SB output is in
    /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output/_sb_output,
-   but you don't need to care about this
+   but you don't need to care about this.
 """
 
 import gc
@@ -29,9 +29,10 @@ import yaml
 
 
 def generate_zipped_configs(base_config, changes_list, output_dir):
-    """
-    Generate configurations by applying a predefined list of changes
-    to the base configuration. Each item in changes_list is a dictionary
+    """Generate configurations by applying a predefined list of changes
+    to the base configuration.
+
+    Each item in changes_list is a dictionary
     representing a set of specific updates to apply.
 
     Args:
@@ -42,6 +43,7 @@ def generate_zipped_configs(base_config, changes_list, output_dir):
 
     Returns:
         list: A list of full configuration dictionaries.
+
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -67,8 +69,7 @@ def generate_zipped_configs(base_config, changes_list, output_dir):
 
 
 def save_configs_to_yaml(configs, bench_set_path_cfg, output_path):
-    """
-    Save each configuration to a separate YAML file with a descriptive name.
+    """Save each configuration to a separate YAML file with a descriptive name.
 
     Args:
         configs (list): List of configuration dictionaries
@@ -76,6 +77,7 @@ def save_configs_to_yaml(configs, bench_set_path_cfg, output_path):
 
     Returns:
         list: List of paths to the generated YAML files
+
     """
     yaml_files = []
 
@@ -100,13 +102,13 @@ def save_configs_to_yaml(configs, bench_set_path_cfg, output_path):
 
 
 def run_benchmarks(yaml_files, sb_root_path, output_dir):
-    """
-    Run the benchmarks for each configuration file.
+    """Run the benchmarks for each configuration file.
 
     Args:
         yaml_files (list): List of paths to YAML configuration files
         sb_root_path (str): Path to the root directory of the Spaceborne project
         output_dir (str): Directory to save the benchmark results
+
     """
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -130,14 +132,14 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
             # Convert yaml_file to absolute path if needed
             if not os.path.isabs(yaml_file):
                 # Make the path relative to the original directory, not the new working directory
-                yaml_file = os.path.abspath(os.path.join(original_dir, yaml_file))
+                _yaml_file = os.path.abspath(os.path.join(original_dir, yaml_file))
 
-            print(f'Running benchmark with config: {yaml_file}')
+            print(f'Running benchmark with config: {_yaml_file}')
 
             # Run the main script with the current configuration
             start_time = datetime.now()
             result = subprocess.run(
-                ['python', 'main.py', '--config', yaml_file],
+                ['python', 'main.py', '--config', _yaml_file],
                 capture_output=False,
                 # text=True,
                 check=True,
@@ -192,7 +194,7 @@ output_path = f'{bench_set_path_results}/_sb_output'
 sb_root_path = f'{ROOT}/Spaceborne'
 
 # start by importing a cfg file
-with open(f'{sb_root_path}/config.yaml', 'r', encoding='utf-8') as f:
+with open(f'{sb_root_path}/config.yaml', encoding='utf-8') as f:
     base_cfg = yaml.safe_load(f)
 
 # Base configuration (common parameters) - these will be applied first

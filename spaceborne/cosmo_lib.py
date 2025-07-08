@@ -3,11 +3,11 @@ import warnings
 from copy import deepcopy
 
 import numpy as np
+import pyccl as ccl
 from scipy.integrate import simpson as simps
 
-import pyccl as ccl
-from spaceborne import sb_lib as sl
 from spaceborne import constants
+from spaceborne import sb_lib as sl
 
 # ! prefactor for limber and curved-sky corrections
 # prefactor = np.array(
@@ -26,24 +26,23 @@ c = constants.SPEED_OF_LIGHT
 
 
 def map_keys(input_dict, key_mapping):
-    """
-    Maps the keys of a dictionary based on a given key mapping, while retaining
+    """Maps the keys of a dictionary based on a given key mapping, while retaining
     keys not specified in the mapping.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     input_dict : dict
         The dictionary whose keys are to be mapped.
     key_mapping : dict
         A dictionary containing the mapping from the old keys to the new keys.
 
-    Returns:
-    --------
+    Returns
+    -------
     new_dict : dict
         A dictionary with keys mapped according to the key_mapping, and
         with additional keys from the original dictionary.
-    """
 
+    """
     # Mapping between flat_fid_pars_dict keys and instantiate_cosmo_ccl_obj
     # expected keys
     if key_mapping is None:
@@ -82,7 +81,7 @@ def ccl_comoving_distance(z, use_h_units, cosmo_ccl):
 
 
 def k_limber(ell, z, use_h_units, cosmo_ccl):
-    """this function is vectorized in ell OR z, but not both at the same time.
+    """This function is vectorized in ell OR z, but not both at the same time.
     To vectorize in both, use something like meshgrid:
     zz, ll = np.meshgrid(z_grid_sigma2, ell_WL)
     kl_array_mesh = k_limber(zz, ell=ll, cosmo_ccl=cosmo_ccl, use_h_units=use_h_units)
@@ -96,7 +95,7 @@ def k_limber(ell, z, use_h_units, cosmo_ccl):
 
 
 def get_kmax_limber(ell_grid, z_grid, use_h_units, cosmo_ccl):
-    """returns the maximum k_limber value for a given ell_grid and z_grid"""
+    """Returns the maximum k_limber value for a given ell_grid and z_grid"""
     k_limber_list = []
     for z in z_grid:
         k_limber_list.append(k_limber(ell_grid, z, use_h_units, cosmo_ccl))
@@ -107,8 +106,8 @@ def pk_from_ccl(k_array, z_array, use_h_units, cosmo_ccl, pk_kind='nonlinear'):
     """! * the input k_array must be in 1/Mpc * .
     If use_h_units is True, the output pk_2d is in (Mpc/h)^3, and k_array is in h/Mpc.
     If use_h_units is False, the output pk_2d is in Mpc^3, and k_array is in 1/Mpc
-    (so it is returned unchanged)"""
-
+    (so it is returned unchanged)
+    """
     if pk_kind == 'nonlinear':
         ccl_pk_func = ccl.nonlin_matter_power
     elif pk_kind == 'linear':
@@ -157,29 +156,29 @@ def fsky_to_deg2(f_sky):
 
 
 def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
-    r"""this is the integration "prefactor" for the cl integral, without the dz, 
+    r"""This is the integration "prefactor" for the cl integral, without the dz,
     which is "added"
     afterwards in the actual integration, for example when using simps or trapz.
 
     note that this is not the volume element, but the collection of prefactors:
     PySSC: Cl = \int dV W^A_pyssc W^B_pyssc Pk = \
-        \int dz * dr/dz * r(z)**2 * \W^A_pyssc * W^B_pyssc * Pk  
+        \int dz * dr/dz * r(z)**2 * \W^A_pyssc * W^B_pyssc * Pk
     Euclid: Cl = \int dz * c/(H0*E(z)*r(z)**2) * W^A_euc * W^B_euc * Pk = \
         \int dz * dr/dz * 1/r(z)**2 * W^A_euc * W^B_euc * Pk
 
-    This function is simply returning the terms after dz and excluding the kernels and 
+    This function is simply returning the terms after dz and excluding the kernels and
     the Pk (which is *not* d^2Cl/dVddeltab)
 
     Equating the two above equations gives W_pyssc = W_euc / r(z)**2, so:
 
-    - Option 1: PySSC convention (deprecated). Euclid kernels divided by r(z)**2 and 
+    - Option 1: PySSC convention (deprecated). Euclid kernels divided by r(z)**2 and
     integration "prefactor" = r(z)**2 * dr/dz
-    - Option 2: Euclid convention. Euclid kernels and integration 
+    - Option 2: Euclid convention. Euclid kernels and integration
     "prefactor" = dr/dz / r(z)**2 = c/H0 / (E(z)*r(z)**2)
     this is because dr/dz = c/H(z) = c/(H0*E(z))
-    - Option 3: Euclid_KE_approximation. In this case you only need one of these 
+    - Option 3: Euclid_KE_approximation. In this case you only need one of these
     prefactors in the integral (since it's
-    a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous 
+    a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous
     case becomes dr/r**4, in this way
     """
     r_of_z = ccl_comoving_distance(z, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl)
@@ -205,12 +204,12 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
 
 
 def get_omega_nu0(m_nu, h, n_eff=3.046, neutrino_mass_fac=94.07):
-    """
-    Calculate the neutrino mass density parameter (Omega_nu h^2).
+    """Calculate the neutrino mass density parameter (Omega_nu h^2).
     Look in https://arxiv.org/pdf/2207.05766.pdf for a comment on the difference
     between the factors 93.14eV and 94.07eV
 
-    Parameters:
+    Parameters
+    ----------
     m_nu : float
         Total neutrino mass (sum of the masses of the neutrino species).
     h : float
@@ -220,9 +219,11 @@ def get_omega_nu0(m_nu, h, n_eff=3.046, neutrino_mass_fac=94.07):
     neutrino_mass_fac : float, optional
         Neutrino mass factor for conversion to density parameter. Default is 94.07.
 
-    Returns:
+    Returns
+    -------
     float
         Neutrino mass density parameter.
+
     """
     # n_eff = n_ur + n_ncdm  # masless + massive neutrinos
     g_factor = n_eff / 3
@@ -302,8 +303,7 @@ def project_pk(
     use_h_units,
     cosmo_ccl,
 ):
-    """
-    Project the pk to get the cls, or the pk responses to get the projected responses.
+    """Project the pk to get the cls, or the pk responses to get the projected responses.
     ! Remember, if you use cl_integral_convention = PySSC you must normalize the kernels
     properly, it is not enough to
     ! pass the approptiate cl_integral_convention to csmlib.cl_integral_prefactor!
@@ -312,7 +312,6 @@ def project_pk(
     :param kernel_b:
     :return:
     """
-
     # Compute prefactors
     cl_integral_prefactor_arr = cl_integral_prefactor(
         z_grid, cl_integral_convention, use_h_units=use_h_units, cosmo_ccl=cosmo_ccl
@@ -348,8 +347,7 @@ def project_pk(
 
 
 def ell_prefactor_gamma_and_ia(ell):
-    """
-    From Kilbinger, M., Heymans, C., Asgari, M., et al. 2017, MNRAS, 472, 2126.
+    """From Kilbinger, M., Heymans, C., Asgari, M., et al. 2017, MNRAS, 472, 2126.
     Taken from CLOE. Formula is
     (ell + 2)!/(ell-2)! * (2/(2*ell+1))**4
     """
@@ -358,9 +356,7 @@ def ell_prefactor_gamma_and_ia(ell):
 
 
 def ell_prefactor_mag(ell):
-    """
-    Taken from CLOE.
-    """
+    """Taken from CLOE."""
     return ell * (ell + 1) / (ell + 0.5) ** 2
 
 

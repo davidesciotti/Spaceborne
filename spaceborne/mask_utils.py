@@ -35,8 +35,8 @@ def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
     -------
     float
         lmax
-    """
 
+    """
     assert ell.ndim == 1, 'ell must be a 1-dimensional array'
     assert cl_mask.ndim == 1, 'cl_mask must be a 1-dimensional array'
     assert len(ell) == len(cl_mask), 'ell and cl_mask must have the same size'
@@ -62,7 +62,7 @@ def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
 
 
 def generate_polar_cap_func(area_deg2, nside):
-    fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
+    _fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
     print(f'Generating a polar cap mask with area {area_deg2} deg^2 and nside {nside}')
 
     # Convert the area to radians squared for the angular radius calculation

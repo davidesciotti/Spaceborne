@@ -717,21 +717,21 @@ for wf_idx in range(len(wf_ccl_list)):
 print('Computing Cls...')
 t0 = time.perf_counter()
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
-    ell_obj.ells_WL,
+    ell_obj.ells_3x2pt,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_lensing_obj,
     ccl_obj.wf_lensing_obj,
     cl_ccl_kwargs,
 )
 ccl_obj.cl_gl_3d = ccl_obj.compute_cls(
-    ell_obj.ells_XC,
+    ell_obj.ells_3x2pt,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_galaxy_obj,
     ccl_obj.wf_lensing_obj,
     cl_ccl_kwargs,
 )
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
-    ell_obj.ells_GC,
+    ell_obj.ells_3x2pt,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_galaxy_obj,
     ccl_obj.wf_galaxy_obj,
@@ -769,9 +769,9 @@ if cfg['C_ell']['use_input_cls']:
     cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
     cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
     cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
-    cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_WL)
-    cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_XC)
-    cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_GC)
+    cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_3x2pt)
+    cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)
+    cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_3x2pt)
 
     # save the sb cls for the plot below
     cl_ll_3d_sb = ccl_obj.cl_ll_3d
@@ -783,32 +783,32 @@ if cfg['C_ell']['use_input_cls']:
     ccl_obj.cl_gl_3d = cl_gl_3d_in
     ccl_obj.cl_gg_3d = cl_gg_3d_in
 
-# TODO this simple cut will not work for different binning schemes!
+# I am creating copies here, not just a view (so modifying ccl_obj.cl_3x2pt_5d will
+# not affect ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d and vice versa)
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, ell_obj.nbl_3x2pt, zbins, zbins))
-ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[: ell_obj.nbl_3x2pt, :, :]
-ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[: ell_obj.nbl_3x2pt, :, :]
-ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
-    : ell_obj.nbl_3x2pt, :, :
-].transpose(0, 2, 1)
-ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d
+ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d
+ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d.transpose(0, 2, 1)
+ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d
 
 # cls plots
 plot_cls()
+
 
 # this is a lil bit convoluted: the cls used by the code (wither from input or from sb)
 # are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
 # is True and are only plotted in that case
 _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
-_ell_dict_wl = {_key: ell_obj.ells_WL}
-_ell_dict_xc = {_key: ell_obj.ells_XC}
-_ell_dict_gc = {_key: ell_obj.ells_GC}
-_cl_dict_wl = {_key: ccl_obj.cl_ll_3d}
-_cl_dict_xc = {_key: ccl_obj.cl_gl_3d}
-_cl_dict_gc = {_key: ccl_obj.cl_gg_3d}
+_ell_dict_wl = {_key: ell_obj.ells_3x2pt}
+_ell_dict_xc = {_key: ell_obj.ells_3x2pt}
+_ell_dict_gc = {_key: ell_obj.ells_3x2pt}
+_cl_dict_wl = {_key: ccl_obj.cl_3x2pt_5d[0, 0]}
+_cl_dict_xc = {_key: ccl_obj.cl_3x2pt_5d[1, 0]}
+_cl_dict_gc = {_key: ccl_obj.cl_3x2pt_5d[1, 1]}
 if cfg['C_ell']['use_input_cls']:
-    _ell_dict_wl['SB'] = ell_obj.ells_WL
-    _ell_dict_xc['SB'] = ell_obj.ells_XC
-    _ell_dict_gc['SB'] = ell_obj.ells_GC
+    _ell_dict_wl['SB'] = ell_obj.ells_3x2pt
+    _ell_dict_xc['SB'] = ell_obj.ells_3x2pt
+    _ell_dict_gc['SB'] = ell_obj.ells_3x2pt
     _cl_dict_wl['SB'] = cl_ll_3d_sb
     _cl_dict_xc['SB'] = cl_gl_3d_sb
     _cl_dict_gc['SB'] = cl_gg_3d_sb

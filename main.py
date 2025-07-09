@@ -893,12 +893,13 @@ else:
 if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
-    # check that the input cls are computed over a fine enough grid
-    for ells_in, ells_out in zip(
-        [ells_WL_in, ells_XC_in, ells_GC_in],
-        [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
-    ):
-        check_ells_in(ells_in, ells_out)
+    if cfg['C_ell']['use_input_cls']:
+        # check that the input cls are computed over a fine enough grid
+        for ells_in, ells_out in zip(
+            [ells_WL_in, ells_XC_in, ells_GC_in],
+            [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
+        ):
+            check_ells_in(ells_in, ells_out)
 
     # initialize nmt_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)

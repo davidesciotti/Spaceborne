@@ -7,6 +7,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pyccl as ccl
 import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import quad_vec
@@ -14,9 +15,7 @@ from scipy.integrate import simpson as simps
 from scipy.stats import chi2
 from tqdm import tqdm
 
-import pyccl as ccl
 from spaceborne import sb_lib as sl
-
 
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
@@ -30,8 +29,7 @@ warnings.filterwarnings(
 
 
 def b_mu(x, mu):
-    """
-    Implements the piecewise definition of the bracketed term b_mu(x)
+    """Implements the piecewise definition of the bracketed term b_mu(x)
     from Eq. (E.2) in Joachimi et al. (2008).
     These are just the results of
     \int_{\theta_l}^{\theta_u} d\theta \theta J_\mu(\ell \theta)
@@ -47,89 +45,87 @@ def b_mu(x, mu):
         raise ValueError('mu must be one of {0,2,4}.')
 
 
-def kmu_nobessel(ell, thetal, thetau, mu):
-    """
-    Returns the prefactors and corresponding Bessel orders for given mu and nu,
-    including the subtraction of bin edges (b_mu(ell * theta_u) - b_mu(ell * theta_l)).
+# def kmu_nobessel(ell, thetal, thetau, mu):
+#     """Returns the prefactors and corresponding Bessel orders for given mu and nu,
+#     including the subtraction of bin edges (b_mu(ell * theta_u) - b_mu(ell * theta_l)).
 
-    Parameters
-    ----------
-    mu, nu : int
-        Orders of the kernel.
-    ell : float or array
-        Multipole values.
-    theta_l, theta_u : float
-        Lower and upper bin edges.
+#     Parameters
+#     ----------
+#     mu, nu : int
+#         Orders of the kernel.
+#     ell : float or array
+#         Multipole values.
+#     theta_l, theta_u : float
+#         Lower and upper bin edges.
 
-    Returns
-    -------
-    list of tuples
-        Each tuple contains (prefactor, bessel_order_mu, bessel_order_nu).
-    """
+#     Returns
+#     -------
+#     list of tuples
+#         Each tuple contains (prefactor, bessel_order_mu, bessel_order_nu).
 
-    def b_mu_nobessel(x, mu):
-        """
-        Implements the piecewise definition of the bracketed term b_mu(x)
-        from Eq. (E.2) in Joachimi et al. (2008).
-        These are just the results of
-        \int_{\theta_l}^{\theta_u} d\theta \theta J_\mu(\ell \theta)
-        """
-        if mu == 0:
-            return x * sl.j1(x)
-        elif mu == 2:
-            return -x * sl.j1(x) - 2.0 * sl.j0(x)
-        elif mu == 4:
-            # be careful with x=0!
-            return (x - 8.0 / x) * sl.j1(x) - 8.0 * sl.j2(x)
-        else:
-            raise ValueError('mu must be one of {0,2,4}.')
+#     """
 
-    def b_mu_nobessel(mu):
-        """Returns (prefactor, bessel_order) pairs for a given mu."""
-        if mu == 0:
-            return [(1.0, 1)]  # x J1(x)
-        elif mu == 2:
-            return [(-1.0, 1), (-2.0, 0)]  # -x J1(x) - 2 J0(x)
-        elif mu == 4:
-            return [(1.0, 1), (-8.0, 2)]  # (x - 8/x) J1(x) - 8 J2(x)
-        else:
-            raise ValueError('mu must be one of {0,2,4}.')
+#     def b_mu_nobessel(x, mu):
+#         """Implements the piecewise definition of the bracketed term b_mu(x)
+#         from Eq. (E.2) in Joachimi et al. (2008).
+#         These are just the results of
+#         \int_{\theta_l}^{\theta_u} d\theta \theta J_\mu(\ell \theta)
+#         """
+#         if mu == 0:
+#             return x * sl.j1(x)
+#         elif mu == 2:
+#             return -x * sl.j1(x) - 2.0 * sl.j0(x)
+#         elif mu == 4:
+#             # be careful with x=0!
+#             return (x - 8.0 / x) * sl.j1(x) - 8.0 * sl.j2(x)
+#         else:
+#             raise ValueError('mu must be one of {0,2,4}.')
 
-    # Compute b_mu at both bin edges
-    b_mu = b_mu(ell * theta, mu)
-    b_nu = b_mu(ell * theta, nu)
+#     def b_mu_nobessel(mu):
+#         """Returns (prefactor, bessel_order) pairs for a given mu."""
+#         if mu == 0:
+#             return [(1.0, 1)]  # x J1(x)
+#         elif mu == 2:
+#             return [(-1.0, 1), (-2.0, 0)]  # -x J1(x) - 2 J0(x)
+#         elif mu == 4:
+#             return [(1.0, 1), (-8.0, 2)]  # (x - 8/x) J1(x) - 8 J2(x)
+#         else:
+#             raise ValueError('mu must be one of {0,2,4}.')
 
-    # Compute all possible combinations of terms
-    combined_terms = []
-    for pref_mu, j_mu in b_mu_nobessel(mu):
-        for pref_nu, j_nu in b_mu_nobessel(nu):
-            prefactor = (
-                (pref_mu * pref_nu)
-                * (b_mu_upper - b_mu_lower)
-                * (b_nu_upper - b_nu_lower)
-            )
-            combined_terms.append((prefactor, j_mu, j_nu))
+#     # Compute b_mu at both bin edges
+#     b_mu = b_mu(ell * theta, mu)
+#     b_nu = b_mu(ell * theta, nu)
 
-    return combined_terms
+#     # Compute all possible combinations of terms
+#     combined_terms = []
+#     for pref_mu, j_mu in b_mu_nobessel(mu):
+#         for pref_nu, j_nu in b_mu_nobessel(nu):
+#             prefactor = (
+#                 (pref_mu * pref_nu)
+#                 * (b_mu_upper - b_mu_lower)
+#                 * (b_nu_upper - b_nu_lower)
+#             )
+#             combined_terms.append((prefactor, j_mu, j_nu))
+
+#     return combined_terms
 
 
 def k_mu(ell, thetal, thetau, mu):
-    """
-    Computes the kernel K_mu(ell * theta_i) in Eq. (E.2):
+    """Computes the kernel K_mu(ell * theta_i) in Eq. (E.2):
 
-        K_mu(l * theta_i) = 2 / [ (theta_u^2 - theta_l^2) * l^2 ]
-                            * [ b_mu(l * theta_u) - b_mu(l * theta_l) ].
+    K_mu(l * theta_i) = 2 / [ (theta_u^2 - theta_l^2) * l^2 ]
+                        * [ b_mu(l * theta_u) - b_mu(l * theta_l) ].
     """
     prefactor = 2.0 / ((thetau**2 - thetal**2) * (ell**2))
     return prefactor * (b_mu(ell * thetau, mu) - b_mu(ell * thetal, mu))
 
 
 def project_ellspace_cov_vec_2d(  # fmt: skip
-    theta_1_l, theta_1_u, mu,                           
-    theta_2_l, theta_2_u, nu,                           
-    Amax, ell2_values, ell1_values, cov_ell             
+    theta_1_l, theta_1_u, mu,
+    theta_2_l, theta_2_u, nu,
+    Amax, ell2_values, ell1_values, cov_ell
 ):  # fmt: skip
-    """this version is fully vectorized"""
+    """This version is fully vectorized"""
 
     def integrand_func(ell1, ell2, cov_ell):
         kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
@@ -157,11 +153,11 @@ def project_ellspace_cov_vec_2d(  # fmt: skip
 
 
 def project_ellspace_cov_vec_1d(  # fmt: skip
-    theta_1_l, theta_1_u, mu,                               
-    theta_2_l, theta_2_u, nu,                               
-    Amax, ell1_values, ell2_values, cov_ell_diag,           
+    theta_1_l, theta_1_u, mu,
+    theta_2_l, theta_2_u, nu,
+    Amax, ell1_values, ell2_values, cov_ell_diag,
 ):  # fmt: skip
-    """this version is vectorized anly along ell1"""
+    """This version is vectorized anly along ell1"""
 
     def integrand_func(ell1, ell2, cov_ell_diag):
         # Vectorized computation of k_mu and k_nu
@@ -184,9 +180,9 @@ def project_ellspace_cov_vec_1d(  # fmt: skip
 
 
 def project_hs_cov_simps(  # fmt: skip
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu, 
-    zi, zj, zk, zl,                                             
-    Amax, ell1_values, ell2_values, cov_ell,                    
+    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
+    zi, zj, zk, zl,
+    Amax, ell1_values, ell2_values, cov_ell,
 ):  # fmt: skip
     # def integrand_func(ell1, ell2, cov_ell):
     #     kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
@@ -227,9 +223,9 @@ def project_hs_cov_simps(  # fmt: skip
 
 
 def project_ellspace_cov_helper(    # fmt: skip
-    theta_1_ix, theta_2_ix, mu, nu,    
-    zij, zkl, ind_ab, ind_cd,   
-    Amax, ell1_values, ell2_values, cov_ell,   
+    theta_1_ix, theta_2_ix, mu, nu,
+    zij, zkl, ind_ab, ind_cd,
+    Amax, ell1_values, ell2_values, cov_ell,
 ):  # fmt: skip
     # TODO unify helper funcs
 
@@ -242,12 +238,12 @@ def project_ellspace_cov_helper(    # fmt: skip
     zk, zl = ind_cd[zkl, :]
 
     return (theta_1_ix, theta_2_ix, zi, zj, zk, zl,  # fmt: skip
-        project_hs_cov_simps( 
-            theta_1_l, theta_1_u, mu, 
-            theta_2_l, theta_2_u, nu, 
-            zi, zj, zk, zl, 
-            Amax, ell1_values, ell2_values, cov_ell, 
-        ), 
+        project_hs_cov_simps(
+            theta_1_l, theta_1_u, mu,
+            theta_2_l, theta_2_u, nu,
+            zi, zj, zk, zl,
+            Amax, ell1_values, ell2_values, cov_ell,
+        ),
     )  # fmt: skip
 
 
@@ -260,11 +256,11 @@ def project_ellspace_cov_vec_helper(
     theta_2_u = theta_edges[theta_2_ix + 1]
 
     return (theta_1_ix, theta_2_ix,  # fmt: skip
-        project_ellspace_cov_vec_1d(  
-            theta_1_l, theta_1_u, mu,  
-            theta_2_l, theta_2_u, nu,  
-            Amax, ell1_values, ell2_values, cov_ell,  
-        ),  
+        project_ellspace_cov_vec_1d(
+            theta_1_l, theta_1_u, mu,
+            theta_2_l, theta_2_u, nu,
+            Amax, ell1_values, ell2_values, cov_ell,
+        ),
     )  # fmt: skip
 
 
@@ -315,25 +311,23 @@ def cov_parallel_helper(
     zk, zl = ind_cd[zkl, :]
 
     return (  # fmt: skip
-        theta_1_ix, theta_2_ix, zi, zj, zk, zl, func( 
-            theta_1_l=theta_1_l, theta_1_u=theta_1_u, mu=mu, 
-            theta_2_l=theta_2_l, theta_2_u=theta_2_u, nu=nu, 
-            zi=zi, zj=zj, zk=zk, zl=zl, 
-            **kwargs, 
-        ), 
+        theta_1_ix, theta_2_ix, zi, zj, zk, zl, func(
+            theta_1_l=theta_1_l, theta_1_u=theta_1_u, mu=mu,
+            theta_2_l=theta_2_l, theta_2_u=theta_2_u, nu=nu,
+            zi=zi, zj=zj, zk=zk, zl=zl,
+            **kwargs,
+        ),
     )  # fmt: skip
 
 
 def cov_sva_rs(  # fmt: skip
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
-    zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,  
-    cl_5d, Amax, ell_values  
+    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
+    zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+    cl_5d, Amax, ell_values
 ):  # fmt: skip
-    """
-    Computes a single entry of the real-space Gaussian SVA (sample variance)
+    """Computes a single entry of the real-space Gaussian SVA (sample variance)
     part of the covariance matrix.
     """
-
     c_ik = cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
     c_jl = cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
     c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
@@ -356,10 +350,10 @@ def cov_sva_rs(  # fmt: skip
 
 
 def cov_mix_rs(   # fmt: skip
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
-    ell_values, cl_5d,   
-    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zi, zj, zk, zl,  
-    Amax, integration_method='simps',  
+    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
+    ell_values, cl_5d,
+    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zi, zj, zk, zl,
+    Amax, integration_method='simps',
 ):  # fmt: skip
     def integrand_func(ell, cl_ij):
         kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
@@ -448,10 +442,10 @@ def cov_mix_rs(   # fmt: skip
 
 
 def cov_g_mix_real_new(  # fmt: skip
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
-    ell_values, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,  
-    zi, zj, zk, zl, Amax,  
-    integration_method='simps',  
+    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
+    ell_values, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+    zi, zj, zk, zl, Amax,
+    integration_method='simps',
 ):  # fmt: skip
     def integrand_func(ell, inner_integrand):
         kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
@@ -571,8 +565,7 @@ def get_delta_tomo(probe_a_ix, probe_b_ix):
 
 
 def split_probe_name(full_probe_name):
-    """
-    Splits a full probe name (e.g., 'gmxim') into two component probes.
+    """Splits a full probe name (e.g., 'gmxim') into two component probes.
 
     Possible probe names are 'xip', 'xim', 'gg', 'gm'.
 
@@ -584,6 +577,7 @@ def split_probe_name(full_probe_name):
 
     Raises:
         ValueError: If the input string does not contain exactly two valid probes.
+
     """
     valid_probes = {'xip', 'xim', 'gg', 'gm'}
 
@@ -600,7 +594,7 @@ def split_probe_name(full_probe_name):
 
 
 def split_probe_ix(probe_ix):
-    if probe_ix == 0 or probe_ix == 1:
+    if probe_ix in (0, 1):
         return 0, 0
     elif probe_ix == 2:
         return 1, 0
@@ -611,9 +605,9 @@ def split_probe_ix(probe_ix):
 
 
 def integrate_bessel_single_wrapper(cov_2d, mu, ell, theta_centers, n_jobs):
+    """cov_2d must have the first axis corresponding to the ell values),
+    the second to the flattened remaining dimensions
     """
-    cov_2d must have the first axis corresponding to the ell values),
-    the second to the flattened remaining dimensions"""
     assert cov_2d.ndim == 2, 'the input integrand must be 2D'
 
     integral_type = 1  # single cilyndrical bessel
@@ -720,7 +714,7 @@ def oc_cov_list_to_array(oc_output_path):
         # Vectorized assignment to the arrays
         index_tuple = (  # fmt: skip
             probe_idx_a, probe_idx_b, probe_idx_c, probe_idx_d,
-            ell1_idx, ell2_idx, 
+            ell1_idx, ell2_idx,
             z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
         )  # fmt: skip
 
@@ -768,8 +762,7 @@ def dl1dl2_bessel_wrapper(
     thetas: np.ndarray,
     n_jobs: int,
 ):
-    """
-    Wrapper function to compute the double Bessel integral of the form
+    """Wrapper function to compute the double Bessel integral of the form
     \int d\ell_1 * \ell_1 * J_mu(\theta_1 \ell_1) *
     \int d\ell_2 * \ell_2 * J_nu(\theta_2 \ell_2) *
     integrand(\ell_1, \ell_2)
@@ -798,8 +791,8 @@ def dl1dl2_bessel_wrapper(
         The projected covariance matrix in real space. The first two dimensions
         correspond to the theta bins, and the remaining dimensions correspond to
         the tomographic bin indices.
-    """
 
+    """
     nbl = len(ells)
 
     assert cov_hs.shape[0] == cov_hs.shape[1] == nbl, (
@@ -1143,15 +1136,15 @@ print('Computing Cls...')
 for zi in tqdm(range(zbins)):
     for zj in range(zbins):
         cl_gg_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
-            cosmo, gc_ker[zi], gc_ker[zj], ell_values, 
+            cosmo, gc_ker[zi], gc_ker[zj], ell_values,
             limber_integration_method='spline'
         )  # fmt: skip
         cl_gl_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
-            cosmo, gc_ker[zi], wl_ker[zj], ell_values, 
+            cosmo, gc_ker[zi], wl_ker[zj], ell_values,
             limber_integration_method='spline'
         )  # fmt: skip
         cl_ll_3d[:, zi, zj] = ccl.angular_cl(  # fmt: skip
-            cosmo, wl_ker[zi], wl_ker[zj], ell_values, 
+            cosmo, wl_ker[zi], wl_ker[zj], ell_values,
             limber_integration_method='spline'
         )  # fmt: skip
 
@@ -1213,12 +1206,12 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             'Amax': Amax,
         }
         results = Parallel(n_jobs=n_jobs)(  # fmt: skip
-            delayed(cov_parallel_helper)(  
-                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,  
-                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,  
-                func=cov_sva_rs,  
+            delayed(cov_parallel_helper)(
+                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
+                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
+                func=cov_sva_rs,
                 **kwargs,
-            )  
+            )
             for theta_1_ix in tqdm(range(nbt))
             for theta_2_ix in range(nbt)
             for zij in range(zpairs_ab)
@@ -1408,7 +1401,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
 
         # compute ell-space G cov al volo
         # build noise vector
-        noise_3x2pt_4D = sl.build_noise(
+        noise_3x2pt_4d = sl.build_noise(
             zbins,
             n_probes=n_probes_hs,
             sigma_eps2=(sigma_eps_i * np.sqrt(2)) ** 2,
@@ -1417,13 +1410,13 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         )
 
         # expand the noise array along the ell axis
-        noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], nbl, axis=2)
+        noise_5d = np.repeat(noise_3x2pt_4d[:, :, None, :, :], nbl, axis=2)
 
         # ! no delta_ell!!
         delta_ell = np.ones_like(ell_values + 1)
 
         # with sl.timer('covariance_einsum_v3 %.3f s '):
-        cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = sl.covariance_einsum(
+        cov_sva_sb_hs_10d, cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = sl.covariance_einsum(
             cl_5d,
             noise_5d,
             fsky,
@@ -1434,16 +1427,16 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         )
 
         covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
-        cov_sva_oc_hs_10D = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
-        cov_mix_oc_hs_10D = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
-        cov_sn_oc_hs_10D = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
-        cov_g_oc_hs_10D = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
+        cov_sva_oc_hs_10d = covs_oc_hs_npz['cov_sva_oc_3x2pt_10D']
+        cov_mix_oc_hs_10d = covs_oc_hs_npz['cov_mix_oc_3x2pt_10D']
+        cov_sn_oc_hs_10d = covs_oc_hs_npz['cov_sn_oc_3x2pt_10D']
+        cov_g_oc_hs_10d = covs_oc_hs_npz['cov_g_oc_3x2pt_10D']
 
         cov_sn_sb_6d = cov_sn_rs(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu)
 
         cov_g_hs_6d = (
-            cov_sva_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-            + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+            cov_sva_sb_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+            + cov_mix_sb_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
         )
 
         cov_g_sb_6d = integrate_bessel_double_wrapper(
@@ -1486,18 +1479,18 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         # )
 
         covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
-        cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
-        # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
+        cov_ssc_oc_3x2pt_10d = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
+        cov_cng_oc_3x2pt_10d = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
 
         if term == 'ssc':
-            cov_ng_oc_3x2pt_10D = cov_ssc_oc_3x2pt_10D
+            cov_ng_oc_3x2pt_10d = cov_ssc_oc_3x2pt_10d
             norm = 4 * np.pi**2
         elif term == 'cng':
-            cov_ng_oc_3x2pt_10D = cov_cng_oc_3x2pt_10D
+            cov_ng_oc_3x2pt_10d = cov_cng_oc_3x2pt_10d
             norm = 4 * np.pi**2 * Amax
 
         # project it to real space using Levin
-        cov_ng_oc_hs_6d = cov_ng_oc_3x2pt_10D[
+        cov_ng_oc_hs_6d = cov_ng_oc_3x2pt_10d[
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
         ]
 
@@ -1554,12 +1547,12 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
 
     # ! import .list covariance file
     shape = (n_probes_rs, n_probes_rs, nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
-    cov_g_oc_3x2pt_8D = np.zeros(shape)
-    cov_sva_oc_3x2pt_8D = np.zeros(shape)
-    cov_mix_oc_3x2pt_8D = np.zeros(shape)
-    cov_sn_oc_3x2pt_8D = np.zeros(shape)
-    cov_ssc_oc_3x2pt_8D = np.zeros(shape)
-    cov_cng_oc_3x2pt_8D = np.zeros(shape)
+    cov_g_oc_3x2pt_8d = np.zeros(shape)
+    cov_sva_oc_3x2pt_8d = np.zeros(shape)
+    cov_mix_oc_3x2pt_8d = np.zeros(shape)
+    cov_sn_oc_3x2pt_8d = np.zeros(shape)
+    cov_ssc_oc_3x2pt_8d = np.zeros(shape)
+    cov_cng_oc_3x2pt_8d = np.zeros(shape)
     # cov_tot_oc_3x2pt_8D = np.zeros(shape)
 
     print(f'Loading OneCovariance output from {cov_list_name}.dat file...')
@@ -1591,25 +1584,25 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
             z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
         )  # fmt: skip
 
-        cov_sva_oc_3x2pt_8D[index_tuple] = df_chunk['covg sva'].values
-        cov_mix_oc_3x2pt_8D[index_tuple] = df_chunk['covg mix'].values
-        cov_sn_oc_3x2pt_8D[index_tuple] = df_chunk['covg sn'].values
-        cov_g_oc_3x2pt_8D[index_tuple] = (
+        cov_sva_oc_3x2pt_8d[index_tuple] = df_chunk['covg sva'].values
+        cov_mix_oc_3x2pt_8d[index_tuple] = df_chunk['covg mix'].values
+        cov_sn_oc_3x2pt_8d[index_tuple] = df_chunk['covg sn'].values
+        cov_g_oc_3x2pt_8d[index_tuple] = (
             df_chunk['covg sva'].values
             + df_chunk['covg mix'].values
             + df_chunk['covg sn'].values
         )
-        cov_ssc_oc_3x2pt_8D[index_tuple] = df_chunk['covssc'].values
-        cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
+        cov_ssc_oc_3x2pt_8d[index_tuple] = df_chunk['covssc'].values
+        cov_cng_oc_3x2pt_8d[index_tuple] = df_chunk['covng'].values
         # cov_tot_oc_3x2pt_8D[index_tuple] = df_chunk['cov'].values
 
     covs_8d = [
-        cov_sva_oc_3x2pt_8D,
-        cov_mix_oc_3x2pt_8D,
-        cov_sn_oc_3x2pt_8D,
-        cov_g_oc_3x2pt_8D,
-        cov_ssc_oc_3x2pt_8D,
-        cov_cng_oc_3x2pt_8D,
+        cov_sva_oc_3x2pt_8d,
+        cov_mix_oc_3x2pt_8d,
+        cov_sn_oc_3x2pt_8d,
+        cov_g_oc_3x2pt_8d,
+        cov_ssc_oc_3x2pt_8d,
+        cov_cng_oc_3x2pt_8d,
         # cov_tot_oc_3x2pt_8D
     ]
 
@@ -1627,22 +1620,22 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
     # ! ================================================================================
 
     if term == 'sva':
-        cov_oc_6d = cov_sva_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+        cov_oc_6d = cov_sva_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_sva_sb_6d
     elif term == 'sn':
-        cov_oc_6d = cov_sn_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+        cov_oc_6d = cov_sn_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_sn_sb_6d
     elif term == 'mix':
-        cov_oc_6d = cov_mix_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+        cov_oc_6d = cov_mix_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_mix_sb_6d
     elif term == 'gauss_ell':
-        cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+        cov_oc_6d = cov_g_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_g_sb_6d
     elif term == 'ssc':
-        cov_oc_6d = cov_ssc_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+        cov_oc_6d = cov_ssc_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         cov_sb_6d = cov_ng_sb_6d
     elif term == 'ssc':
-        cov_oc_6d = cov_cng_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+        cov_oc_6d = cov_cng_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         cov_cng_6d = cov_ng_sb_6d
 
     # for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(
@@ -1808,17 +1801,17 @@ for term in terms_toloop:
         ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
 
         if term_oc == 'sva':
-            cov_oc_6d = cov_sva_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_oc_6d = cov_sva_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         elif term_oc == 'sn':
-            cov_oc_6d = cov_sn_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_oc_6d = cov_sn_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         elif term_oc == 'mix':
-            cov_oc_6d = cov_mix_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_oc_6d = cov_mix_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         elif term_oc == 'gauss':
-            cov_oc_6d = cov_g_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_oc_6d = cov_g_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         elif term_oc == 'ssc':
-            cov_oc_6d = cov_ssc_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_oc_6d = cov_ssc_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         elif term_oc == 'ssc':
-            cov_oc_6d = cov_cng_oc_3x2pt_8D[*probe_idx_dict_short_oc[probe], ...]
+            cov_oc_6d = cov_cng_oc_3x2pt_8d[*probe_idx_dict_short_oc[probe], ...]
         else:
             raise ValueError(f'Unknown term {term_oc}')
 
@@ -1945,16 +1938,16 @@ for zi, zj in zij_comb:
     )
 
 # flatten to construct datavector
-xip_2D = sl.Cl_3D_to_2D_symmetric(xip_3d, nbt, zpairs_auto, zbins)
-xim_2D = sl.Cl_3D_to_2D_symmetric(xim_3d, nbt, zpairs_auto, zbins)
-w_2D = sl.Cl_3D_to_2D_symmetric(w_3d, nbt, zpairs_auto, zbins)
-gammat_2D = sl.Cl_3D_to_2D_asymmetric(gammat_3d)
+xip_2d = sl.Cl_3D_to_2D_symmetric(xip_3d, nbt, zpairs_auto, zbins)
+xim_2d = sl.Cl_3D_to_2D_symmetric(xim_3d, nbt, zpairs_auto, zbins)
+w_2d = sl.Cl_3D_to_2D_symmetric(w_3d, nbt, zpairs_auto, zbins)
+gammat_2d = sl.Cl_3D_to_2D_asymmetric(gammat_3d)
 
 # the order we are using is zpair_ell, so I need to transpose
-xip_1d = xip_2D.T.flatten()
-xim_1d = xim_2D.T.flatten()
-w_1d = w_2D.T.flatten()
-gammat_1d = gammat_2D.T.flatten()
+xip_1d = xip_2d.T.flatten()
+xim_1d = xim_2d.T.flatten()
+w_1d = w_2d.T.flatten()
+gammat_1d = gammat_2d.T.flatten()
 
 # invert covs
 cov_sb_inv = np.linalg.inv(cov_sb_full_2d)

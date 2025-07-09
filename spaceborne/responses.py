@@ -1,10 +1,8 @@
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
+import pyccl as ccl
 from scipy.interpolate import RegularGridInterpolator
 from tqdm import tqdm
 
-import pyccl as ccl
 from spaceborne import cosmo_lib
 
 
@@ -68,13 +66,11 @@ class SpaceborneResponses:
         return result
 
     def g1_tot_func(self, k_array, z, g1_interp, g1_extrap):
-        """
-        G1 is equal to:
+        """G1 is equal to:
         * 26/21 for k < k_fund
         * G1 from Alex's table for k_fund < k < k_max
         * G1 from Eq. (2.7) for k > k_max
         """
-
         # find indices for the various thresholds
         k_low_indices = np.where(k_array <= self.k_fund_g1)[0]
         k_mid_indices = np.where(
@@ -101,8 +97,7 @@ class SpaceborneResponses:
         return 0.412 - 2.143 * b1h_ofz + 0.929 * (b1h_ofz**2) + 0.008 * (b1h_ofz**3)
 
     def I_2_1_dav(self, cosmo, k, a, prof):
-        """
-        Computes the I^2_1 halo model integral
+        """Computes the I^2_1 halo model integral
         This function is added to `TargetClass` self.ccl_obj.hmc via
         monkeypatching to extend CCL functionality without altering its original
         source code, allowing a standard installation of CCL.
@@ -128,6 +123,7 @@ class SpaceborneResponses:
         Returns:
             (:obj:`float` or `array`): integral values evaluated at each
             value of ``k``.
+
         """
         # Backup the original `_bf`. To do this, I first need to call `_get_ingredients`
         self.ccl_obj.hmc._get_ingredients(cosmo, a, get_bf=True)
@@ -149,13 +145,11 @@ class SpaceborneResponses:
         return result
 
     def set_bg_hm(self, z_grid):
+        """Uses the halo model to compute:
+        - First-order halo bias (b1h_hm)
+        - First-order galaxy bias (b1g_hm)
+        - Second-order galaxy bias (b2g_hm)
         """
-        Uses the halo model to compute:
-            - First-order halo bias (b1h_hm)
-            - First-order galaxy bias (b1g_hm)
-            - Second-order galaxy bias (b2g_hm)
-        """
-
         # just some intermediate quantities; this code is not needed but left here for
         # future reference.
         # from https://github.com/LSSTDESC/CCLX/blob/master/Halo-mass-function-example.ipynb
@@ -300,11 +294,10 @@ class SpaceborneResponses:
     def set_hm_resp(
         self, k_grid, z_grid, which_b1g, b1g_zi, b1g_zj, include_terasawa_terms
     ):
-        """
-        Compute the power spectra response terms from the halo model.
+        """Compute the power spectra response terms from the halo model.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         k_grid : array-like
             The wavenumber grid (in units of 1/Mpc) on which to evaluate the
             PS and responses.
@@ -341,15 +334,15 @@ class SpaceborneResponses:
             halo model power
             spectrum, i.e., r1 = dP/delta_b / P_nl.
 
-        Raises:
-        -------
+        Raises
+        ------
         AssertionError:
             If `which_b1g` is not one of 'from_HOD' or 'from_input'.
             If `b1g` is not a 1D array or does not have the same shape as `z_grid`
             when `which_b1g` is 'from_input'.
 
-        Notes:
-        ------
+        Notes
+        -----
         - The nonlinear power spectra (pknlhm_mm, pknlhm_gm, pknlhm_gg) are computed
         using the halo model,
         as the sum of a 1-halo and a 2-halo term.
@@ -358,7 +351,6 @@ class SpaceborneResponses:
         but it can be extended to allow user-defined profiles.
 
         """
-
         print('Computing halo model probe responses...')
 
         # perform some checks on the input shapes

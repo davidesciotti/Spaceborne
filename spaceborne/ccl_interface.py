@@ -5,9 +5,9 @@ from functools import partial
 
 import healpy as hp
 import numpy as np
+import pyccl as ccl
 from tqdm import tqdm
 
-import pyccl as ccl
 from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
 from spaceborne import sb_lib as sl
 
@@ -267,7 +267,7 @@ class PycclClass:
         self.ell_grid = ell_grid
 
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
-        cl_ab_3d = wf_cl_lib.cl_PyCCL(
+        cl_ab_3d = wf_cl_lib.cl_ccl(
             kernel_a,
             kernel_b,
             ell_grid,
@@ -419,7 +419,7 @@ class PycclClass:
 
         # the default pk must be passed to the Tk3D functions as None, not as
         # 'delta_matter:delta_matter'
-        p_of_k_a = (
+        _p_of_k_a = (
             None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
         )
 
@@ -469,8 +469,6 @@ class PycclClass:
                 self.tkka_dict[A, B, C, D] = tkka_abcd
 
                 print(f'done in {(time.perf_counter() - start) / 60:.2f} m')
-
-        return
 
     def _compute_and_save_tkka(
         self, which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a
@@ -744,16 +742,14 @@ class PycclClass:
 
         self.check_cov_blocks_simmetry()
 
-        return
-
     def check_cov_blocks_simmetry(self):
         # Test if cov is symmetric in ell1, ell2 (only for the diagonal covariance
         # blocks: the off-diagonal need *not* to be symmetric in ell1, ell2)
         for key in self.cov_ng_3x2pt_dict_8D:
-            if (
-                (key == ('L', 'L', 'L', 'L'))
-                or (key == ('G', 'L', 'G', 'L'))
-                or (key == ('G', 'G', 'G', 'G'))
+            if key in (
+                ('L', 'L', 'L', 'L'),
+                ('G', 'L', 'G', 'L'),
+                ('G', 'G', 'G', 'G'),
             ):
                 try:
                     cov_2d = sl.cov_4D_to_2D(
@@ -770,8 +766,6 @@ class PycclClass:
                     )
                 except AssertionError as error:
                     print(error)
-
-        return
 
     def save_cov_blocks(self, cov_path, cov_filename):
         for probe_a, probe_b, probe_c, probe_d in self.cov_ng_3x2pt_dict_8D:

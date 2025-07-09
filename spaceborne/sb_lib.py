@@ -1,5 +1,4 @@
 import contextlib
-import datetime
 import inspect
 import itertools
 import json
@@ -68,8 +67,7 @@ symmetrize_output_dict = {
 
 
 def build_probe_list(probes, include_cross_terms=False):
-    """
-    Return the list of probe combinations to compute.
+    """Return the list of probe combinations to compute.
 
     Parameters
     ----------
@@ -82,6 +80,7 @@ def build_probe_list(probes, include_cross_terms=False):
     -------
     list[str]
         List of probe combinations, e.g. ['LLLL', 'LLGL', ...]
+
     """
     if not include_cross_terms:
         return [p + p for p in probes]
@@ -122,7 +121,7 @@ def timer(msg):
 
 
 def bin_2d_array(  # fmt: skip
-    cov, ells_in, ells_out, ells_out_edges, weights_in, which_binning='sum', 
+    cov, ells_in, ells_out, ells_out_edges, weights_in, which_binning='sum',
     interpolate = True
 ):  # fmt: skip
     assert cov.shape[0] == cov.shape[1] == len(ells_in), (
@@ -229,7 +228,6 @@ def bin_1d_array(
     :param weights: array of weights for the input power spectrum
     :return: array of binned power spectrum
     """
-
     weights_was_none = False
     if weights is None:
         weights = np.ones_like(ells_in)
@@ -251,7 +249,7 @@ def bin_1d_array(
     )
 
     binned_cls = np.zeros(len(ells_out))
-    spline = CubicSpline(ells_in, cls_in)
+    _spline = CubicSpline(ells_in, cls_in)
 
     ells_edges_low = ells_out_edges[:-1]
     ells_edges_high = ells_out_edges[1:]
@@ -349,8 +347,8 @@ def nz_fits_to_txt(fits_filename):
     ----------
     fits_filename : str
         The full path and filename of the fits file to be converted.
-    """
 
+    """
     import euclidlib as el
 
     z, nz = el.photo.redshift_distributions(fits_filename)
@@ -392,10 +390,10 @@ def compare_funcs(
     )
     fig.subplots_adjust(hspace=0)
 
-    for i, y in enumerate(y_tuple):
+    for i, _y in enumerate(y_tuple):
         ls = '--' if i > 0 else '-'
         # alpha = 0.8 if i > 0 else 1
-        ax[0].plot(x, y, label=names[i], c=colors[i], ls=ls, **plt_kw)
+        ax[0].plot(x, _y, label=names[i], c=colors[i], ls=ls, **plt_kw)
     ax[0].legend()
 
     for i in range(1, len(y_tuple)):
@@ -468,14 +466,17 @@ def check_interpolate_input_tab(
     """Interpolates the input table over the 0th dimension using a cubic spline
     and returns the interpolated values on the specified grid.
 
-    Parameters:
+    Parameters
+    ----------
     - input_tab (numpy.ndarray): The input table with shape (z_points, zbins + 1).
     - z_grid_out (numpy.ndarray): The output grid for interpolation.
     - zbins (int): The number of redshift bins.
 
-    Returns:
+    Returns
+    -------
     - output_tab (numpy.ndarray): The interpolated table with shape
     (len(z_grid_out), zbins).
+
     """
     assert input_tab.shape[1] == zbins + 1, (
         'The input table should have shape (z_points, zbins + 1)'
@@ -493,7 +494,8 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     """Interpolate a 2D array onto a new grid using bicubic spline
     interpolation.
 
-    Parameters:
+    Parameters
+    ----------
     - x_in (numpy.ndarray): The x-coordinates of the input 2D array.
     - y_in (numpy.ndarray): The y-coordinates of the input 2D array.
     - z2d_in (numpy.ndarray): The 2D input array to be interpolated.
@@ -501,7 +503,8 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     - y_out (numpy.ndarray): The y-coordinates of the output grid.
     - output_masks (bool): A boolean flag indicating whether to mask the output array.
 
-    Returns:
+    Returns
+    -------
     - x_out_masked (numpy.ndarray): The x-coordinates of the output grid,
     clipped to avoid interpolation errors.
     - y_out_masked (numpy.ndarray): The y-coordinates of the output grid,
@@ -511,8 +514,8 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
     original x_out array were used.
     - y_mask (numpy.ndarray): A boolean mask indicating which elements of the
     original y_out array were used.
-    """
 
+    """
     z2d_func = RectBivariateSpline(x=x_in, y=y_in, z=z2d_in)
 
     # clip x and y grids to avoid interpolation errors
@@ -549,12 +552,15 @@ def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
 def regularize_covariance(cov_matrix, lambda_reg=1e-5):
     """Regularizes the covariance matrix by adding lambda * I.
 
-    Parameters:
+    Parameters
+    ----------
     - cov_matrix: Original covariance matrix (numpy.ndarray)
     - lambda_reg: Regularization parameter
 
-    Returns:
+    Returns
+    -------
     - Regularized covariance matrix
+
     """
     n = cov_matrix.shape[0]
     identity_matrix = np.eye(n)
@@ -610,7 +616,6 @@ def plot_dominant_array_element(
     at each position. If no component is dominant (all are zero), the
     color will be white.
     """
-
     centers = [
         elements_auto // 2,
         elements_auto + elements_cross // 2,
@@ -993,9 +998,9 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
                     )
                 )
 
-    for key in cov_ssc_dict_8D:
-        assert cov_ssc_dict_8D[key].ndim == 4, (
-            f'covariance matrix {key} has ndim={cov_ssc_dict_8D[key].ndim} instead of 4'
+    for key, cov in cov_ssc_dict_8D.items():
+        assert cov.ndim == 4, (
+            f'covariance matrix {key} has ndim={cov.ndim} instead of 4'
         )
 
     return cov_ssc_dict_8D
@@ -1004,10 +1009,12 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
 def save_dict_to_file(dict_data, file_path, indent=4):
     """Save a dictionary to a text file in a nicely formatted way.
 
-    Parameters:
+    Parameters
+    ----------
     dict_data (dict): The dictionary to be saved.
     file_path (str): The path of the file where the dictionary will be saved.
     indent (int, optional): The number of spaces for indentation. Default is 4.
+
     """
     with open(file_path, 'w') as f:
         json.dump(dict_data, f, indent=indent)
@@ -1017,11 +1024,14 @@ def figure_of_correlation(correl_matrix):
     """Compute the Figure of Correlation (FoC) from the correlation matrix
     correl_matrix.
 
-    Parameters:
+    Parameters
+    ----------
     - correl_matrix (2D numpy array): The correlation matrix.
 
-    Returns:
+    Returns
+    -------
     - FoC (float): The Figure of Correlation.
+
     """
     # Invert the correlation matrix
     correl_matrix_inv = np.linalg.inv(correl_matrix)
@@ -1054,6 +1064,7 @@ def add_ls_legend(ls_dict):
     ls_dict : dict
         A dictionary mapping line styles to labels.
         E.g. {'-': 'delta', '--': 'gamma'}
+
     """
     handles = []
     for ls, label in ls_dict.items():
@@ -1067,14 +1078,13 @@ def save_correlation_matrix_plot(matrix1, matrix2, labels):
     Plot the positive and negative values with different colorbars TODO
     make it only for one matrix!
     """
-
-    fig = plt.figure(figsize=(16, 6))
+    _fig = plt.figure(figsize=(16, 6))
     gs = GridSpec(1, 5, width_ratios=[6, 0.3, 6, 0.3, 0.3])
 
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[2])
-    cbar_ax_pos = plt.subplot(gs[3])
-    cbar_ax_neg = plt.subplot(gs[4])
+    _cbar_ax_pos = plt.subplot(gs[3])
+    _cbar_ax_neg = plt.subplot(gs[4])
 
     # Define the colormap
     cmap_pos = plt.get_cmap('Reds')
@@ -1084,8 +1094,8 @@ def save_correlation_matrix_plot(matrix1, matrix2, labels):
     matrix1_pos = np.ma.masked_less_equal(matrix1, 0)
     matrix1_neg = -np.ma.masked_greater_equal(matrix1, 0)
 
-    matrix2_pos = np.ma.masked_less_equal(matrix2, 0)
-    matrix2_neg = -np.ma.masked_greater_equal(matrix2, 0)
+    _matrix2_pos = np.ma.masked_less_equal(matrix2, 0)
+    _matrix2_neg = -np.ma.masked_greater_equal(matrix2, 0)
 
     # Plot Gaussian matrix
     ax1.imshow(matrix1_pos, cmap=cmap_pos, norm=LogNorm())
@@ -1117,8 +1127,8 @@ def save_correlation_matrix_plot(matrix1, matrix2, labels):
 
 def table_to_3d_array(file_path, is_auto_spectrum):
     """Convert CLOE .dat files format to 3d arrays, following the indexing in
-    the header."""
-
+    the header.
+    """
     # Read the header and data from the file
     with open(file_path) as f:
         header = f.readline().strip().split('\t')
@@ -1150,12 +1160,12 @@ def zpairs_header_to_ind_array(header):
     # Loop through each element in the list
     for zpairs_str_list in header:
         # Split the element by the '-' character
-        zpairs_str_list = zpairs_str_list.split('-')
+        _zpairs_str_list = zpairs_str_list.split('-')
 
         # Remove the 'E'mand 'P' from each part and convert to integer
         zpairs = [
             int(zpair_str.replace('E', '').replace('P', ''))
-            for zpair_str in zpairs_str_list
+            for zpair_str in _zpairs_str_list
         ]
 
         # Append the pair of integers to the list
@@ -1197,13 +1207,16 @@ def test_folder_content(
     """Test if the files in the output folder are equal to the benchmark files
     and list the discrepancies.
 
-    Parameters:
+    Parameters
+    ----------
     output_path (str): The path to the folder containing the output files.
     benchmarks_path (str): The path to the folder containing the benchmark files.
     extension (str): The extension of the files to be tested.
 
-    Returns:
+    Returns
+    -------
     dict: A dictionary containing the comparison results and discrepancies.
+
     """
     old_files = os.listdir(benchmarks_path)
     new_files = os.listdir(output_path)
@@ -1264,7 +1277,7 @@ def test_folder_content(
                     rtol=rtol,
                     atol=0,
                 )
-            elif extension == 'txt' or extension == 'dat':
+            elif extension in ['txt', 'dat']:
                 np.testing.assert_allclose(
                     np.genfromtxt(old_file_path),
                     np.genfromtxt(new_file_path),
@@ -1300,12 +1313,15 @@ def import_files(folder_path, extension):
     """Imports all files with a specific extension from a folder and stores
     their contents in a dictionary.
 
-    Parameters:
+    Parameters
+    ----------
     folder_path (str): The path to the folder from which to import files.
     extension (str): The file extension to look for.
 
-    Returns:
+    Returns
+    -------
     dict: A dictionary with filenames as keys and file contents as values.
+
     """
     files_dict = {}
     # Get the list of relevant file names using the get_filenames_in_folder function
@@ -1414,7 +1430,8 @@ def _percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False)
 
 def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     """Calculate the percent difference between two arrays, handling NaN
-    values."""
+    values.
+    """
     # Handle NaN values
     if eraseNaN:
         # Mask where NaN values are present
@@ -1453,6 +1470,7 @@ def compute_smape(vec_true, vec_test, cov_mat=None):
 
     Returns:
         float: SMAPE value
+
     """
     if isinstance(vec_true, np.ndarray) and isinstance(vec_test, np.ndarray):
         assert len(vec_true) == len(vec_test), 'Arrays must have the same length'
@@ -1473,8 +1491,7 @@ def compute_smape(vec_true, vec_test, cov_mat=None):
 
 
 def smape(y_true, y_pred):
-    """
-    Compute the point-by-point Symmetric Mean Absolute Percentage Error (SMAPE)
+    """Compute the point-by-point Symmetric Mean Absolute Percentage Error (SMAPE)
     between two arrays of the same shape.
 
     Parameters
@@ -1488,6 +1505,7 @@ def smape(y_true, y_pred):
     -------
     smape : ndarray
         Array of SMAPE values in percentage (same shape as inputs).
+
     """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
@@ -1516,6 +1534,7 @@ def compute_diff_sigma(vec_true, vec_test, sigma):
     - A numpy array representing the element-wise difference between vec_true and
     vec_test,
       divided by sigma.
+
     """
     diff = np.abs(vec_true - vec_test)
     return 100 * diff / sigma
@@ -1652,7 +1671,7 @@ def compare_folder_content(path_A: str, path_B: str, filetype: str):
     dict_A = dict(get_kv_pairs(path_A, filetype))
     dict_B = dict(get_kv_pairs(path_B, filetype))
 
-    for key in dict_A:
+    for key in dict_A:  # noqa: PLC0206
         result_emoji = '✅' if np.array_equal(dict_A[key], dict_B[key]) else '❌'
         print(f'is {key} equal in both folders? {result_emoji}')
 
@@ -1666,8 +1685,7 @@ def namestr(obj, namespace):
 
 
 def find_null_rows_cols_2D(array):
-    """
-    :param array:
+    """:param array:
 
     :return null_rows_idxs: list
         array of null rows/columns indices
@@ -1726,8 +1744,8 @@ def remove_null_rows_cols_2D(array_2d: np.ndarray):
 
     Returns:
         numpy.ndarray: The 2D numpy array with null rows and columns removed.
-    """
 
+    """
     assert array_2d.ndim == 2, (
         'ndim should be <= 2; higher-dimensional case not yet implemented'
     )
@@ -1739,7 +1757,8 @@ def remove_null_rows_cols_2D(array_2d: np.ndarray):
 def mask_FM_null_rowscols(FM, params, fid):
     """Mask the Fisher matrix, fiducial values and parameter list deleting the
     null rows and columns :param FM: Fisher Matrix, 2D numpy array :return:
-    masked FM, fiducial values and parameter list."""
+    masked FM, fiducial values and parameter list.
+    """
     null_idx = find_null_rows_cols_2D(FM)
 
     if null_idx is None:
@@ -1757,7 +1776,8 @@ def mask_FM_null_rowscols(FM, params, fid):
 def mask_fm_null_rowscols_v2(fm, fiducials_dict):
     """Mask the Fisher matrix, fiducial values and parameter list deleting the
     null rows and columns :param FM: Fisher Matrix, 2D numpy array :return:
-    masked FM, fiducial values and parameter list."""
+    masked FM, fiducial values and parameter list.
+    """
     param_names = list(fiducials_dict.keys())
     param_values = list(fiducials_dict.values())
 
@@ -1785,7 +1805,8 @@ def mask_fisher(
     remove_null_rows_cols: bool,
 ):
     """Trim the Fisher matrix to remove null rows/columns and/or fix nuisance
-    parameters."""
+    parameters.
+    """
     fm = deepcopy(fm)
     fiducials_dict = deepcopy(fiducials_dict)
 
@@ -1831,7 +1852,8 @@ def fix_params_in_fm(fm, names_params_to_fix, fiducials_dict):
 
 def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
     """Adds a FM of priors (with elements 1/sigma in the correct positions) to
-    the input FM."""
+    the input FM.
+    """
     fm = deepcopy(fm)
     fiducials_dict = deepcopy(fiducials_dict)
 
@@ -1863,7 +1885,6 @@ def uncertainties_fm_v2(
     fm, fiducials_dict, which_uncertainty='marginal', normalize=True, percent_units=True
 ):
     """Returns relative 1-sigma error."""
-
     param_names = list(fiducials_dict.keys())
     param_values = np.array(list(fiducials_dict.values()))
 
@@ -1917,8 +1938,7 @@ def matshow(
     only_show_nans=False,
     matshow_kwargs: dict = None,
 ):
-    """
-    :param array:
+    """:param array:
     :param title:
     :param log:
     :param abs_val:
@@ -1926,7 +1946,6 @@ def matshow(
     keep only the elements above the threshold (i.e., mask the ones below the threshold)
     :return:
     """
-
     if matshow_kwargs is None:
         matshow_kwargs = {}
     if only_show_nans:
@@ -1963,9 +1982,9 @@ def get_kv_pairs(path_import, extension='npy'):
     To use it, wrap it in "dict(), e.g.:     loaded_dict =
     dict(get_kv_pairs(path_import, filetype="dat"))
     """
-    if extension == 'npy' or extension == 'npz':
+    if extension in ('npy', 'npz'):
         load_function = np.load
-    elif extension == 'txt' or extension == 'dat':
+    elif extension in ('txt', 'dat'):
         load_function = np.genfromtxt
     else:
         raise NotImplementedError(
@@ -1982,9 +2001,9 @@ def get_kv_pairs_v2(path_import, extension='npy'):
     To use it, wrap it in "dict(), e.g.:     loaded_dict =
     dict(get_kv_pairs(path_import, filetype="dat"))
     """
-    if extension == 'npy' or extension == 'npz':
+    if extension in ('npy', 'npz'):
         load_function = np.load
-    elif extension == 'txt' or extension == 'dat':
+    elif extension in ('txt', 'dat'):
 
         def load_function(p):
             return np.genfromtxt(p, encoding='latin1')  # Handle non-UTF-8 encoding
@@ -2059,7 +2078,6 @@ def generate_ind(triu_tril_square, row_col_major, size):
 
 def build_full_ind(triu_tril, row_col_major, size):
     """Builds the good old ind file."""
-
     assert triu_tril in ['triu', 'tril'], 'triu_tril must be either "triu" or "tril"'
     assert row_col_major in ['row-major', 'col-major'], (
         'row_col_major must be either "row-major" or "col-major"'
@@ -2111,7 +2129,8 @@ def build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG):
 # CHECK FOR DUPLICATES
 def cl_2D_to_3D_symmetric(Cl_2D, nbl, zpairs, zbins):
     """Reshape from (nbl, zpairs) to (nbl, zbins, zbins) according to upper
-    traigular ordering 0-th rows filled first, then second from i to 10..."""
+    traigular ordering 0-th rows filled first, then second from i to 10...
+    """
     assert Cl_2D.shape == (nbl, zpairs), (
         f'cl_2d must have shape (nbl, zpairs) = ({nbl}, {zpairs})'
     )
@@ -2129,7 +2148,8 @@ def cl_2D_to_3D_symmetric(Cl_2D, nbl, zpairs, zbins):
 
 def cl_2D_to_3D_asymmetric(Cl_2D, nbl, zbins, order):
     """Reshape from (nbl, npairs) to (nbl, zbins, zbins), rows first (valid for
-    asymmetric Cij, i.e. C_XC)"""
+    asymmetric Cij, i.e. C_XC)
+    """
     assert order in ['row-major', 'col-major', 'C', 'F'], (
         'order must be either "row-major", "C" (equivalently), or'
         '"col-major", "F" (equivalently)'
@@ -2146,7 +2166,8 @@ def cl_2D_to_3D_asymmetric(Cl_2D, nbl, zbins, order):
 
 def Cl_3D_to_2D_symmetric(Cl_3D, nbl, npairs, zbins=10):
     """Reshape from (nbl, zbins, zbins) to (nbl, npairs)  according to upper
-    traigular ordering 0-th rows filled first, then second from i to 10..."""
+    traigular ordering 0-th rows filled first, then second from i to 10...
+    """
     triu_idx = np.triu_indices(zbins)
     Cl_2D = np.zeros((nbl, npairs))
     for ell in range(nbl):
@@ -2157,7 +2178,8 @@ def Cl_3D_to_2D_symmetric(Cl_3D, nbl, npairs, zbins=10):
 
 def Cl_3D_to_2D_asymmetric(Cl_3D):
     """Reshape from (nbl, zbins, zbins) to (nbl, npairs), rows first (valid for
-    asymmetric Cij, i.e. C_XC)"""
+    asymmetric Cij, i.e. C_XC)
+    """
     assert Cl_3D.ndim == 3, 'Cl_3D must be a 3D array'
 
     nbl = Cl_3D.shape[0]
@@ -2176,8 +2198,8 @@ def cl_3D_to_2D_or_1D(
     cl_3D, ind, is_auto_spectrum, use_triu_row_major, convert_to_2D, block_index
 ):
     """Reshape from (nbl, zbins, zbins) to (nbl, zpairs), according to the
-    ordering given in the ind file (valid for asymmetric Cij, i.e. C_XC)"""
-
+    ordering given in the ind file (valid for asymmetric Cij, i.e. C_XC)
+    """
     # warnings.warn('finish this function!! (old warning, I dont remember
     # exactly what is missing...)')
     assert cl_3D.ndim == 3, 'cl_3D must be a 3D array'
@@ -2216,8 +2238,8 @@ def cl_3D_to_2D_or_1D(
 # @njit
 def cl_1D_to_3D(cl_1d, nbl: int, zbins: int, is_symmetric: bool):
     """This is used to unpack Vincenzo's files for SPV3 Still to be thoroughly
-    checked."""
-
+    checked.
+    """
     cl_3d = np.zeros((nbl, zbins, zbins))
     p = 0
     if is_symmetric:
@@ -2239,7 +2261,6 @@ def cl_1D_to_3D(cl_1d, nbl: int, zbins: int, is_symmetric: bool):
 # @njit
 def symmetrize_2d_array(array_2d):
     """Mirror the lower/upper triangle."""
-
     # if already symmetric, do nothing
     if check_symmetric(array_2d, exact=True):
         return array_2d
@@ -2293,8 +2314,7 @@ def array_2D_to_1D_ind(array_2D, zpairs, ind):
 
 
 def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
-    """expand the zpair indices into zi, zj, according to the ind ordering as usual"""
-
+    """Expand the zpair indices into zi, zj, according to the ind ordering as usual"""
     dC_3D = np.zeros((nbl, zpairs, nparams_tot))
     for ell in range(nbl):
         for alf in range(nparams_tot):
@@ -2302,11 +2322,10 @@ def dC_4D_to_3D(dC_4D, nbl, zpairs, nparams_tot, ind):
     return dC_3D
 
 
-def dC_dict_to_4D_array(
-    dC_dict_3D, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2
+def dcl_dict_to_4D_array(
+    dcl_dict_3d, param_names, nbl, zbins, derivatives_prefix, is_3x2pt=False, n_probes=2
 ):
-    """
-    :param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
+    """:param param_names: filename of the parameter, e.g. 'Om'; dCldOm = d(C(l))/d(Om)
     :param dC_dict_3D:
     :param nbl:
     :param zbins:
@@ -2322,19 +2341,17 @@ def dC_dict_to_4D_array(
     else:
         dC_4D = np.zeros((nbl, zbins, zbins, len(param_names)))
 
-    if not dC_dict_3D:
-        warnings.warn('The input dictionary is empty')
+    if not dcl_dict_3d:
+        warnings.warn('The input dictionary is empty', stacklevel=2)
 
     no_derivative_counter = 0
     for idx, param_name in enumerate(param_names):
-        for key, value in dC_dict_3D.items():
+        for key, value in dcl_dict_3d.items():
             if f'{derivatives_prefix}{param_name}' in key:
                 dC_4D[..., idx] = value
 
         # a check, if the derivative wrt the param is not in the folder at all
-        if not any(
-            f'{derivatives_prefix}{param_name}' in key for key in dC_dict_3D.keys()
-        ):
+        if all(f'{derivatives_prefix}{param_name}' not in key for key in dcl_dict_3d):
             print(
                 f'Derivative {derivatives_prefix}{param_name} not found; setting the corresponding FM entry to zero'
             )
@@ -2411,8 +2428,8 @@ def covariance_einsum(
     return_only_diagonal_ells=False,
 ):
     """Optimized version to avoid repeated code in the covariance
-    calculation."""
-
+    calculation.
+    """
     assert cl_5d.shape[0] in [1, 2], 'This function only works with 1 or 2 probes'
     assert cl_5d.shape[0] == cl_5d.shape[1], (
         'cl_5d must have shape (n_probes, n_probes, nbl, zbins, zbins)'
@@ -2454,8 +2471,8 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
     zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
-    n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)"""
-
+    n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
+    """
     assert n_probes == 2, (
         'if more than 2 probes are used, the probe_dict must be changed '
         '(promote it to an argument of the function!)'
@@ -2476,8 +2493,8 @@ def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
     """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
     zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
-    n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)"""
-
+    n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
+    """
     cov_10D_dict = {}
     probe_dict = {'L': 0, 'G': 1}
     for A_str, B_str in probe_ordering:
@@ -2541,7 +2558,6 @@ def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_
 
     probe_ordering: e.g. ['L', 'L'], ['G', 'L'], ['G', 'G']]
     """
-
     # if it's an array, convert to dictionary for the function to work
     if isinstance(cov_3x2pt_10D, np.ndarray):
         cov_3x2pt_dict_10D = cov_10D_array_to_dict(cov_3x2pt_10D, probe_ordering)
@@ -2624,7 +2640,6 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None
     e.g., [['L', 'L', 'L', 'L'], ['L', 'L', 'L', 'G'], ...]
     :return: 4D covariance array
     """
-
     # if combinations is not provided, construct it
     if combinations is None:
         combinations = []
@@ -2646,7 +2661,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None
     )
 
     # check that the combinations are correct
-    for i, combination in enumerate(combinations):
+    for combination in combinations:
         assert tuple(combination) in list(cov_3x2pt_8D_dict.keys()), (
             f'combination {combination} not found in the input dictionary'
         )
@@ -2722,9 +2737,9 @@ def cov_3x2pt_4d_to_10d_dict(
         cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks
 
     cov_3x2pt_10d_dict = {}
-    for key in cov_3x2pt_8d_dict:
+    for key, cov in cov_3x2pt_8d_dict.items():
         cov_3x2pt_10d_dict[key] = cov_4D_to_6D_blocks_func(
-            cov_3x2pt_8d_dict[key],
+            cov,
             nbl,
             zbins,
             ind_dict[key[0], key[1]],
@@ -2747,7 +2762,7 @@ def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
     """
     # TODO deprecate this in favor of cov_4D_to_6D_blocks
 
-    npairs_auto, npairs_cross, npairs_tot = get_zpairs(zbins)
+    npairs_auto, npairs_cross, _ = get_zpairs(zbins)
     if probe in ['LL', 'GG']:
         npairs = npairs_auto
     elif probe in ['GL', 'LG']:
@@ -2789,7 +2804,8 @@ def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
 # @njit
 def cov_6D_to_4D(cov_6D, nbl, zpairs, ind):
     """Transform the cov from shape (nbl, nbl, zbins, zbins, zbins, zbins) to
-    (nbl, nbl, zpairs, zpairs)"""
+    (nbl, nbl, zpairs, zpairs)
+    """
     assert ind.shape[0] == zpairs, (
         "ind.shape[0] != zpairs: maybe you're passing the whole ind file "
         'instead of ind[:zpairs, :] - or similia'
@@ -2811,7 +2827,8 @@ def cov_6D_to_4D(cov_6D, nbl, zpairs, ind):
 # TODO finish this
 def cov_6D_to_4D_optim(cov_6D, nbl, zpairs, ind):
     """Transform the cov from shape (nbl, nbl, zbins, zbins, zbins, zbins) to
-    (nbl, nbl, zpairs, zpairs)"""
+    (nbl, nbl, zpairs, zpairs)
+    """
     assert ind.shape[0] == zpairs, (
         "ind.shape[0] != zpairs: maybe you're passing the whole ind file "
         'instead of ind[:zpairs, :] - or similia'
@@ -2916,8 +2933,8 @@ def cov_4D_to_6D_blocks(
 
     Returns:
         np.ndarray: The 6D covariance matrix.
-    """
 
+    """
     assert ind_ab.shape[1] == ind_cd.shape[1], (
         'ind_ab and ind_cd must have the same number of columns'
     )
@@ -3016,8 +3033,7 @@ def return_combinations(A, B, C, D):
 ###########################
 # @njit
 def check_symmetric(array_2d, exact, rtol=1e-05):
-    """
-    :param a: 2d array
+    """:param a: 2d array
     :param exact: bool
     :param rtol: relative tolerance
     :return: bool, whether the array is symmetric or not
@@ -3034,8 +3050,8 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
 
 def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
-    matrix in ell, probe and zpair (unpacked in this order)"""
-
+    matrix in ell, probe and zpair (unpacked in this order)
+    """
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
     ell_block_size = zpairs_3x2pt
 
@@ -3065,8 +3081,8 @@ def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe
 
 def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, probe):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
-    matrix in ell, probe and zpair (unpacked in this order)"""
-
+    matrix in ell, probe and zpair (unpacked in this order)
+    """
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
     ell_block_size = zpairs_3x2pt
 
@@ -3110,7 +3126,6 @@ def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
     the missing elements in the
     higher-dimensional array are needed.
     """
-
     assert block_index in ['ell', 'C-style'] + ['zpair', 'F-style'], (
         'block_index must be "ell", "C-style" or "zpair", "F-style"'
     )
@@ -3131,26 +3146,25 @@ def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
                 (1, 3, 0, 2)
             )
 
-    else:
-        if block_index in ['ell', 'C-style']:
-            for l1 in range(nbl):
-                for l2 in range(nbl):
-                    for ipair in range(zpairs_AB):
-                        for jpair in range(zpairs_CD):
-                            # block_index * block_size + running_index
-                            cov_4D[l1, l2, ipair, jpair] = cov_2D[
-                                l1 * zpairs_AB + ipair, l2 * zpairs_CD + jpair
-                            ]
+    elif block_index in ['ell', 'C-style']:
+        for l1 in range(nbl):
+            for l2 in range(nbl):
+                for ipair in range(zpairs_AB):
+                    for jpair in range(zpairs_CD):
+                        # block_index * block_size + running_index
+                        cov_4D[l1, l2, ipair, jpair] = cov_2D[
+                            l1 * zpairs_AB + ipair, l2 * zpairs_CD + jpair
+                        ]
 
-        elif block_index in ['zpair', 'F-style']:
-            for l1 in range(nbl):
-                for l2 in range(nbl):
-                    for ipair in range(zpairs_AB):
-                        for jpair in range(zpairs_CD):
-                            # block_index * block_size + running_index
-                            cov_4D[l1, l2, ipair, jpair] = cov_2D[
-                                ipair * nbl + l1, jpair * nbl + l2
-                            ]
+    elif block_index in ['zpair', 'F-style']:
+        for l1 in range(nbl):
+            for l2 in range(nbl):
+                for ipair in range(zpairs_AB):
+                    for jpair in range(zpairs_CD):
+                        # block_index * block_size + running_index
+                        cov_4D[l1, l2, ipair, jpair] = cov_2D[
+                            ipair * nbl + l1, jpair * nbl + l2
+                        ]
 
     # mirror the upper triangle into the lower one
     if symmetrize:
@@ -3186,7 +3200,6 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     the missing elements in the
     higher-dimensional array are needed.
     """
-
     assert block_index in ['ell', 'C-style'] + ['zpair', 'F-style'], (
         'block_index must be "ell", "C-style" or "zpair", "F-style"'
     )
@@ -3255,7 +3268,6 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
     loop in any case. ! The ordering used by CLOE v2 is probe_ell_zpair,
     so block_index = 'ell' is ! the correct choice in this case.
     """
-
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
     lim_1 = zpairs_auto
@@ -3310,7 +3322,6 @@ def cov_2DCLOE_to_4D_3x2pt(cov_2D, nbl, zbins, block_index='ell'):
     ordering (LL, LG/GL, GG) is hardcoded, this function won't work with
     other combinations (but it TODO will work both for LG and GL)
     """
-
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
 
     # now I'm reshaping the full block diagonal matrix, not just the sub-blocks
@@ -3387,18 +3398,6 @@ def cov_2d_cloe_to_dav(cov_2d_cloe, nbl, zbins, block_index_in, block_index_out)
     return cov_2d_dav
 
 
-def _cov2corr(covariance):
-    """Credit:
-    https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
-    """
-
-    v = np.sqrt(np.diag(covariance))
-    outer_v = np.outer(v, v)
-    correlation = covariance / outer_v
-    correlation[covariance == 0] = 0
-    return correlation
-
-
 def cov2corr(covariance):
     """Convert a covariance matrix to a correlation matrix."""
     v = np.sqrt(np.diag(covariance))
@@ -3464,8 +3463,8 @@ def build_noise(
         N_LL = sigma_eps^2 / (2 * n_bar)
         N_GG = 1 / n_bar
         N_GL = N_LG = 0
-    """
 
+    """
     # assert appropriate inputs are list, tuple or np.ndarray
     for var, name in zip(
         [

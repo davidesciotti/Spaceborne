@@ -1,6 +1,7 @@
 """Class for reading in data in various formats"""
 
 import itertools
+
 import numpy as np
 
 
@@ -89,18 +90,16 @@ def load_cl_euclidlib(filename, key_a, key_b):
         args = (cl_dict, key_a, key_b, zi + 1, zj + 1)
         if zj >= zi:
             cl_3d[:, zi, zj] = _select_spin_component(*args)
+        elif is_auto_spectrum:
+            cl_3d[:, zi, zj] = cl_3d[:, zj, zi]
         else:
-            if is_auto_spectrum:
-                cl_3d[:, zi, zj] = cl_3d[:, zj, zi]
-            else:
-                cl_3d[:, zi, zj] = _select_spin_component(*args)
+            cl_3d[:, zi, zj] = _select_spin_component(*args)
 
     return ells, cl_3d
 
 
 def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
-    """
-    Selects the spin components, aka homogenises the dimensions to assign data to cl_3d.
+    """Selects the spin components, aka homogenises the dimensions to assign data to cl_3d.
     Important note: E-modes are hardcoded at the moment;
     index 1 is for B modes, but you would have to change the structure of the cl_5d
     array (at the moment it's:
@@ -127,8 +126,7 @@ def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
 
 
 def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
-    """
-    SB = 'Spaceborne'
+    """SB = 'Spaceborne'
     HC = 'Heracles'
 
     this dictionary specifies, within the 2 axes assigned to SHE, which ones
@@ -141,7 +139,6 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
         'B': 1,
     }
     """
-
     # this dictionary maps the SB probe indices to the HC probe names (keys)
     probe_name_dict = {
         0: 'POS',
@@ -236,6 +233,7 @@ class IOHandler:
     Args:
         cfg: Configuration dictionary
         pvt_cfg: Private configuration dictionary
+
     """
 
     def __init__(self, cfg, pvt_cfg):
@@ -244,10 +242,7 @@ class IOHandler:
         self.cl_cfg = cfg['C_ell']
 
     def print_cl_path(self):
-        """
-        Print the path of the input Cl files
-        """
-
+        """Print the path of the input Cl files"""
         if self.cfg['C_ell']['use_input_cls']:
             print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_path"]}')
             print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_path"]}')
@@ -256,19 +251,15 @@ class IOHandler:
             return
 
     def get_nz_fmt(self):
-        """
-        Get the format of the input nz files
-        """
+        """Get the format of the input nz files"""
         nz_cfg = self.cfg['nz']  # shorten name
 
-        if nz_cfg['nz_sources_filename'].endswith('.txt') and nz_cfg[
-            'nz_lenses_filename'
-        ].endswith('.txt'):
-            self.nz_fmt = 'spaceborne'
-
-        elif nz_cfg['nz_sources_filename'].endswith('.dat') and nz_cfg[
-            'nz_lenses_filename'
-        ].endswith('.dat'):
+        if (
+            nz_cfg['nz_sources_filename'].endswith('.txt')
+            and nz_cfg['nz_lenses_filename'].endswith('.txt')
+            or nz_cfg['nz_sources_filename'].endswith('.dat')
+            and nz_cfg['nz_lenses_filename'].endswith('.dat')
+        ):
             self.nz_fmt = 'spaceborne'
 
         elif nz_cfg['nz_sources_filename'].endswith('.fits') and nz_cfg[
@@ -284,19 +275,13 @@ class IOHandler:
             )
 
     def get_cl_fmt(self):
-        """
-        Get the format of the input cl files
-        """
-
+        """Get the format of the input cl files"""
         if self.cl_cfg['use_input_cls']:
             if (
                 self.cl_cfg['cl_LL_path'].endswith('.txt')
                 and self.cl_cfg['cl_GL_path'].endswith('.txt')
                 and self.cl_cfg['cl_GG_path'].endswith('.txt')
-            ):
-                self.cl_fmt = 'spaceborne'
-
-            elif (
+            ) or (
                 self.cl_cfg['cl_LL_path'].endswith('.dat')
                 and self.cl_cfg['cl_GL_path'].endswith('.dat')
                 and self.cl_cfg['cl_GG_path'].endswith('.dat')
@@ -342,7 +327,7 @@ class IOHandler:
         self.nz_lns = nz_lns_tab_full[:, 1:]
 
     def _load_nz_el(self):
-        """this is just to assign src and lns data to self"""
+        """This is just to assign src and lns data to self"""
         self.zgrid_nz_src, self.nz_src = load_nz_el(
             self.cfg['nz']['nz_sources_filename']
         )
@@ -352,7 +337,8 @@ class IOHandler:
 
     def load_cls(self):
         """Wrapper for loading cl files, which calls either the sb or el reading
-        routines"""
+        routines
+        """
         if self.cl_fmt == 'spaceborne':
             self._load_cls_sb()
         elif self.cl_fmt == 'euclidlib':
@@ -379,7 +365,7 @@ class IOHandler:
         )
 
     def check_ells_in(self, ell_obj):
-        """make sure ells are sorted and unique for spline interpolation"""
+        """Make sure ells are sorted and unique for spline interpolation"""
         for _ells in [  # fmt: skip
             self.ells_WL_in, ell_obj.ells_WL,
             self.ells_XC_in, ell_obj.ells_XC,

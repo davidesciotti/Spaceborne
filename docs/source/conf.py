@@ -5,6 +5,8 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+import os
+import sys
 
 project = 'Spaceborne'
 copyright = '2025, Davide Sciotti'
@@ -38,11 +40,6 @@ napoleon_include_special_with_doc = True
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
-
-
-# Add this block near the top of the file
-import os
-import sys
 
 sys.path.insert(0, os.path.abspath('../..'))  # Points to the root of your repo
 # where the 'spaceborne' package lives

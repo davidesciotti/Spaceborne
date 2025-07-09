@@ -8,8 +8,7 @@ from spaceborne import cosmo_lib as csmlib
 
 
 def compute_bnt_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True):
-    """
-    Computes the BNT matrix. This function has been slightly modified from
+    """Computes the BNT matrix. This function has been slightly modified from
     Santiago Casas' implementation in CLOE.
 
     Args:
@@ -22,8 +21,8 @@ def compute_bnt_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True)
 
     Returns:
         numpy.ndarray: BNT matrix of shape (zbins, zbins).
-    """
 
+    """
     assert n_of_z_arr.shape[0] == len(zgrid_n_of_z), (
         'n_of_z must have zgrid_n_of_z rows'
     )
@@ -96,9 +95,9 @@ def cl_bnt_transform(cl_3d, bnt_matrix, probe_A, probe_B):
 
 
 def cl_bnt_transform_3x2pt(cl_3x2pt_5d, bnt_matrix):
-    """wrapper function to quickly implement the cl (or derivatives) BNT transform
-    for the 3x2pt datavector"""
-
+    """Wrapper function to quickly implement the cl (or derivatives) BNT transform
+    for the 3x2pt datavector
+    """
     cl_3x2pt_bnt_5d = np.zeros(cl_3x2pt_5d.shape)
     cl_3x2pt_bnt_5d[0, 0, :, :, :] = cl_bnt_transform(
         cl_3x2pt_5d[0, 0, :, :, :], bnt_matrix, 'L', 'L'
@@ -117,8 +116,9 @@ def cl_bnt_transform_3x2pt(cl_3x2pt_5d, bnt_matrix):
 
 
 def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
-    """creates an array of lists containing the ell indices to cut (to set to 0)
-    for each zi, zj)"""
+    """Creates an array of lists containing the ell indices to cut (to set to 0)
+    for each zi, zj)
+    """
     ell_idxs_tocut = np.zeros((zbins, zbins), dtype=list)
     for zi in range(zbins):
         for zj in range(zbins):
@@ -132,8 +132,7 @@ def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
 
 
 def build_x_matrix_bnt(bnt_matrix):
-    """
-    Builds the X matrix for the BNT transform, according to eq.
+    """Builds the X matrix for the BNT transform, according to eq.
     :param bnt_matrix:
     :return:
     """
@@ -149,8 +148,9 @@ def build_x_matrix_bnt(bnt_matrix):
 def cov_bnt_transform(
     cov_nobnt_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True
 ):
-    """same as above, but only for one probe (i.e., LL or GL: GG is not modified
-    by the BNT)"""
+    """Same as above, but only for one probe (i.e., LL or GL: GG is not modified
+    by the BNT)
+    """
     cov_bnt_6D = np.einsum(
         'aebf, cgdh, LMefgh -> LMabcd',
         X_dict[probe_A, probe_B],
@@ -162,9 +162,9 @@ def cov_bnt_transform(
 
 
 def cov_3x2pt_bnt_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
-    """in np.einsum below, L and M are the ell1, ell2 indices, which are not
-    touched by the BNT transform"""
-
+    """In np.einsum below, L and M are the ell1, ell2 indices, which are not
+    touched by the BNT transform
+    """
     cov_3x2pt_bnt_dict_10D = {}
 
     for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D:

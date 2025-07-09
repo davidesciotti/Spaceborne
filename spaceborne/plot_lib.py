@@ -1,12 +1,12 @@
 import warnings
-from matplotlib import gridspec
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 from getdist import plots
 from getdist.gaussian_mixtures import GaussianND
+from matplotlib import gridspec
 
-
-mpl_rcParams_dict = {
+mpl_rcparams_dict = {
     'lines.linewidth': 1.5,
     'font.size': 17,
     'axes.labelsize': 'large',
@@ -50,6 +50,7 @@ mpl_other_dict = {
     'kmax_tex': '$k_{\\rm max}$',
     'kmax_star_tex': '$k_{\\rm max}^\\star$',
 }
+
 
 # matplotlib.rcParams.update(mpl_cfg.mpl_rcParams_dict)
 
@@ -163,8 +164,8 @@ def plot_ell_cuts(
 
     # Display the matrices with the shared color scale
     cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
-    cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
-    cax2 = ax2.matshow(ell_cuts_c, vmin=vmin, vmax=vmax)
+    _cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
+    _cax2 = ax2.matshow(ell_cuts_c, vmin=vmin, vmax=vmax)
 
     # Add titles to the plots
     ax0.set_title(label_a, fontsize=18)
@@ -203,10 +204,7 @@ def bar_plot(
     grey_bars=False,
     alpha=1,
 ):
-    """
-    data: usually the percent uncertainties, but could also be the percent difference
-    """
-
+    """data: usually the percent uncertainties, but could also be the percent difference"""
     no_cases = data.shape[0]
     no_params = data.shape[1]
 
@@ -263,10 +261,10 @@ def bar_plot(
         bar_centers = np.repeat(bar_centers, no_cases, axis=0)
 
     if param_names_label is None:
-        param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX']
+        param_names_label = mpl_other_dict['cosmo_labels_TeX']
         fom_div_10_str = '/10' if divide_fom_by_10_plt else ''
         if include_fom:
-            param_names_label = mpl_cfg.general_dict['cosmo_labels_TeX'] + [
+            param_names_label = mpl_other_dict['cosmo_labels_TeX'] + [
                 f'FoM{fom_div_10_str}'
             ]
 
@@ -276,10 +274,7 @@ def bar_plot(
     if figsize is None:
         figsize = (12, 8)
 
-    if grey_bars:
-        bar_color = ['grey' for _ in range(no_cases)]
-    else:
-        bar_color = None
+    bar_color = ['grey' for _ in range(no_cases)] if grey_bars else None
 
     if second_axis:
         # this check is quite obsolete...
@@ -384,8 +379,9 @@ def triangle_plot_old(
 
     if param_names_labels_tex is not None:
         warnings.warn(
-            'the user should make sure that the order of the param_names_labels_tex list is the same as \
-                      the order of the param_names_labels:'
+            'the user should make sure that the order of the param_names_labels_tex'
+            ' list is the same as the order of the param_names_labels:',
+            stacklevel=2,
         )
         print(param_names_labels_tex)
         print(param_names_labels)
@@ -483,7 +479,9 @@ def triangle_plot(
 
     if param_names_labels_tex is not None:
         warnings.warn(
-            'Ensure that the order of param_names_labels_tex matches param_names_labels.'
+            'Ensure that the order of param_names_labels_tex matches '
+            'param_names_labels.',
+            stacklevel=2,
         )
         param_names_labels_tex = [
             param_name.replace('$', '') for param_name in param_names_labels_tex
@@ -558,8 +556,7 @@ def triangle_plot(
 
 
 def contour_plot_chainconsumer(cov, trimmed_fid_dict):
-    """
-    example usage:
+    """Example usage:
                 # decide params to show in the triangle plot
                 cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
                 shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
@@ -576,6 +573,8 @@ def contour_plot_chainconsumer(cov, trimmed_fid_dict):
     :param trimmed_fid_dict:
     :return:
     """
+    from chainconsumer import ChainConsumer
+
     param_names = list(trimmed_fid_dict.keys())
     param_means = list(trimmed_fid_dict.values())
 

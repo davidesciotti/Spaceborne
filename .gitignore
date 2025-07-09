@@ -14,7 +14,7 @@
 *.xml
 *.xml
 tmp/*
-tmp*/   
+tmp*/
 .aider*
 output/*
 misc/test_davide_tri.ipynb
@@ -24,3 +24,4 @@ tests/bench_set/*
 docs/build/
 _config.yaml
 .env
+node_modules

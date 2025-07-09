@@ -25,3 +25,4 @@ docs/build/
 _config.yaml
 .env
 node_modules
+dist/*

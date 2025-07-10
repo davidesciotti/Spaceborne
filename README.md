@@ -1,4 +1,3 @@
-
 <p align="center">
   <img src="https://github.com/user-attachments/assets/1e156ecb-75d5-4004-b768-cbd8edab7940" width="300">
 </p>
@@ -8,9 +7,11 @@
 # Spaceborne
 
 ---
+
 [![Documentation Status](https://readthedocs.org/projects/spaceborne/badge/?version=latest)](https://spaceborne.readthedocs.io/en/latest/?badge=latest)
 
 ## Quickstart
+
 For detailed instructions on how to install and use Spaceborne, please refer to the [documentation](https://spaceborne.readthedocs.io/en/latest/).
 
 To install the code, we recommend using a dedicated Conda environment. Clone the repository, then checkout the latest release (e.g. `v2025.05.1`) with
@@ -26,6 +27,7 @@ conda env create -f environment.yaml
 conda activate spaceborne
 pip install .
 ```
+
 **As the code is evolving quite quickly at the moment, please make sure to check for new [releases](https://github.com/davidesciotti/Spaceborne/releases) periodically**
 
 🐍 note: using `mamba` instead of `conda` in the first line will significantly speed up the environment creation. To install `mamba`, run `conda install mamba` in your `base` environment.
@@ -45,7 +47,7 @@ julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ
 
 ### Running the Code
 
-All the available options and configurations can be found, along with their explanation, in the `config.yaml` file. To run `Spaceborne` *with the configuration specified in the* `Spaceborne/config.yaml` *file*, simply execute the following command:
+All the available options and configurations can be found, along with their explanation, in the `config.yaml` file. To run `Spaceborne` _with the configuration specified in the_ `Spaceborne/config.yaml` _file_, simply execute the following command:
 
 ```bash
 python main.py
@@ -79,7 +81,7 @@ If you find issues with the installation, you can happily disregard the above in
 docker-compose up --build
 ```
 
-Note that the `--build` flag is only needed the first time you run the code (or if you modify the `environment.yaml` or `Dockerfile`, which is *discouraged*). For subsequent runs, simply do:
+Note that the `--build` flag is only needed the first time you run the code (or if you modify the `environment.yaml` or `Dockerfile`, which is _discouraged_). For subsequent runs, simply do:
 
 ```bash
 docker-compose up
@@ -94,5 +96,3 @@ docker-compose down
 That's it! The container will use your local `config.yaml` file and output to the directories specified in your configuration, just as if you were running locally.
 
 ---
-
-

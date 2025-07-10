@@ -1,24 +1,29 @@
-# This is the environment file for the `spaceborne` conda environment
+# This is the environment file for the `spaceborne` conda environment to be used on Linux machines
 
 name: spaceborne
 channels:
-    - conda-forge
-    - defaults
+  - conda-forge
+  - defaults
 dependencies:
-    # PyCCL depenedencies - mandatory
-    - pyccl>=3.2.1
-    - swig
-    - cmake
+  - python>=3.12
+  - pip
+  - matplotlib
+  - numpy
+  - scipy
+  - tqdm
+  - pyyaml
+  - joblib
+  - healpy
 
-    # namaster and related dependencies - optional
-    - cfitsio
-    - fftw
-    - namaster
+  # PyCCL depenedencies - mandatory
+  - swig
+  - cmake
+  - pyccl>=3.2.1
 
-    # pylevin dependencies - optional
-    # - gsl=2.5
-    - gsl
-    # - gxx_linux-64
-    - gfortran
-    - pybind11
-    - boost
+  # pymaster dependencies - optional
+  - cfitsio
+  - fftw
+  - namaster
+
+  - pip:
+      - pyfiglet # for the fancy ascii art, not strictly necessary

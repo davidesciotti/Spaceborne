@@ -288,12 +288,14 @@ if cfg['probe_selection']['GL']:
 if cfg['probe_selection']['GG']:
     probe_comb_names.append('GG')
 
+# add cross terms if requested
 probe_comb_names = sl.build_probe_list(
     probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_cov']
 )
 probe_comb_idxs = [
     [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
 ]
+
 
 # ! set non-gaussian cov terms to compute
 cov_terms_list = []
@@ -813,15 +815,16 @@ if cfg['C_ell']['use_input_cls']:
     _cl_dict_xc['SB'] = cl_gl_3d_sb
     _cl_dict_gc['SB'] = cl_gg_3d_sb
 
-sb_plt.cls_triangle_plot(
-    _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
-)
-sb_plt.cls_triangle_plot(
-    _ell_dict_xc, _cl_dict_xc, is_auto=True, zbins=zbins, suptitle='GGL'
-)
-sb_plt.cls_triangle_plot(
-    _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
-)
+if cfg['misc']['cl_triangle_plot']:
+    sb_plt.cls_triangle_plot(
+        _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
+    )
+    sb_plt.cls_triangle_plot(
+        _ell_dict_xc, _cl_dict_xc, is_auto=False, zbins=zbins, suptitle='GGL'
+    )
+    sb_plt.cls_triangle_plot(
+        _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
+    )
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to

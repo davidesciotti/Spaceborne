@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "Spaceborne"
 readme = "README.md"
-version = "2025.07.1"
+version = "2025.07.1.dev3"
 license = "MIT License"
 description = "Code to compute the covariance matrix for the 3x2pt photometric survey in harmonic and real space."
 authors = ["davidesciotti <84071067+davidesciotti@users.noreply.github.com>"]
+include = ["spaceborne/config.yaml"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -25,6 +26,10 @@ tqdm = "*"
 
 [tool.poetry.extras]
 parallel = ["pathos"]
+
+[tool.poetry.scripts]
+spaceborne-run = "spaceborne.main:main"
+
 
 [tool.ruff]
 line-length = 88

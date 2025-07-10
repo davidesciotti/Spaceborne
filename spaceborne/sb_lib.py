@@ -29,6 +29,20 @@ symmetrize_output_dict = {
     ('G', 'G'): True,
 }
 
+ALL_PROBE_COMBS = [
+    'LLLL', 'LLGL', 'LLGG',
+    'GLLL', 'GLGL', 'GLGG',
+    'GGLL', 'GGGL', 'GGGG',
+]  # fmt: skip
+
+DIAG_PROBE_COMBS = [
+    'LLLL',
+    'GLGL',
+    'GGGG',
+]
+
+PROBE_DICT = {'L': 0, 'G': 1}
+
 
 # # Gaussian covariance binning
 # def bin_cov_gauss(cov, ell_values, theta_edges, fsky):
@@ -669,16 +683,30 @@ def plot_dominant_array_element(
 
 
 def cov_3x2pt_dict_8d_to_10d(
-    cov_3x2pt_dict_8D,
-    nbl,
-    zbins,
-    ind_dict,
-    probe_ordering,
+    cov_3x2pt_dict_8D: dict,
+    nbl: int,
+    zbins: int,
+    ind_dict: dict,
+    unique_probe_combs: list[str],
     symmetrize_output_dict: bool = symmetrize_output_dict,
-):
+) -> dict:
+    """Expands a 3x2pt covariance dictionary from 8D to 10D.
+
+    8D:  (probe_A, probe_B, probe_C, probe_D) -> np.ndarray(nbl, nbl, zpairs, zpairs)
+    10D: (probe_A, probe_B, probe_C, probe_D) -> np.ndarray(nbl, nbl, zbins, zbins, zbins, zbins)
+    """
+    # jsut a check
+    for _probe_str in unique_probe_combs:
+        assert len(_probe_str) == 4, '_probe_str must have length 4'
+
+    # if a probe is requested, reshape it and assign it to the 10D dict;
+    # otherwise, set it to 0
     cov_3x2pt_dict_10D = {}
-    for probe_A, probe_B in probe_ordering:
-        for probe_C, probe_D in probe_ordering:
+    for probe_A, probe_B, probe_C, probe_D in ALL_PROBE_COMBS:
+        # some combinations may be absent, depending on the probe selection
+        probe_str = probe_A + probe_B + probe_C + probe_D
+
+        if probe_str in unique_probe_combs:
             cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = (
                 cov_4D_to_6D_blocks(
                     cov_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
@@ -690,6 +718,25 @@ def cov_3x2pt_dict_8d_to_10d(
                     symmetrize_output_dict[probe_C, probe_D],
                 )
             )
+        else:
+            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = np.zeros(
+                (nbl, nbl, zbins, zbins, zbins, zbins)
+            )
+
+    # the requested probes are also unique, e.g. if unique_probe_combs contains 'LLGL'
+    # it will not include 'GLLL'. These blocks can be filled by simmetry, transposing
+    # - (A, B, C, D) -> (C, D, A, B),
+    # - (ell1, ell2) -> (ell2, ell1),
+    # - (zi, zj, zk, zl) <-> (zk, zl, zi, zj)
+    # be careful, the latter is *not*
+    # (zi, zj, zk, zl) <-> (zj, zi, zl, zk)!!
+    for probe_A, probe_B, probe_C, probe_D in unique_probe_combs:
+        probe_str = probe_A + probe_B + probe_C + probe_D
+        if probe_str not in DIAG_PROBE_COMBS:
+            cov_3x2pt_dict_10D[probe_C, probe_D, probe_A, probe_B] = cov_3x2pt_dict_10D[
+                probe_A, probe_B, probe_C, probe_D
+            ].transpose(1, 0, 4, 5, 2, 3)
+
     return cov_3x2pt_dict_10D
 
 
@@ -956,7 +1003,7 @@ def can_be_pickled(obj):
         return False
 
 
-def load_cov_from_probe_blocks(path, filename, probe_ordering):
+def load_cov_from_probe_blocks(path, filename, unique_probe_combs):
     """Load the covariance matrix from the probe blocks in 4D. The blocks are
     stored in a dictionary with keys corresponding to the probes in the order
     specified in probe_ordering. The symmetrization of the blocks is done while
@@ -970,27 +1017,25 @@ def load_cov_from_probe_blocks(path, filename, probe_ordering):
     correlated (and you e.g. divide twice by fsky)
     """
     cov_ssc_dict_8D = {}
-    for row, (probe_a, probe_b) in enumerate(probe_ordering):
-        for col, (probe_c, probe_d) in enumerate(probe_ordering):
-            if col >= row:  # Upper triangle and diagonal
-                formatted_filename = filename.format(
-                    probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d
-                )
-                cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d] = np.load(
-                    f'{path}/{formatted_filename}'
-                )
+    for comb_str in unique_probe_combs:
+        probe_a, probe_b, probe_c, probe_d = list(comb_str)
 
-                if formatted_filename.endswith('.npz'):
-                    cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
-                        cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d]['arr_0']
-                    )
+        formatted_filename = filename.format(
+            probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d
+        )
+        cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d] = np.load(
+            f'{path}/{formatted_filename}'
+        )
 
-            else:  # Lower triangle, set using symmetry
-                cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d] = deepcopy(
-                    cov_ssc_dict_8D[probe_c, probe_d, probe_a, probe_b].transpose(
-                        1, 0, 3, 2
-                    )
-                )
+        if formatted_filename.endswith('.npz'):
+            cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d] = cov_ssc_dict_8D[
+                probe_a, probe_b, probe_c, probe_d
+            ]['arr_0']
+
+        # Lower triangle, set using symmetry
+        cov_ssc_dict_8D[probe_c, probe_d, probe_a, probe_b] = deepcopy(
+            cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d].transpose(1, 0, 3, 2)
+        )
 
     for key in cov_ssc_dict_8D:
         assert cov_ssc_dict_8D[key].ndim == 4, (
@@ -2462,10 +2507,9 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     cov_10D_array = np.zeros(
         (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
     )
-    probe_dict = {'L': 0, 'G': 1}
     for A, B, C, D in cov_10D_dict:
         cov_10D_array[
-            probe_dict[A], probe_dict[B], probe_dict[C], probe_dict[D], ...
+            PROBE_DICT[A], PROBE_DICT[B], PROBE_DICT[C], PROBE_DICT[D], ...
         ] = cov_10D_dict[A, B, C, D]
 
     return cov_10D_array
@@ -2478,14 +2522,13 @@ def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
     n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)"""
 
     cov_10D_dict = {}
-    probe_dict = {'L': 0, 'G': 1}
     for A_str, B_str in probe_ordering:
         for C_str, D_str in probe_ordering:
             A_idx, B_idx, C_idx, D_idx = (
-                probe_dict[A_str],
-                probe_dict[B_str],
-                probe_dict[C_str],
-                probe_dict[D_str],
+                PROBE_DICT[A_str],
+                PROBE_DICT[B_str],
+                PROBE_DICT[C_str],
+                PROBE_DICT[D_str],
             )
             cov_10D_dict[A_str, B_str, C_str, D_str] = cov_10D_array[
                 A_idx, B_idx, C_idx, D_idx, ...

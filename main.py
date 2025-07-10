@@ -1,3 +1,12 @@
+# [BOOKMARK] need to: 
+# run many tests (eg split_g_cov)
+# test nmt 
+# impement cng
+# remove probe_ordering?
+# maybe implement check on symmetrize_output_dict, just to make sure nothing breaks
+
+
+
 import argparse
 import os
 import pprint

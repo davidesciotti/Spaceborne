@@ -280,20 +280,20 @@ n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
 
 # ! probe selection
-probe_comb_names = []
+unique_probe_combs = []
 if cfg['probe_selection']['LL']:
-    probe_comb_names.append('LL')
+    unique_probe_combs.append('LL')
 if cfg['probe_selection']['GL']:
-    probe_comb_names.append('GL')
+    unique_probe_combs.append('GL')
 if cfg['probe_selection']['GG']:
-    probe_comb_names.append('GG')
+    unique_probe_combs.append('GG')
 
 # add cross terms if requested
-probe_comb_names = sl.build_probe_list(
-    probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_cov']
+unique_probe_combs = sl.build_probe_list(
+    unique_probe_combs, include_cross_terms=cfg['probe_selection']['cross_cov']
 )
-probe_comb_idxs = [
-    [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
+unique_probe_combs_ix = [
+    [probename_dict_inv[idx] for idx in comb] for comb in unique_probe_combs
 ]
 
 
@@ -467,8 +467,8 @@ pvt_cfg = {
     'ind': ind,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
-    'probe_comb_names': probe_comb_names,
-    'probe_comb_idxs': probe_comb_idxs,
+    'unique_probe_combs': unique_probe_combs,
+    'probe_comb_idxs': unique_probe_combs_ix,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
@@ -1352,7 +1352,7 @@ if compute_sb_ssc:
         sigma2=sigma2_b,
         z_grid=z_grid,
         integration_type=ssc_integration_type,
-        probe_ordering=probe_ordering,
+        unique_probe_combs=unique_probe_combs,
         num_threads=cfg['misc']['num_threads'],
     )
     print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
@@ -1442,7 +1442,7 @@ for key, cov in cov_dict.items():
     save_func(f'{output_path}/{cov_filename}', cov)
 
     if cfg['covariance']['save_full_cov']:
-        for a, b, c, d in probe_comb_idxs:
+        for a, b, c, d in unique_probe_combs_ix:
             abcd_str = (
                 f'{probename_dict[a]}{probename_dict[b]}'
                 f'{probename_dict[c]}{probename_dict[d]}'

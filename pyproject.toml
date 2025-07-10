@@ -11,17 +11,17 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = ">=3.12"
-matplotlib = "*"
-numpy = "*"
-scipy = "*"
+python = "=3.12.*"
 pyyaml = "*"
 joblib = "*"
-healpy = "*"
-pathos = "*"
-pylevin = "*"
 pyfiglet = "*"
 tqdm = "*"
+# these are taken care of by conda, which needs to install them for
+# ccl and namaster anyways
+# matplotlib = "*"
+# numpy = "*"
+# scipy = "*"
+# healpy = "*"
 
 [tool.poetry.extras]
 parallel = ["pathos"]

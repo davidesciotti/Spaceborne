@@ -16,6 +16,7 @@
 tmp/*
 tmp*/
 .aider*
+input/*
 output/*
 misc/test_davide_tri.ipynb
 tests/realspace_test/*

@@ -45,7 +45,7 @@ def sigma2_z1z2_wrap_parallel(
     h=None,
 ) -> np.ndarray:
     """Parallelized version of sigma2_z1z2_wrap using joblib."""
-    print('Computing sigma^2_b(z_1, z_2). This may take a while...')
+    print('Computing sigma^2_b(z_1, z_2)...')
     start = time.perf_counter()
 
     if integration_scheme == 'simps':
@@ -331,7 +331,7 @@ def sigma2_z2_func_vectorized(
     n_jobs=1,
     h=None,
 ):
-    """Vectorized version of sigma2_func in z1. Implements the formula
+    r"""Vectorized version of sigma2_func in z1. Implements the formula
     \sigma^2_{\rm b, \, fullsky}(z_{1}, z_{2}) = \frac{1}{2 \pi^{2}} \int_0^{\infty}
     \diff k \, k^{2} \,
     {\rm j}_{0}(k \chi_1)\,

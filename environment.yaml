@@ -5,14 +5,11 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python>=3.12
+  - python=3.12.*
   - pip
-  - matplotlib
   - numpy
   - scipy
-  - tqdm
-  - pyyaml
-  - joblib
+  - matplotlib
   - healpy
 
   # PyCCL depenedencies - mandatory
@@ -24,6 +21,3 @@ dependencies:
   - cfitsio
   - fftw
   - namaster
-
-  - pip:
-      - pyfiglet # for the fancy ascii art, not strictly necessary

@@ -9,43 +9,61 @@
 ---
 
 [![Documentation Status](https://readthedocs.org/projects/spaceborne/badge/?version=latest)](https://spaceborne.readthedocs.io/en/latest/?badge=latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-## Quickstart
+## Installation
 
-For detailed instructions on how to install and use Spaceborne, please refer to the [documentation](https://spaceborne.readthedocs.io/en/latest/).
+For detailed instructions on how to install and use Spaceborne, please refer to the official [documentation](https://spaceborne.readthedocs.io/en/latest/).
 
-To install the code, we recommend using a dedicated Conda environment. Clone the repository, then checkout the latest release (e.g. `v2025.05.1`) with
+### TL;DR
 
 ```bash
+# clone the repository
+git clone https://github.com/davidesciotti/Spaceborne.git
+
+# checkout the latest release (version tag); e.g., git checkout v2025.07.1
 git checkout <latest_version_tag>
-```
 
-and run
+# enter the Spaceborne root directory you just cloned
+cd Spaceborne
 
-```bash
+# create the conda environment (mainly needed to install PyCCL and NaMaster through conda-forge)
+# This step can be slow; add --solver=libmamba to speed it up (see below for more details)
 conda env create -f environment.yaml
+
+# activate the newly created Conda environment
 conda activate spaceborne
+
+# Install juliaup
+curl -fsSL https://install.julialang.org | sh
+
+# Install Julia version 1.10
+juliaup default 1.10
+
+# install required Julia packages
+julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
+
+# Finally, install pip dependencies and Spaceborne itself
 pip install .
 ```
 
+### Some notes
+
+❗ The only stable versions you should consider are the code releases. Please avoid simply cloning and installing the code from the main branch.
 **As the code is evolving quite quickly at the moment, please make sure to check for new [releases](https://github.com/davidesciotti/Spaceborne/releases) periodically**
+Moreover, installation is only supported in a dedicated Conda environment, for the time being (installation via PyPI is work in progress).
 
-🐍 note: using `mamba` instead of `conda` in the first line will significantly speed up the environment creation. To install `mamba`, run `conda install mamba` in your `base` environment.
-
-Spaceborne leverages `julia` for computationally intensive tasks. We recommend installing `julia` via [`juliaup`](https://github.com/JuliaLang/juliaup):
-
-```bash
-curl -fsSL https://install.julialang.org | sh  # Install juliaup
-juliaup default 1.10                           # Install Julia version 1.10
-```
-
-Then, install the required Julia packages:
+🐍 To significantly speed up the environment creation, install `mamba` by running `conda install mamba` in your `base` environment., then do
 
 ```bash
-julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
+mamba env create -f environment.yaml  # or
+conda env create -f environment.yaml --solver=libmamba # instead of
+conda env create -f environment.yaml
 ```
 
-### Running the Code
+🟣 Spaceborne leverages `Julia` for computationally intensive tasks. We recommend installing `Julia` via [`juliaup`](https://github.com/JuliaLang/juliaup) as indicated above
+
+## Running the Code
 
 All the available options and configurations can be found, along with their explanation, in the `config.yaml` file. To run `Spaceborne` _with the configuration specified in the_ `Spaceborne/config.yaml` _file_, simply execute the following command:
 
@@ -73,7 +91,7 @@ python main.py --config="path/to/my/config/config.yaml" --show-plots
 
 Additionally, in the `config.yaml` file you can set `save_figs: True` to save the figures in the `<output_folder>/figs` path.
 
-### Using Docker 🐋
+## Using Docker 🐋
 
 If you find issues with the installation, you can happily disregard the above instructions and run the code through Docker. To do this, install [Docker Desktop](https://www.docker.com/products/docker-desktop/) or the [Docker engine](https://docs.docker.com/engine/); then, in the root of the cloned repository (again, remember to checkout the latest release), run:
 
@@ -81,7 +99,7 @@ If you find issues with the installation, you can happily disregard the above in
 docker-compose up --build
 ```
 
-Note that the `--build` flag is only needed the first time you run the code (or if you modify the `environment.yaml` or `Dockerfile`, which is _discouraged_). For subsequent runs, simply do:
+Note that the `--build` flag is only needed the first time you run the code (or if you modify the `environment.yaml` or `Dockerfile`, which is **highly discouraged**). For subsequent runs, simply do:
 
 ```bash
 docker-compose up

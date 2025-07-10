@@ -40,10 +40,24 @@ def import_cl_tab(cl_tab_in: np.ndarray):
             int(cl_tab_in[row, 1]),
             int(cl_tab_in[row, 2]),
         )
-        ell_ix = np.where(ell_values == ell_val)[0][0]
+
+        ell_ix = np.where(np.isclose(ell_values, ell_val, atol=0, rtol=1e-4))[0][0]
+
         cl_3d[ell_ix, zi, zj] = cl_tab_in[row, 3]
 
     return ell_values, cl_3d
+
+
+def check_cl_symm(cl_3d):
+    """To check that the input auto-cls are symmetric"""
+    for ell in range(cl_3d.shape[0]):
+        np.testing.assert_allclose(
+            cl_3d[ell],
+            cl_3d[ell].T,
+            atol=0,
+            rtol=1e-4,
+            err_msg='cl_3d is not symmetric',
+        )
 
 
 def load_cl_euclidlib(filename, key_a, key_b):
@@ -343,6 +357,10 @@ class IOHandler:
             self._load_cls_sb()
         elif self.cl_fmt == 'euclidlib':
             self._load_cls_el()
+
+        # check symmetry
+        check_cl_symm(self.cl_ll_3d_in)
+        check_cl_symm(self.cl_gg_3d_in)
 
     def _load_cls_sb(self):
         cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_path'])

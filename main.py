@@ -12,6 +12,13 @@ from importlib.util import find_spec
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
+from cloelib.cosmology.camb_cosmology import (
+    CAMBBackground,
+    CAMBLinearPerturbations,
+    CAMBNonLinearPerturbations,
+)
+from cloelib.observables.photo import PositionsTracer, ShearTracer
+from cloelib.summary_statistics.angular_two_point import AngularTwoPoint
 from matplotlib import cm
 from scipy.interpolate import CubicSpline, RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
@@ -168,7 +175,10 @@ def check_ells_in(ells_in, ells_out):
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-cfg = load_config('config.yaml')
+
+cfg = load_config(
+    '/home/davide/Documenti/Lavoro/Programmi/common_data/RR2/Jose/input/run_config_davide.yaml'
+)
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -786,6 +796,78 @@ ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
 ].transpose(0, 2, 1)
 ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
 
+
+# ! very quick and very dirty cloelib cls
+
+
+zs = np.linspace(0.02, 3, 250)
+z_nz = zgrid_nz_src
+my_dndz_pos_norm = nz_lns.T
+my_dndz_she_norm = nz_src.T
+
+background = CAMBBackground(
+    H0=70.0,
+    Omega_cdm0=0.25,
+    Omega_b0=0.05,
+    w0=-1,
+    wa=0,
+    Omega_k0=0.0,
+    ns=0.96,
+    As=2e-9,
+    mnu=0.06,
+    gamma_MG=0.545,
+)
+linear_perturbations_camb = CAMBLinearPerturbations(background, zs)
+nonlinear_perturbations_camb = CAMBNonLinearPerturbations(
+    background, zs, nonlinear_model='mead2020_feedback', HMCode_logT_AGN=7.75
+)
+
+
+my_dndz_pos_norm_interp = np.zeros([zbins, len(zs)])
+my_dndz_she_norm_interp = np.zeros([zbins, len(zs)])
+for zi in range(zbins):
+    my_dndz_pos_norm_interp[zi, :] = np.interp(zs, z_nz, my_dndz_pos_norm[zi, :])
+    my_dndz_she_norm_interp[zi, :] = np.interp(zs, z_nz, my_dndz_she_norm[zi, :])
+
+tracer_pos = PositionsTracer(
+    perturbations=nonlinear_perturbations_camb,
+    dndz=my_dndz_pos_norm_interp,
+    z=zs,
+    galaxy_bias_model='poly',
+    nuisance_params={
+        **{f'b1_photo_poly{i}': 0.0 for i in range(1, 4)},
+        'b1_photo_poly0': 1.0,
+        **{f'magnification_bias_{i}': 0.0 for i in range(1, 7)},
+        **{f'dz_pos_{i}': 0.0000 for i in range(1, 7)},
+    },
+)
+tracer_she = ShearTracer(
+    perturbations=nonlinear_perturbations_camb,
+    dndz=my_dndz_she_norm_interp,
+    z=zs,
+    nuisance_params={
+        'AIA': 0,
+        'CIA': 0,
+        'EtaIA': 0,
+        **{f'multiplicative_bias_{i}': 0 for i in range(1, 7)},
+        **{f'dz_shear_{i}': 0.000 for i in range(1, 7)},
+    },
+)
+
+twopoint_pospos = AngularTwoPoint(tracer_pos, tracer_pos).get_Cl(
+    ells=ell_obj.ells_3x2pt, nl=0, ks=nonlinear_perturbations_camb.k
+)
+twopoint_shepos = AngularTwoPoint(tracer_she, tracer_pos).get_Cl(
+    ells=ell_obj.ells_3x2pt, nl=0, ks=nonlinear_perturbations_camb.k
+)
+twopoint_posshe = AngularTwoPoint(tracer_pos, tracer_she).get_Cl(
+    ells=ell_obj.ells_3x2pt, nl=0, ks=nonlinear_perturbations_camb.k
+)
+twopoint_sheshe = AngularTwoPoint(tracer_she, tracer_she).get_Cl(
+    ells=ell_obj.ells_3x2pt, nl=0, ks=nonlinear_perturbations_camb.k
+)
+
+
 # cls plots
 plot_cls()
 
@@ -807,15 +889,24 @@ if cfg['C_ell']['use_input_cls']:
     _cl_dict_xc['SB'] = cl_gl_3d_sb
     _cl_dict_gc['SB'] = cl_gg_3d_sb
 
+    _ell_dict_wl['cloe'] = ell_obj.ells_3x2pt
+    _ell_dict_xc['cloe'] = ell_obj.ells_3x2pt
+    _ell_dict_gc['cloe'] = ell_obj.ells_3x2pt
+    _cl_dict_wl['cloe'] = twopoint_sheshe
+    _cl_dict_xc['cloe'] = twopoint_posshe
+    _cl_dict_gc['cloe'] = twopoint_pospos
+
 sb_plt.cls_triangle_plot(
     _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
 )
 sb_plt.cls_triangle_plot(
-    _ell_dict_xc, _cl_dict_xc, is_auto=True, zbins=zbins, suptitle='GGL'
+    _ell_dict_xc, _cl_dict_xc, is_auto=False, zbins=zbins, suptitle='GGL'
 )
 sb_plt.cls_triangle_plot(
     _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
 )
+
+# assert False, 'stop here'
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to

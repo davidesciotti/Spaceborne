@@ -182,7 +182,7 @@ z_grid = npzread("$(folder_name)/z_grid.npy") #previously z_integrands
 cl_integral_prefactor = npzread("$(folder_name)/cl_integral_prefactor.npy")
 ind_auto = npzread("$(folder_name)/ind_auto.npy")
 ind_cross = npzread("$(folder_name)/ind_cross.npy")
-unique_probe_combs = npzread("$(folder_name)/unique_probe_combs.npy")
+unique_probe_names = readlines("$(folder_name)/unique_probe_names.txt")
 nbl = size(d2CLL_dVddeltab, 1)
 zbins = size(d2CLL_dVddeltab, 2)
 
@@ -203,7 +203,7 @@ println("specs:")
 println("nbl: ", nbl)
 println("zbins: ", zbins)
 println("z_steps: ", z_steps)
-println("probe_combinations: ", probe_combinations)
+println("probe_combinations: ", unique_probe_names)
 println("integration_type: ", integration_type)
 println("*****************\n")
 
@@ -243,20 +243,24 @@ if integration_type == "trapz-6D"
     cov_ssc_dict_8d = Dict{Tuple{String, String, String, String}, Array{Float64, 6}}()
 end
 
-for probe in unique_probe_combs
+for probe in unique_probe_names
 
     probe_A, probe_B, probe_C, probe_D = split(probe, "")
     
     println("Computing SSC covariance block $(probe_A)$(probe_B)_$(probe_C)$(probe_D)")
 
+    # apparently, Julia doesn't like keyword arguments so much
     cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)] =
     @time ssc_integral_4d_func(
-        d2ClAB_dVddeltab=d2Cl_dVddeltab_dict[probe_A, probe_B],
-        d2ClCD_dVddeltab=d2Cl_dVddeltab_dict[probe_C, probe_D],
-        ind_AB=ind_dict[probe_A, probe_B],
-        ind_CD=ind_dict[probe_C, probe_D],
-        nbl=nbl, z_steps=z_steps, cl_integral_prefactor=cl_integral_prefactor, 
-        sigma2=sigma2, z_grid=z_grid)
+        d2Cl_dVddeltab_dict[(probe_A, probe_B)],
+        d2Cl_dVddeltab_dict[(probe_C, probe_D)],
+        ind_dict[(probe_A, probe_B)],
+        ind_dict[(probe_C, probe_D)],
+        nbl, 
+        z_steps, 
+        cl_integral_prefactor, 
+        sigma2, 
+        z_grid)
 
     # save
     npzwrite("$(folder_name)/cov_SSC_spaceborne_$(probe_A)$(probe_B)$(probe_C)$(probe_D)_4D.npy", cov_ssc_dict_8d[(probe_A, probe_B, probe_C, probe_D)])

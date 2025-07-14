@@ -88,7 +88,7 @@ def build_probe_list(probes, include_cross_terms=False):
 def get_probe_combs(unique_probe_combs):
     """Given the desired probe combinations, builds a list the ones to be filled by
     symmetry and the ones fo be skipped"""
-    
+
     # sanity checks
     for probe in unique_probe_combs:
         if probe not in const.ALL_PROBE_COMBS:
@@ -708,46 +708,17 @@ def cov_3x2pt_dict_8d_to_10d(
 
     # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
     symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs)
-    
+
     cov_3x2pt_dict_10D = {}
-    
-    # for probe_a, probe_b, probe_c, probe_d in const.ALL_PROBE_COMBS:
-    #     # some combinations may be absent, depending on the probe selection
-    #     probe_str = probe_a + probe_b + probe_c + probe_d
-    #     key = (probe_a, probe_b, probe_c, probe_d)
-
-    #     # * if block is required, compute it
-    #     if probe_str in unique_probe_combs:
-    #         cov_3x2pt_dict_10D[key] = cov_4D_to_6D_blocks(
-    #             cov_3x2pt_dict_8D[key],
-    #             nbl,
-    #             zbins,
-    #             ind_dict[probe_a, probe_b],
-    #             ind_dict[probe_c, probe_d],
-    #             symmetrize_output_dict[probe_a, probe_b],
-    #             symmetrize_output_dict[probe_c, probe_d],
-    #         )
-
-    #     # * fill the symmetric counterparts of the required blocks
-    #     # the requested probes are also unique, e.g. if unique_probe_combs contains 'LLGL'
-    #     # it will not include 'GLLL'. These blocks can be filled by simmetry, transposing
-    #     # - (A, B, C, D) -> (C, D, A, B),
-    #     # - (ell1, ell2) -> (ell2, ell1),
-    #     # - (zi, zj, zk, zl) <-> (zk, zl, zi, zj)
-    #     # be careful, the latter is *not*
-    #     # (zi, zj, zk, zl) <-> (zj, zi, zl, zk)!!
-    #     if probe_str in nondiag_probe_combs:
-    #         cov_3x2pt_dict_10D[probe_c, probe_d, probe_a, probe_b] = (
-    #             cov_3x2pt_dict_10D[key]
-    #             .transpose(1, 0, 4, 5, 2, 3)
-    #             .copy()
-    #         )
-
-    #     # * if block is not required, set it to 0
-    #     if probe_str in nonreq_probe_combs:
-    #         cov_3x2pt_dict_10D[key] = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
 
     # * First pass: compute only the requested blocks
+    # the requested probes are also unique, e.g. if unique_probe_combs contains 'LLGL'
+    # it will not include 'GLLL'. These blocks can be filled by simmetry, transposing
+    # - (A, B, C, D) -> (C, D, A, B),
+    # - (ell1, ell2) -> (ell2, ell1),
+    # - (zi, zj, zk, zl) <-> (zk, zl, zi, zj)
+    # be careful, the latter is *not*
+    # (zi, zj, zk, zl) <-> (zj, zi, zl, zk)!!
     for probe_str in unique_probe_combs:
         probe_a, probe_b, probe_c, probe_d = probe_str
         key = (probe_a, probe_b, probe_c, probe_d)

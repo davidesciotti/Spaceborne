@@ -1378,7 +1378,6 @@ if compute_sb_ssc:
 
     cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
-
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
     # Note: this z grid has to be larger than the one requested in the trispectrum
@@ -1400,13 +1399,13 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_ng_cov_terms_list.append('cNG')
 
     for which_ng_cov in ccl_ng_cov_terms_list:
-        ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, cfg['PyCCL'])
+        ccl_obj.initialize_trispectrum(which_ng_cov, unique_probe_combs, cfg['PyCCL'])
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
             ell_obj.ells_GC,
             mask_obj.fsky,
             integration_method=cfg['PyCCL']['cov_integration_method'],
-            probe_ordering=probe_ordering,
+            unique_probe_combs=unique_probe_combs,
             ind_dict=ind_dict,
         )
 
@@ -1452,7 +1451,7 @@ for key, cov in cov_dict.items():
 
     if cfg['covariance']['save_full_cov']:
         for a, b, c, d in unique_probe_combs_ix:
-            abcd_str = (
+            probe_str = (
                 f'{probename_dict[a]}{probename_dict[b]}'
                 f'{probename_dict[c]}{probename_dict[d]}'
             )
@@ -1462,18 +1461,18 @@ for key, cov in cov_dict.items():
                 + cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
             )
             save_func(
-                f'{output_path}/cov_{abcd_str}_G_6D',
+                f'{output_path}/cov_{probe_str}_G_6D',
                 cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...],
             )
             save_func(
-                f'{output_path}/cov_{abcd_str}_SSC_6D',
+                f'{output_path}/cov_{probe_str}_SSC_6D',
                 cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...],
             )
             save_func(
-                f'{output_path}/cov_{abcd_str}_cNG_6D',
+                f'{output_path}/cov_{probe_str}_cNG_6D',
                 cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...],
             )
-            save_func(f'{output_path}/cov_{abcd_str}_TOT_6D', cov_tot_6d)
+            save_func(f'{output_path}/cov_{probe_str}_TOT_6D', cov_tot_6d)
 
 print(f'Covariance matrices saved in {output_path}\n')
 

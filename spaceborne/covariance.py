@@ -257,6 +257,15 @@ class SpaceborneCovariance:
 
         return cov_out
 
+    def trim_3x2pt_cov_2d(
+        cov_3x2pt_2d, unique_probe_combs, nbl_3x2pt, zpairs_auto, zpairs_cross
+    ):
+        elem_auto = nbl_3x2pt * zpairs_auto
+        elem_cross = nbl_3x2pt * zpairs_cross
+        elem_apc = nbl_3x2pt * (zpairs_auto + zpairs_cross)
+        
+        
+
     def set_gauss_cov(self, ccl_obj, split_gaussian_cov):
         start = time.perf_counter()
 
@@ -497,17 +506,17 @@ class SpaceborneCovariance:
         cov_WL_g_6D = deepcopy(self.cov_3x2pt_g_10D[0, 0, 0, 0])
         cov_WL_ssc_6D = deepcopy(self.cov_3x2pt_ssc_10D[0, 0, 0, 0])
         cov_WL_cng_6D = deepcopy(self.cov_3x2pt_cng_10D[0, 0, 0, 0])
-        
+
         cov_GC_g_6D = deepcopy(self.cov_3x2pt_g_10D[1, 1, 1, 1])
         cov_GC_ssc_6D = deepcopy(self.cov_3x2pt_ssc_10D[1, 1, 1, 1])
         cov_GC_cng_6D = deepcopy(self.cov_3x2pt_cng_10D[1, 1, 1, 1])
-        
+
         if self.GL_OR_LG == 'GL':
             cov_XC_g_6D = self.cov_3x2pt_g_10D[1, 0, 1, 0, ...]
             cov_XC_ssc_6D = self.cov_3x2pt_ssc_10D[1, 0, 1, 0, ...]
             cov_XC_cng_6D = self.cov_3x2pt_cng_10D[1, 0, 1, 0, ...]
         elif self.GL_OR_LG == 'LG':
-            # This option would probably have unforeseen consequences 
+            # This option would probably have unforeseen consequences
             raise ValueError('the cross-correlation between G and L must be GL, not LG')
             cov_XC_g_6D = self.cov_3x2pt_g_10D[0, 1, 0, 1, ...]
             cov_XC_ssc_6D = self.cov_3x2pt_ssc_10D[0, 1, 0, 1, ...]

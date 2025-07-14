@@ -1,5 +1,4 @@
 import contextlib
-import datetime
 import inspect
 import itertools
 import json
@@ -22,26 +21,7 @@ from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline, RectBivariateSpline, interp1d
 from scipy.special import jv
 
-symmetrize_output_dict = {
-    ('L', 'L'): True,
-    ('G', 'L'): False,
-    ('L', 'G'): False,
-    ('G', 'G'): True,
-}
-
-ALL_PROBE_COMBS = [
-    'LLLL', 'LLGL', 'LLGG',
-    'GLLL', 'GLGL', 'GLGG',
-    'GGLL', 'GGGL', 'GGGG',
-]  # fmt: skip
-
-DIAG_PROBE_COMBS = [
-    'LLLL',
-    'GLGL',
-    'GGGG',
-]
-
-PROBE_DICT = {'L': 0, 'G': 1}
+import spaceborne.constants as const
 
 
 # # Gaussian covariance binning
@@ -103,6 +83,33 @@ def build_probe_list(probes, include_cross_terms=False):
     # Sort to ensure consistent ordering
     # probes = sorted(probes)
     return [p1 + p2 for p1, p2 in itertools.combinations_with_replacement(probes, 2)]
+
+
+def get_probe_combs(unique_probe_combs):
+    """Given the desired probe combinations, builds a list the ones to be filled by
+    symmetry and the ones fo be skipped"""
+    
+    # sanity checks
+    for probe in unique_probe_combs:
+        if probe not in const.ALL_PROBE_COMBS:
+            raise ValueError(f'Probe {probe} not found in {const.ALL_PROBE_COMBS}')
+        if len(probe) != 4:
+            raise ValueError(f'Probe {probe} must have length 4')
+
+    # take the requested probes which are not diagonal
+    _symm_probe_combs = set(unique_probe_combs) - set(const.DIAG_PROBE_COMBS)
+
+    # invert probe_a, probe_b <-> probe_c, probe_d
+    symm_probe_combs = []
+    for probe in _symm_probe_combs:
+        symm_probe_combs.append(probe[2:] + probe[:2])
+
+    # lastly, find the remaining (non required) probe combinations
+    nonreq_probe_combs = (
+        set(const.ALL_PROBE_COMBS) - set(unique_probe_combs) - set(symm_probe_combs)
+    )
+
+    return symm_probe_combs, nonreq_probe_combs
 
 
 def is_main_branch():
@@ -688,7 +695,7 @@ def cov_3x2pt_dict_8d_to_10d(
     zbins: int,
     ind_dict: dict,
     unique_probe_combs: list[str],
-    symmetrize_output_dict: bool = symmetrize_output_dict,
+    symmetrize_output_dict: bool = const.SYMMETRIZE_OUTPUT_DICT,
 ) -> dict:
     """Expands a 3x2pt covariance dictionary from 8D to 10D.
 
@@ -699,43 +706,75 @@ def cov_3x2pt_dict_8d_to_10d(
     for _probe_str in unique_probe_combs:
         assert len(_probe_str) == 4, '_probe_str must have length 4'
 
-    # if a probe is requested, reshape it and assign it to the 10D dict;
-    # otherwise, set it to 0
+    # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
+    symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs)
+    
     cov_3x2pt_dict_10D = {}
-    for probe_A, probe_B, probe_C, probe_D in ALL_PROBE_COMBS:
-        # some combinations may be absent, depending on the probe selection
-        probe_str = probe_A + probe_B + probe_C + probe_D
+    
+    # for probe_a, probe_b, probe_c, probe_d in const.ALL_PROBE_COMBS:
+    #     # some combinations may be absent, depending on the probe selection
+    #     probe_str = probe_a + probe_b + probe_c + probe_d
+    #     key = (probe_a, probe_b, probe_c, probe_d)
 
-        if probe_str in unique_probe_combs:
-            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = (
-                cov_4D_to_6D_blocks(
-                    cov_3x2pt_dict_8D[probe_A, probe_B, probe_C, probe_D],
-                    nbl,
-                    zbins,
-                    ind_dict[probe_A, probe_B],
-                    ind_dict[probe_C, probe_D],
-                    symmetrize_output_dict[probe_A, probe_B],
-                    symmetrize_output_dict[probe_C, probe_D],
-                )
-            )
-        else:
-            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D] = np.zeros(
-                (nbl, nbl, zbins, zbins, zbins, zbins)
-            )
+    #     # * if block is required, compute it
+    #     if probe_str in unique_probe_combs:
+    #         cov_3x2pt_dict_10D[key] = cov_4D_to_6D_blocks(
+    #             cov_3x2pt_dict_8D[key],
+    #             nbl,
+    #             zbins,
+    #             ind_dict[probe_a, probe_b],
+    #             ind_dict[probe_c, probe_d],
+    #             symmetrize_output_dict[probe_a, probe_b],
+    #             symmetrize_output_dict[probe_c, probe_d],
+    #         )
 
-    # the requested probes are also unique, e.g. if unique_probe_combs contains 'LLGL'
-    # it will not include 'GLLL'. These blocks can be filled by simmetry, transposing
-    # - (A, B, C, D) -> (C, D, A, B),
-    # - (ell1, ell2) -> (ell2, ell1),
-    # - (zi, zj, zk, zl) <-> (zk, zl, zi, zj)
-    # be careful, the latter is *not*
-    # (zi, zj, zk, zl) <-> (zj, zi, zl, zk)!!
-    for probe_A, probe_B, probe_C, probe_D in unique_probe_combs:
-        probe_str = probe_A + probe_B + probe_C + probe_D
-        if probe_str not in DIAG_PROBE_COMBS:
-            cov_3x2pt_dict_10D[probe_C, probe_D, probe_A, probe_B] = cov_3x2pt_dict_10D[
-                probe_A, probe_B, probe_C, probe_D
-            ].transpose(1, 0, 4, 5, 2, 3)
+    #     # * fill the symmetric counterparts of the required blocks
+    #     # the requested probes are also unique, e.g. if unique_probe_combs contains 'LLGL'
+    #     # it will not include 'GLLL'. These blocks can be filled by simmetry, transposing
+    #     # - (A, B, C, D) -> (C, D, A, B),
+    #     # - (ell1, ell2) -> (ell2, ell1),
+    #     # - (zi, zj, zk, zl) <-> (zk, zl, zi, zj)
+    #     # be careful, the latter is *not*
+    #     # (zi, zj, zk, zl) <-> (zj, zi, zl, zk)!!
+    #     if probe_str in nondiag_probe_combs:
+    #         cov_3x2pt_dict_10D[probe_c, probe_d, probe_a, probe_b] = (
+    #             cov_3x2pt_dict_10D[key]
+    #             .transpose(1, 0, 4, 5, 2, 3)
+    #             .copy()
+    #         )
+
+    #     # * if block is not required, set it to 0
+    #     if probe_str in nonreq_probe_combs:
+    #         cov_3x2pt_dict_10D[key] = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
+
+    # * First pass: compute only the requested blocks
+    for probe_str in unique_probe_combs:
+        probe_a, probe_b, probe_c, probe_d = probe_str
+        key = (probe_a, probe_b, probe_c, probe_d)
+        cov_3x2pt_dict_10D[key] = cov_4D_to_6D_blocks(
+            cov_3x2pt_dict_8D[key],
+            nbl,
+            zbins,
+            ind_dict[probe_a, probe_b],
+            ind_dict[probe_c, probe_d],
+            symmetrize_output_dict[probe_a, probe_b],
+            symmetrize_output_dict[probe_c, probe_d],
+        )
+
+    # * Second pass: fill symmetric counterparts
+    for probe_str in symm_probe_combs:
+        probe_a, probe_b, probe_c, probe_d = probe_str
+        key_orig = (probe_a, probe_b, probe_c, probe_d)
+        key_symm = (probe_c, probe_d, probe_a, probe_b)
+        cov_3x2pt_dict_10D[key_orig] = (
+            cov_3x2pt_dict_10D[key_symm].transpose(1, 0, 4, 5, 2, 3).copy()
+        )
+
+    # * Third pass: zero for non-requested combinations
+    # [BOOKM ] nonreq_probe_combs is the issue!
+    for probe_a, probe_b, probe_c, probe_d in nonreq_probe_combs:
+        key = (probe_a, probe_b, probe_c, probe_d)
+        cov_3x2pt_dict_10D[key] = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
 
     return cov_3x2pt_dict_10D
 
@@ -2509,7 +2548,11 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     )
     for A, B, C, D in cov_10D_dict:
         cov_10D_array[
-            PROBE_DICT[A], PROBE_DICT[B], PROBE_DICT[C], PROBE_DICT[D], ...
+            const.PROBE_DICT[A],
+            const.PROBE_DICT[B],
+            const.PROBE_DICT[C],
+            const.PROBE_DICT[D],
+            ...,
         ] = cov_10D_dict[A, B, C, D]
 
     return cov_10D_array
@@ -2525,10 +2568,10 @@ def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
     for A_str, B_str in probe_ordering:
         for C_str, D_str in probe_ordering:
             A_idx, B_idx, C_idx, D_idx = (
-                PROBE_DICT[A_str],
-                PROBE_DICT[B_str],
-                PROBE_DICT[C_str],
-                PROBE_DICT[D_str],
+                const.PROBE_DICT[A_str],
+                const.PROBE_DICT[B_str],
+                const.PROBE_DICT[C_str],
+                const.PROBE_DICT[D_str],
             )
             cov_10D_dict[A_str, B_str, C_str, D_str] = cov_10D_array[
                 A_idx, B_idx, C_idx, D_idx, ...
@@ -2771,8 +2814,8 @@ def cov_3x2pt_4d_to_10d_dict(
             zbins,
             ind_dict[key[0], key[1]],
             ind_dict[key[2], key[3]],
-            symmetrize_output_dict[key[0], key[1]],
-            symmetrize_output_dict[key[2], key[3]],
+            const.SYMMETRIZE_OUTPUT_DICT[key[0], key[1]],
+            const.SYMMETRIZE_OUTPUT_DICT[key[2], key[3]],
         )
 
     return cov_3x2pt_10d_dict

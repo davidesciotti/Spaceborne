@@ -2590,7 +2590,9 @@ def build_3x2pt_array(cl_LL_3D, cl_GG_3D, cl_GL_3D, n_probes, nbl, zbins):
     return cl_3x2pt_5D
 
 
-def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_OR_LG):
+def cov_3x2pt_10D_to_4D(
+    cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_OR_LG, req_probe_combs_2d
+):
     """Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block
     separately in 4D, then stacks the blocks in the right order to output
     cov_3x2pt_4D (which is not a dictionary but a numpy array)
@@ -2645,81 +2647,83 @@ def cov_3x2pt_10D_to_4D(cov_3x2pt_10D, probe_ordering, nbl, zbins, ind_copy, GL_
 
     # initialize the 4D dictionary and list of probe combinations
     cov_3x2pt_dict_4D = {}
-    combinations = []
 
     # make each block 4D and store it with the right 'A', 'B', 'C, 'D' key
-    for A, B in probe_ordering:
-        for C, D in probe_ordering:
-            combinations.append([A, B, C, D])
-            cov_3x2pt_dict_4D[A, B, C, D] = cov_6D_to_4D_blocks(
-                cov_3x2pt_dict_10D[A, B, C, D],
-                nbl,
-                npairs_dict[A, B],
-                npairs_dict[C, D],
-                ind_dict[A, B],
-                ind_dict[C, D],
-            )
+    for A, B, C, D in req_probe_combs_2d:
+        cov_3x2pt_dict_4D[A, B, C, D] = cov_6D_to_4D_blocks(
+            cov_3x2pt_dict_10D[A, B, C, D],
+            nbl,
+            npairs_dict[A, B],
+            npairs_dict[C, D],
+            ind_dict[A, B],
+            ind_dict[C, D],
+        )
 
     # concatenate the rows to construct the final matrix
-    cov_3x2pt_4D = cov_3x2pt_8D_dict_to_4D(
-        cov_3x2pt_dict_4D, probe_ordering, combinations
-    )
+    cov_3x2pt_4D = cov_3x2pt_8D_dict_to_4D(cov_3x2pt_dict_4D, req_probe_combs_2d)
 
     return cov_3x2pt_4D
 
 
-def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, probe_ordering, combinations=None):
+def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d):
     """Convert a dictionary of 4D blocks into a single 4D array.
 
     This is the same code as
     in the last part of the function above.
     :param cov_3x2pt_8D_dict: Dictionary of 4D covariance blocks
-    :param probe_ordering: tuple of tuple probes,
-    e.g., (('L', 'L'), ('G', 'L'), ('G', 'G'))
-    :combinations: list of combinations to use,
-    e.g., [['L', 'L', 'L', 'L'], ['L', 'L', 'L', 'G'], ...]
+    :param req_probe_combs_2d: List of probe combinations to use
     :return: 4D covariance array
     """
 
-    # if combinations is not provided, construct it
-    if combinations is None:
-        combinations = []
-        for A, B in probe_ordering:
-            for C, D in probe_ordering:
-                combinations.append([A, B, C, D])
-
+    # sanity check
     for key in cov_3x2pt_8D_dict:
         assert cov_3x2pt_8D_dict[key].ndim == 4, (
             f'covariance matrix {key} has ndim={cov_3x2pt_8D_dict[key].ndim} instead '
             f'of 4'
         )
 
-    # check that the number of combinations is correct
-    assert len(combinations) == len(list(cov_3x2pt_8D_dict.keys())), (
-        f'number of combinations ({len(combinations)}) '
-        'does not match the number of blocks in the input dictionary '
-        f'({len(list(cov_3x2pt_8D_dict.keys()))})'
-    )
-
-    # check that the combinations are correct
-    for i, combination in enumerate(combinations):
-        assert tuple(combination) in list(cov_3x2pt_8D_dict.keys()), (
-            f'combination {combination} not found in the input dictionary'
+    # check that the req_probe_combs_2d  are correct
+    for a, b, c, d in req_probe_combs_2d:
+        assert (a, b, c, d) in cov_3x2pt_8D_dict.keys(), (
+            f'Probe combination {a, b, c, d} not found in the input dictionary'
         )
 
-    # take the correct combinations (stored in 'combinations') and construct
-    # lists which will be converted to arrays
-    row_1_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[:3]]
-    row_2_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[3:6]]
-    row_3_list = [cov_3x2pt_8D_dict[A, B, C, D] for A, B, C, D in combinations[6:9]]
+    row_ll_list, row_gl_list, row_gg_list = [], [], []
+    for a, b, c, d in req_probe_combs_2d:
+        if (a, b) == ('L', 'L'):
+            row_ll_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+        elif (a, b) == ('G', 'L'):
+            row_gl_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+        elif (a, b) == ('G', 'G'):
+            row_gg_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+        else:
+            raise ValueError(
+                f'Probe combination {a, b, c, d} does not start with '
+                '("L", "L") or ("G", "L") or ("G", "G") '
+            )
 
     # concatenate the lists to make rows
-    row_1 = np.concatenate(row_1_list, axis=3)
-    row_2 = np.concatenate(row_2_list, axis=3)
-    row_3 = np.concatenate(row_3_list, axis=3)
+    # o(nly concatenate and include rows that have content)
+    final_rows = []
+
+    if row_ll_list:
+        row_ll = np.concatenate(row_ll_list, axis=3)
+        final_rows.append(row_ll)
+
+    if row_gl_list:
+        row_gl = np.concatenate(row_gl_list, axis=3)
+        final_rows.append(row_gl)
+
+    if row_gg_list:
+        row_gg = np.concatenate(row_gg_list, axis=3)
+        final_rows.append(row_gg)
 
     # concatenate the rows to construct the final matrix
-    cov_3x2pt_4D = np.concatenate((row_1, row_2, row_3), axis=2)
+    if final_rows:
+        cov_3x2pt_4D = np.concatenate(final_rows, axis=2)
+    else:
+        # If no rows at all, return empty array with appropriate shape
+        raise ValueError('No valid probe combinations found!')
 
     return cov_3x2pt_4D
 
@@ -3297,8 +3301,7 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     return cov_2D
 
 
-# @njit
-def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
+def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
     """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
     ordering.
 
@@ -3313,46 +3316,159 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, block_index='ell'):
     """
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
+    kw = {'block_index': block_index, 'optimize': True}
 
-    lim_1 = zpairs_auto
-    lim_2 = zpairs_cross + zpairs_auto
-    lim_3 = zpairs_3x2pt
+    # check if any of the strings in req_probe_combs_2d starts with 'LL'
+    has_llll = any(probe_str == 'LLLL' for probe_str in req_probe_combs_2d)
+    has_glgl = any(probe_str == 'GLGL' for probe_str in req_probe_combs_2d)
+    has_gggg = any(probe_str == 'GGGG' for probe_str in req_probe_combs_2d)
 
-    # note: I'm writing cov_LG, but there should be no issue with GL; after all, this function is not using the ind file
-    cov_LL_LL = cov_4D_to_2D(cov_4D[:, :, :lim_1, :lim_1], block_index, optimize=True)
-    cov_LL_LG = cov_4D_to_2D(
-        cov_4D[:, :, :lim_1, lim_1:lim_2], block_index, optimize=True
-    )
-    cov_LL_GG = cov_4D_to_2D(
-        cov_4D[:, :, :lim_1, lim_2:lim_3], block_index, optimize=True
-    )
+    if not has_llll and not has_glgl and not has_gggg:
+        raise ValueError('Wrong probe combinations, no diagonal blocks found!')
 
-    cov_LG_LL = cov_4D_to_2D(
-        cov_4D[:, :, lim_1:lim_2, :lim_1], block_index, optimize=True
-    )
-    cov_LG_LG = cov_4D_to_2D(
-        cov_4D[:, :, lim_1:lim_2, lim_1:lim_2], block_index, optimize=True
-    )
-    cov_LG_GG = cov_4D_to_2D(
-        cov_4D[:, :, lim_1:lim_2, lim_2:lim_3], block_index, optimize=True
-    )
+    # ! one-block case
+    # no need to slice things up like a french chef
+    one_block = sum([has_llll, has_glgl, has_gggg]) == 1
+    three_block = sum([has_llll, has_glgl, has_gggg]) == 3
+    if one_block:
+        return cov_4D_to_2D(cov_4D, **kw)
 
-    cov_GG_LL = cov_4D_to_2D(
-        cov_4D[:, :, lim_2:lim_3, :lim_1], block_index, optimize=True
-    )
-    cov_GG_LG = cov_4D_to_2D(
-        cov_4D[:, :, lim_2:lim_3, lim_1:lim_2], block_index, optimize=True
-    )
-    cov_GG_GG = cov_4D_to_2D(
-        cov_4D[:, :, lim_2:lim_3, lim_2:lim_3], block_index, optimize=True
-    )
+    # ! two-blocks case:
+    cov_dict_2d = {}
+
+    # these are the same every time, since LLLL is always the top-left block
+    ll_stop = zpairs_auto
+
+    # ! ['LLLL', 'GLGL']
+    if has_llll and has_glgl and not has_gggg:
+        gl_start = zpairs_auto
+        gl_stop = zpairs_auto + zpairs_cross
+
+        cov_dict_2d['L', 'L', 'L', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, :ll_stop, :ll_stop], **kw
+        )
+        cov_dict_2d['L', 'L', 'G', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, :ll_stop, gl_start:gl_stop], **kw
+        )
+        cov_dict_2d['G', 'L', 'L', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, gl_start:gl_stop, :ll_stop], **kw
+        )
+        cov_dict_2d['G', 'L', 'G', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, gl_start:gl_stop, gl_start:gl_stop], **kw
+        )
+
+    # ! ['LLLL', 'GGGG']
+    if has_llll and has_gggg and not has_glgl:
+        gg_start = zpairs_auto
+        gg_stop = 2 * zpairs_auto
+
+        cov_dict_2d['L', 'L', 'L', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, :ll_stop, :ll_stop], **kw
+        )
+        cov_dict_2d['L', 'L', 'G', 'G'] = cov_4D_to_2D(
+            cov_4D[:, :, :ll_stop, gg_start:gg_stop], **kw
+        )
+        cov_dict_2d['G', 'G', 'L', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, gg_start:gg_stop, :ll_stop], **kw
+        )
+        cov_dict_2d['G', 'G', 'G', 'G'] = cov_4D_to_2D(
+            cov_4D[:, :, gg_start:gg_stop, gg_start:gg_stop], **kw
+        )
+
+    # ! ['GLGL', 'GGGG']
+    if has_glgl and has_gggg and not has_llll:
+        gl_start = 0
+        gl_stop = zpairs_cross
+        gg_start = zpairs_cross
+        gg_stop = zpairs_auto + zpairs_cross
+
+        cov_dict_2d['G', 'L', 'G', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, :gl_stop, :gl_stop], **kw
+        )
+        cov_dict_2d['G', 'L', 'G', 'G'] = cov_4D_to_2D(
+            cov_4D[:, :, :gl_stop, gg_start:gg_stop], **kw
+        )
+        cov_dict_2d['G', 'G', 'G', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, gg_start:gg_stop, :gl_stop], **kw
+        )
+        cov_dict_2d['G', 'G', 'G', 'G'] = cov_4D_to_2D(
+            cov_4D[:, :, gg_start:gg_stop, gg_start:gg_stop], **kw
+        )
+
+    # ! three-block case (just one!)
+    if three_block:
+        gl_stop = zpairs_auto + zpairs_cross
+        tx2pt_stop = zpairs_3x2pt
+
+        # note: I'm writing cov_LG, but there should be no issue with GL; after all,
+        # this function is not using the ind array
+        cov_dict_2d['L', 'L', 'L', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, :ll_stop, :ll_stop], **kw
+        )
+        cov_dict_2d['L', 'L', 'G', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, :ll_stop, ll_stop:gl_stop], **kw
+        )
+        cov_dict_2d['L', 'L', 'G', 'G'] = cov_4D_to_2D(
+            cov_4D[:, :, :ll_stop, gl_stop:tx2pt_stop], **kw
+        )
+
+        cov_dict_2d['G', 'L', 'L', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, ll_stop:gl_stop, :ll_stop], **kw
+        )
+        cov_dict_2d['G', 'L', 'G', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, ll_stop:gl_stop, ll_stop:gl_stop], **kw
+        )
+        cov_dict_2d['G', 'L', 'G', 'G'] = cov_4D_to_2D(
+            cov_4D[:, :, ll_stop:gl_stop, gl_stop:tx2pt_stop], **kw
+        )
+
+        cov_dict_2d['G', 'G', 'L', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, gl_stop:tx2pt_stop, :ll_stop], **kw
+        )
+        cov_dict_2d['G', 'G', 'G', 'L'] = cov_4D_to_2D(
+            cov_4D[:, :, gl_stop:tx2pt_stop, ll_stop:gl_stop], **kw
+        )
+        cov_dict_2d['G', 'G', 'G', 'G'] = cov_4D_to_2D(
+            cov_4D[:, :, gl_stop:tx2pt_stop, gl_stop:tx2pt_stop], **kw
+        )
+
+    row_ll_list, row_gl_list, row_gg_list = [], [], []
+    for a, b, c, d in req_probe_combs_2d:
+        if (a, b) == ('L', 'L'):
+            row_ll_list.append(cov_dict_2d[a, b, c, d])
+        elif (a, b) == ('G', 'L'):
+            row_gl_list.append(cov_dict_2d[a, b, c, d])
+        elif (a, b) == ('G', 'G'):
+            row_gg_list.append(cov_dict_2d[a, b, c, d])
+        else:
+            raise ValueError(
+                f'Probe combination {a, b, c, d} does not start with '
+                '("L", "L") or ("G", "L") or ("G", "G") '
+            )
+            
+    
+
+    # concatenate the lists to make rows
+    # (o(nly concatenate and include rows that have content)
+    final_rows = []
+    if row_ll_list:
+        row_ll = np.hstack(row_ll_list)
+        final_rows.append(row_ll)
+
+    if row_gl_list:
+        row_gl = np.hstack(row_gl_list)
+        final_rows.append(row_gl)
+
+    if row_gg_list:
+        row_gg = np.hstack(row_gg_list)
+        final_rows.append(row_gg)
 
     # make long rows and stack together
-    row_1 = np.hstack((cov_LL_LL, cov_LL_LG, cov_LL_GG))
-    row_2 = np.hstack((cov_LG_LL, cov_LG_LG, cov_LG_GG))
-    row_3 = np.hstack((cov_GG_LL, cov_GG_LG, cov_GG_GG))
-
-    array_2D = np.vstack((row_1, row_2, row_3))
+    if final_rows:
+        array_2D = np.vstack(final_rows)
+    else:
+        # If no rows at all, return empty array with appropriate shape
+        raise ValueError('No valid probe combinations found!')
 
     return array_2D
 
@@ -3441,18 +3557,6 @@ def cov_2d_cloe_to_dav(cov_2d_cloe, nbl, zbins, block_index_in, block_index_out)
     cov_4D = cov_2DCLOE_to_4D_3x2pt(cov_2d_cloe, nbl, zbins, block_index=block_index_in)
     cov_2d_dav = cov_4D_to_2D(cov_4D, block_index=block_index_out, optimize=True)
     return cov_2d_dav
-
-
-def _cov2corr(covariance):
-    """Credit:
-    https://gist.github.com/wiso/ce2a9919ded228838703c1c7c7dad13b
-    """
-
-    v = np.sqrt(np.diag(covariance))
-    outer_v = np.outer(v, v)
-    correlation = covariance / outer_v
-    correlation[covariance == 0] = 0
-    return correlation
 
 
 def cov2corr(covariance):

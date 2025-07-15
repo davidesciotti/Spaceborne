@@ -1,11 +1,14 @@
-# [BOOKMARK] need to: 
+# [BOOKMARK] need to:
+# finish checking cov 2d cuts, changes haven't been commited yet...
 # run many tests (eg split_g_cov)
-# test nmt 
-# impement cng
 # remove probe_ordering?
 # maybe implement check on symmetrize_output_dict, just to make sure nothing breaks
-
-
+# remove set_trace()
+# check that cov blocks are actually the desired ones for weird probe combs
+# remove old _cov_8d_dict_to_4d func
+# coderabbit review
+# finish cov testing class
+# make sure that eg cov_LLLL is equal to the corresponding block of cov_3x2pt
 
 import argparse
 import os
@@ -40,6 +43,7 @@ from spaceborne import (
 from spaceborne import covariance as sb_cov
 from spaceborne import onecovariance_interface as oc_interface
 from spaceborne import sb_lib as sl
+from spaceborne import constants as const
 from spaceborne import plot_lib as sb_plt
 
 
@@ -54,7 +58,6 @@ with contextlib.suppress(ImportError):
 # Get the current script's directory
 # current_dir = Path(__file__).resolve().parent
 # parent_dir = current_dir.parent
-
 
 warnings.filterwarnings(
     'ignore',
@@ -219,8 +222,7 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): False,
 }
-probename_dict = {0: 'L', 1: 'G'}
-probename_dict_inv = {'L': 0, 'G': 1}
+
 
 # these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
@@ -289,22 +291,59 @@ n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
 
 # ! probe selection
-unique_probe_combs = []
+
+# * small dictionary:
+# - unique_probe_combs: the probe combinations which are actually computed, meaning the
+#                       diagonal or upper triangle of the probe matrix
+# - symm_probe_combs: the lower triangle, (or an empty list if cross terms are not
+#                     required), which are the blocks filled by symemtry
+# - nonreq_probe_combs: the blocks which not required at all, and are set to 0 in the
+#                       10D/6D matrix. This does *not* include the probes in
+#                       symm_probe_combs! "Required" means I want that probe combination
+#                       in the final covariance matrix, not that I want to explicitly
+#                       compute it
+# - req_probe_combs_2d: the probe combinations which need to appear in the final 2D
+#                       format of the covmat. This includes the cross-probes whether
+#                       they are required or not (aka, they need to be present in the 2D
+#                       covmat, either as actual values or as zeros)
+unique_probe_names = []
 if cfg['probe_selection']['LL']:
-    unique_probe_combs.append('LL')
+    unique_probe_names.append('LL')
 if cfg['probe_selection']['GL']:
-    unique_probe_combs.append('GL')
+    unique_probe_names.append('GL')
 if cfg['probe_selection']['GG']:
-    unique_probe_combs.append('GG')
+    unique_probe_names.append('GG')
 
 # add cross terms if requested
 unique_probe_combs = sl.build_probe_list(
-    unique_probe_combs, include_cross_terms=cfg['probe_selection']['cross_cov']
+    unique_probe_names, include_cross_terms=cfg['probe_selection']['cross_cov']
 )
-unique_probe_combs_ix = [
-    [probename_dict_inv[idx] for idx in comb] for comb in unique_probe_combs
-]
 
+# probe combinations to be filled by symmetry or to exclude altogether
+symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(unique_probe_combs)
+
+# required probe combinations to include in the 2d arrays (must include the cross-terms!)
+_req_probe_combs_2d = sl.build_probe_list(unique_probe_names, include_cross_terms=True)
+# as req_probe_combs_2d still only contains the upper triangle,
+# add the symemtric blocks
+symm_probe_combs_2d, _ = sl.get_probe_combs(_req_probe_combs_2d)
+_req_probe_combs_2d += symm_probe_combs_2d
+
+# reorder!
+req_probe_combs_2d = []
+for probe in const.ALL_PROBE_COMBS:
+    if probe in _req_probe_combs_2d:
+        req_probe_combs_2d.append(probe)
+
+unique_probe_combs_ix = [
+    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in unique_probe_combs
+]
+nonreq_probe_combs_ix = [
+    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in nonreq_probe_combs
+]
+req_probe_combs_2d_ix = [
+    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in req_probe_combs_2d
+]
 
 # ! set non-gaussian cov terms to compute
 cov_terms_list = []
@@ -478,6 +517,7 @@ pvt_cfg = {
     'probe_ordering': probe_ordering,
     'unique_probe_combs': unique_probe_combs,
     'probe_comb_idxs': unique_probe_combs_ix,
+    'req_probe_combs_2d': req_probe_combs_2d,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
@@ -912,11 +952,12 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     from spaceborne import cov_partial_sky
 
     # check that the input cls are computed over a fine enough grid
-    for ells_in, ells_out in zip(
-        [ells_WL_in, ells_XC_in, ells_GC_in],
-        [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
-    ):
-        check_ells_in(ells_in, ells_out)
+    if cfg['C_ell']['use_input_cls']:
+        for ells_in, ells_out in zip(
+            [ells_WL_in, ells_XC_in, ells_GC_in],
+            [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
+        ):
+            check_ells_in(ells_in, ells_out)
 
     # initialize nmt_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
@@ -971,10 +1012,12 @@ cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_ma
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(
-    ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
+    ccl_obj=ccl_obj,
+    split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
+    nonreq_probe_combs_ix=nonreq_probe_combs_ix,
 )
 
-# ! =================================== OneCovariance ==================================
+# ! =================================== OneCov  ariance ==================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1452,8 +1495,8 @@ for key, cov in cov_dict.items():
     if cfg['covariance']['save_full_cov']:
         for a, b, c, d in unique_probe_combs_ix:
             probe_str = (
-                f'{probename_dict[a]}{probename_dict[b]}'
-                f'{probename_dict[c]}{probename_dict[d]}'
+                f'{const.PROBENAME_DICT[a]}{const.PROBENAME_DICT[b]}'
+                f'{const.PROBENAME_DICT[c]}{const.PROBENAME_DICT[d]}'
             )
             cov_tot_6d = (
                 cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...]
@@ -1595,12 +1638,125 @@ if cfg['misc']['save_output_as_benchmark']:
 
 for cov_name, cov in cov_dict.items():
     if '3x2pt' in cov_name and 'tot' in cov_name:
+        atol = max(1e-26, 0.01 * np.min(np.abs(np.nonzero(cov))))
+        # atol = 1e-16
+        rtol = 1e-5
+
+        print(f'Testing {cov_name}...')
+        print(f'Matrix shape: {cov.shape}')
+        print(f'Matrix dtype: {cov.dtype}')
+
+        # Check for basic issues first
+        if cov.size == 0:
+            print('Warning: Matrix is empty!')
+            continue
+
+        if np.any(np.isnan(cov)) or np.any(np.isinf(cov)):
+            print('Warning: Matrix contains NaN or Inf values!')
+            continue
+
+        # Check if matrix is all zeros
+        if np.allclose(cov, 0, atol=atol, rtol=rtol):
+            print('Warning: Matrix is all zeros!')
+            continue
+
+        # Check diagonal elements
+        diag_elements = np.diag(cov)
+        if np.any(diag_elements <= 0):
+            print('Warning: Matrix has non-positive diagonal elements!')
+            print(f'Min diagonal element: {np.min(diag_elements)}')
+            print(
+                f'Number of non-positive diagonal elements: {np.sum(diag_elements <= 0)}'
+            )
+
         if cfg['misc']['test_condition_number']:
-            cond_number = np.linalg.cond(cov)
-            print(f'Condition number of {cov_name} = {cond_number:.4e}')
+            try:
+                cond_number = np.linalg.cond(cov)
+                print(f'Condition number = {cond_number:.4e}')
+                if cond_number > 1e12:
+                    print('Warning: Matrix is poorly conditioned (cond > 1e12)')
+            except np.linalg.LinAlgError as e:
+                print(f'Could not compute condition number: {e}')
+
+        if cfg['misc']['test_symmetry']:
+            if not np.allclose(cov, cov.T, atol=atol, rtol=rtol):
+                print('Warning: Matrix is not symmetric.')
+                max_asymmetry = np.max(np.abs(cov - cov.T))
+                print(f'Maximum asymmetry: {max_asymmetry:.2e}')
+            else:
+                print('Matrix is symmetric.')
 
         if cfg['misc']['test_cholesky_decomposition']:
-            print(f'Performing Cholesky decomposition of {cov_name}...')
+            try:
+                L = np.linalg.cholesky(cov)
+                print('Cholesky decomposition successful')
+
+                # Verify the decomposition
+                if np.allclose(L @ L.T, cov, atol=atol, rtol=rtol):
+                    print('Cholesky decomposition verified (L @ L.T == cov)')
+                else:
+                    print('Warning: Cholesky decomposition verification failed')
+
+            except np.linalg.LinAlgError as e:
+                print(f'Cholesky decomposition failed: {e}')
+                print('This indicates the matrix is not positive definite')
+
+        if cfg['misc']['test_numpy_inversion']:
+            try:
+                inv_cov = np.linalg.inv(cov)
+                print('Numpy inversion successful.')
+
+                # Test correctness of inversion
+                identity_test = np.dot(cov, inv_cov)
+                identity_check = np.allclose(
+                    identity_test,
+                    np.eye(cov.shape[0]),
+                    atol=atol,
+                    rtol=rtol,
+                )
+
+                if identity_check:
+                    print('Inverse test successful (M @ M^{-1} ≈ I)')
+                else:
+                    print('Warning: Inverse test failed')
+                    max_deviation = np.max(np.abs(identity_test - np.eye(cov.shape[0])))
+                    print(f'Maximum deviation from identity: {max_deviation:.2e}')
+
+            except np.linalg.LinAlgError as e:
+                print(f'Numpy inversion failed: {e}')
+                print('Matrix is singular or near-singular')
+
+        # Additional test: Check eigenvalues
+        if cfg['misc'].get('test_eigenvalues', False):
+            try:
+                eigenvals = np.linalg.eigvals(cov)
+                min_eigenval = np.min(eigenvals)
+                max_eigenval = np.max(eigenvals)
+
+                print(f'Eigenvalue range: [{min_eigenval:.2e}, {max_eigenval:.2e}]')
+
+                if min_eigenval <= 0:
+                    print(
+                        f'Warning: Matrix has {np.sum(eigenvals <= 0)} non-positive eigenvalues'
+                    )
+                    print('This indicates the matrix is not positive definite')
+                else:
+                    print('All eigenvalues are positive (matrix is positive definite)')
+
+            except np.linalg.LinAlgError as e:
+                print(f'Eigenvalue computation failed: {e}')
+
+        print()  # Add blank line between tests
+
+for cov_name, cov in cov_dict.items():
+    if '3x2pt' in cov_name and 'tot' in cov_name:
+        print(f'Testing {cov_name}...\n')
+
+        if cfg['misc']['test_condition_number']:
+            cond_number = np.linalg.cond(cov)
+            print(f'Condition number = {cond_number:.4e}')
+
+        if cfg['misc']['test_cholesky_decomposition']:
             try:
                 np.linalg.cholesky(cov)
                 print('Cholesky decomposition successful')
@@ -1611,7 +1767,6 @@ for cov_name, cov in cov_dict.items():
                 )
 
         if cfg['misc']['test_numpy_inversion']:
-            print(f'Computing numpy inverse of {cov_name}...')
             try:
                 inv_cov = np.linalg.inv(cov)
                 print('Numpy inversion successful.')
@@ -1624,23 +1779,20 @@ for cov_name, cov in cov_dict.items():
                 )
                 if identity_check:
                     print(
-                        'Inverse tested successfully (M @ M^{-1} is identity). '
+                        'Inverse test successfully (M @ M^{-1} is identity). '
                         'atol=1e-9, rtol=1e-7'
                     )
                 else:
                     print(
-                        f'Warning: Inverse test failed for {cov_name} (M @ M^{-1} '
+                        f'Warning: Inverse test failed (M @ M^{-1} '
                         'deviates from identity). atol=0, rtol=1e-7'
                     )
             except np.linalg.LinAlgError:
-                print(
-                    f'Numpy inversion failed for {cov_name} : '
-                    'Matrix is singular or near-singular.'
-                )
+                print('Numpy inversion failed: Matrix is singular or near-singular.')
 
         if cfg['misc']['test_symmetry']:
             if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
-                print(f'Warning: Matrix {cov_name} is not symmetric. atol=0, rtol=1e-7')
+                print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
             else:
                 print('Matrix is symmetric. atol=0, rtol=1e-7')
 

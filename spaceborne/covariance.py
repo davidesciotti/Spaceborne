@@ -31,6 +31,9 @@ class SpaceborneCovariance:
         self.unique_probe_combs = pvt_cfg['unique_probe_combs']
         self.probe_ordering = pvt_cfg['probe_ordering']  # TODO delete this??
 
+        # get_probe_combs is called to get all_req_probe_combs
+        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_2d']
+
         self.n_probes = self.cov_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
         self.include_ssc = self.cov_cfg['SSC']
@@ -50,6 +53,7 @@ class SpaceborneCovariance:
             self.cov_4D_to_2D_3x2pt_func_kw = {
                 'block_index': self.block_index,
                 'zbins': self.zbins,
+                'req_probe_combs_2d': self.req_probe_combs_2d,
             }
         elif self.cov_ordering_2d == 'probe_zpair_ell':
             self.block_index = 'zpair'
@@ -57,6 +61,7 @@ class SpaceborneCovariance:
             self.cov_4D_to_2D_3x2pt_func_kw = {
                 'block_index': self.block_index,
                 'zbins': self.zbins,
+                'req_probe_combs_2d': self.req_probe_combs_2d,
             }
         elif self.cov_ordering_2d == 'ell_probe_zpair':
             self.block_index = 'ell'
@@ -212,8 +217,6 @@ class SpaceborneCovariance:
             If the combination of ndim_in, ndim_out, and is_3x2pt is not supported.
         """
 
-        # raise NotImplementedError('Is this function really useful?')
-
         # Validate inputs
         if ndim_in not in [6, 10, 4]:
             raise ValueError(
@@ -234,12 +237,13 @@ class SpaceborneCovariance:
             assert cov_in.ndim == 10, 'Input covariance must be 10D for this operation.'
             assert is_3x2pt, 'input 3x2pt cov should be 10d.'
             cov_out = sl.cov_3x2pt_10D_to_4D(
-                cov_in,
-                self.probe_ordering,
-                nbl,
-                self.zbins,
-                self.ind.copy(),
-                self.GL_OR_LG,
+                cov_3x2pt_10D=cov_in,
+                probe_ordering=self.probe_ordering,
+                nbl=nbl,
+                zbins=self.zbins,
+                ind_copy=self.ind.copy(),
+                GL_OR_LG=self.GL_OR_LG,
+                req_probe_combs_2d=self.req_probe_combs_2d,
             )
 
         elif ndim_in == 4:
@@ -257,16 +261,7 @@ class SpaceborneCovariance:
 
         return cov_out
 
-    def trim_3x2pt_cov_2d(
-        cov_3x2pt_2d, unique_probe_combs, nbl_3x2pt, zpairs_auto, zpairs_cross
-    ):
-        elem_auto = nbl_3x2pt * zpairs_auto
-        elem_cross = nbl_3x2pt * zpairs_cross
-        elem_apc = nbl_3x2pt * (zpairs_auto + zpairs_cross)
-        
-        
-
-    def set_gauss_cov(self, ccl_obj, split_gaussian_cov):
+    def set_gauss_cov(self, ccl_obj, split_gaussian_cov, nonreq_probe_combs_ix):
         start = time.perf_counter()
 
         # signal
@@ -298,30 +293,44 @@ class SpaceborneCovariance:
             )
 
         # ! compute 3x2pt fsky Gaussian covariance: by default, split SVA, SN and MIX
-        results = sl.covariance_einsum(
-            cl_3x2pt_5d,
-            noise_3x2pt_5d,
-            self.fsky,
-            self.ells_3x2pt,
-            self.delta_l_3x2pt,
-            split_terms=split_gaussian_cov,
+        (
+            cov_3x2pt_g_10D_sva,
+            cov_3x2pt_g_10D_sn,
+            cov_3x2pt_g_10D_mix,
+        ) = sl.covariance_einsum(
+            cl_5d=cl_3x2pt_5d,
+            noise_5d=noise_3x2pt_5d,
+            fsky=self.fsky,
+            ell_values=self.ells_3x2pt,
+            delta_ell=self.delta_l_3x2pt,
+            split_terms=True,
             return_only_diagonal_ells=False,
         )
 
+        # ! set to 0 all the probe blocks which are not required;
+        # keep in mind that the einsum function returns all the possible
+        # combinations of probes which is why I use itertools.product
+
+        # turn list into tuples to allow comparison
+        # nonreq_probe_combs_ix = {tuple(x) for x in nonreq_probe_combs_ix}
+
+        # Zero out non-requested probe blocks
+        # for a, b, c, d in itertools.product((0, 1), repeat=4):
+        # if (a, b, c, d) not in nonreq_probe_combs_ix:
+        for a, b, c, d in nonreq_probe_combs_ix:
+            cov_3x2pt_g_10D_sva[a, b, c, d] = 0
+            cov_3x2pt_g_10D_sn[a, b, c, d] = 0
+            cov_3x2pt_g_10D_mix[a, b, c, d] = 0
+
+        # total cov is the sum of SVA SN and MIX
+        self.cov_3x2pt_g_10D = (
+            cov_3x2pt_g_10D_sva + cov_3x2pt_g_10D_sn + cov_3x2pt_g_10D_mix
+        )
         if split_gaussian_cov:
-            (
-                self.cov_3x2pt_g_10D_sva,
-                self.cov_3x2pt_g_10D_sn,
-                self.cov_3x2pt_g_10D_mix,
-            ) = results
-            # total cov is the sum of SVA SN and MIX
-            self.cov_3x2pt_g_10D = (
-                self.cov_3x2pt_g_10D_sva
-                + self.cov_3x2pt_g_10D_sn
-                + self.cov_3x2pt_g_10D_mix
-            )
-        else:
-            self.cov_3x2pt_g_10D = results
+            # in this case, store SVA, SN and MIX in self
+            self.cov_3x2pt_g_10D_sva = cov_3x2pt_g_10D_sva
+            self.cov_3x2pt_g_10D_sn = cov_3x2pt_g_10D_sn
+            self.cov_3x2pt_g_10D_mix = cov_3x2pt_g_10D_mix
 
         # ! Partial sky with nmt
         # ! this case overwrites self.cov_3x2pt_g_10D only, but the cfg checker will

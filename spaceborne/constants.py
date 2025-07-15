@@ -4,7 +4,7 @@ DEG2_IN_SPHERE = 4 * np.pi * (180 / np.pi)**2
 DR1_DATE = 9191.0
 SPEED_OF_LIGHT = 299792.458  # km/s
 
-# admittedly, these are not constants ^^
+# admittedly, these are not physical constants ^^
 ALL_PROBE_COMBS = [
     'LLLL', 'LLGL', 'LLGG',
     'GLLL', 'GLGL', 'GLGG',
@@ -25,3 +25,6 @@ SYMMETRIZE_OUTPUT_DICT = {
     ('L', 'G'): False,
     ('G', 'G'): True,
 }
+
+PROBENAME_DICT = {0: 'L', 1: 'G'}
+PROBENAME_DICT_INV = {'L': 0, 'G': 1}

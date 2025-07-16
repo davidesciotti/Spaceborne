@@ -118,7 +118,7 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
         else:
             covar_TT_TT = np.zeros((nell, nell))
 
-        if 'GGGL' in unique_probe_combs:
+        if 'GGGL' in unique_probe_combs or 'GLGG' in unique_probe_combs:
             covar_00_02 = nmt.gaussian_covariance(cw, 
                                                 0, 0, 0, 2,
                                                 cl_00_list(zi, zk),
@@ -133,7 +133,7 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
             covar_TT_TE = np.zeros((nell, nell))
             covar_TT_TB = np.zeros((nell, nell))
 
-        if 'GGLL' in unique_probe_combs:
+        if 'GGLL' in unique_probe_combs or 'LLGG' in unique_probe_combs:
             covar_00_22 = nmt.gaussian_covariance(cw, 
                                                 0, 0, 2, 2,
                                                 cl_02_list(zi, zk),
@@ -171,7 +171,7 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
             covar_TB_TE = np.zeros((nell, nell))
             covar_TB_TB = np.zeros((nell, nell))
 
-        if 'GLLL' in unique_probe_combs:
+        if 'GLLL' in unique_probe_combs or 'LLGL' in unique_probe_combs:
             covar_02_22 = nmt.gaussian_covariance(cw, 
                                                 0, 2, 2, 2,
                                                 cl_02_list(zi, zk),
@@ -322,7 +322,11 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
         else:
             covar_TT_TT = np.zeros((nell, nell))
 
-        if 'GGGL' in unique_probe_combs:
+        # here and below, for the nondiag blocks, I need to include the symmetric 
+        # probe combinations (by default, here in nmt, I compute the lower triangle 
+        # of the 3x2pt probe combination matrix, rather then the upper one as done in 
+        # the rest of the code)
+        if 'GGGL' in unique_probe_combs or 'GLGG' in unique_probe_combs:
             covar_00_02 = nmt.gaussian_covariance(cw,  # fmt: skip
                                                 0, 0, 0, 0, 
                                                 [cl_tt[:, zi, zk]],  # TT
@@ -348,7 +352,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
         else:
             covar_TE_TE = np.zeros((nell, nell))
 
-        if 'GGLL' in unique_probe_combs:
+        if 'GGLL' in unique_probe_combs or 'LLGG' in unique_probe_combs:
             covar_00_22 = nmt.gaussian_covariance(cw,  # fmt: skip
                                                 0, 0, 0, 0, 
                                                 [cl_te[:, zi, zk]],  # TE, TB
@@ -361,7 +365,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
         else:
             covar_TT_EE = np.zeros((nell, nell))
 
-        if 'GLLL' in unique_probe_combs:
+        if 'GLLL' in unique_probe_combs or 'LLGL' in unique_probe_combs:
             covar_02_22 = nmt.gaussian_covariance(cw,  # fmt: skip
                                                 0, 0, 0, 0, 
                                                 [cl_te[:, zi, zk]],  # TE, TB
@@ -984,12 +988,6 @@ class NmtCov:
         self.n_probes = pvt_cfg['n_probes']
         self.coupled_cov = cfg['covariance']['coupled_cov']
         self.output_path = self.cfg['misc']['output_path']
-
-        self.cov_blocks_names_all = (  # fmt: skip
-            'LLLL', 'LLGL', 'LLGG',
-            'GLLL', 'GLGL', 'GLGG',
-            'GGLL', 'GGGL', 'GGGG',
-        )  # fmt: skip
 
         # check on lmax and NSIDE
         for probe in ('WL', 'GC'):

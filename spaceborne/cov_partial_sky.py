@@ -6,13 +6,9 @@ import pymaster as nmt
 import healpy as hp
 from tqdm import tqdm
 from spaceborne import sb_lib as sl
-from spaceborne import constants
 import warnings
 
 import pyccl as ccl
-
-DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
-DR1_DATE = constants.DR1_DATE
 
 
 def couple_cov_6d(
@@ -300,15 +296,13 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
                            w00, unique_probe_combs, coupled, ells_in, ells_out,
                            ells_out_edges, which_binning, weights):  # fmt: skip
     cl_et = cl_te.transpose(0, 2, 1)
-    
+
     nell = cl_tt.shape[0] if coupled else nbl
-    
 
     cov_nmt_10d_arr = np.zeros((2, 2, 2, 2, nbl, nbl, zbins, zbins, zbins, zbins))
 
     z_combinations = list(itertools.product(range(zbins), repeat=4))
     for zi, zj, zk, zl in tqdm(z_combinations):
-        
         if 'GGGG' in unique_probe_combs:
             covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
                                                 0, 0, 0, 0, 
@@ -322,9 +316,9 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
         else:
             covar_TT_TT = np.zeros((nell, nell))
 
-        # here and below, for the nondiag blocks, I need to include the symmetric 
-        # probe combinations (by default, here in nmt, I compute the lower triangle 
-        # of the 3x2pt probe combination matrix, rather then the upper one as done in 
+        # here and below, for the nondiag blocks, I need to include the symmetric
+        # probe combinations (by default, here in nmt, I compute the lower triangle
+        # of the 3x2pt probe combination matrix, rather then the upper one as done in
         # the rest of the code)
         if 'GGGL' in unique_probe_combs or 'GLGG' in unique_probe_combs:
             covar_00_02 = nmt.gaussian_covariance(cw,  # fmt: skip
@@ -390,7 +384,6 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
             covar_EE_EE = covar_22_22
         else:
             covar_EE_EE = np.zeros((nell, nell))
-            
 
         common_kw = {
             'ells_in': ells_in,

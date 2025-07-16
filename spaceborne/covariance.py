@@ -294,9 +294,9 @@ class SpaceborneCovariance:
 
         # ! compute 3x2pt fsky Gaussian covariance: by default, split SVA, SN and MIX
         (
-            cov_3x2pt_g_10D_sva,
-            cov_3x2pt_g_10D_sn,
-            cov_3x2pt_g_10D_mix,
+            cov_3x2pt_sva_10D,
+            cov_3x2pt_sn_10D,
+            cov_3x2pt_mix_10D,
         ) = sl.covariance_einsum(
             cl_5d=cl_3x2pt_5d,
             noise_5d=noise_3x2pt_5d,
@@ -318,19 +318,17 @@ class SpaceborneCovariance:
         # for a, b, c, d in itertools.product((0, 1), repeat=4):
         # if (a, b, c, d) not in nonreq_probe_combs_ix:
         for a, b, c, d in nonreq_probe_combs_ix:
-            cov_3x2pt_g_10D_sva[a, b, c, d] = 0
-            cov_3x2pt_g_10D_sn[a, b, c, d] = 0
-            cov_3x2pt_g_10D_mix[a, b, c, d] = 0
+            cov_3x2pt_sva_10D[a, b, c, d] = 0
+            cov_3x2pt_sn_10D[a, b, c, d] = 0
+            cov_3x2pt_mix_10D[a, b, c, d] = 0
 
         # total cov is the sum of SVA SN and MIX
-        self.cov_3x2pt_g_10D = (
-            cov_3x2pt_g_10D_sva + cov_3x2pt_g_10D_sn + cov_3x2pt_g_10D_mix
-        )
+        self.cov_3x2pt_g_10D = cov_3x2pt_sva_10D + cov_3x2pt_sn_10D + cov_3x2pt_mix_10D
         if split_gaussian_cov:
             # in this case, store SVA, SN and MIX in self
-            self.cov_3x2pt_g_10D_sva = cov_3x2pt_g_10D_sva
-            self.cov_3x2pt_g_10D_sn = cov_3x2pt_g_10D_sn
-            self.cov_3x2pt_g_10D_mix = cov_3x2pt_g_10D_mix
+            self.cov_3x2pt_sva_10D = cov_3x2pt_sva_10D
+            self.cov_3x2pt_sn_10D = cov_3x2pt_sn_10D
+            self.cov_3x2pt_mix_10D = cov_3x2pt_mix_10D
 
         # ! Partial sky with nmt
         # ! this case overwrites self.cov_3x2pt_g_10D only, but the cfg checker will
@@ -350,11 +348,11 @@ class SpaceborneCovariance:
         print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
 
         # reshape to 2D
-        self._reshape_3x2pt_wrapper(split_gaussian_cov)
+        self._cov_g_3x2pt_10d_to_2d_wrapper(split_gaussian_cov)
 
         return
 
-    def _reshape_3x2pt_wrapper(self, split_gaussian_cov):
+    def _cov_g_3x2pt_10d_to_2d_wrapper(self, split_gaussian_cov):
         """Reshapes the 3x2pt 10d cov into 2D.
 
         Parameters
@@ -372,8 +370,8 @@ class SpaceborneCovariance:
             is_3x2pt=True,
         )
         if split_gaussian_cov:
-            self.cov_3x2pt_g_2D_sva = self.reshape_cov(
-                cov_in=self.cov_3x2pt_g_10D_sva,
+            self.cov_3x2pt_sva_2D = self.reshape_cov(
+                cov_in=self.cov_3x2pt_sva_10D,
                 ndim_in=10,
                 ndim_out=2,
                 nbl=self.nbl_3x2pt,
@@ -381,8 +379,8 @@ class SpaceborneCovariance:
                 ind_probe=self.ind,
                 is_3x2pt=True,
             )
-            self.cov_3x2pt_g_2D_mix = self.reshape_cov(
-                cov_in=self.cov_3x2pt_g_10D_mix,
+            self.cov_3x2pt_sn_2D = self.reshape_cov(
+                cov_in=self.cov_3x2pt_sn_10D,
                 ndim_in=10,
                 ndim_out=2,
                 nbl=self.nbl_3x2pt,
@@ -390,8 +388,8 @@ class SpaceborneCovariance:
                 ind_probe=self.ind,
                 is_3x2pt=True,
             )
-            self.cov_3x2pt_g_2D_sn = self.reshape_cov(
-                cov_in=self.cov_3x2pt_g_10D_sn,
+            self.cov_3x2pt_mix_2D = self.reshape_cov(
+                cov_in=self.cov_3x2pt_mix_10D,
                 ndim_in=10,
                 ndim_out=2,
                 nbl=self.nbl_3x2pt,
@@ -439,7 +437,7 @@ class SpaceborneCovariance:
             - cov_{probe}_ng_2D: ng-only covariance (SSC, cNG or the sum of the two)
             - cov_{probe}_tot_2D: g + ng covariance
             where {probe} can be: WL (weak lensing), GC (galaxy clustering),
-            3x2pt (WL + XC + GC), XC (cross-correlation), 2x2pt (XC + GC)
+            3x2pt (WL + XC + GC), XC (cross-correlation)
         """
 
         self.cov_dict = {}
@@ -520,16 +518,14 @@ class SpaceborneCovariance:
         cov_GC_ssc_6D = deepcopy(self.cov_3x2pt_ssc_10D[1, 1, 1, 1])
         cov_GC_cng_6D = deepcopy(self.cov_3x2pt_cng_10D[1, 1, 1, 1])
 
-        if self.GL_OR_LG == 'GL':
-            cov_XC_g_6D = self.cov_3x2pt_g_10D[1, 0, 1, 0, ...]
-            cov_XC_ssc_6D = self.cov_3x2pt_ssc_10D[1, 0, 1, 0, ...]
-            cov_XC_cng_6D = self.cov_3x2pt_cng_10D[1, 0, 1, 0, ...]
-        elif self.GL_OR_LG == 'LG':
-            # This option would probably have unforeseen consequences
+        if self.GL_OR_LG == 'LG':
             raise ValueError('the cross-correlation between G and L must be GL, not LG')
-            cov_XC_g_6D = self.cov_3x2pt_g_10D[0, 1, 0, 1, ...]
-            cov_XC_ssc_6D = self.cov_3x2pt_ssc_10D[0, 1, 0, 1, ...]
-            cov_XC_cng_6D = self.cov_3x2pt_cng_10D[0, 1, 0, 1, ...]
+        cov_XC_g_6D = self.cov_3x2pt_g_10D[1, 0, 1, 0, ...]
+        cov_XC_ssc_6D = self.cov_3x2pt_ssc_10D[1, 0, 1, 0, ...]
+        cov_XC_cng_6D = self.cov_3x2pt_cng_10D[1, 0, 1, 0, ...]
+
+        if split_gaussian_cov:
+            cov_WL_sva_6D = deepcopy(self.cov_3x2pt_sva_10D[0, 0, 0, 0])
 
         # # ! reshape everything to 2D
         reshape_args = [ 
@@ -585,9 +581,6 @@ class SpaceborneCovariance:
             self.cov_3x2pt_g_2D = sl.remove_rows_cols_array2D(
                 self.cov_3x2pt_g_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
             )
-            self.cov_2x2pt_g_2D = sl.remove_rows_cols_array2D(
-                self.cov_2x2pt_g_2D, self.ell_dict['idxs_to_delete_dict']['2x2pt']
-            )
 
             self.cov_WL_ssc_2D = sl.remove_rows_cols_array2D(
                 self.cov_WL_ssc_2D, self.ell_dict['idxs_to_delete_dict']['LL']
@@ -600,9 +593,6 @@ class SpaceborneCovariance:
             )
             self.cov_3x2pt_ssc_2D = sl.remove_rows_cols_array2D(
                 self.cov_3x2pt_ssc_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
-            )
-            self.cov_2x2pt_ssc_2D = sl.remove_rows_cols_array2D(
-                self.cov_2x2pt_ssc_2D, self.ell_dict['idxs_to_delete_dict']['2x2pt']
             )
 
             self.cov_WL_cng_2D = sl.remove_rows_cols_array2D(
@@ -617,36 +607,33 @@ class SpaceborneCovariance:
             self.cov_3x2pt_cng_2D = sl.remove_rows_cols_array2D(
                 self.cov_3x2pt_cng_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
             )
-            self.cov_2x2pt_cng_2D = sl.remove_rows_cols_array2D(
-                self.cov_2x2pt_cng_2D, self.ell_dict['idxs_to_delete_dict']['2x2pt']
-            )
 
         # store in dictionary
         # TODO is this necessaty? I can probably delete!
-        probe_names = ('WL', 'GC', '3x2pt', 'XC', '2x2pt')
+        probe_names = ('WL', 'GC', 'XC', '3x2pt')
         covs_g_2D = (
             self.cov_WL_g_2D,
             self.cov_GC_g_2D,
-            self.cov_3x2pt_g_2D,
             self.cov_XC_g_2D,
+            self.cov_3x2pt_g_2D,
         )
         covs_ssc_2D = (
             self.cov_WL_ssc_2D,
             self.cov_GC_ssc_2D,
-            self.cov_3x2pt_ssc_2D,
             self.cov_XC_ssc_2D,
+            self.cov_3x2pt_ssc_2D,
         )
         covs_cng_2D = (
             self.cov_WL_cng_2D,
             self.cov_GC_cng_2D,
-            self.cov_3x2pt_cng_2D,
             self.cov_XC_cng_2D,
+            self.cov_3x2pt_cng_2D,
         )
         covs_tot_2D = (
             self.cov_WL_g_2D + self.cov_WL_ssc_2D + self.cov_WL_cng_2D,
             self.cov_GC_g_2D + self.cov_GC_ssc_2D + self.cov_GC_cng_2D,
-            self.cov_3x2pt_g_2D + self.cov_3x2pt_ssc_2D + self.cov_3x2pt_cng_2D,
             self.cov_XC_g_2D + self.cov_XC_ssc_2D + self.cov_XC_cng_2D,
+            self.cov_3x2pt_g_2D + self.cov_3x2pt_ssc_2D + self.cov_3x2pt_cng_2D,
         )
 
         for probe_name, cov_g_2D, cov_ssc_2D, cov_cng_2D, cov_tot_2D in zip(

@@ -148,7 +148,6 @@ def plot_cls():
             + axi.get_yticklabels()
         ):
             item.set_fontsize(16)
-    plt.show()
 
 
 def check_ells_in(ells_in, ells_out):
@@ -620,7 +619,7 @@ ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
 )
 
-gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
+gal_kernel_plt_title = 'galaxy\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 
@@ -696,15 +695,14 @@ wf_ccl_list = [
     ccl_obj.wf_galaxy_arr,
 ]
 
-plt.figure()
 for wf_idx in range(len(wf_ccl_list)):
+    plt.figure()
     for zi in range(zbins):
         plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
     plt.xlabel('$z$')
     plt.ylabel(r'$W_i^X(z)$')
     plt.suptitle(f'{wf_names_list[wf_idx]}')
     plt.tight_layout()
-    plt.show()
 
 
 # ! ======================================== Cls =======================================

@@ -31,7 +31,7 @@ class SpaceborneCovariance:
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
         if self.GL_OR_LG == 'LG':  # on-the-fly check
             raise ValueError('the cross-correlation between G and L must be GL, not LG')
-        
+
         self.fsky = pvt_cfg['fsky']
         self.jl_integrator_path = pvt_cfg['jl_integrator_path']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
@@ -48,7 +48,6 @@ class SpaceborneCovariance:
         self.g_code = self.cov_cfg['G_code']
         self.ssc_code = self.cov_cfg['SSC_code']
         self.cng_code = self.cov_cfg['cNG_code']
-        # must copy the array! Otherwise, it gets modified and changed at each call
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
         self.use_nmt = self.cfg['namaster']['use_namaster']
         self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
@@ -87,48 +86,24 @@ class SpaceborneCovariance:
         else:
             raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
 
-        # set ell, delta_l values
-        self.ells_WL, self.nbl_WL, self.delta_l_WL = (
-            ell_obj.ells_WL,
-            ell_obj.nbl_WL,
-            ell_obj.delta_l_WL,
-        )
-        self.ells_GC, self.nbl_GC, self.delta_l_GC = (
-            ell_obj.ells_GC,
-            ell_obj.nbl_GC,
-            ell_obj.delta_l_GC,
-        )
-        self.ells_XC, self.nbl_XC, self.delta_l_XC = (
-            ell_obj.ells_XC,
-            ell_obj.nbl_XC,
-            ell_obj.delta_l_XC,
-        )
-        self.ells_3x2pt, self.nbl_3x2pt, self.delta_l_3x2pt = (
-            ell_obj.ells_3x2pt,
-            ell_obj.nbl_3x2pt,
-            ell_obj.delta_l_3x2pt,
-        )
-
         self.cov_dict = {}
 
     def set_ind_and_zpairs(self, ind, zbins):
         # set indices array
         self.ind = ind
-        self.zbins = zbins
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
             self.zbins
         )
-        self.ind_auto = ind[: self.zpairs_auto, :].copy()
-        self.ind_cross = ind[
-            self.zpairs_auto : self.zpairs_cross + self.zpairs_auto, :
-        ].copy()
+        self.ind_auto = deepcopy(ind[: self.zpairs_auto, :])
+        self.ind_cross = deepcopy(
+            ind[self.zpairs_auto : self.zpairs_cross + self.zpairs_auto, :]
+        )
+
         self.ind_dict = {
             ('L', 'L'): self.ind_auto,
             ('G', 'L'): self.ind_cross,
             ('G', 'G'): self.ind_auto,
         }
-        # TODO? (this like below)
-        # self.ind_dict = build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG)
 
     def consistency_checks(self):
         # sanity checks
@@ -147,7 +122,7 @@ class SpaceborneCovariance:
         )
 
         if (
-            self.ells_WL.max() < 15
+            self.ell_obj.ells_WL.max() < 15
         ):  # very rudimental check of whether they're in lin or log scale
             raise ValueError(
                 'looks like the ell values are in log scale. '
@@ -289,7 +264,7 @@ class SpaceborneCovariance:
 
         # create dummy ell axis, the array is just repeated along it
         noise_3x2pt_5d = np.repeat(
-            noise_3x2pt_4d[:, :, np.newaxis, :, :], self.nbl_3x2pt, axis=2
+            noise_3x2pt_4d[:, :, np.newaxis, :, :], self.ell_obj.nbl_3x2pt, axis=2
         )
 
         # bnt-transform the noise spectra if needed
@@ -308,22 +283,17 @@ class SpaceborneCovariance:
             cl_5d=cl_3x2pt_5d,
             noise_5d=noise_3x2pt_5d,
             fsky=self.fsky,
-            ell_values=self.ells_3x2pt,
-            delta_ell=self.delta_l_3x2pt,
+            ell_values=self.ell_obj.ells_3x2pt,
+            delta_ell=self.ell_obj.delta_l_3x2pt,
             split_terms=True,
             return_only_diagonal_ells=False,
         )
 
         # ! set to 0 all the probe blocks which are not required;
         # keep in mind that the einsum function returns all the possible
-        # combinations of probes which is why I use itertools.product
-
-        # turn list into tuples to allow comparison
-        # nonreq_probe_combs_ix = {tuple(x) for x in nonreq_probe_combs_ix}
+        # combinations of probes which is why I use(d) itertools.product
 
         # Zero out non-requested probe blocks
-        # for a, b, c, d in itertools.product((0, 1), repeat=4):
-        # if (a, b, c, d) not in nonreq_probe_combs_ix:
         for a, b, c, d in nonreq_probe_combs_ix:
             cov_3x2pt_sva_10D[a, b, c, d] = 0
             cov_3x2pt_sn_10D[a, b, c, d] = 0
@@ -371,7 +341,7 @@ class SpaceborneCovariance:
             cov_in=self.cov_3x2pt_g_10D,
             ndim_in=10,
             ndim_out=2,
-            nbl=self.nbl_3x2pt,
+            nbl=self.ell_obj.nbl_3x2pt,
             zpairs=None,
             ind_probe=self.ind,
             is_3x2pt=True,
@@ -381,7 +351,7 @@ class SpaceborneCovariance:
                 cov_in=self.cov_3x2pt_sva_10D,
                 ndim_in=10,
                 ndim_out=2,
-                nbl=self.nbl_3x2pt,
+                nbl=self.ell_obj.nbl_3x2pt,
                 zpairs=None,
                 ind_probe=self.ind,
                 is_3x2pt=True,
@@ -390,7 +360,7 @@ class SpaceborneCovariance:
                 cov_in=self.cov_3x2pt_sn_10D,
                 ndim_in=10,
                 ndim_out=2,
-                nbl=self.nbl_3x2pt,
+                nbl=self.ell_obj.nbl_3x2pt,
                 zpairs=None,
                 ind_probe=self.ind,
                 is_3x2pt=True,
@@ -399,7 +369,7 @@ class SpaceborneCovariance:
                 cov_in=self.cov_3x2pt_mix_10D,
                 ndim_in=10,
                 ndim_out=2,
-                nbl=self.nbl_3x2pt,
+                nbl=self.ell_obj.nbl_3x2pt,
                 zpairs=None,
                 ind_probe=self.ind,
                 is_3x2pt=True,
@@ -412,7 +382,7 @@ class SpaceborneCovariance:
 
         cov_dict_10D = sl.cov_3x2pt_dict_8d_to_10d(
             cov_dict_8D,
-            self.nbl_3x2pt,
+            self.ell_obj.nbl_3x2pt,
             self.zbins,
             self.ind_dict,
             self.unique_probe_combs,
@@ -420,7 +390,7 @@ class SpaceborneCovariance:
         )
 
         return sl.cov_10D_dict_to_array(
-            cov_dict_10D, self.nbl_3x2pt, self.zbins, self.n_probes
+            cov_dict_10D, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
         )
 
     def _add_ssc(self, ccl_obj: object, oc_obj: object):
@@ -503,39 +473,39 @@ class SpaceborneCovariance:
         """reshapes all covs (g, sva, sn, mix, ssc, cng) for all probes to 2D"""
         reshape_args = [ 
             # WL
-            ('cov_WL_g_2D', self.cov_WL_g_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-            ('cov_WL_ssc_2D', self.cov_WL_ssc_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-            ('cov_WL_cng_2D', self.cov_WL_cng_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            ('cov_WL_g_2D', self.cov_WL_g_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            ('cov_WL_ssc_2D', self.cov_WL_ssc_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            ('cov_WL_cng_2D', self.cov_WL_cng_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
             
             # GC
-            ('cov_GC_g_2D', self.cov_GC_g_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-            ('cov_GC_ssc_2D', self.cov_GC_ssc_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-            ('cov_GC_cng_2D', self.cov_GC_cng_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            ('cov_GC_g_2D', self.cov_GC_g_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            ('cov_GC_ssc_2D', self.cov_GC_ssc_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            ('cov_GC_cng_2D', self.cov_GC_cng_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
             
             # XC
-            ('cov_XC_g_2D', self.cov_XC_g_6D, 6, self.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-            ('cov_XC_ssc_2D', self.cov_XC_ssc_6D, 6, self.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-            ('cov_XC_cng_2D', self.cov_XC_cng_6D, 6, self.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+            ('cov_XC_g_2D', self.cov_XC_g_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+            ('cov_XC_ssc_2D', self.cov_XC_ssc_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+            ('cov_XC_cng_2D', self.cov_XC_cng_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
             
             # 3x2pt
-            ('cov_3x2pt_g_2D', self.cov_3x2pt_g_10D, 10, self.nbl_3x2pt, self.zpairs_auto, self.ind, True),
-            ('cov_3x2pt_ssc_2D', self.cov_3x2pt_ssc_10D,10, self.nbl_3x2pt, self.zpairs_auto, self.ind, True),
-            ('cov_3x2pt_cng_2D', self.cov_3x2pt_cng_10D,10, self.nbl_3x2pt, self.zpairs_auto, self.ind, True)
+            ('cov_3x2pt_g_2D', self.cov_3x2pt_g_10D, 10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True),
+            ('cov_3x2pt_ssc_2D', self.cov_3x2pt_ssc_10D,10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True),
+            ('cov_3x2pt_cng_2D', self.cov_3x2pt_cng_10D,10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True)
         ]  # fmt: skip
 
         if split_gaussian_cov:
             reshape_args.extend([
-                ('cov_WL_sva_2D', self.cov_WL_sva_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-                ('cov_WL_sn_2D', self.cov_WL_sn_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-                ('cov_WL_mix_2D', self.cov_WL_mix_6D, 6, self.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+                ('cov_WL_sva_2D', self.cov_WL_sva_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+                ('cov_WL_sn_2D', self.cov_WL_sn_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+                ('cov_WL_mix_2D', self.cov_WL_mix_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
                 
-                ('cov_GC_sva_2D', self.cov_GC_sva_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-                ('cov_GC_sn_2D', self.cov_GC_sn_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-                ('cov_GC_mix_2D', self.cov_GC_mix_6D, 6, self.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+                ('cov_GC_sva_2D', self.cov_GC_sva_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+                ('cov_GC_sn_2D', self.cov_GC_sn_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+                ('cov_GC_mix_2D', self.cov_GC_mix_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
                 
-                ('cov_XC_sva_2D', self.cov_XC_sva_6D, 6, self.nbl_XC, self.zpairs_auto, self.ind_auto, False),
-                ('cov_XC_sn_2D', self.cov_XC_sn_6D, 6, self.nbl_XC, self.zpairs_auto, self.ind_auto, False),
-                ('cov_XC_mix_2D', self.cov_XC_mix_6D, 6, self.nbl_XC, self.zpairs_auto, self.ind_auto, False),
+                ('cov_XC_sva_2D', self.cov_XC_sva_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+                ('cov_XC_sn_2D', self.cov_XC_sn_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+                ('cov_XC_mix_2D', self.cov_XC_mix_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
             ]
             )  # fmt: skip
 
@@ -757,13 +727,13 @@ class SpaceborneCovariance:
         # an array as input, but it's done to keep the variable names consistent
         # ! BNT IS LINEAR, SO BNT(COV_TOT) = \SUM_i BNT(COV_i), but should check
         self.cov_3x2pt_g_10D = sl.cov_10D_dict_to_array(
-            cov_3x2pt_g_10D_dict, self.nbl_3x2pt, self.zbins, n_probes=2
+            cov_3x2pt_g_10D_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
         self.cov_3x2pt_ssc_10D = sl.cov_10D_dict_to_array(
-            cov_3x2pt_ssc_10D_dict, self.nbl_3x2pt, self.zbins, n_probes=2
+            cov_3x2pt_ssc_10D_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
         self.cov_3x2pt_cng_10D = sl.cov_10D_dict_to_array(
-            cov_3x2pt_cng_10D_dict, self.nbl_3x2pt, self.zbins, n_probes=2
+            cov_3x2pt_cng_10D_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
 
         return
@@ -777,7 +747,12 @@ class SpaceborneCovariance:
 
         # construct mcm array for better probe handling (especially for 3x2pt)
         mcm_3x2pt_arr = np.zeros(
-            (self.n_probes, self.n_probes, self.nbl_3x2pt, self.nbl_3x2pt)
+            (
+                self.n_probes,
+                self.n_probes,
+                self.ell_obj.nbl_3x2pt,
+                self.ell_obj.nbl_3x2pt,
+            )
         )
         mcm_3x2pt_arr[0, 0] = self.nmt_cov_obj.mcm_ee_binned
         mcm_3x2pt_arr[1, 0] = self.nmt_cov_obj.mcm_te_binned

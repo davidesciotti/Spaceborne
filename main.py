@@ -1502,11 +1502,14 @@ for key, cov in cov_dict.items():
                 f'{const.PROBENAME_DICT[a]}{const.PROBENAME_DICT[b]}'
                 f'{const.PROBENAME_DICT[c]}{const.PROBENAME_DICT[d]}'
             )
+            # compute cov tot
             cov_tot_6d = (
                 cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...]
                 + cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...]
                 + cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
             )
+
+            # save
             save_func(
                 f'{output_path}/cov_{probe_str}_G_6D',
                 cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...],
@@ -1520,6 +1523,20 @@ for key, cov in cov_dict.items():
                 cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...],
             )
             save_func(f'{output_path}/cov_{probe_str}_TOT_6D', cov_tot_6d)
+
+            if cfg['covariance']['split_gaussian_cov']:
+                save_func(
+                    f'{output_path}/cov_{probe_str}_sva_6D',
+                    cov_obj.cov_3x2pt_sva_10D[a, b, c, d, ...],
+                )
+                save_func(
+                    f'{output_path}/cov_{probe_str}_sn_6D',
+                    cov_obj.cov_3x2pt_sn_10D[a, b, c, d, ...],
+                )
+                save_func(
+                    f'{output_path}/cov_{probe_str}_mix_6D',
+                    cov_obj.cov_3x2pt_mix_10D[a, b, c, d, ...],
+                )
 
 print(f'Covariance matrices saved in {output_path}\n')
 

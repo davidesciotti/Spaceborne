@@ -1,14 +1,14 @@
 # [BOOKMARK] need to:
-# finish checking cov 2d cuts, changes haven't been commited yet...
+# finish checking cov 2d cuts, especially for SSC, cng, nmt...
 # run many tests (eg split_g_cov)
 # remove probe_ordering?
 # maybe implement check on symmetrize_output_dict, just to make sure nothing breaks
-# remove set_trace()
 # check that cov blocks are actually the desired ones for weird probe combs
-# remove old _cov_8d_dict_to_4d func
+#   (eg make sure that eg cov_LLLL is equal to the corresponding block of cov_3x2pt)
 # coderabbit review
 # finish cov testing class
-# make sure that eg cov_LLLL is equal to the corresponding block of cov_3x2pt
+# cov_4D_to_8D 3x2ptCLOE or whatever is now broken
+# restore check_cov_blocks_simmetry()
 
 import argparse
 import os
@@ -1636,117 +1636,6 @@ if cfg['misc']['save_output_as_benchmark']:
         metadata=metadata,
     )
 
-for cov_name, cov in cov_dict.items():
-    if '3x2pt' in cov_name and 'tot' in cov_name:
-        atol = max(1e-26, 0.01 * np.min(np.abs(np.nonzero(cov))))
-        # atol = 1e-16
-        rtol = 1e-5
-
-        print(f'Testing {cov_name}...')
-        print(f'Matrix shape: {cov.shape}')
-        print(f'Matrix dtype: {cov.dtype}')
-
-        # Check for basic issues first
-        if cov.size == 0:
-            print('Warning: Matrix is empty!')
-            continue
-
-        if np.any(np.isnan(cov)) or np.any(np.isinf(cov)):
-            print('Warning: Matrix contains NaN or Inf values!')
-            continue
-
-        # Check if matrix is all zeros
-        if np.allclose(cov, 0, atol=atol, rtol=rtol):
-            print('Warning: Matrix is all zeros!')
-            continue
-
-        # Check diagonal elements
-        diag_elements = np.diag(cov)
-        if np.any(diag_elements <= 0):
-            print('Warning: Matrix has non-positive diagonal elements!')
-            print(f'Min diagonal element: {np.min(diag_elements)}')
-            print(
-                f'Number of non-positive diagonal elements: {np.sum(diag_elements <= 0)}'
-            )
-
-        if cfg['misc']['test_condition_number']:
-            try:
-                cond_number = np.linalg.cond(cov)
-                print(f'Condition number = {cond_number:.4e}')
-                if cond_number > 1e12:
-                    print('Warning: Matrix is poorly conditioned (cond > 1e12)')
-            except np.linalg.LinAlgError as e:
-                print(f'Could not compute condition number: {e}')
-
-        if cfg['misc']['test_symmetry']:
-            if not np.allclose(cov, cov.T, atol=atol, rtol=rtol):
-                print('Warning: Matrix is not symmetric.')
-                max_asymmetry = np.max(np.abs(cov - cov.T))
-                print(f'Maximum asymmetry: {max_asymmetry:.2e}')
-            else:
-                print('Matrix is symmetric.')
-
-        if cfg['misc']['test_cholesky_decomposition']:
-            try:
-                L = np.linalg.cholesky(cov)
-                print('Cholesky decomposition successful')
-
-                # Verify the decomposition
-                if np.allclose(L @ L.T, cov, atol=atol, rtol=rtol):
-                    print('Cholesky decomposition verified (L @ L.T == cov)')
-                else:
-                    print('Warning: Cholesky decomposition verification failed')
-
-            except np.linalg.LinAlgError as e:
-                print(f'Cholesky decomposition failed: {e}')
-                print('This indicates the matrix is not positive definite')
-
-        if cfg['misc']['test_numpy_inversion']:
-            try:
-                inv_cov = np.linalg.inv(cov)
-                print('Numpy inversion successful.')
-
-                # Test correctness of inversion
-                identity_test = np.dot(cov, inv_cov)
-                identity_check = np.allclose(
-                    identity_test,
-                    np.eye(cov.shape[0]),
-                    atol=atol,
-                    rtol=rtol,
-                )
-
-                if identity_check:
-                    print('Inverse test successful (M @ M^{-1} ≈ I)')
-                else:
-                    print('Warning: Inverse test failed')
-                    max_deviation = np.max(np.abs(identity_test - np.eye(cov.shape[0])))
-                    print(f'Maximum deviation from identity: {max_deviation:.2e}')
-
-            except np.linalg.LinAlgError as e:
-                print(f'Numpy inversion failed: {e}')
-                print('Matrix is singular or near-singular')
-
-        # Additional test: Check eigenvalues
-        if cfg['misc'].get('test_eigenvalues', False):
-            try:
-                eigenvals = np.linalg.eigvals(cov)
-                min_eigenval = np.min(eigenvals)
-                max_eigenval = np.max(eigenvals)
-
-                print(f'Eigenvalue range: [{min_eigenval:.2e}, {max_eigenval:.2e}]')
-
-                if min_eigenval <= 0:
-                    print(
-                        f'Warning: Matrix has {np.sum(eigenvals <= 0)} non-positive eigenvalues'
-                    )
-                    print('This indicates the matrix is not positive definite')
-                else:
-                    print('All eigenvalues are positive (matrix is positive definite)')
-
-            except np.linalg.LinAlgError as e:
-                print(f'Eigenvalue computation failed: {e}')
-
-        print()  # Add blank line between tests
 
 for cov_name, cov in cov_dict.items():
     if '3x2pt' in cov_name and 'tot' in cov_name:

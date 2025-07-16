@@ -3105,11 +3105,8 @@ def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe
     elif probe == 'GC':
         probe_start = zpairs_auto + zpairs_cross
         probe_stop = zpairs_3x2pt
-    elif probe == '2x2pt':
-        probe_start = zpairs_auto
-        probe_stop = zpairs_3x2pt
     else:
-        raise ValueError('probe must be WL, GC or 2x2pt')
+        raise ValueError('probe must be WL or GC')
 
     cov_1D_ell_probe_zpair = [0] * nbl
     for ell_bin in range(nbl):
@@ -3136,11 +3133,8 @@ def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, p
     elif probe == 'GC':
         probe_start = zpairs_auto + zpairs_cross
         probe_stop = zpairs_3x2pt
-    elif probe == '2x2pt':
-        probe_start = zpairs_auto
-        probe_stop = zpairs_3x2pt
     else:
-        raise ValueError('probe must be WL, GC or 2x2pt')
+        raise ValueError('probe must be WL or GC')
 
     cl_1D_ell_probe_zpair_list = [0] * nbl
     for ell_bin in range(nbl):

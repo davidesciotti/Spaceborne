@@ -1,14 +1,14 @@
 # [BOOKMARK] need to:
-# finish checking cov 2d cuts, especially for SSC, cng, nmt...
-# run many tests (eg split_g_cov)
-# remove probe_ordering?
-# maybe implement check on symmetrize_output_dict, just to make sure nothing breaks
-# check that cov blocks are actually the desired ones for weird probe combs
+# * finish checking cov 2d cuts, especially for SSC, cng, nmt...
+# - run many tests (eg split_g_cov)
+# - remove probe_ordering?
+# - maybe implement check on symmetrize_output_dict, just to make sure nothing breaks
+# - check that cov blocks are actually the desired ones for weird probe combs
 #   (eg make sure that eg cov_LLLL is equal to the corresponding block of cov_3x2pt)
-# coderabbit review
-# finish cov testing class
-# cov_4D_to_8D 3x2ptCLOE or whatever is now broken
-# restore check_cov_blocks_simmetry()
+# - coderabbit review
+# - finish cov testing class
+# - cov_4D_to_8D 3x2ptCLOE or whatever is now broken
+# - restore check_cov_blocks_simmetry()
 
 import argparse
 import os
@@ -1453,7 +1453,11 @@ if compute_ccl_ssc or compute_ccl_cng:
         )
 
 # ! ========================== Combine covariance terms ================================
-cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
+cov_obj.build_covs(
+    ccl_obj=ccl_obj,
+    oc_obj=oc_obj,
+    split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
+)
 cov_dict = cov_obj.cov_dict
 
 # ! ============================ plot & tests ==========================================

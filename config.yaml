@@ -4,6 +4,10 @@
 # Note: When not on the same line, comments always refer to the option/section immediately below.
 # Note: `None` is `null` in YAML
 
+# ROOTS:
+# pleiadi: /u/dsciotti/code
+# local: /u/dsciotti/code
+
 cosmology:
     Om: 0.32        # Type: float. Total matter density parameter Omega_m, at z=0
     Ob: 0.05        # Type: float. Baryonic density parameter Omega_b, at z=0
@@ -53,7 +57,7 @@ halo_model:
 # [NOTE: NOT IMPLEMENTED YET]
 probe_selection:
     LL: True  # Type: str. Whether to compute the weak lensing ('LL') covariance
-    GL: False  # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
+    GL: True  # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
     GG: True  # Type: str. Whether to compute the photometric clustering ('GG') covariance
     cross_cov: False  # Type: str. Whether to compute the cross-terms between the selected probes
 
@@ -74,9 +78,9 @@ C_ell:
     # section of this cfg file.
     use_input_cls: False  # Type: bool
 
-    cl_LL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS. 
-    cl_GL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS. 
-    cl_GG_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS. 
+    cl_LL_path: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS. 
+    cl_GL_path: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS. 
+    cl_GG_path: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS. 
 
     # Which galaxy and magnification bias to use. Options:
     # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -93,8 +97,8 @@ C_ell:
 
     # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
     # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-    gal_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-    mag_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+    gal_bias_table_filename: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+    mag_bias_table_filename: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
     
     # Multiplicative shear bias per redshift bin.
     # This is NOT applied to the input Cls, in case they are provided.
@@ -119,8 +123,8 @@ nz:
     # redshift values over which the n(z) is measured, and format .txt or .dat
     # OR
     # as .fits files, following the LE3/Heracles/euclidlib format
-    nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
-    nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
+    nz_sources_filename: /u/dsciotti/code/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
+    nz_lenses_filename: /u/dsciotti/code/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat  # Type: str
 
     # Number of galaxies per arcmin**2 for each redshift bin.
     # Should be of length 'zbins'
@@ -200,16 +204,16 @@ covariance:
     # Examples:
     # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
     # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
-    covariance_ordering_2D: zpair_probe_ell # Type: str.
+    covariance_ordering_2D: probe_ell_zpair # Type: str.
     
     # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping. 
     # In the case of the single probes, this is an array of shape
     # (ell_bins, ell_bins, zbins, zbins, zbins, zbins).
-    save_full_cov: False # Type: bool
+    save_full_cov: True # Type: bool
     
     # Whether to split the Gaussian covariance term into the
     # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-    split_gaussian_cov: False # Type: bool
+    split_gaussian_cov: True # Type: bool
 
     # Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
@@ -253,8 +257,8 @@ covariance:
 
 
 namaster:
-    use_namaster: True # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-    spin0: True # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation (recommended)
     workspace_path: ... # Type: str. Path to the workspace, if already computed
 

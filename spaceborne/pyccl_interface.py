@@ -758,8 +758,6 @@ class PycclClass:
         for key in self.cov_ng_3x2pt_dict_8D:
             probe_str = ''.join(key)
             if probe_str in const.DIAG_PROBE_COMBS:
-                # import ipdb
-                # ipdb.set_trace()
                 try:
                     cov_2d = sl.cov_4D_to_2D(
                         self.cov_ng_3x2pt_dict_8D[key], block_index='ell'

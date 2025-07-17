@@ -2,6 +2,7 @@ import itertools
 import os
 import time
 from copy import deepcopy
+import warnings
 
 import numpy as np
 
@@ -612,12 +613,12 @@ class SpaceborneCovariance:
         self.cov_dict = {}
 
         if self.g_code == 'OneCovariance':
-            raise NotImplementedError(
-                'OneCovariance g term not yet implemented: split terms '
-                'and probe-specific ell binning missing'
+            warnings.warn(
+                '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
+                'OneCovariance g term not fully implemented yet: split terms '
+                'and probe-specific ell binning missing',
+                stacklevel=2,
             )
-            self.cov_WL_g_6D = oc_obj.cov_g_oc_3x2pt_10D[0, 0, 0, 0]
-            self.cov_GC_g_6D = oc_obj.cov_g_oc_3x2pt_10D[1, 1, 1, 1]
             self.cov_3x2pt_g_10D = oc_obj.cov_g_oc_3x2pt_10D
 
         # ! construct 10D total 3x2pt NG (SSC + NG) covariance matrix depending

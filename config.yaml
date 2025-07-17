@@ -164,7 +164,7 @@ mask:
     # False.
     survey_area_deg2: 13245 # Type: int
 
-    apodize: False # Type: bool
+    apodize: True # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
 
 ell_binning:
@@ -213,7 +213,7 @@ covariance:
     # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping.
     # In the case of the single probes, this is an array of shape
     # (ell_bins, ell_bins, zbins, zbins, zbins, zbins).
-    save_full_cov: False # Type: bool
+    save_full_cov: True # Type: bool
 
     # Whether to save the covariance matrix as a euclidlib-compatible .fits file
     # [NOTE: NOT IMPLEMENTED YET]
@@ -228,8 +228,10 @@ covariance:
     # sigma_eps = (sigma_eps_i * np.sqrt(2))
     # Should be of length 'zbins'
     # TODO get actual values
-    sigma_eps_i: [0.2622497313110638, 0.2633852240634032, 0.24754310628764617, 0.2326297440704344, 0.22633031526404115, 0.25061916023249875] # Type: list[float]
-
+    # sigma_eps_i: [0.2622497313110638, 0.2633852240634032, 0.24754310628764617, 0.2326297440704344, 0.22633031526404115, 0.25061916023249875] # Type: list[float]
+    
+    # Metacal, from DR1 overleaf
+    sigma_eps_i: [0.306, 0.305, 0.302, 0.296, 0.294, 0.296] # Type: list[float]
 
     # Whether to include the noise power spectra in the computation of the
     # Gaussian covariance matrix.
@@ -271,7 +273,7 @@ covariance:
     cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str.
 
 namaster:
-    use_namaster: true # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+    use_namaster: True # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
     spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation (recommended)
     workspace_path: ... # Type: str. Path to the workspace, if already computed
@@ -339,4 +341,4 @@ misc:
     test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     save_figs: True # Type: bool. Whether to save the figures
-    output_path: /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/output_spin2 # Type: str. Path to the output directory
+    output_path: /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/output_guada_coupled # Type: str. Path to the output directory

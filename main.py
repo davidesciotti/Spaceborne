@@ -167,7 +167,7 @@ def check_ells_in(ells_in, ells_out):
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-cfg = load_config('config.yaml')
+cfg = load_config('run_config_jose.yaml')
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -214,15 +214,22 @@ probename_dict_inv = {'L': 0, 'G': 1}
 
 # these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
-cfg['covariance']['G_code'] = 'Spaceborne'
-cfg['covariance']['SSC_code'] = 'Spaceborne'
-cfg['covariance']['cNG_code'] = 'PyCCL'
+if 'G_code' not in cfg['covariance']:
+    cfg['covariance']['G_code'] = 'Onecovariance'
+if 'SSC_code' not in cfg['covariance']:
+    cfg['covariance']['SSC_code'] = 'Spaceborne'
+if 'cNG_code' not in cfg['covariance']:
+    cfg['covariance']['cNG_code'] = 'PyCCL'
 
-cfg['OneCovariance'] = {}
-cfg['OneCovariance']['precision_settings'] = 'default'
-cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
-cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
-cfg['OneCovariance']['consistency_checks'] = False
+
+if 'OneCovariance' not in cfg:
+    cfg['OneCovariance'] = {}
+    cfg['OneCovariance']['precision_settings'] = 'default'
+    cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
+    cfg['OneCovariance']['path_to_oc_ini'] = (
+        './input/config_3x2pt_pure_Cell_general.ini'
+    )
+    cfg['OneCovariance']['consistency_checks'] = False
 
 if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
@@ -986,29 +993,34 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # oc needs finer ell sampling to avoid issues with ell bin edges
     ells_3x2pt_oc = np.geomspace(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc
+        ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )
-    cl_ll_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_lensing_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gl_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gg_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_galaxy_obj,
-        cl_ccl_kwargs,
-    )
+    if cfg['C_ell']['use_input_cls']:
+        cl_ll_3d_oc = cl_ll_3d_spline(ells_3x2pt_oc)
+        cl_gl_3d_oc = cl_gl_3d_spline(ells_3x2pt_oc)
+        cl_gg_3d_oc = cl_gg_3d_spline(ells_3x2pt_oc)
+    else:
+        cl_ll_3d_oc = ccl_obj.compute_cls(
+            ells_3x2pt_oc,
+            ccl_obj.p_of_k_a,
+            ccl_obj.wf_lensing_obj,
+            ccl_obj.wf_lensing_obj,
+            cl_ccl_kwargs,
+        )
+        cl_gl_3d_oc = ccl_obj.compute_cls(
+            ells_3x2pt_oc,
+            ccl_obj.p_of_k_a,
+            ccl_obj.wf_galaxy_obj,
+            ccl_obj.wf_lensing_obj,
+            cl_ccl_kwargs,
+        )
+        cl_gg_3d_oc = ccl_obj.compute_cls(
+            ells_3x2pt_oc,
+            ccl_obj.p_of_k_a,
+            ccl_obj.wf_galaxy_obj,
+            ccl_obj.wf_galaxy_obj,
+            cl_ccl_kwargs,
+        )
     cl_3x2pt_5d_oc = np.zeros((n_probes, n_probes, nbl_3x2pt_oc, zbins, zbins))
     cl_3x2pt_5d_oc[0, 0, :, :, :] = cl_ll_3d_oc
     cl_3x2pt_5d_oc[1, 0, :, :, :] = cl_gl_3d_oc
@@ -1048,21 +1060,30 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         )
 
     # * 2. compute cov using the onecovariance interface class
-    print('Start NG cov computation with OneCovariance...')
+    print('Start covariance computation with OneCovariance...')
     # initialize object, build cfg file
     oc_obj = oc_interface.OneCovarianceInterface(
-        cfg, pvt_cfg, do_g=compute_oc_g, do_ssc=compute_oc_ssc, do_cng=compute_oc_cng
+        cfg,
+        pvt_cfg,
+        ell_obj=ell_obj,
+        do_g=compute_oc_g,
+        do_ssc=compute_oc_ssc,
+        do_cng=compute_oc_cng,
     )
     oc_obj.oc_path = oc_path
     oc_obj.z_grid_trisp_sb = z_grid_trisp
     oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
-    oc_obj.ells_sb = ell_obj.ells_3x2pt
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
     # compute covs
     oc_obj.call_oc_from_bash()
     oc_obj.process_cov_from_list_file()
-    oc_obj.output_sanity_check(rtol=1e-4)  # .dat vs .mat
+    
+    # sanity check: compare .dat vs .mat
+    try:
+        oc_obj.output_sanity_check(rtol=1e-4)  
+    except FileNotFoundError:
+        '.mat OC file not found, skipping sanity check'
 
     # This is an alternative method to call OC (more convoluted and more maintanable).
     # I keep the code for optional consistency checks

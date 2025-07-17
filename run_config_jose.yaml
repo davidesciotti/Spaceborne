@@ -1,0 +1,224 @@
+BNT:
+  cl_BNT_transform: false
+  cov_BNT_transform: false
+C_ell:
+  cl_CCL_kwargs:
+    l_limber: -1
+    limber_integration_method: spline
+    non_limber_integration_method: FKEM
+  cl_GG_path: /u/dsciotti/code/common_data/RR2/Jose/input/cl_gg.txt
+  cl_GL_path: /u/dsciotti/code/common_data/RR2/Jose/input/cl_gE.txt
+  cl_LL_path: /u/dsciotti/code/common_data/RR2/Jose/input/cl_EE.txt
+  gal_bias_table_filename: /u/dsciotti/code/Spaceborne/input/gal_bias.txt
+  galaxy_bias_fit_coeff:
+  - 1.33291
+  - -0.72414
+  - 1.0183  
+  - -0.14913
+  has_IA: true
+  has_magnification_bias: false
+  has_rsd: false
+  mag_bias_table_filename: /u/dsciotti/code/Spaceborne/input/mag_bias.txt
+  magnification_bias_fit_coeff:
+  - -1.50685
+  - 1.35034
+  - 0.08321
+  - 0.04279
+  mult_shear_bias:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  use_input_cls: true
+  which_gal_bias: FS2_polynomial_fit
+  which_mag_bias: FS2_polynomial_fit
+OneCovariance:
+  consistency_checks: false
+  path_to_oc_executable: /u/dsciotti/code/OneCovariance/covariance.py
+  path_to_oc_ini: /u/dsciotti/code/OneCovariance/config_files/config_3x2pt_pure_Cell.ini
+  precision_settings: default
+PyCCL:
+  cov_integration_method: spline
+  gsl_params: null
+  load_cached_tkka: true
+  n_samples_wf: 1000
+  spline_params:
+    A_SPLINE_NA_PK: 240
+    K_MAX_SPLINE: 300
+  use_default_k_a_grids: false
+cosmology:
+  N_eff: 3.046
+  ODE: 0.68
+  Ob: 0.05
+  Om: 0.32
+  Om_k0: 0
+  h: 0.6737
+  m_nu: 0.06
+  ns: 0.966
+  s8: 0.816
+  wa: 0.0
+  wz: -1.0
+covariance:
+  save_cov_euclidlib_fmt: false
+  G: true
+  G_code: Spaceborne
+  SSC: false
+  SSC_code: Spaceborne
+  cNG: false
+  cNG_code: PyCCL
+  coupled_cov: false
+  cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz
+  covariance_ordering_2D: probe_ell_zpair
+  include_b2g: true
+  include_terasawa_terms: false
+  k_steps: 200
+  load_cached_sigma2_b: false
+  log10_k_max: 2
+  log10_k_min: -5
+  n_probes: 2
+  no_sampling_noise: false
+  probe_ordering:
+  - - L
+    - L
+  - - G
+    - L
+  - - G
+    - G
+  row_col_major: row-major
+  save_full_cov: false
+  sigma2_b_integration_scheme: fft
+  sigma_eps_i:
+  - 0.2600031634422935
+  - 0.2600031634422935
+  - 0.2600031634422935
+  - 0.2600031634422935
+  - 0.2600031634422935
+  - 0.2600031634422935
+  split_gaussian_cov: false
+  triu_tril: triu
+  use_KE_approximation: false
+  which_b1g_in_resp: from_input
+  which_pk_responses: halo_model
+  which_sigma2_b: from_input_mask
+  z_max: 3.0
+  z_min: 0.02
+  z_steps: 100
+  z_steps_trisp: 50
+ell_binning:
+  binning_type: log
+  ell_bins_GC: 32
+  ell_bins_WL: 32
+  ell_bins_ref: 32
+  ell_max_GC: 1500
+  ell_max_WL: 1500
+  ell_max_ref: 1500
+  ell_min_GC: 10
+  ell_min_WL: 10
+  ell_min_ref: 10
+ell_cuts:
+  apply_ell_cuts: false
+  center_or_min: center
+  cl_ell_cuts: false
+  cov_ell_cuts: false
+  kmax_h_over_Mpc_list:
+  - 0.1
+  - 0.16681005
+  - 0.27825594
+  - 0.46415888
+  - 0.77426368
+  - 1.29154967
+  - 2.15443469
+  - 3.59381366
+  - 5.9948425
+  - 10.0
+  kmax_h_over_Mpc_ref: 1.0
+extra_parameters:
+  camb:
+    HMCode_logT_AGN: 7.75
+    dark_energy_model: ppf
+    halofit_version: mead2020_feedback
+    kmax: 100
+    num_massive_neutrinos: 1
+halo_model:
+  concentration: ConcentrationDuffy08
+  halo_bias: HaloBiasTinker10
+  halo_profile_dm: HaloProfileNFW
+  halo_profile_hod: HaloProfileHOD
+  mass_def: MassDef200m
+  mass_function: MassFuncTinker10
+intrinsic_alignment:
+  Aia: 0.16
+  CIA: 0.0134
+  bIA: 0.0
+  eIA: 1.66
+  lumin_ratio_filename: null
+  z_pivot_IA: 0
+mask:
+  apodize: false
+  aposize: 0.1
+  generate_polar_cap: true
+  load_mask: false
+  mask_path: ./u/dsciotti/code/common_data/RR2/Jose/input/mask.fits
+  nside: 1024
+  survey_area_deg2: 41252
+misc:
+  bench_filename: ../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3_nmt
+  levin_batch_size: 1000
+  num_threads: 40
+  output_path: /u/dsciotti/code/common_data/RR2/Jose/output/cov_check_SB_run
+  save_figs: true
+  save_output_as_benchmark: false
+  test_cholesky_decomposition: true
+  test_condition_number: true
+  test_numpy_inversion: true
+  test_symmetry: true
+namaster:
+  spin0: false
+  use_INKA: true
+  use_namaster: false
+  workspace_path: '...'
+nz:
+  clip_zmax: 3
+  clip_zmin: 0
+  dzGC:
+  - -0.008848
+  - 0.051368
+  - 0.059484
+  dzWL:
+  - -0.008848
+  - 0.051368
+  - 0.059484
+  ngal_lenses:
+  - 1.6885002375146223
+  - 1.6884737003917007
+  - 1.6885265735987338
+  - 1.6885014437474823
+  - 1.6885001369952173
+  - 1.6885009411504572
+  ngal_sources:
+  - 5.9806947133303705
+  - 5.980765881069115
+  - 5.980735323169993
+  - 5.980724869151873
+  - 5.980738941868574
+  - 5.980731704471413
+  normalize_shifted_nz: true
+  nz_lenses_filename: /u/dsciotti/code/common_data/RR2/Jose/input/nz_RR2_pos_smooth.txt
+  nz_sources_filename: /u/dsciotti/code/common_data/RR2/Jose/input/nz_RR2_she_smooth.txt
+  shift_nz: false
+  sigma_smoothing: 10
+  smooth_nz: false
+precision:
+  n_iter_nmt: null
+probe_selection:
+  GG: true
+  GL: true
+  LL: true
+  cross_cov: true
+sample_covariance:
+  compute_sample_cov: false
+  fix_seed: true
+  nreal: 5000
+  which_cls: namaster

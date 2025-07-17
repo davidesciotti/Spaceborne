@@ -1,6 +1,6 @@
 # [BOOKMARK] need to:
 # * finish checking cov 2d cuts, especially for SSC, cng, nmt...
-# - run many tests (eg split_g_cov)
+# * run many tests (eg split_g_cov)
 # - remove probe_ordering?
 # - maybe implement check on symmetrize_output_dict, just to make sure nothing breaks
 # - check that cov blocks are actually the desired ones for weird probe combs
@@ -232,7 +232,9 @@ cfg['covariance']['cNG_code'] = 'PyCCL'
 
 cfg['OneCovariance'] = {}
 cfg['OneCovariance']['precision_settings'] = 'default'
-cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
+cfg['OneCovariance']['path_to_oc_executable'] = (
+    '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'
+)
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
 
@@ -240,24 +242,31 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
     cfg['misc']['save_output_as_benchmark'] = False
     cfg['misc']['bench_filename'] = (
         '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3_nmt'
+        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}'
+        '_devmerge3_nmt'
     )
 
 
 cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
-# Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+# Type: str. Cut if the bin *center* or the bin *lower edge* is
+# larger than ell_max[zi, zj]
 cfg['ell_cuts']['center_or_min'] = 'center'
 cfg['ell_cuts']['cl_ell_cuts'] = False  # Type: bool
 cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
 # Type: float. This is used when ell_cuts is False, also...?
 cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
-cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.0,]  # fmt: skip
+cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
+    0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 
+    2.15443469, 3.59381366, 5.9948425, 10.0,
+]  # fmt: skip
 
 # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
-# - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
+# - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only).
+#   In this case, the output covmat
 # - from_input_mask: input a mask with path specified by mask_path
-# - polar_cap_on_the_fly: generate a polar cap during the run, with nside specified by nside
+# - polar_cap_on_the_fly: generate a polar cap during the run, with nside
+#   specified by nside
 # - null (None): use the flat-sky expression (valid for PyCCL only)
 # - flat_sky: use the flat-sky expression (valid for PyCCL only)
 #   has to be rescaled by fsky
@@ -266,7 +275,8 @@ cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
 cfg['covariance']['sigma2_b_integration_scheme'] = 'fft'  # Type: str.
-#  Whether to load the previously computed sigma2_b. No need anymore since it's quite fast
+# Whether to load the previously computed sigma2_b.
+# No need anymore since it's quite fast
 cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
 
 # How many integrals to compute at once for the  numerical integration of
@@ -322,7 +332,8 @@ unique_probe_combs = sl.build_probe_list(
 # probe combinations to be filled by symmetry or to exclude altogether
 symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(unique_probe_combs)
 
-# required probe combinations to include in the 2d arrays (must include the cross-terms!)
+# required probe combinations to include in the 2d arrays (must include the
+# cross-terms!)
 _req_probe_combs_2d = sl.build_probe_list(unique_probe_names, include_cross_terms=True)
 # as req_probe_combs_2d still only contains the upper triangle,
 # add the symemtric blocks
@@ -695,8 +706,10 @@ else:
 z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 
 
-# assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
-# assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
+# assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically
+# increasing'
+# assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically
+# increasing'
 # assert np.all(np.diff(z_means_ll_bnt) > 0), (
 #     'z_means_ll_bnt should be monotonically increasing '
 #     '(not a strict condition, valid only if we do not shift the n(z) in this part)'
@@ -1017,7 +1030,7 @@ cov_obj.set_gauss_cov(
     nonreq_probe_combs_ix=nonreq_probe_combs_ix,
 )
 
-# ! =================================== OneCov  ariance ==================================
+# ! =================================== OneCov  ariance ================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1352,9 +1365,7 @@ if compute_sb_ssc:
         if cfg['covariance']['use_KE_approximation']:
             # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
             ccl_obj.set_sigma2_b(
-                z_grid=z_grid,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
+                z_grid=z_grid, which_sigma2_b=which_sigma2_b, mask_obj=mask_obj
             )
             _a, sigma2_b = ccl_obj.sigma2_b_tuple
             # quick sanity check on the a/z grid
@@ -1682,10 +1693,7 @@ for cov_name, cov in cov_dict.items():
                 print('Numpy inversion successful.')
                 # Test correctness of inversion:
                 identity_check = np.allclose(
-                    np.dot(cov, inv_cov),
-                    np.eye(cov.shape[0]),
-                    atol=1e-9,
-                    rtol=1e-7,
+                    np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
                 )
                 if identity_check:
                     print(

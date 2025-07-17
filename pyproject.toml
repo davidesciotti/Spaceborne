@@ -14,3 +14,4 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff.format]
 # Prefer single quotes over double quotes.
 quote-style = "single"
+skip-magic-trailing-comma = true

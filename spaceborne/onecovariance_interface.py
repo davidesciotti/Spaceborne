@@ -32,7 +32,7 @@ from spaceborne import sb_lib as sl
 
 
 class OneCovarianceInterface:
-    def __init__(self, cfg, pvt_cfg, do_g, do_ssc, do_cng):
+    def __init__(self, cfg, pvt_cfg, ell_obj, do_g, do_ssc, do_cng):
         """
         Initializes the OneCovarianceInterface class with the provided configuration
         and private configuration
@@ -66,7 +66,7 @@ class OneCovarianceInterface:
         self.oc_cfg = self.cfg['OneCovariance']
         self.pvt_cfg = pvt_cfg
         self.n_probes = cfg['covariance']['n_probes']
-        self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
+        self.ell_obj = ell_obj
         self.zbins = pvt_cfg['zbins']
         self.ind = pvt_cfg['ind']
         self.probe_ordering = pvt_cfg['probe_ordering']
@@ -122,9 +122,7 @@ class OneCovarianceInterface:
         mult_shear_bias_list = np.array(self.cfg['C_ell']['mult_shear_bias'])
         n_eff_clust_list = self.cfg['nz']['ngal_lenses']
         n_eff_lensing_list = self.cfg['nz']['ngal_sources']
-        ellipticity_dispersion_list = [
-            self.cfg['covariance']['sigma_eps_i']
-        ] * self.zbins
+        ellipticity_dispersion_list = self.cfg['covariance']['sigma_eps_i']        
 
         cfg_onecov_ini['covariance terms']['gauss'] = str(True)
         cfg_onecov_ini['covariance terms']['split_gauss'] = str(True)
@@ -143,28 +141,28 @@ class OneCovarianceInterface:
         cfg_onecov_ini['observables']['cross_terms'] = str(True)
         cfg_onecov_ini['observables']['unbiased_clustering'] = str(False)
 
-        cfg_onecov_ini['covELLspace settings']['ell_min'] = str(self.pvt_cfg['ell_min'])
+        cfg_onecov_ini['covELLspace settings']['ell_min'] = str(self.ell_obj.ell_min_3x2pt)
         cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(
-            self.pvt_cfg['ell_min']
+            self.ell_obj.ell_min_3x2pt
         )
         cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(
-            self.pvt_cfg['ell_min']
+            self.ell_obj.ell_min_3x2pt
         )
         cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(
-            self.pvt_cfg['nbl_3x2pt']
+            self.ell_obj.nbl_3x2pt
         )
         cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(
-            self.pvt_cfg['nbl_3x2pt']
+            self.ell_obj.nbl_3x2pt
         )
         cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(
-            self.pvt_cfg['nbl_3x2pt']
+            self.ell_obj.nbl_3x2pt
         )
         cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
             map(str, mult_shear_bias_list)
         )
 
         # find best ell_max for OC, since it uses a slightly different recipe
-        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
+        self.find_optimal_ellmax_oc(target_ell_array=self.ell_obj.ells_3x2pt)
         cfg_onecov_ini['covELLspace settings']['ell_max'] = str(self.optimal_ellmax)
         cfg_onecov_ini['covELLspace settings']['ell_max_lensing'] = str(
             self.optimal_ellmax
@@ -320,10 +318,7 @@ class OneCovarianceInterface:
         """This function runs OneCovariance"""
 
         activate_and_run = f"""
-        source {self.conda_base_path}/activate cov20_env
         python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
-        source {self.conda_base_path}/deactivate
-        source {self.conda_base_path}/activate spaceborne-dav
         """
         # python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
 
@@ -489,19 +484,19 @@ class OneCovarianceInterface:
         cov_sn_tuple = [self.cov_g[idx * 3 + 2] for idx in range(6)]
 
         self.cov_sva_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sva_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_sva_tuple, nbl=self.ell_obj.nbl_3x2pt, compute_cov=self.compute_g
         )
         self.cov_mix_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_mix_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_mix_tuple, nbl=self.ell_obj.nbl_3x2pt, compute_cov=self.compute_g
         )
         self.cov_sn_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sn_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_sn_tuple, nbl=self.ell_obj.nbl_3x2pt, compute_cov=self.compute_g
         )
         self.cov_ssc_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_ssc, nbl=self.nbl_3x2pt, compute_cov=self.compute_ssc
+            cov_tuple_in=self.cov_ssc, nbl=self.ell_obj.nbl_3x2pt, compute_cov=self.compute_ssc
         )
         self.cov_cng_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_cng, nbl=self.nbl_3x2pt, compute_cov=self.compute_cng
+            cov_tuple_in=self.cov_cng, nbl=self.ell_obj.nbl_3x2pt, compute_cov=self.compute_cng
         )
 
         self.cov_g_oc_3x2pt_10D = (
@@ -515,8 +510,8 @@ class OneCovarianceInterface:
             self.zbins
         )
 
-        elem_auto = self.zpairs_auto * self.nbl_3x2pt
-        elem_cross = self.zpairs_cross * self.nbl_3x2pt
+        elem_auto = self.zpairs_auto * self.ell_obj.nbl_3x2pt
+        elem_cross = self.zpairs_cross * self.ell_obj.nbl_3x2pt
 
         if self.compute_g:
             cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_gauss.mat')
@@ -547,7 +542,7 @@ class OneCovarianceInterface:
         cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
             self.cov_g_oc_3x2pt_10D,
             self.probe_ordering,
-            self.nbl_3x2pt,
+            self.ell_obj.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
@@ -555,7 +550,7 @@ class OneCovarianceInterface:
         cov_list_ssc_4d = sl.cov_3x2pt_10D_to_4D(
             self.cov_ssc_oc_3x2pt_10D,
             self.probe_ordering,
-            self.nbl_3x2pt,
+            self.ell_obj.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
@@ -563,7 +558,7 @@ class OneCovarianceInterface:
         cov_list_cng_4d = sl.cov_3x2pt_10D_to_4D(
             self.cov_cng_oc_3x2pt_10D,
             self.probe_ordering,
-            self.nbl_3x2pt,
+            self.ell_obj.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
@@ -571,7 +566,7 @@ class OneCovarianceInterface:
         cov_list_tot_4d = sl.cov_3x2pt_10D_to_4D(
             self.cov_tot_oc_3x2pt_10D,
             self.probe_ordering,
-            self.nbl_3x2pt,
+            self.ell_obj.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
@@ -683,7 +678,7 @@ class OneCovarianceInterface:
         import pandas as pd
 
         # set df column names
-        with open(f'{self.oc_path}/covariance_list.dat') as file:
+        with open(f'{self.oc_path}/covariance_list_3x2pt_pure_Cell.dat') as file:
             header = (
                 file.readline().strip()
             )  # Read the first line and strip newline characters
@@ -697,7 +692,7 @@ class OneCovarianceInterface:
         # note use delim_whitespace=True instead of sep='\s+' if this gives
         # compatibility issues
         self.ells_oc_load = pd.read_csv(
-            f'{self.oc_path}/covariance_list.dat', usecols=['ell1'], sep='\s+'
+            f'{self.oc_path}/covariance_list_3x2pt_pure_Cell.dat', usecols=['ell1'], sep='\s+'
         )['ell1'].unique()
 
         # check if the saved ells are within 1% of the required ones;
@@ -726,8 +721,8 @@ class OneCovarianceInterface:
             self.n_probes,
             self.n_probes,
             self.n_probes,
-            self.nbl_3x2pt,
-            self.nbl_3x2pt,
+            self.ell_obj.nbl_3x2pt,
+            self.ell_obj.nbl_3x2pt,
             self.zbins,
             self.zbins,
             self.zbins,
@@ -741,10 +736,10 @@ class OneCovarianceInterface:
         self.cov_cng_oc_3x2pt_10D = np.zeros(shape)
         self.cov_tot_oc_3x2pt_10D = np.zeros(shape)
 
-        print('Loading OneCovariance output from covariance_list.dat file...')
+        print('Loading OneCovariance output from covariance_list_3x2pt_pure_Cell.dat file...')
         start = time.perf_counter()
         for df_chunk in pd.read_csv(
-            f'{self.oc_path}/covariance_list.dat',
+            f'{self.oc_path}/covariance_list_3x2pt_pure_Cell.dat',
             sep='\s+',
             names=column_names,
             skiprows=1,
@@ -844,7 +839,7 @@ class OneCovarianceInterface:
         elif output_type in ['10D_dict', '10D_array']:
             cov_ng_oc_3x2pt_dict_10D = sl.cov_3x2pt_dict_8d_to_10d(
                 cov_3x2pt_dict_8D=cov_ng_oc_3x2pt_dict_8D,
-                nbl=self.pvt_cfg['nbl_3x2pt'],
+                nbl=self.ell_obj.nbl_3x2pt,
                 zbins=self.zbins,
                 ind_dict=ind_dict,
                 probe_ordering=self.cfg['covariance']['probe_ordering'],
@@ -857,7 +852,7 @@ class OneCovarianceInterface:
             elif output_type == '10D_array':
                 return sl.cov_10D_dict_to_array(
                     cov_ng_oc_3x2pt_dict_10D,
-                    nbl=self.pvt_cfg['nbl_3x2pt'],
+                    nbl=self.ell_obj.nbl_3x2pt,
                     zbins=self.zbins,
                     n_probes=self.cfg['covariance']['n_probes'],
                 )
@@ -866,8 +861,8 @@ class OneCovarianceInterface:
             raise ValueError('output_dict_dim must be 8D or 10D')
 
     def find_optimal_ellmax_oc(self, target_ell_array):
-        upper_lim = self.ells_sb[-1] + 300
-        lower_lim = self.ells_sb[-1] - 300
+        upper_lim = self.ell_obj.ells_3x2pt[-1] + 300
+        lower_lim = self.ell_obj.ells_3x2pt[-1] - 300
         if lower_lim < 0:
             lower_lim = 0
 
@@ -884,8 +879,8 @@ class OneCovarianceInterface:
             print('Optimization failed.')
 
         self.new_ells_oc = self.compute_ells_oc(
-            nbl=int(self.pvt_cfg['nbl_3x2pt']),
-            ell_min=float(self.pvt_cfg['ell_min']),
+            nbl=int(self.ell_obj.nbl_3x2pt),
+            ell_min=float(self.ell_obj.ell_min_3x2pt),
             ell_max=self.optimal_ellmax,
         )
 
@@ -915,12 +910,12 @@ class OneCovarianceInterface:
 
     def objective_function(self, ell_max):
         ells_oc = self.compute_ells_oc(
-            nbl=int(self.pvt_cfg['nbl_3x2pt']),
-            ell_min=float(self.pvt_cfg['ell_min']),
+            nbl=int(self.ell_obj.nbl_3x2pt),
+            ell_min=float(self.ell_obj.ell_min_3x2pt),
             ell_max=ell_max,
         )
-        ssd = np.sum((self.ells_sb - ells_oc) ** 2)
-        # ssd = np.sum(sl.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this
+        ssd = np.sum((self.ell_obj.ells_3x2pt - ells_oc) ** 2)
+        # ssd = np.sum(sl.percent_diff(self.ell_obj.ells_3x2pt, ells_oc)**2)  # TODO test this
         return ssd
 
     def get_oc_responses(self, ini_filename, h):

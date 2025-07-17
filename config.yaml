@@ -162,7 +162,7 @@ mask:
     # If you want to compute the full-sky covariance, then set this to the
     # full-sky area (within 1% of 41252.96124941928), and set load_mask and apodize to
     # False.
-    survey_area_deg2: 13245 # Type: int
+    survey_area_deg2: 350.41 # Type: int
 
     apodize: True # Type: bool
     aposize: 0.1 # Type: float. Apodization scale in deg
@@ -193,7 +193,7 @@ covariance:
     SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
     cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
-    coupled_cov: True # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
+    coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
     # Choose whether to use the upper ('triu') or lower ('tril') triangle
     # of the auto-probe (LL, GG) zbins (C_{ij}(\ell)^AA = C_{ji}(\ell)^AA).
@@ -341,4 +341,4 @@ misc:
     test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
     save_figs: True # Type: bool. Whether to save the figures
-    output_path: /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/output_guada_coupled # Type: str. Path to the output directory
+    output_path: /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/output_guada_decoupled # Type: str. Path to the output directory

@@ -16,10 +16,10 @@ This script performs the following operations:
    [NOTE] the SB output is in
    /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output/_sb_output,
    but you don't need to care about this
-   
+
 NOTES
 
-1. The code will raise an error if the benchmark files are already present. 
+1. The code will raise an error if the benchmark files are already present.
    If you want to dverwrite them, delete the existing ones in e.g.
    /u/dsciotti/code/Spaceborne_bench/bench_set_output/config_0005.yaml
 """
@@ -197,43 +197,165 @@ bench_set_path_results = f'{bench_set_path}/bench_set_output'
 output_path = f'{bench_set_path_results}/_sb_output'
 sb_root_path = f'{ROOT}/Spaceborne'
 
-# start by importing a cfg file
-with open(f'{sb_root_path}/config.yaml', 'r', encoding='utf-8') as f:
-    base_cfg = yaml.safe_load(f)
+# ! DEFINE A BASIC CFG FILE TO START FROM
+base_cfg = {
+    'cosmology': {
+        'Om': 0.32,
+        'Ob': 0.05,
+        'wz': -1.0,
+        'wa': 0.0,
+        'h': 0.6737,
+        'ns': 0.966,
+        's8': 0.816,
+        'ODE': 0.68,
+        'm_nu': 0.06,
+        'N_eff': 3.046,
+        'Om_k0': 0,
+    },
+    'intrinsic_alignment': {
+        'Aia': 0.16,
+        'eIA': 1.66,
+        'bIA': 0.0,
+        'CIA': 0.0134,
+        'z_pivot_IA': 0,
+        'lumin_ratio_filename': None,
+    },
+    'extra_parameters': {
+        'camb': {
+            'halofit_version': 'mead2020_feedback',
+            'kmax': 100,
+            'HMCode_logT_AGN': 7.75,
+            'num_massive_neutrinos': 1,
+            'dark_energy_model': 'ppf',
+        }
+    },
+    'halo_model': {
+        'mass_def': 'MassDef200m',
+        'concentration': 'ConcentrationDuffy08',
+        'mass_function': 'MassFuncTinker10',
+        'halo_bias': 'HaloBiasTinker10',
+        'halo_profile_dm': 'HaloProfileNFW',
+        'halo_profile_hod': 'HaloProfileHOD',
+    },
+    'probe_selection': {'LL': True, 'GL': True, 'GG': True, 'cross_cov': True},
+    'C_ell': {
+        'use_input_cls': False,
+        'cl_LL_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_ll.txt',
+        'cl_GL_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gl.txt',
+        'cl_GG_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gg.txt',
+        'which_gal_bias': 'FS2_polynomial_fit',
+        'which_mag_bias': 'FS2_polynomial_fit',
+        'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
+        'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
+        'gal_bias_table_filename': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/gal_bias.txt',
+        'mag_bias_table_filename': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/mag_bias.txt',
+        'mult_shear_bias': [0.0, 0.0, 0.0],
+        'has_rsd': False,
+        'has_IA': False,
+        'has_magnification_bias': False,
+        'cl_CCL_kwargs': {
+            'l_limber': -1,
+            'limber_integration_method': 'spline',
+            'non_limber_integration_method': 'FKEM',
+        },
+    },
+    'nz': {
+        'nz_sources_filename': '/u/dsciotti/code/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_lenses_filename': '/u/dsciotti/code/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'ngal_sources': [8.09216, 8.09215, 8.09215],
+        'ngal_lenses': [8.09216, 8.09215, 8.09215],
+        'shift_nz': False,
+        'dzWL': [-0.008848, 0.051368, 0.059484],
+        'dzGC': [-0.008848, 0.051368, 0.059484],
+        'normalize_shifted_nz': True,
+        'clip_zmin': 0,
+        'clip_zmax': 3,
+        'smooth_nz': False,
+        'sigma_smoothing': 10,
+    },
+    'mask': {
+        'load_mask': False,
+        'mask_path': '../input/mask.fits',
+        'generate_polar_cap': True,
+        'nside': 1024,
+        'survey_area_deg2': 13245,
+        'apodize': False,
+        'aposize': 0.1,
+    },
+    'ell_binning': {
+        'binning_type': 'ref_cut',
+        'ell_min_WL': 10,
+        'ell_max_WL': 3000,
+        'ell_bins_WL': 15,
+        'ell_min_GC': 10,
+        'ell_max_GC': 3000,
+        'ell_bins_GC': 15,
+        'ell_min_ref': 10,
+        'ell_max_ref': 3000,
+        'ell_bins_ref': 15,
+    },
+    'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
+    'covariance': {
+        'G': True,
+        'SSC': False,
+        'cNG': False,
+        'coupled_cov': False,
+        'triu_tril': 'triu',
+        'row_col_major': 'row-major',
+        'covariance_ordering_2D': 'probe_ell_zpair',
+        'save_full_cov': True,
+        'split_gaussian_cov': False,
+        'sigma_eps_i': [0.26, 0.26, 0.26],
+        'no_sampling_noise': False,
+        'which_pk_responses': 'halo_model',
+        'which_b1g_in_resp': 'from_input',
+        'include_b2g': True,
+        'include_terasawa_terms': False,
+        'log10_k_min': -5,
+        'log10_k_max': 2,
+        'k_steps': 20,
+        'z_min': 0.02,
+        'z_max': 3.0,
+        'z_steps': 20,
+        'z_steps_trisp': 10,
+        'use_KE_approximation': False,
+        'cov_filename': 'cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz',
+    },
+    # Base configuration (common parameters) - these will be applied first
+    'namaster': {
+        'use_namaster': False,
+        'spin0': False,
+        'use_INKA': True,
+        'workspace_path': None,
+    },
+    'sample_covariance': {
+        'compute_sample_cov': False,
+        'which_cls': 'namaster',
+        'nreal': 5000,
+        'fix_seed': True,
+    },
+    'PyCCL': {
+        'cov_integration_method': 'spline',
+        'load_cached_tkka': True,
+        'use_default_k_a_grids': False,
+        'n_samples_wf': 1000,
+        'spline_params': {'A_SPLINE_NA_PK': 240, 'K_MAX_SPLINE': 300},
+        'gsl_params': None,
+    },
+    'precision': {'n_iter_nmt': None},
+    'misc': {
+        'num_threads': 40,
+        'test_numpy_inversion': True,
+        'test_condition_number': True,
+        'test_cholesky_decomposition': True,
+        'test_symmetry': True,
+        'cl_triangle_plot': False,
+        'save_figs': False,
+        'output_path': './output',
+        'save_output_as_benchmark': True,
+    },
+}
 
-# Base configuration (common parameters) - these will be applied first
-base_cfg['covariance']['z_steps'] = 20
-base_cfg['covariance']['z_steps_trisp'] = 10
-base_cfg['covariance']['k_steps'] = 20
-base_cfg['covariance']['split_gaussian_cov'] = False
-
-base_cfg['nz']['shift_nz'] = False
-
-base_cfg['ell_binning']['binning_type'] = 'ref_cut'
-base_cfg['ell_binning']['ell_max_WL'] = 1500
-base_cfg['ell_binning']['ell_max_GC'] = 1500
-base_cfg['ell_binning']['ell_max_3x2pt'] = 1500
-base_cfg['ell_binning']['ell_bins_ref'] = 20
-
-# base_cfg['C_ell']['cl_LL_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_ll.txt'
-# base_cfg['C_ell']['cl_GL_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_gl.txt'
-# base_cfg['C_ell']['cl_GG_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_gg.txt'
-base_cfg['C_ell']['which_gal_bias'] = 'FS2_polynomial_fit'
-base_cfg['C_ell']['which_mag_bias'] = 'FS2_polynomial_fit'
-base_cfg['C_ell']['has_IA'] = True
-base_cfg['C_ell']['has_rsd'] = False
-base_cfg['C_ell']['has_magnification_bias'] = True
-
-base_cfg['probe_selection']['LL'] = True
-base_cfg['probe_selection']['GL'] = True
-base_cfg['probe_selection']['GG'] = True
-base_cfg['probe_selection']['cross_cov'] = True
-
-base_cfg['misc']['test_numpy_inversion'] = False
-base_cfg['misc']['test_condition_number'] = False
-base_cfg['misc']['test_cholesky_decomposition'] = False
-base_cfg['misc']['test_symmetry'] = False
-base_cfg['misc']['save_output_as_benchmark'] = True
 
 # Define your "zipped" sets of changes as a list of dictionaries
 # Each dictionary represents one configuration to test
@@ -289,7 +411,6 @@ test_g_space_zipped = [
 ]
 
 
-
 # Choose which parameter space to use for zipped iteration
 param_space_to_use = test_g_space_zipped
 
@@ -305,7 +426,7 @@ yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, star
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)
 
 # Manually run specific configurations
-# To run a specific config: 
+# To run a specific config:
 #   python main.py --config {yaml_file}
 
 print('All benchmarks saved!')

@@ -271,7 +271,7 @@ PyCCL:
   cov_integration_method: spline # Type: str
 
   # Whether or not to load the previously computed trispectrum.
-  load_cached_tkka: True # Type: bool.
+  load_cached_tkka: False # Type: bool.
 
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower

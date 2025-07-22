@@ -361,37 +361,33 @@ base_cfg = {
 # Each dictionary represents one configuration to test
 test_g_space_zipped = [
     # ==============================
-    {
-        'covariance': {
-            'G': True,
-            'SSC': True,
-            'cNG': True,
-            'no_sampling_noise': True,
-            'use_KE_approximation': True,
-            'split_gaussian_cov': True,
-        },
-        'namaster': {'use_namaster': False},
-    },
+    # {
+    #     'covariance': {
+    #         'G': True,
+    #         'SSC': True,
+    #         'cNG': True,
+    #         'use_KE_approximation': True,
+    #         'split_gaussian_cov': True,
+    #     },
+    # },
     # ==============================
-    {
-        'covariance': {
-            'G': True,
-            'SSC': True,
-            'cNG': True,
-            'no_sampling_noise': True,
-            'use_KE_approximation': True,
-            'split_gaussian_cov': False,
-        },
-        'namaster': {'use_namaster': False},
-    },
+    # {
+    #     'covariance': {
+    #         'G': True,
+    #         'SSC': True,
+    #         'cNG': True,
+    #         'use_KE_approximation': True,
+    #         'split_gaussian_cov': False,
+    #     },
+    #     'namaster': {'use_namaster': False},
+    # },
     # ==============================
     {
         'covariance': {
             'G': True,
             'SSC': False,
             'cNG': False,
-            'no_sampling_noise': False,
-            'use_KE_approximation': False,
+            'use_KE_approximation': True,
         },
         'namaster': {'use_namaster': True, 'spin0': True},
         'ell_binning': {'binning_type': 'lin'},
@@ -402,11 +398,21 @@ test_g_space_zipped = [
             'G': True,
             'SSC': False,
             'cNG': False,
-            'no_sampling_noise': False,
             'use_KE_approximation': False,
         },
         'namaster': {'use_namaster': True, 'spin0': False},
         'ell_binning': {'binning_type': 'log'},
+    },
+    # ==============================
+    {
+        'covariance': {
+            'G': True,
+            'SSC': False,
+            'cNG': False,
+            'use_KE_approximation': False,
+        },
+        'namaster': {'use_namaster': True, 'spin0': False},
+        'ell_binning': {'binning_type': 'ref_cut'},
     },
 ]
 

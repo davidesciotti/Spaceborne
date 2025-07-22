@@ -5,7 +5,7 @@
 # - maybe implement check on symmetrize_output_dict, just to make sure nothing breaks
 # - check that cov blocks are actually the desired ones for weird probe combs
 #   (eg make sure that eg cov_LLLL is equal to the corresponding block of cov_3x2pt)
-# - coderabbit review
+# * coderabbit review
 # - finish cov testing class
 # - cov_4D_to_8D 3x2ptCLOE or whatever is now broken
 # - restore check_cov_blocks_simmetry()
@@ -1588,7 +1588,9 @@ for probe in ['WL', 'GC', '3x2pt']:
 if cfg['misc']['save_output_as_benchmark']:
     # some of the test quantities are not defined in some cases
     # better to work with empty arrays than None
+        
     if not compute_sb_ssc:
+        k_grid_s2b = np.array([])
         sigma2_b = np.array([])
         dPmm_ddeltab = np.array([])
         dPgm_ddeltab = np.array([])
@@ -1597,6 +1599,10 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
 
+    if compute_sb_ssc and cfg['covariance']['use_KE_approximation']:
+        k_grid_s2b = np.array([])
+        
+        
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
@@ -1606,6 +1612,15 @@ if cfg['misc']['save_output_as_benchmark']:
     _ell_dict = vars(ell_obj)
     # _ell_dict.pop('ell_cuts_dict')
     # _ell_dict.pop('idxs_to_delete_dict')
+
+    if cfg['namaster']['use_namaster']:
+        import pymaster
+
+        _ell_dict = {
+            key: value
+            for key, value in _ell_dict.items()
+            if not isinstance(value, pymaster.bins.NmtBin)
+        }
 
     import datetime
 
@@ -1627,8 +1642,9 @@ if cfg['misc']['save_output_as_benchmark']:
 
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError(
-            'You are trying to overwrite a benchmark file. Please rename the file or '
-            'delete the existing one.'
+            'You are trying to overwrite the benchmark file at'
+            f' {bench_filename}.npz.'
+            'Please rename the new benchmark or delete the existing one.'
         )
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
@@ -1641,7 +1657,7 @@ if cfg['misc']['save_output_as_benchmark']:
         z_grid=z_grid,
         z_grid_trisp=z_grid_trisp,
         k_grid=k_grid,
-        k_grid_sigma2_b=k_grid_s2b_simps,
+        k_grid_sigma2_b=k_grid_s2b,
         nz_src=nz_src,
         nz_lns=nz_lns,
         **_ell_dict,
@@ -1669,50 +1685,58 @@ if cfg['misc']['save_output_as_benchmark']:
     )
 
 
-for cov_name, cov in cov_dict.items():
-    if '3x2pt' in cov_name and 'tot' in cov_name:
-        print(f'Testing {cov_name}...\n')
+if (
+    cfg['misc']['test_condition_number']
+    or cfg['misc']['test_cholesky_decomposition']
+    or cfg['misc']['test_numpy_inversion']
+    or cfg['misc']['test_symmetry']
+):
+    for cov_name, cov in cov_dict.items():
+        if '3x2pt' in cov_name and 'tot' in cov_name:
+            print(f'Testing {cov_name}...\n')
 
-        if cfg['misc']['test_condition_number']:
-            cond_number = np.linalg.cond(cov)
-            print(f'Condition number = {cond_number:.4e}')
+            if cfg['misc']['test_condition_number']:
+                cond_number = np.linalg.cond(cov)
+                print(f'Condition number = {cond_number:.4e}')
 
-        if cfg['misc']['test_cholesky_decomposition']:
-            try:
-                np.linalg.cholesky(cov)
-                print('Cholesky decomposition successful')
-            except np.linalg.LinAlgError:
-                print(
-                    'Cholesky decomposition failed. Consider checking the condition '
-                    'number or symmetry.'
-                )
-
-        if cfg['misc']['test_numpy_inversion']:
-            try:
-                inv_cov = np.linalg.inv(cov)
-                print('Numpy inversion successful.')
-                # Test correctness of inversion:
-                identity_check = np.allclose(
-                    np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
-                )
-                if identity_check:
+            if cfg['misc']['test_cholesky_decomposition']:
+                try:
+                    np.linalg.cholesky(cov)
+                    print('Cholesky decomposition successful')
+                except np.linalg.LinAlgError:
                     print(
-                        'Inverse test successfully (M @ M^{-1} is identity). '
-                        'atol=1e-9, rtol=1e-7'
+                        'Cholesky decomposition failed. Consider checking the condition '
+                        'number or symmetry.'
                     )
+
+            if cfg['misc']['test_numpy_inversion']:
+                try:
+                    inv_cov = np.linalg.inv(cov)
+                    print('Numpy inversion successful.')
+                    # Test correctness of inversion:
+                    identity_check = np.allclose(
+                        np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
+                    )
+                    if identity_check:
+                        print(
+                            'Inverse test successfully (M @ M^{-1} is identity). '
+                            'atol=1e-9, rtol=1e-7'
+                        )
+                    else:
+                        print(
+                            f'Warning: Inverse test failed (M @ M^{-1} '
+                            'deviates from identity). atol=0, rtol=1e-7'
+                        )
+                except np.linalg.LinAlgError:
+                    print(
+                        'Numpy inversion failed: Matrix is singular or near-singular.'
+                    )
+
+            if cfg['misc']['test_symmetry']:
+                if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
+                    print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
                 else:
-                    print(
-                        f'Warning: Inverse test failed (M @ M^{-1} '
-                        'deviates from identity). atol=0, rtol=1e-7'
-                    )
-            except np.linalg.LinAlgError:
-                print('Numpy inversion failed: Matrix is singular or near-singular.')
-
-        if cfg['misc']['test_symmetry']:
-            if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
-                print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
-            else:
-                print('Matrix is symmetric. atol=0, rtol=1e-7')
+                    print('Matrix is symmetric. atol=0, rtol=1e-7')
 
 if cfg['misc']['save_figs']:
     output_dir = f'{output_path}/figs'

@@ -149,7 +149,12 @@ if os.path.exists(f'{temp_output_filename}.npz'):
         os.remove(f'{temp_output_filename}.npz')
 
 for bench_name in bench_yaml_names:
+    print('\n')
+    print('***************************************************************************')
+    print('***************************************************************************')
+    print('***************************************************************************')
     print(f'Testing {bench_name}...')
+    print('\n')
 
     # ! update the cfg file to avoid overwriting the benchmarks
     # Load the benchmark config

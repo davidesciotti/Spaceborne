@@ -213,7 +213,7 @@ covariance:
     
     # Whether to split the Gaussian covariance term into the
     # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-    split_gaussian_cov: True # Type: bool
+    split_gaussian_cov: False # Type: bool
 
     # Ellipticity dispersion *per component* = sigma_eps_i.
     # total ellipticity dispersion = sigma_eps
@@ -257,8 +257,8 @@ covariance:
 
 
 namaster:
-    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+    use_namaster: True # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+    spin0: True # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
     use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation (recommended)
     workspace_path: ... # Type: str. Path to the workspace, if already computed
 

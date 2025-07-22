@@ -138,7 +138,11 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
                 # Make the path relative to the original directory, not the new working directory
                 yaml_file = os.path.abspath(os.path.join(original_dir, yaml_file))
 
+            print('\n')
+            print('*******************************************')
             print(f'Running benchmark with config: {yaml_file}')
+            print('*******************************************')
+            print('\n')
 
             # Run the main script with the current configuration
             start_time = datetime.now()

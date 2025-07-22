@@ -359,7 +359,7 @@ base_cfg = {
 
 # Define your "zipped" sets of changes as a list of dictionaries
 # Each dictionary represents one configuration to test
-test_g_space_zipped = [
+configs_to_test = [
     # ==============================
     # {
     #     'covariance': {
@@ -400,7 +400,7 @@ test_g_space_zipped = [
             'cNG': False,
             'use_KE_approximation': False,
         },
-        'namaster': {'use_namaster': True, 'spin0': False},
+        'namaster': {'use_namaster': True, 'spin0': True},
         'ell_binning': {'binning_type': 'log'},
     },
     # ==============================
@@ -411,18 +411,14 @@ test_g_space_zipped = [
             'cNG': False,
             'use_KE_approximation': False,
         },
-        'namaster': {'use_namaster': True, 'spin0': False},
+        'namaster': {'use_namaster': True, 'spin0': True},
         'ell_binning': {'binning_type': 'ref_cut'},
     },
 ]
 
 
-# Choose which parameter space to use for zipped iteration
-param_space_to_use = test_g_space_zipped
-
-
-# Generate configurations using the new function
-configs = generate_zipped_configs(base_cfg, param_space_to_use, bench_set_path_cfg)
+# Generate configurations
+configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_path_cfg)
 print(f'Generated {len(configs)} configurations')
 
 # Save configurations to YAML files
@@ -431,7 +427,7 @@ yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, star
 # Run benchmarks
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)
 
-# Manually run specific configurations
+# To manually run specific configurations:
 # To run a specific config:
 #   python main.py --config {yaml_file}
 

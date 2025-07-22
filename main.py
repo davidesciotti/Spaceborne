@@ -1471,6 +1471,7 @@ cov_obj.build_covs(
 )
 cov_dict = cov_obj.cov_dict
 
+
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):
     for cov_name, cov in cov_dict.items():
@@ -1588,7 +1589,7 @@ for probe in ['WL', 'GC', '3x2pt']:
 if cfg['misc']['save_output_as_benchmark']:
     # some of the test quantities are not defined in some cases
     # better to work with empty arrays than None
-        
+
     if not compute_sb_ssc:
         k_grid_s2b = np.array([])
         sigma2_b = np.array([])
@@ -1600,27 +1601,28 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGG_dVddeltab = np.array([])
 
     if compute_sb_ssc and cfg['covariance']['use_KE_approximation']:
+        # in this case, the k grid used is the same as the Pk one, I think
         k_grid_s2b = np.array([])
-        
-        
+
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
     )
 
-    # I don't fully remember why I don't save these
-    _ell_dict = vars(ell_obj)
+    _ell_dict = deepcopy(vars(ell_obj))
     # _ell_dict.pop('ell_cuts_dict')
     # _ell_dict.pop('idxs_to_delete_dict')
 
     if cfg['namaster']['use_namaster']:
         import pymaster
 
-        _ell_dict = {
-            key: value
-            for key, value in _ell_dict.items()
-            if not isinstance(value, pymaster.bins.NmtBin)
-        }
+        # convert NmtBin objects to effective ells
+        for key in _ell_dict:
+            if key.startswith('nmt_bin_obj_'):
+                assert isinstance(_ell_dict[key], pymaster.bins.NmtBin), (
+                    f'Expected NmtBin for {key}, got {_ell_dict[key]}'
+                )
+                _ell_dict[key] = _ell_dict[key].get_effective_ells()
 
     import datetime
 
@@ -1660,7 +1662,6 @@ if cfg['misc']['save_output_as_benchmark']:
         k_grid_sigma2_b=k_grid_s2b,
         nz_src=nz_src,
         nz_lns=nz_lns,
-        **_ell_dict,
         bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
         mag_bias_2d=_mag_bias_2d,
@@ -1680,6 +1681,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CLL_dVddeltab=d2CLL_dVddeltab,
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
+        **_ell_dict,
         **cov_dict,
         metadata=metadata,
     )

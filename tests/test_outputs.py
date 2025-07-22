@@ -110,7 +110,7 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/u/dsciotti/code'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run all tests...
@@ -119,9 +119,12 @@ bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 
 # ... or run specific tests
-# bench_yaml_names = [
-#     'config_0000.yaml',
-# ]
+bench_yaml_names = [
+    'config_0004',
+    'config_0005',
+    'config_0006',
+    'config_0007',
+]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'

@@ -1514,6 +1514,15 @@ if cfg['misc']['save_output_as_benchmark']:
     # _ell_dict.pop('ell_cuts_dict')
     # _ell_dict.pop('idxs_to_delete_dict')
 
+    if cfg['namaster']['use_namaster']:
+        import pymaster
+
+        _ell_dict = {
+            key: value
+            for key, value in _ell_dict.items()
+            if not isinstance(value, pymaster.bins.NmtBin)
+        }
+
     import datetime
 
     branch, commit = sl.get_git_info()

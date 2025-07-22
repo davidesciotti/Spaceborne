@@ -16,6 +16,12 @@ This script performs the following operations:
    [NOTE] the SB output is in
    /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output/_sb_output,
    but you don't need to care about this
+   
+NOTES
+
+1. The code will raise an error if the benchmark files are already present. 
+   If you want to dverwrite them, delete the existing ones in e.g.
+   /u/dsciotti/code/Spaceborne_bench/bench_set_output/config_0005.yaml
 """
 
 import gc
@@ -66,7 +72,7 @@ def generate_zipped_configs(base_config, changes_list, output_dir):
     return configs
 
 
-def save_configs_to_yaml(configs, bench_set_path_cfg, output_path):
+def save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=0):
     """
     Save each configuration to a separate YAML file with a descriptive name.
 
@@ -82,7 +88,7 @@ def save_configs_to_yaml(configs, bench_set_path_cfg, output_path):
     for i, config in enumerate(configs):
         # Create a descriptive filename based on key parameters
         # You can customize this to include specific parameters that are most relevant
-        filename = f'config_{i:04d}'
+        filename = f'config_{(i + start_ix):04d}'
 
         # Set the output path and bench filename in the configuration
         config['misc']['output_path'] = output_path
@@ -184,7 +190,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
 
 
 # Example usage
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/u/dsciotti/code'
 bench_set_path = f'{ROOT}/Spaceborne_bench'
 bench_set_path_cfg = f'{bench_set_path}/bench_set_cfg'
 bench_set_path_results = f'{bench_set_path}/bench_set_output'
@@ -198,48 +204,66 @@ with open(f'{sb_root_path}/config.yaml', 'r', encoding='utf-8') as f:
 # Base configuration (common parameters) - these will be applied first
 base_cfg['covariance']['z_steps'] = 20
 base_cfg['covariance']['z_steps_trisp'] = 10
-base_cfg['covariance']['k_steps'] = 50
-# disable runtime tests for speed
-base_cfg['misc']['test_numpy_inversion'] = False
-base_cfg['misc']['test_condition_number'] = False
-base_cfg['misc']['test_cholesky_decomposition'] = False
-base_cfg['misc']['test_symmetry'] = False
-base_cfg['misc']['save_output_as_benchmark'] = True
-# the base cfg has systematics on
-base_cfg['C_ell']['has_IA'] = True
-base_cfg['C_ell']['has_rsd'] = True
-base_cfg['C_ell']['has_magnification_bias'] = True
-base_cfg['nz']['shift_nz'] = True
+base_cfg['covariance']['k_steps'] = 20
+base_cfg['covariance']['split_gaussian_cov'] = False
+
+base_cfg['nz']['shift_nz'] = False
 
 base_cfg['ell_binning']['binning_type'] = 'ref_cut'
 base_cfg['ell_binning']['ell_max_WL'] = 1500
 base_cfg['ell_binning']['ell_max_GC'] = 1500
 base_cfg['ell_binning']['ell_max_3x2pt'] = 1500
 base_cfg['ell_binning']['ell_bins_ref'] = 20
+
 # base_cfg['C_ell']['cl_LL_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_ll.txt'
 # base_cfg['C_ell']['cl_GL_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_gl.txt'
 # base_cfg['C_ell']['cl_GG_path'] = f'{ROOT}/Spaceborne_jobs/RR2_cov/input/cl_gg.txt'
 base_cfg['C_ell']['which_gal_bias'] = 'FS2_polynomial_fit'
 base_cfg['C_ell']['which_mag_bias'] = 'FS2_polynomial_fit'
+base_cfg['C_ell']['has_IA'] = True
+base_cfg['C_ell']['has_rsd'] = False
+base_cfg['C_ell']['has_magnification_bias'] = True
+
+base_cfg['probe_selection']['LL'] = True
+base_cfg['probe_selection']['GL'] = True
+base_cfg['probe_selection']['GG'] = True
+base_cfg['probe_selection']['cross_cov'] = True
+
+base_cfg['misc']['test_numpy_inversion'] = False
+base_cfg['misc']['test_condition_number'] = False
+base_cfg['misc']['test_cholesky_decomposition'] = False
+base_cfg['misc']['test_symmetry'] = False
+base_cfg['misc']['save_output_as_benchmark'] = True
 
 # Define your "zipped" sets of changes as a list of dictionaries
 # Each dictionary represents one configuration to test
 test_g_space_zipped = [
-    # Configuration 1:
+    # ==============================
     {
         'covariance': {
             'G': True,
             'SSC': True,
-            'cNG': False,
+            'cNG': True,
             'no_sampling_noise': True,
             'use_KE_approximation': True,
+            'split_gaussian_cov': True,
         },
+        'namaster': {'use_namaster': False},
     },
-    # Configuration 2: use input files [TODO]
+    # ==============================
     {
-        # 'C_ell': {
-        # 'use_input_cls': 'from_input',
-        # },
+        'covariance': {
+            'G': True,
+            'SSC': True,
+            'cNG': True,
+            'no_sampling_noise': True,
+            'use_KE_approximation': True,
+            'split_gaussian_cov': False,
+        },
+        'namaster': {'use_namaster': False},
+    },
+    # ==============================
+    {
         'covariance': {
             'G': True,
             'SSC': False,
@@ -247,70 +271,23 @@ test_g_space_zipped = [
             'no_sampling_noise': False,
             'use_KE_approximation': False,
         },
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'ell_binning': {'binning_type': 'lin'},
     },
-    # Configuration 3: no systematics
+    # ==============================
     {
-        'C_ell': {
-            'has_IA': False,
-            'has_rsd': False,
-            'has_magnification_bias': False,
-        },
-        'nz': {'shift_nz': False},
         'covariance': {
             'G': True,
             'SSC': False,
             'cNG': False,
-            'no_sampling_noise': True,
-        },
-    },
-]
-
-test_ssc_space_zipped = [
-    {
-        'covariance': {
-            'G': False,
-            'SSC': True,
-            'cNG': False,
-            'which_pk_responses': 'halo_model',
-            'include_b2g': True,
-            'which_sigma2_b': 'full_curved_sky',
-            'include_terasawa_terms': True,
-            'use_KE_approximation': True,
-        }
-    },
-    {
-        'covariance': {
-            'G': False,
-            'SSC': True,
-            'cNG': False,
-            'which_pk_responses': 'separate_universe',
-            'include_b2g': False,
-            'which_sigma2_b': 'polar_cap_on_the_fly',
-            'include_terasawa_terms': False,
+            'no_sampling_noise': False,
             'use_KE_approximation': False,
-        }
+        },
+        'namaster': {'use_namaster': True, 'spin0': False},
+        'ell_binning': {'binning_type': 'log'},
     },
 ]
 
-test_cng_space_zipped = [
-    {
-        'covariance': {
-            'G': True,
-            'SSC': False,
-            'cNG': True,
-            'z_steps_trisp': 20,
-        }
-    },
-    # Add other cNG-specific configurations here if needed
-    {
-        'covariance': {
-            'G': True,
-            'SSC': False,
-            'cNG': True,
-            'z_steps_trisp': 30,  # Example of another cNG config
-        }
-    },
-]
 
 
 # Choose which parameter space to use for zipped iteration
@@ -322,11 +299,13 @@ configs = generate_zipped_configs(base_cfg, param_space_to_use, bench_set_path_c
 print(f'Generated {len(configs)} configurations')
 
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path)
+yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=4)
 
-# Optionally run benchmarks
+# Run benchmarks
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)
 
-# Or you can manually run specific configurations
-for yaml_file in yaml_files[:1]:  # Run only the first config as an example
-    print(f'To run a specific config: python main.py --config {yaml_file}')
+# Manually run specific configurations
+# To run a specific config: 
+#   python main.py --config {yaml_file}
+
+print('All benchmarks saved!')

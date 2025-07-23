@@ -113,6 +113,7 @@ def test_main_script(test_cfg_path):
 
 # Path
 ROOT = '/u/dsciotti/code'
+ROOT = '/u/dsciotti/code'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run all tests...

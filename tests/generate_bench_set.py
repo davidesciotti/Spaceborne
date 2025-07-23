@@ -140,11 +140,13 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
             if not os.path.isabs(yaml_file):
                 # Make the path relative to the original directory, not the new working directory
                 _yaml_file = os.path.abspath(os.path.join(original_dir, yaml_file))
+            else:
+                _yaml_file = yaml_file
 
             print('\n')
-            print('*******************************************')
-            print(f'Running benchmark with config: {yaml_file}')
-            print('*******************************************')
+            print('*********************************************************')
+            print(f'🧪🧪🧪 Running benchmark with config: {yaml_file} 🧪🧪🧪')
+            print('*********************************************************')
             print('\n')
 
             # Run the main script with the current configuration
@@ -267,8 +269,8 @@ base_cfg = {
         },
     },
     'nz': {
-        'nz_sources_filename': '/u/dsciotti/code/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
-        'nz_lenses_filename': '/u/dsciotti/code/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_sources_filename': '/u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_lenses_filename': '/u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
         'ngal_sources': [8.09216, 8.09215, 8.09215],
         'ngal_lenses': [8.09216, 8.09215, 8.09215],
         'shift_nz': False,
@@ -323,7 +325,7 @@ base_cfg = {
         'k_steps': 20,
         'z_min': 0.02,
         'z_max': 3.0,
-        'z_steps': 20,
+        'z_steps': 100,
         'z_steps_trisp': 10,
         'use_KE_approximation': False,
         'cov_filename': 'cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz',
@@ -343,7 +345,7 @@ base_cfg = {
     },
     'PyCCL': {
         'cov_integration_method': 'spline',
-        'load_cached_tkka': True,
+        'load_cached_tkka': False,
         'use_default_k_a_grids': False,
         'n_samples_wf': 1000,
         'spline_params': {'A_SPLINE_NA_PK': 240, 'K_MAX_SPLINE': 300},
@@ -367,60 +369,35 @@ base_cfg = {
 # Define your "zipped" sets of changes as a list of dictionaries
 # Each dictionary represents one configuration to test
 configs_to_test = [
-    # ==============================
-    # {
-    #     'covariance': {
-    #         'G': True,
-    #         'SSC': True,
-    #         'cNG': True,
-    #         'use_KE_approximation': True,
-    #         'split_gaussian_cov': True,
-    #     },
-    # },
-    # ==============================
-    # {
-    #     'covariance': {
-    #         'G': True,
-    #         'SSC': True,
-    #         'cNG': True,
-    #         'use_KE_approximation': True,
-    #         'split_gaussian_cov': False,
-    #     },
-    #     'namaster': {'use_namaster': False},
-    # },
-    # ==============================
+    # G with split
+    {'covariance': {'G': True, 'split_gaussian_cov': False}},
+    #  G without split
+    {'covariance': {'G': True, 'split_gaussian_cov': True}},
+    # G nmt spin0, log ell binning
     {
-        'covariance': {
-            'G': True,
-            'SSC': True,
-            'cNG': True,
-            'use_KE_approximation': True,
-        },
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'lin'},
-    },
-    # ==============================
-    {
-        'covariance': {
-            'G': True,
-            'SSC': True,
-            'cNG': True,
-            'use_KE_approximation': False,
-        },
+        'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': True},
         'ell_binning': {'binning_type': 'log'},
     },
+    # G nmt spin0, lin ell binning
     # ==============================
     {
-        'covariance': {
-            'G': True,
-            'SSC': True,
-            'cNG': True,
-            'use_KE_approximation': False,
-        },
+        'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'ref_cut'},
+        'ell_binning': {'binning_type': 'lin'},
     },
+    # G nmt spin2, lin ell binning
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': False},
+        'ell_binning': {'binning_type': 'lin'},
+    },
+    # SSC KE
+    {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
+    # SSC LR
+    {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
+    # cNG
+    {'covariance': {'G': True, 'SSC': False, 'cNG': True}},
 ]
 
 
@@ -429,7 +406,7 @@ configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_path_cfg)
 print(f'Generated {len(configs)} configurations')
 
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=4)
+yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=6)
 
 # Run benchmarks
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)
@@ -438,4 +415,4 @@ run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_
 # To run a specific config:
 #   python main.py --config {yaml_file}
 
-print('All benchmarks saved!')
+print('\nAll benchmarks saved!🎉')

@@ -1,4 +1,4 @@
-"""This module should be run with pyccl >= v3.0.0"""
+"""This module should be run with pyccl >= v3.2.1"""
 
 import time
 from functools import partial
@@ -8,6 +8,7 @@ import numpy as np
 import pyccl as ccl
 from tqdm import tqdm
 
+from spaceborne import constants as const
 from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
 from spaceborne import sb_lib as sl
 
@@ -267,7 +268,7 @@ class PycclClass:
         self.ell_grid = ell_grid
 
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
-        cl_ab_3d = wf_cl_lib.cl_ccl(
+        cl_ab_3d = wf_cl_lib.cl_PyCCL(
             kernel_a,
             kernel_b,
             ell_grid,
@@ -411,7 +412,7 @@ class PycclClass:
                 '"polar_cap_on_the_fly" or None'
             )
 
-    def initialize_trispectrum(self, which_ng_cov, probe_ordering, pyccl_cfg):
+    def initialize_trispectrum(self, which_ng_cov, unique_probe_combs, pyccl_cfg):
         # some setup
         comp_load_str = 'Loading' if pyccl_cfg['load_cached_tkka'] else 'Computing'
         tkka_path = f'{self.output_path}/cache/trispectrum/{which_ng_cov}'
@@ -419,7 +420,7 @@ class PycclClass:
 
         # the default pk must be passed to the Tk3D functions as None, not as
         # 'delta_matter:delta_matter'
-        _p_of_k_a = (
+        __builtins__p_of_k_a = (
             None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
         )
 
@@ -432,49 +433,45 @@ class PycclClass:
         self.set_dicts_for_trisp()
 
         self.tkka_dict = {}
-        for row, (A, B) in enumerate(probe_ordering):
-            for col, (C, D) in enumerate(probe_ordering):
-                # skip the lower triangle of the matrix
-                if col < row:
-                    continue
+        for probe_a, probe_b, probe_c, probe_d in unique_probe_combs:
+            start = time.perf_counter()
+            probe_str = probe_a + probe_b + probe_c + probe_d
 
-                probe_block = A + B + C + D
+            print(
+                f'{comp_load_str} {which_ng_cov} trispectrum, '
+                f'probe combination {probe_str}'
+            )
 
-                start = time.perf_counter()
+            # Attempt to load from cache, fall back to computing if necessary
+            tkka_abcd = None
+            if pyccl_cfg['load_cached_tkka']:
+                try:
+                    tkka_abcd = self._load_and_set_tkka(
+                        which_ng_cov, tkka_path, k_a_str, probe_str
+                    )
+                except FileNotFoundError as e:
+                    print(
+                        'No trispectra files found in the cache. '
+                        'Proceeding to compute them. Error message:\n'
+                    )
+                    print(e)
 
-                print(
-                    f'{comp_load_str} {which_ng_cov}, trispectrum, '
-                    f'probe combination {probe_block}'
+            if tkka_abcd is None:
+                tkka_abcd = self._compute_and_save_tkka(
+                    which_ng_cov, tkka_path, k_a_str, probe_str, p_of_k_a=None
                 )
 
-                # Attempt to load from cache, fall back to computing if necessary
-                tkka_abcd = None
-                if pyccl_cfg['load_cached_tkka']:
-                    try:
-                        tkka_abcd = self._load_and_set_tkka(
-                            which_ng_cov, tkka_path, k_a_str, probe_block
-                        )
-                    except FileNotFoundError as e:
-                        print(
-                            'No trispectra files found in the cache. '
-                            'Proceeding to compute them. Error message:\n'
-                        )
-                        print(e)
+            self.tkka_dict[probe_a, probe_b, probe_c, probe_d] = tkka_abcd
 
-                if tkka_abcd is None:
-                    tkka_abcd = self._compute_and_save_tkka(
-                        which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a=None
-                    )
-
-                self.tkka_dict[A, B, C, D] = tkka_abcd
-
-                print(f'done in {(time.perf_counter() - start) / 60:.2f} m')
+            print(f'done in {(time.perf_counter() - start) / 60:.2f} m')
 
     def _compute_and_save_tkka(
         self, which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a
     ):
-        A, B, C, D = probe_block
-        tkka_func, additional_args = self.get_tkka_func(A, B, C, D, which_ng_cov)
+        probe_a, probe_b, probe_c, probe_d = probe_block
+        tkka_func, additional_args = self.get_tkka_func(
+            probe_a, probe_b, probe_c, probe_d, which_ng_cov
+        )
         tkka_abcd = tkka_func(
             cosmo=self.cosmo_ccl,
             hmc=self.hmc,
@@ -546,17 +543,17 @@ class PycclClass:
         )
         return k_a_str
 
-    def get_tkka_func(self, A, B, C, D, which_ng_cov):
+    def get_tkka_func(self, probe_a, probe_b, probe_c, probe_d, which_ng_cov):
         if which_ng_cov == 'SSC':
             if self.which_b1g_in_resp == 'from_HOD':
                 tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
                 additional_args = {
-                    'prof': self.halo_profile_dict[A],
-                    'prof2': self.halo_profile_dict[B],
-                    'prof3': self.halo_profile_dict[C],
-                    'prof4': self.halo_profile_dict[D],
-                    'prof12_2pt': self.prof_2pt_dict[A, B],
-                    'prof34_2pt': self.prof_2pt_dict[C, D],
+                    'prof': self.halo_profile_dict[probe_a],
+                    'prof2': self.halo_profile_dict[probe_b],
+                    'prof3': self.halo_profile_dict[probe_c],
+                    'prof4': self.halo_profile_dict[probe_d],
+                    'prof12_2pt': self.prof_2pt_dict[probe_a, probe_b],
+                    'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
                     'lk_arr': self.logn_k_grid_tkka_SSC,
                     'a_arr': self.a_grid_tkka_SSC,
                     'extrap_pk': True,
@@ -567,14 +564,14 @@ class PycclClass:
                 additional_args = {
                     # prof should be HaloProfileNFW, in this case
                     'prof': self.halo_profile_dict['L'],
-                    'bias1': self.gal_bias_dict[A],
-                    'bias2': self.gal_bias_dict[B],
-                    'bias3': self.gal_bias_dict[C],
-                    'bias4': self.gal_bias_dict[D],
-                    'is_number_counts1': self.is_number_counts_dict[A],
-                    'is_number_counts2': self.is_number_counts_dict[B],
-                    'is_number_counts3': self.is_number_counts_dict[C],
-                    'is_number_counts4': self.is_number_counts_dict[D],
+                    'bias1': self.gal_bias_dict[probe_a],
+                    'bias2': self.gal_bias_dict[probe_b],
+                    'bias3': self.gal_bias_dict[probe_c],
+                    'bias4': self.gal_bias_dict[probe_d],
+                    'is_number_counts1': self.is_number_counts_dict[probe_a],
+                    'is_number_counts2': self.is_number_counts_dict[probe_b],
+                    'is_number_counts3': self.is_number_counts_dict[probe_c],
+                    'is_number_counts4': self.is_number_counts_dict[probe_d],
                     'lk_arr': self.logn_k_grid_tkka_SSC,
                     'a_arr': self.a_grid_tkka_SSC,
                     'extrap_pk': True,
@@ -583,16 +580,16 @@ class PycclClass:
         elif which_ng_cov == 'cNG':
             tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
             additional_args = {
-                'prof': self.halo_profile_dict[A],
-                'prof2': self.halo_profile_dict[B],
-                'prof3': self.halo_profile_dict[C],
-                'prof4': self.halo_profile_dict[D],
-                'prof12_2pt': self.prof_2pt_dict[A, B],
-                'prof13_2pt': self.prof_2pt_dict[A, C],
-                'prof14_2pt': self.prof_2pt_dict[A, D],
-                'prof24_2pt': self.prof_2pt_dict[B, D],
-                'prof32_2pt': self.prof_2pt_dict[C, B],
-                'prof34_2pt': self.prof_2pt_dict[C, D],
+                'prof': self.halo_profile_dict[probe_a],
+                'prof2': self.halo_profile_dict[probe_b],
+                'prof3': self.halo_profile_dict[probe_c],
+                'prof4': self.halo_profile_dict[probe_d],
+                'prof12_2pt': self.prof_2pt_dict[probe_a, probe_b],
+                'prof13_2pt': self.prof_2pt_dict[probe_a, probe_c],
+                'prof14_2pt': self.prof_2pt_dict[probe_a, probe_d],
+                'prof24_2pt': self.prof_2pt_dict[probe_b, probe_d],
+                'prof32_2pt': self.prof_2pt_dict[probe_c, probe_b],
+                'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
                 'lk_arr': self.logn_k_grid_tkka_cNG,
                 'a_arr': self.a_grid_tkka_cNG,
                 'separable_growth': False,
@@ -610,10 +607,7 @@ class PycclClass:
         # tODO pass this? make sure to be consistent
         gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))
 
-        self.halo_profile_dict = {
-            'L': self.halo_profile_dm,
-            'G': self.halo_profile_hod,
-        }
+        self.halo_profile_dict = {'L': self.halo_profile_dm, 'G': self.halo_profile_hod}
 
         self.prof_2pt_dict = {
             # see https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
@@ -623,15 +617,9 @@ class PycclClass:
             ('G', 'G'): ccl.halos.Profile2ptHOD(),
         }
 
-        self.is_number_counts_dict = {
-            'L': False,
-            'G': True,
-        }
+        self.is_number_counts_dict = {'L': False, 'G': True}
 
-        self.gal_bias_dict = {
-            'L': np.ones_like(gal_bias_1d),
-            'G': gal_bias_1d,
-        }
+        self.gal_bias_dict = {'L': np.ones_like(gal_bias_1d), 'G': gal_bias_1d}
 
     def compute_ng_cov_ccl(
         self,
@@ -642,7 +630,7 @@ class PycclClass:
         kernel_D,
         ell,
         tkka,
-        f_sky,
+        fsky,
         ind_AB,
         ind_CD,
         integration_method,
@@ -656,9 +644,7 @@ class PycclClass:
         # sigma2_b argument
         if which_ng_cov == 'SSC':
             ccl_ng_cov_func = ccl.covariances.angular_cl_cov_SSC
-            sigma2_b_arg = {
-                'sigma2_B': self.sigma2_b_tuple,
-            }
+            sigma2_b_arg = {'sigma2_B': self.sigma2_b_tuple}
         elif which_ng_cov == 'cNG':
             ccl_ng_cov_func = ccl.covariances.angular_cl_cov_cNG
             sigma2_b_arg = {}
@@ -674,7 +660,7 @@ class PycclClass:
                     tracer2=kernel_B[ind_AB[ij, -1]],
                     ell=ell,
                     t_of_kk_a=tkka,
-                    fsky=f_sky,
+                    fsky=fsky,
                     tracer3=kernel_C[ind_CD[kl, -2]],
                     tracer4=kernel_D[ind_CD[kl, -1]],
                     ell2=None,
@@ -690,48 +676,57 @@ class PycclClass:
         return cov_ng_4D
 
     def compute_ng_cov_3x2pt(
-        self, which_ng_cov, ell, f_sky, integration_method, probe_ordering, ind_dict
+        self, which_ng_cov, ells, fsky, integration_method, unique_probe_combs, ind_dict
     ):
         cov_ng_3x2pt_dict_8D = {}
 
         kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
 
-        for row, (probe_a, probe_b) in enumerate(probe_ordering):
-            for col, (probe_c, probe_d) in enumerate(probe_ordering):
-                if col >= row:
-                    print(
-                        'CCL 3x2pt cov: working on probe combination ',
-                        probe_a,
-                        probe_b,
-                        probe_c,
-                        probe_d,
-                    )
-                    cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
-                        self.compute_ng_cov_ccl(
-                            which_ng_cov=which_ng_cov,
-                            kernel_A=kernel_dict[probe_a],
-                            kernel_B=kernel_dict[probe_b],
-                            kernel_C=kernel_dict[probe_c],
-                            kernel_D=kernel_dict[probe_d],
-                            ell=ell,
-                            tkka=self.tkka_dict[probe_a, probe_b, probe_c, probe_d],
-                            f_sky=f_sky,
-                            ind_AB=ind_dict[probe_a, probe_b],
-                            ind_CD=ind_dict[probe_c, probe_d],
-                            integration_method=integration_method,
-                        )
-                    )
+        # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
+        symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(unique_probe_combs)
 
-                else:
-                    print(  # fmt: skip
-                        'CCL 3x2pt cov: skipping probe combination ',
-                        probe_a, probe_b, probe_c, probe_d
-                    )  # fmt: skip
-                    cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = np.copy(
-                        cov_ng_3x2pt_dict_8D[
-                            probe_c, probe_d, probe_a, probe_b
-                        ].transpose(1, 0, 3, 2)
-                    )
+        # * compute required blocks
+        for probe_str in unique_probe_combs:
+            probe_a, probe_b, probe_c, probe_d = probe_str
+            key = (probe_a, probe_b, probe_c, probe_d)
+            print('CCL 3x2pt cov: computing probe combination ', key)
+
+            cov_ng_3x2pt_dict_8D[key] = self.compute_ng_cov_ccl(
+                which_ng_cov=which_ng_cov,
+                kernel_A=kernel_dict[probe_a],
+                kernel_B=kernel_dict[probe_b],
+                kernel_C=kernel_dict[probe_c],
+                kernel_D=kernel_dict[probe_d],
+                ell=ells,
+                tkka=self.tkka_dict[probe_a, probe_b, probe_c, probe_d],
+                fsky=fsky,
+                ind_AB=ind_dict[probe_a, probe_b],
+                ind_CD=ind_dict[probe_c, probe_d],
+                integration_method=integration_method,
+            )
+
+            # * fill the symmetric counterparts of the required blocks
+            # * (excluding diagonal blocks)
+        for probe_str in symm_probe_combs:
+            probe_a, probe_b, probe_c, probe_d = probe_str
+            key_orig = (probe_a, probe_b, probe_c, probe_d)
+            key_symm = (probe_c, probe_d, probe_a, probe_b)
+            print(f'CCL 3x2pt cov: filling probe combination {key_orig} by symmetry')
+
+            cov_ng_3x2pt_dict_8D[key_orig] = (
+                cov_ng_3x2pt_dict_8D[key_symm].transpose(1, 0, 3, 2)
+            ).copy
+
+        # * if block is not required, set it to 0
+        for probe_str in nonreq_probe_combs:
+            probe_a, probe_b, probe_c, probe_d = probe_str
+            key = (probe_a, probe_b, probe_c, probe_d)
+            print('CCL 3x2pt cov: skipping probe combination ', key)
+
+            zpairs_ab = ind_dict[probe_a, probe_b].shape[0]
+            zpairs_cd = ind_dict[probe_c, probe_d].shape[0]
+            nbl = len(ells)
+            cov_ng_3x2pt_dict_8D[key] = np.zeros((nbl, nbl, zpairs_ab, zpairs_cd))
 
         self.cov_ng_3x2pt_dict_8D = cov_ng_3x2pt_dict_8D
 
@@ -740,25 +735,18 @@ class PycclClass:
         if which_ng_cov == 'cNG':
             self.cov_cng_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
 
-        import ipdb
-
-        ipdb.set_trace()
         self.check_cov_blocks_simmetry()
 
     def check_cov_blocks_simmetry(self):
         # Test if cov is symmetric in ell1, ell2 (only for the diagonal covariance
         # blocks: the off-diagonal need *not* to be symmetric in ell1, ell2)
         for key in self.cov_ng_3x2pt_dict_8D:
-            if key in (
-                ('L', 'L', 'L', 'L'),
-                ('G', 'L', 'G', 'L'),
-                ('G', 'G', 'G', 'G'),
-            ):
+            probe_str = ''.join(key)
+            if probe_str in const.DIAG_PROBE_COMBS:
                 try:
                     cov_2d = sl.cov_4D_to_2D(
                         self.cov_ng_3x2pt_dict_8D[key], block_index='ell'
                     )
-
                     atol, rtol = 0, 1e-1
                     np.testing.assert_allclose(
                         cov_2d,
@@ -775,6 +763,7 @@ class PycclClass:
                         err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2',
                     )
                 except AssertionError as error:
+                    print(f'Probe combination: {key}')
                     print(error)
 
     def save_cov_blocks(self, cov_path, cov_filename):
@@ -788,27 +777,24 @@ class PycclClass:
                 self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d],
             )
 
-    def load_cov_blocks(self, cov_path, cov_filename, probe_ordering):
+    def load_cov_blocks(self, cov_path, cov_filename, unique_probe_combs):
         self.cov_ng_3x2pt_dict_8D = {}
 
-        for row, (probe_a, probe_b) in enumerate(probe_ordering):
-            for col, (probe_c, probe_d) in enumerate(probe_ordering):
-                if col >= row:
-                    print(probe_a, probe_b, probe_c, probe_d)
+        for probe_tuple in unique_probe_combs:
+            print(probe_tuple)
+            probe_a, probe_b, probe_c, probe_d = probe_tuple
+            probe_str = probe_a + probe_b + probe_c + probe_d
 
-                    cov_filename_fmt = cov_filename.format(
-                        probe_a=probe_a,
-                        probe_b=probe_b,
-                        probe_c=probe_c,
-                        probe_d=probe_d,
-                    )
-                    self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
-                        np.load(f'{cov_path}/{cov_filename_fmt}')['arr_0']
-                    )
+            # * load the required blocks
+            cov_filename_fmt = cov_filename.format(
+                probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d
+            )
+            self.cov_ng_3x2pt_dict_8D[probe_tuple] = np.load(
+                f'{cov_path}/{cov_filename_fmt}'
+            )['arr_0']
 
-                else:
-                    self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d] = (
-                        self.cov_ng_3x2pt_dict_8D[
-                            probe_c, probe_d, probe_a, probe_b
-                        ].transpose(1, 0, 3, 2)
-                    )
+            # * fill the symmetric counterparts of the required blocks
+            if probe_str not in const.DIAG_PROBE_COMBS:
+                self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b] = np.copy(
+                    self.cov_ng_3x2pt_dict_8D[probe_tuple].transpose(1, 0, 3, 2)
+                )

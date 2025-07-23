@@ -268,7 +268,7 @@ class PycclClass:
         self.ell_grid = ell_grid
 
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
-        cl_ab_3d = wf_cl_lib.cl_PyCCL(
+        cl_ab_3d = wf_cl_lib.cl_ccl(
             kernel_a,
             kernel_b,
             ell_grid,

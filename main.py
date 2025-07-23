@@ -1402,7 +1402,7 @@ if compute_sb_ssc:
         z_grid=z_grid,
         integration_type=ssc_integration_type,
         unique_probe_combs=unique_probe_combs,
-        num_threads=cfg['misc']['num_threads']
+        num_threads=cfg['misc']['num_threads'],
     )
     print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
 
@@ -1609,7 +1609,7 @@ if cfg['misc']['save_output_as_benchmark']:
                     f'Expected NmtBin for {key}, got {_ell_dict[key]}'
                 )
                 _ell_dict[key] = _ell_dict[key].get_effective_ells()
-                
+
     # save metadata
     import datetime
 

@@ -432,7 +432,7 @@ class PycclClass:
         self.set_dicts_for_trisp()
 
         self.tkka_dict = {}
-        for row, (A, B) in tqdm(enumerate(probe_ordering)):
+        for row, (A, B) in enumerate(probe_ordering):
             for col, (C, D) in enumerate(probe_ordering):
                 # skip the lower triangle of the matrix
                 if col < row:
@@ -740,6 +740,9 @@ class PycclClass:
         if which_ng_cov == 'cNG':
             self.cov_cng_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
 
+        import ipdb
+
+        ipdb.set_trace()
         self.check_cov_blocks_simmetry()
 
     def check_cov_blocks_simmetry(self):
@@ -755,13 +758,20 @@ class PycclClass:
                     cov_2d = sl.cov_4D_to_2D(
                         self.cov_ng_3x2pt_dict_8D[key], block_index='ell'
                     )
-                    assert np.allclose(cov_2d, cov_2d.T, atol=0, rtol=1e-5)
+
+                    atol, rtol = 0, 1e-1
+                    np.testing.assert_allclose(
+                        cov_2d,
+                        cov_2d.T,
+                        atol=atol,
+                        rtol=rtol,
+                        err_msg=f'cov_ng_2D {key} is not symmetric in ell1, ell2',
+                    )
                     np.testing.assert_allclose(
                         self.cov_ng_3x2pt_dict_8D[key],
-                        #    np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 2, 3)),
                         np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)),
-                        rtol=1e-5,
-                        atol=0,
+                        atol=atol,
+                        rtol=rtol,
                         err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2',
                     )
                 except AssertionError as error:

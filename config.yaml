@@ -113,8 +113,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /u/dsciotti/code/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename: /u/dsciotti/code/Spaceborne/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'

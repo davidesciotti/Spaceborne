@@ -4,6 +4,10 @@
 # Note: When not on the same line, comments always refer to the option/section immediately below.
 # Note: `None` is `null` in YAML
 
+# ROOTS:
+# pleiadi: /u/dsciotti/code
+# local: /u/dsciotti/code
+
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
   Ob: 0.05 # Type: float. Baryonic density parameter Omega_b, at z=0
@@ -46,7 +50,7 @@ halo_model:
   halo_profile_dm: HaloProfileNFW # Type: str. 'dm' = 'dark matter'
   halo_profile_hod: HaloProfileHOD # Type: str.
 
-# [NOTE: NOT IMPLEMENTED YET]
+
 probe_selection:
   LL: True # Type: str. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -297,17 +301,16 @@ precision:
 misc:
   num_threads: 40 # Type: int. How many threads to use for the parallel computations
 
-  # How many integrals to compute at once for the  numerical integration of
-  # the sigma^2_b(z_1, z_2) function with pylevin.
-  # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
-  # while computing sigma2_b), decrease this or num_threads.
-  levin_batch_size: 1000 # Type: int.
-
   # some sanity checks on the covariance matrix. These could take a while to run.
   test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
   test_condition_number: True # Type: bool. Check if condition number is above 1e10
   test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
   test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
-  output_path: ./output # Type: str. Path to the output directory
+  # Whether to produce a triangle plot of the Cls, especially useful when using input
+  # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
+  cl_triangle_plot: False # Type: bool. 
+  
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
+  output_path: ./output # Type: str. Path to the output directory
+    

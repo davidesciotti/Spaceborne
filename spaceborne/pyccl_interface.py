@@ -438,7 +438,7 @@ class PycclClass:
             probe_str = probe_a + probe_b + probe_c + probe_d
 
             print(
-                f'{comp_load_str} {which_ng_cov}, trispectrum, '
+                f'{comp_load_str} {which_ng_cov} trispectrum, '
                 f'probe combination {probe_str}'
             )
 
@@ -762,16 +762,11 @@ class PycclClass:
                         self.cov_ng_3x2pt_dict_8D[key], block_index='ell'
                     )
                     err_msg = f'cov_ng_2D {key} is not symmetric in ell1, ell2'
+                    
                     np.testing.assert_allclose(
                         cov_2d, cov_2d.T, atol=0, rtol=1e-5, err_msg=err_msg
                     )
 
-                    # diff = sl.percent_diff(cov_2d, cov_2d.T)
-                    # sl.compare_arrays(
-                    #     cov_2d,
-                    #     cov_2d.T,
-                    # )
-                    # plt.savefig('debug_cov.png')
 
                     np.testing.assert_allclose(
                         self.cov_ng_3x2pt_dict_8D[key],

@@ -31,8 +31,9 @@ from spaceborne import (
     wf_cl_lib,
 )
 from spaceborne import covariance as sb_cov
-from spaceborne import plot_lib as sb_plt
 from spaceborne import sb_lib as sl
+from spaceborne import constants as const
+from spaceborne import plot_lib as sb_plt
 
 with contextlib.suppress(ImportError):
     import pyfiglet
@@ -45,7 +46,6 @@ with contextlib.suppress(ImportError):
 # Get the current script's directory
 # current_dir = Path(__file__).resolve().parent
 # parent_dir = current_dir.parent
-
 
 warnings.filterwarnings(
     'ignore',
@@ -210,8 +210,7 @@ symmetrize_output_dict = {
     ('L', 'G'): False,
     ('G', 'G'): False,
 }
-probename_dict = {0: 'L', 1: 'G'}
-probename_dict_inv = {'L': 0, 'G': 1}
+
 
 # these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
@@ -221,7 +220,9 @@ cfg['covariance']['cNG_code'] = 'PyCCL'
 
 cfg['OneCovariance'] = {}
 cfg['OneCovariance']['precision_settings'] = 'default'
-cfg['OneCovariance']['path_to_oc_executable'] = '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'  # fmt: skip
+cfg['OneCovariance']['path_to_oc_executable'] = (
+    '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'
+)
 cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
 cfg['OneCovariance']['consistency_checks'] = False
 
@@ -229,24 +230,31 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
     cfg['misc']['save_output_as_benchmark'] = False
     cfg['misc']['bench_filename'] = (
         '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}_devmerge3_nmt'
+        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}'
+        '_devmerge3_nmt'
     )
 
 
 cfg['ell_cuts'] = {}
 cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
-# Type: str. Cut if the bin *center* or the bin *lower edge* is larger than ell_max[zi, zj]
+# Type: str. Cut if the bin *center* or the bin *lower edge* is
+# larger than ell_max[zi, zj]
 cfg['ell_cuts']['center_or_min'] = 'center'
 cfg['ell_cuts']['cl_ell_cuts'] = False  # Type: bool
 cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
 # Type: float. This is used when ell_cuts is False, also...?
 cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
-cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 2.15443469, 3.59381366, 5.9948425, 10.0,]  # fmt: skip
+cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
+    0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 
+    2.15443469, 3.59381366, 5.9948425, 10.0,
+]  # fmt: skip
 
 # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
-# - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only). In this case, the output covmat
+# - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only).
+#   In this case, the output covmat
 # - from_input_mask: input a mask with path specified by mask_path
-# - polar_cap_on_the_fly: generate a polar cap during the run, with nside specified by nside
+# - polar_cap_on_the_fly: generate a polar cap during the run, with nside
+#   specified by nside
 # - null (None): use the flat-sky expression (valid for PyCCL only)
 # - flat_sky: use the flat-sky expression (valid for PyCCL only)
 #   has to be rescaled by fsky
@@ -255,8 +263,15 @@ cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
 cfg['covariance']['sigma2_b_integration_scheme'] = 'fft'  # Type: str.
-#  Whether to load the previously computed sigma2_b. No need anymore since it's quite fast
+# Whether to load the previously computed sigma2_b.
+# No need anymore since it's quite fast
 cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
+
+# How many integrals to compute at once for the  numerical integration of
+# the sigma^2_b(z_1, z_2) function with pylevin.
+# IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
+# while computing sigma2_b), decrease this or num_threads.
+cfg['misc']['levin_batch_size'] = 1000  # Type: int.
 
 # ordering of the different 3x2pt probes in the covariance matrix
 cfg['covariance']['probe_ordering'] = [
@@ -274,19 +289,59 @@ n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
 
 # ! probe selection
-probe_comb_names = []
-if cfg['probe_selection']['LL']:
-    probe_comb_names.append('LL')
-if cfg['probe_selection']['GL']:
-    probe_comb_names.append('GL')
-if cfg['probe_selection']['GG']:
-    probe_comb_names.append('GG')
 
-probe_comb_names = sl.build_probe_list(
-    probe_comb_names, include_cross_terms=cfg['probe_selection']['cross_cov']
+# * small dictionary:
+# - unique_probe_combs: the probe combinations which are actually computed, meaning the
+#                       diagonal or upper triangle of the probe matrix
+# - symm_probe_combs: the lower triangle, (or an empty list if cross terms are not
+#                     required), which are the blocks filled by symemtry
+# - nonreq_probe_combs: the blocks which not required at all, and are set to 0 in the
+#                       10D/6D matrix. This does *not* include the probes in
+#                       symm_probe_combs! "Required" means I want that probe combination
+#                       in the final covariance matrix, not that I want to explicitly
+#                       compute it
+# - req_probe_combs_2d: the probe combinations which need to appear in the final 2D
+#                       format of the covmat. This includes the cross-probes whether
+#                       they are required or not (aka, they need to be present in the 2D
+#                       covmat, either as actual values or as zeros)
+unique_probe_names = []
+if cfg['probe_selection']['LL']:
+    unique_probe_names.append('LL')
+if cfg['probe_selection']['GL']:
+    unique_probe_names.append('GL')
+if cfg['probe_selection']['GG']:
+    unique_probe_names.append('GG')
+
+# add cross terms if requested
+unique_probe_combs = sl.build_probe_list(
+    unique_probe_names, include_cross_terms=cfg['probe_selection']['cross_cov']
 )
-probe_comb_idxs = [
-    [probename_dict_inv[idx] for idx in comb] for comb in probe_comb_names
+
+# probe combinations to be filled by symmetry or to exclude altogether
+symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(unique_probe_combs)
+
+# required probe combinations to include in the 2d arrays (must include the
+# cross-terms!)
+_req_probe_combs_2d = sl.build_probe_list(unique_probe_names, include_cross_terms=True)
+# as req_probe_combs_2d still only contains the upper triangle,
+# add the symemtric blocks
+symm_probe_combs_2d, _ = sl.get_probe_combs(_req_probe_combs_2d)
+_req_probe_combs_2d += symm_probe_combs_2d
+
+# reorder!
+req_probe_combs_2d = []
+for probe in const.ALL_PROBE_COMBS:
+    if probe in _req_probe_combs_2d:
+        req_probe_combs_2d.append(probe)
+
+unique_probe_combs_ix = [
+    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in unique_probe_combs
+]
+nonreq_probe_combs_ix = [
+    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in nonreq_probe_combs
+]
+req_probe_combs_2d_ix = [
+    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in req_probe_combs_2d
 ]
 
 # ! set non-gaussian cov terms to compute
@@ -459,8 +514,9 @@ pvt_cfg = {
     'ind': ind,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
-    'probe_comb_names': probe_comb_names,
-    'probe_comb_idxs': probe_comb_idxs,
+    'unique_probe_combs': unique_probe_combs,
+    'probe_comb_idxs': unique_probe_combs_ix,
+    'req_probe_combs_2d': req_probe_combs_2d,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
@@ -638,8 +694,10 @@ else:
 z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 
 
-# assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically increasing'
-# assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically increasing'
+# assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically
+# increasing'
+# assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically
+# increasing'
 # assert np.all(np.diff(z_means_ll_bnt) > 0), (
 #     'z_means_ll_bnt should be monotonically increasing '
 #     '(not a strict condition, valid only if we do not shift the n(z) in this part)'
@@ -711,21 +769,21 @@ for wf_idx in range(len(wf_ccl_list)):
 print('Computing Cls...')
 t0 = time.perf_counter()
 ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
-    ell_obj.ells_WL,
+    ell_obj.ells_3x2pt,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_lensing_obj,
     ccl_obj.wf_lensing_obj,
     cl_ccl_kwargs,
 )
 ccl_obj.cl_gl_3d = ccl_obj.compute_cls(
-    ell_obj.ells_XC,
+    ell_obj.ells_3x2pt,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_galaxy_obj,
     ccl_obj.wf_lensing_obj,
     cl_ccl_kwargs,
 )
 ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
-    ell_obj.ells_GC,
+    ell_obj.ells_3x2pt,
     ccl_obj.p_of_k_a,
     ccl_obj.wf_galaxy_obj,
     ccl_obj.wf_galaxy_obj,
@@ -763,9 +821,9 @@ if cfg['C_ell']['use_input_cls']:
     cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
     cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
     cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
-    cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_WL)
-    cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_XC)
-    cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_GC)
+    cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_3x2pt)
+    cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)
+    cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_3x2pt)
 
     # save the sb cls for the plot below
     cl_ll_3d_sb = ccl_obj.cl_ll_3d
@@ -777,45 +835,46 @@ if cfg['C_ell']['use_input_cls']:
     ccl_obj.cl_gl_3d = cl_gl_3d_in
     ccl_obj.cl_gg_3d = cl_gg_3d_in
 
-# TODO this simple cut will not work for different binning schemes!
+# I am creating copies here, not just a view (so modifying ccl_obj.cl_3x2pt_5d will
+# not affect ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d and vice versa)
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, ell_obj.nbl_3x2pt, zbins, zbins))
-ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d[: ell_obj.nbl_3x2pt, :, :]
-ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d[: ell_obj.nbl_3x2pt, :, :]
-ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d[
-    : ell_obj.nbl_3x2pt, :, :
-].transpose(0, 2, 1)
-ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d[: ell_obj.nbl_3x2pt, :, :]
+ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d
+ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d
+ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d.transpose(0, 2, 1)
+ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d
 
 # cls plots
 plot_cls()
+
 
 # this is a lil bit convoluted: the cls used by the code (wither from input or from sb)
 # are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
 # is True and are only plotted in that case
 _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
-_ell_dict_wl = {_key: ell_obj.ells_WL}
-_ell_dict_xc = {_key: ell_obj.ells_XC}
-_ell_dict_gc = {_key: ell_obj.ells_GC}
-_cl_dict_wl = {_key: ccl_obj.cl_ll_3d}
-_cl_dict_xc = {_key: ccl_obj.cl_gl_3d}
-_cl_dict_gc = {_key: ccl_obj.cl_gg_3d}
+_ell_dict_wl = {_key: ell_obj.ells_3x2pt}
+_ell_dict_xc = {_key: ell_obj.ells_3x2pt}
+_ell_dict_gc = {_key: ell_obj.ells_3x2pt}
+_cl_dict_wl = {_key: ccl_obj.cl_3x2pt_5d[0, 0]}
+_cl_dict_xc = {_key: ccl_obj.cl_3x2pt_5d[1, 0]}
+_cl_dict_gc = {_key: ccl_obj.cl_3x2pt_5d[1, 1]}
 if cfg['C_ell']['use_input_cls']:
-    _ell_dict_wl['SB'] = ell_obj.ells_WL
-    _ell_dict_xc['SB'] = ell_obj.ells_XC
-    _ell_dict_gc['SB'] = ell_obj.ells_GC
+    _ell_dict_wl['SB'] = ell_obj.ells_3x2pt
+    _ell_dict_xc['SB'] = ell_obj.ells_3x2pt
+    _ell_dict_gc['SB'] = ell_obj.ells_3x2pt
     _cl_dict_wl['SB'] = cl_ll_3d_sb
     _cl_dict_xc['SB'] = cl_gl_3d_sb
     _cl_dict_gc['SB'] = cl_gg_3d_sb
 
-sb_plt.cls_triangle_plot(
-    _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
-)
-sb_plt.cls_triangle_plot(
-    _ell_dict_xc, _cl_dict_xc, is_auto=True, zbins=zbins, suptitle='GGL'
-)
-sb_plt.cls_triangle_plot(
-    _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
-)
+if cfg['misc']['cl_triangle_plot']:
+    sb_plt.cls_triangle_plot(
+        _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
+    )
+    sb_plt.cls_triangle_plot(
+        _ell_dict_xc, _cl_dict_xc, is_auto=False, zbins=zbins, suptitle='GGL'
+    )
+    sb_plt.cls_triangle_plot(
+        _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
+    )
 
 
 # ! BNT transform the cls (and responses?) - it's more complex since I also have to
@@ -893,8 +952,8 @@ else:
 if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
+    # check that the input cls are computed over a fine enough grid
     if cfg['C_ell']['use_input_cls']:
-        # check that the input cls are computed over a fine enough grid
         for ells_in, ells_out in zip(
             [ells_WL_in, ells_XC_in, ells_GC_in],
             [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
@@ -954,10 +1013,12 @@ cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_ma
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(
-    ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
+    ccl_obj=ccl_obj,
+    split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
+    nonreq_probe_combs_ix=nonreq_probe_combs_ix,
 )
 
-# ! =================================== OneCovariance ==================================
+# ! =================================== OneCov  ariance ================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1292,9 +1353,7 @@ if compute_sb_ssc:
         if cfg['covariance']['use_KE_approximation']:
             # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
             ccl_obj.set_sigma2_b(
-                z_grid=z_grid,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
+                z_grid=z_grid, which_sigma2_b=which_sigma2_b, mask_obj=mask_obj
             )
             _a, sigma2_b = ccl_obj.sigma2_b_tuple
             # quick sanity check on the a/z grid
@@ -1342,8 +1401,8 @@ if compute_sb_ssc:
         sigma2=sigma2_b,
         z_grid=z_grid,
         integration_type=ssc_integration_type,
-        probe_ordering=probe_ordering,
-        num_threads=cfg['misc']['num_threads'],
+        unique_probe_combs=unique_probe_combs,
+        num_threads=cfg['misc']['num_threads']
     )
     print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
 
@@ -1358,7 +1417,6 @@ if compute_sb_ssc:
         raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
     cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
-
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
@@ -1381,19 +1439,24 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_ng_cov_terms_list.append('cNG')
 
     for which_ng_cov in ccl_ng_cov_terms_list:
-        ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, cfg['PyCCL'])
+        ccl_obj.initialize_trispectrum(which_ng_cov, unique_probe_combs, cfg['PyCCL'])
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
             ell_obj.ells_GC,
             mask_obj.fsky,
             integration_method=cfg['PyCCL']['cov_integration_method'],
-            probe_ordering=probe_ordering,
+            unique_probe_combs=unique_probe_combs,
             ind_dict=ind_dict,
         )
 
 # ! ========================== Combine covariance terms ================================
-cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)
+cov_obj.build_covs(
+    ccl_obj=ccl_obj,
+    oc_obj=oc_obj,
+    split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
+)
 cov_dict = cov_obj.cov_dict
+
 
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):
@@ -1432,29 +1495,46 @@ for key, cov in cov_dict.items():
     save_func(f'{output_path}/{cov_filename}', cov)
 
     if cfg['covariance']['save_full_cov']:
-        for a, b, c, d in probe_comb_idxs:
-            abcd_str = (
-                f'{probename_dict[a]}{probename_dict[b]}'
-                f'{probename_dict[c]}{probename_dict[d]}'
+        for a, b, c, d in unique_probe_combs_ix:
+            probe_str = (
+                f'{const.PROBENAME_DICT[a]}{const.PROBENAME_DICT[b]}'
+                f'{const.PROBENAME_DICT[c]}{const.PROBENAME_DICT[d]}'
             )
+            # compute cov tot
             cov_tot_6d = (
                 cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...]
                 + cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...]
                 + cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
             )
+
+            # save
             save_func(
-                f'{output_path}/cov_{abcd_str}_G_6D',
+                f'{output_path}/cov_{probe_str}_G_6D',
                 cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...],
             )
             save_func(
-                f'{output_path}/cov_{abcd_str}_SSC_6D',
+                f'{output_path}/cov_{probe_str}_SSC_6D',
                 cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...],
             )
             save_func(
-                f'{output_path}/cov_{abcd_str}_cNG_6D',
+                f'{output_path}/cov_{probe_str}_cNG_6D',
                 cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...],
             )
-            save_func(f'{output_path}/cov_{abcd_str}_TOT_6D', cov_tot_6d)
+            save_func(f'{output_path}/cov_{probe_str}_TOT_6D', cov_tot_6d)
+
+            if cfg['covariance']['split_gaussian_cov']:
+                save_func(
+                    f'{output_path}/cov_{probe_str}_sva_6D',
+                    cov_obj.cov_3x2pt_sva_10D[a, b, c, d, ...],
+                )
+                save_func(
+                    f'{output_path}/cov_{probe_str}_sn_6D',
+                    cov_obj.cov_3x2pt_sn_10D[a, b, c, d, ...],
+                )
+                save_func(
+                    f'{output_path}/cov_{probe_str}_mix_6D',
+                    cov_obj.cov_3x2pt_mix_10D[a, b, c, d, ...],
+                )
 
 print(f'Covariance matrices saved in {output_path}\n')
 
@@ -1495,7 +1575,9 @@ for probe in ['WL', 'GC', '3x2pt']:
 if cfg['misc']['save_output_as_benchmark']:
     # some of the test quantities are not defined in some cases
     # better to work with empty arrays than None
+
     if not compute_sb_ssc:
+        k_grid_s2b = np.array([])
         sigma2_b = np.array([])
         dPmm_ddeltab = np.array([])
         dPgm_ddeltab = np.array([])
@@ -1504,13 +1586,16 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
 
+    if compute_sb_ssc and cfg['covariance']['use_KE_approximation']:
+        # in this case, the k grid used is the same as the Pk one, I think
+        k_grid_s2b = np.array([])
+
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
     )
 
-    # I don't fully remember why I don't save these
-    _ell_dict = deepcopy(vars(ell_obj))
+    _ell_dict = vars(ell_obj)
     # _ell_dict.pop('ell_cuts_dict')
     # _ell_dict.pop('idxs_to_delete_dict')
 
@@ -1545,8 +1630,9 @@ if cfg['misc']['save_output_as_benchmark']:
 
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError(
-            'You are trying to overwrite a benchmark file. Please rename the file or '
-            'delete the existing one.'
+            'You are trying to overwrite the benchmark file at'
+            f' {bench_filename}.npz.'
+            'Please rename the new benchmark or delete the existing one.'
         )
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
@@ -1559,10 +1645,9 @@ if cfg['misc']['save_output_as_benchmark']:
         z_grid=z_grid,
         z_grid_trisp=z_grid_trisp,
         k_grid=k_grid,
-        k_grid_sigma2_b=k_grid_s2b_simps,
+        k_grid_sigma2_b=k_grid_s2b,
         nz_src=nz_src,
         nz_lns=nz_lns,
-        **_ell_dict,
         bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
         mag_bias_2d=_mag_bias_2d,
@@ -1582,60 +1667,64 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CLL_dVddeltab=d2CLL_dVddeltab,
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
+        **_ell_dict,
         **cov_dict,
         metadata=metadata,
     )
 
-for cov_name, cov in cov_dict.items():
-    if '3x2pt' in cov_name and 'tot' in cov_name:
-        if cfg['misc']['test_condition_number']:
-            cond_number = np.linalg.cond(cov)
-            print(f'Condition number of {cov_name} = {cond_number:.4e}')
 
-        if cfg['misc']['test_cholesky_decomposition']:
-            print(f'Performing Cholesky decomposition of {cov_name}...')
-            try:
-                np.linalg.cholesky(cov)
-                print('Cholesky decomposition successful')
-            except np.linalg.LinAlgError:
-                print(
-                    'Cholesky decomposition failed. Consider checking the condition '
-                    'number or symmetry.'
-                )
+if (
+    cfg['misc']['test_condition_number']
+    or cfg['misc']['test_cholesky_decomposition']
+    or cfg['misc']['test_numpy_inversion']
+    or cfg['misc']['test_symmetry']
+):
+    for cov_name, cov in cov_dict.items():
+        if '3x2pt' in cov_name and 'tot' in cov_name:
+            print(f'Testing {cov_name}...\n')
 
-        if cfg['misc']['test_numpy_inversion']:
-            print(f'Computing numpy inverse of {cov_name}...')
-            try:
-                inv_cov = np.linalg.inv(cov)
-                print('Numpy inversion successful.')
-                # Test correctness of inversion:
-                identity_check = np.allclose(
-                    np.dot(cov, inv_cov),
-                    np.eye(cov.shape[0]),
-                    atol=1e-9,
-                    rtol=1e-7,
-                )
-                if identity_check:
+            if cfg['misc']['test_condition_number']:
+                cond_number = np.linalg.cond(cov)
+                print(f'Condition number = {cond_number:.4e}')
+
+            if cfg['misc']['test_cholesky_decomposition']:
+                try:
+                    np.linalg.cholesky(cov)
+                    print('Cholesky decomposition successful')
+                except np.linalg.LinAlgError:
                     print(
-                        'Inverse tested successfully (M @ M^{-1} is identity). '
-                        'atol=1e-9, rtol=1e-7'
+                        'Cholesky decomposition failed. Consider checking the condition '
+                        'number or symmetry.'
                     )
+
+            if cfg['misc']['test_numpy_inversion']:
+                try:
+                    inv_cov = np.linalg.inv(cov)
+                    print('Numpy inversion successful.')
+                    # Test correctness of inversion:
+                    identity_check = np.allclose(
+                        np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
+                    )
+                    if identity_check:
+                        print(
+                            'Inverse test successfully (M @ M^{-1} is identity). '
+                            'atol=1e-9, rtol=1e-7'
+                        )
+                    else:
+                        print(
+                            f'Warning: Inverse test failed (M @ M^{-1} '
+                            'deviates from identity). atol=0, rtol=1e-7'
+                        )
+                except np.linalg.LinAlgError:
+                    print(
+                        'Numpy inversion failed: Matrix is singular or near-singular.'
+                    )
+
+            if cfg['misc']['test_symmetry']:
+                if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
+                    print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
                 else:
-                    print(
-                        f'Warning: Inverse test failed for {cov_name} (M @ M^{-1} '
-                        'deviates from identity). atol=0, rtol=1e-7'
-                    )
-            except np.linalg.LinAlgError:
-                print(
-                    f'Numpy inversion failed for {cov_name} : '
-                    'Matrix is singular or near-singular.'
-                )
-
-        if cfg['misc']['test_symmetry']:
-            if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
-                print(f'Warning: Matrix {cov_name} is not symmetric. atol=0, rtol=1e-7')
-            else:
-                print('Matrix is symmetric. atol=0, rtol=1e-7')
+                    print('Matrix is symmetric. atol=0, rtol=1e-7')
 
 if cfg['misc']['save_figs']:
     output_dir = f'{output_path}/figs'

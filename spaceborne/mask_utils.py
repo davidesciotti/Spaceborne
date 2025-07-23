@@ -87,7 +87,7 @@ def generate_polar_cap_func(area_deg2, nside):
 
     # Calculate the actual sky fraction of the generated mask
     # fsky_actual = np.sum(mask) / len(mask)
-    # print(f'Measured f_sky from the mask: {fsky_actual:.4f}')
+    # print(f'Measured fsky from the mask: {fsky_actual:.4f}')
 
     return mask
 
@@ -115,9 +115,9 @@ class Mask:
     def process(self):
         # 1. load or generate mask
 
-        # check they are not both True
-        assert self.load_mask or self.generate_polar_cap, (
-            'Please choose whether to load or generate the mask, not both.'
+        # check that one and only one of load_mask and generate_polar_cap is True
+        assert self.load_mask != self.generate_polar_cap, (
+            'Please choose whether to load OR generate the mask, not neither or both.'
         )
 
         if self.load_mask:

@@ -1514,6 +1514,18 @@ if cfg['misc']['save_output_as_benchmark']:
     # _ell_dict.pop('ell_cuts_dict')
     # _ell_dict.pop('idxs_to_delete_dict')
 
+    if cfg['namaster']['use_namaster']:
+        import pymaster
+
+        # convert NmtBin objects to effective ells
+        for key in _ell_dict:
+            if key.startswith('nmt_bin_obj_'):
+                assert isinstance(_ell_dict[key], pymaster.bins.NmtBin), (
+                    f'Expected NmtBin for {key}, got {_ell_dict[key]}'
+                )
+                _ell_dict[key] = _ell_dict[key].get_effective_ells()
+                
+    # save metadata
     import datetime
 
     branch, commit = sl.get_git_info()

@@ -392,8 +392,8 @@ configs_to_test = [
     {
         'covariance': {
             'G': True,
-            'SSC': False,
-            'cNG': False,
+            'SSC': True,
+            'cNG': True,
             'use_KE_approximation': True,
         },
         'namaster': {'use_namaster': True, 'spin0': True},
@@ -403,8 +403,8 @@ configs_to_test = [
     {
         'covariance': {
             'G': True,
-            'SSC': False,
-            'cNG': False,
+            'SSC': True,
+            'cNG': True,
             'use_KE_approximation': False,
         },
         'namaster': {'use_namaster': True, 'spin0': True},
@@ -414,8 +414,8 @@ configs_to_test = [
     {
         'covariance': {
             'G': True,
-            'SSC': False,
-            'cNG': False,
+            'SSC': True,
+            'cNG': True,
             'use_KE_approximation': False,
         },
         'namaster': {'use_namaster': True, 'spin0': True},

@@ -1,7 +1,7 @@
 using Pkg
 
 # List of packages to check and potentially install
-required_packages = ["NPZ", "LoopVectorization", "YAML", "Tullio", "CUDA"]
+required_packages = ["NPZ", "LoopVectorization", "YAML", "CUDA", "Tullio"]
 
 for pkg_name in required_packages
     try
@@ -290,6 +290,102 @@ function SSC_kernel!(
 end
 
 
+function _SSC_integral_4D_simps_GPU_tullio(
+    d2ClAB_dVddeltab, d2ClCD_dVddeltab,
+    ind_AB, ind_CD, nbl, z_steps,
+    cl_integral_prefactor, sigma2, z_array
+)
+    """
+    This version performs the 4D SSC integration using Tullio.jl for GPU acceleration.
+    It takes advantage of symmetries between redshift pairs.
+    """
+    println("Using device: CUDA with Tullio.jl")
+
+    z_step = (z_array[end] - z_array[begin]) / (length(z_array) - 1)
+
+    # Move input arrays to the CUDA device
+    d2ClAB_dVddeltab_d = cu(d2ClAB_dVddeltab)
+    d2ClCD_dVddeltab_d = cu(d2ClCD_dVddeltab)
+    ind_AB_d = cu(ind_AB)
+    ind_CD_d = cu(ind_CD)
+    cl_integral_prefactor_d = cu(cl_integral_prefactor)
+    sigma2_d = cu(sigma2)
+    simpson_weights_d = cu(get_simpson_weights(length(z_array)))
+
+    zpairs_AB = size(ind_AB, 1)
+    zpairs_CD = size(ind_CD, 1)
+    num_col = size(ind_AB, 2)
+
+    # Allocate result array on the GPU
+    result_d = CUDA.zeros(Float64, nbl, nbl, zpairs_AB, zpairs_CD)
+    
+    # Perform the computation using Tullio.jl
+    # Tullio automatically handles the GPU execution because the arrays are CuArrays.
+    # The expression uses indirect indexing to select the correct redshift bins.
+    @tullio result_d[ell1, ell2, zij, zkl] :=
+        cl_integral_prefactor_d[z1_idx] * 
+        cl_integral_prefactor_d[z2_idx] *
+        d2ClAB_dVddeltab_d[ell1, zij, z1_idx] *
+        d2ClCD_dVddeltab_d[ell2, zkl, z2_idx] *
+        sigma2_d[z1_idx, z2_idx] *
+        simpson_weights_d[z1_idx] * 
+        simpson_weights_d[z2_idx]
+
+    # Move result back to CPU
+    result = Array(result_d)
+
+    return (z_step^2.0) .* result
+    
+end
+
+
+function SSC_integral_4D_simps_GPU_tullio(
+    d2ClAB_dVddeltab, d2ClCD_dVddeltab,
+    ind_AB, ind_CD, nbl, z_steps,
+    cl_integral_prefactor, sigma2, z_array
+)
+    println("Using device: CUDA with Tullio.jl")
+
+    z_step = (z_array[end] - z_array[begin]) / (length(z_array) - 1)
+
+    # Get Simpson weights on CPU first, then move to GPU
+    simpson_weights = get_simpson_weights(length(z_array))
+
+    # Move arrays to GPU with explicit type conversion
+    d2ClAB_dVddeltab_d = CuArray{Float64}(d2ClAB_dVddeltab)
+    d2ClCD_dVddeltab_d = CuArray{Float64}(d2ClCD_dVddeltab)
+    cl_integral_prefactor_d = CuArray{Float64}(cl_integral_prefactor)
+    sigma2_d = CuArray{Float64}(sigma2)
+    simpson_weights_d = CuArray{Float64}(simpson_weights)
+
+    # Get dimensions from the actual arrays
+    zpairs_AB = size(d2ClAB_dVddeltab_d, 2)
+    zpairs_CD = size(d2ClCD_dVddeltab_d, 2)
+
+    # Debug: Print array dimensions
+    println("d2ClAB_dVddeltab_d size: ", size(d2ClAB_dVddeltab_d))
+    println("d2ClCD_dVddeltab_d size: ", size(d2ClCD_dVddeltab_d))
+    println("cl_integral_prefactor_d size: ", size(cl_integral_prefactor_d))
+    println("sigma2_d size: ", size(sigma2_d))
+    println("simpson_weights_d size: ", size(simpson_weights_d))
+
+    # Allocate result array on GPU
+    result_d = CUDA.zeros(Float64, nbl, nbl, zpairs_AB, zpairs_CD)
+
+    # Perform the computation using Tullio.jl
+    @tullio result_d[ell1, ell2, zij, zkl] := 
+        cl_integral_prefactor_d[z1_idx] *
+        cl_integral_prefactor_d[z2_idx] *
+        d2ClAB_dVddeltab_d[ell1, zij, z1_idx] *
+        d2ClCD_dVddeltab_d[ell2, zkl, z2_idx] *
+        sigma2_d[z1_idx, z2_idx] *
+        simpson_weights_d[z1_idx] * simpson_weights_d[z2_idx]
+
+    # Move result back to CPU
+    result = Array(result_d)
+
+    return (z_step^2.0) .* result
+end
 
 function get_default_device()
     if isdefined(Main, :CUDA) && CUDA.functional()
@@ -352,6 +448,25 @@ println("*****************\n")
 @assert size(ind_auto) == (zbins*(zbins+1)/2, num_col)
 @assert size(ind_cross) == (zbins^2, num_col)
 
+
+# Contract d2CLL_dVddeltab arrays from shape 
+# (nbl, zbins, zbins, z_steps) to (nbl, zpairs, zsteps)
+# This is to avoid issues with complex indexing in @tullio
+zpairs_auto = size(ind_auto)[1]
+zpairs_cross = size(ind_cross)[1]
+
+d2CLL_dVddeltab_3D = zeros(nbl, zpairs_auto, z_steps)
+d2CGL_dVddeltab_3D = zeros(nbl, zpairs_cross, z_steps)
+d2CGG_dVddeltab_3D = zeros(nbl, zpairs_auto, z_steps)
+
+for zij in 1:zpairs_auto
+    d2CLL_dVddeltab_3D[:, zij, :] = d2CLL_dVddeltab[:, ind_auto[zij, num_col - 1], ind_auto[zij, num_col], :]
+    d2CGG_dVddeltab_3D[:, zij, :] = d2CGG_dVddeltab[:, ind_auto[zij, num_col - 1], ind_auto[zij, num_col], :]
+end
+for zij in 1:zpairs_cross
+    d2CGL_dVddeltab_3D[:, zij, :] = d2CGL_dVddeltab[:, ind_cross[zij, num_col - 1], ind_cross[zij, num_col], :]
+end
+
 d2Cl_dVddeltab_dict = Dict(("L", "L") => d2CLL_dVddeltab,
                             ("G", "L") => d2CGL_dVddeltab,
                             ("G", "G") => d2CGG_dVddeltab)
@@ -366,6 +481,12 @@ elseif integration_type == "simps"
     ssc_integral_4d_func = SSC_integral_4D_simps
 elseif integration_type == "simps_gpu"
     ssc_integral_4d_func = SSC_integral_4D_simps_GPU
+elseif integration_type == "simps_gpu_tullio"
+    ssc_integral_4d_func = SSC_integral_4D_simps_GPU_tullio
+    d2Cl_dVddeltab_dict = Dict(("L", "L") => d2CLL_dVddeltab_3D,
+                                ("G", "L") => d2CGL_dVddeltab_3D,
+                                ("G", "G") => d2CGG_dVddeltab_3D)
+                                
 elseif integration_type == "simps_KE_approximation"
     ssc_integral_4d_func = SSC_integral_KE_4D_simps
 elseif integration_type == "trapz-6D"

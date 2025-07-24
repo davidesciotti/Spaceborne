@@ -1,7 +1,7 @@
 using Pkg
 
 # List of packages to check and potentially install
-required_packages = ["NPZ", "LoopVectorization", "YAML", "CUDA"]
+required_packages = ["NPZ", "LoopVectorization", "YAML"]
 
 for pkg_name in required_packages
     try
@@ -88,30 +88,6 @@ function SSC_integral_4D_trapz(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
     return (dz^2) .* result
 end
 
-function ssc_integral_kernel(result, d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, cl_integral_prefactor, sigma2, simpson_weights, nbl, z_steps, zpairs_AB, zpairs_CD)
-    ell1 = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    ell2 = (blockIdx().y - 1) * blockDim().y + threadIdx().y
-    zij = (blockIdx().z - 1) * blockDim().z + threadIdx().z
-
-    if ell1 <= nbl && ell2 <= nbl && zij <= zpairs_AB
-        num_col = size(ind_AB, 2)
-        for zkl in 1:zpairs_CD
-            for z1_idx in 1:z_steps
-                for z2_idx in 1:z_steps
-                    zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
-
-                    result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] *
-                    d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
-                    d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2[z1_idx, z2_idx] *
-                    simpson_weights[z1_idx] * simpson_weights[z2_idx]
-                end
-            end
-        end
-    end
-
-    return
-end
-
 function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
     cl_integral_prefactor, sigma2, z_array::Array)
     """ this version takes advantage of the symmetries between redshift pairs.
@@ -125,41 +101,22 @@ function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
     zpairs_CD = size(ind_CD, 1)
     num_col = size(ind_AB, 2)
 
-    if CUDA.functional()
-        println("CUDA is available, running on GPU")
-        d2ClAB_dVddeltab_d = cu(d2ClAB_dVddeltab)
-        d2ClCD_dVddeltab_d = cu(d2ClCD_dVddeltab)
-        ind_AB_d = cu(ind_AB)
-        ind_CD_d = cu(ind_CD)
-        cl_integral_prefactor_d = cu(cl_integral_prefactor)
-        sigma2_d = cu(sigma2)
-        simpson_weights_d = cu(simpson_weights)
-        result_d = CUDA.zeros(nbl, nbl, zpairs_AB, zpairs_CD)
+    result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
 
-        threads = (16, 16, 1)
-        blocks = (cld(nbl, threads[1]), cld(nbl, threads[2]), cld(zpairs_AB, threads[3]))
+    @tturbo for ell1 in 1:nbl
+        for ell2 in 1:nbl  # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
+            for zij in 1:zpairs_AB
+                for zkl in 1:zpairs_CD
+                    for z1_idx in 1:z_steps
+                        for z2_idx in 1:z_steps
 
-        @cuda threads=threads blocks=blocks ssc_integral_kernel(result_d, d2ClAB_dVddeltab_d, d2ClCD_dVddeltab_d, ind_AB_d, ind_CD_d, cl_integral_prefactor_d, sigma2_d, simpson_weights_d, nbl, z_steps, zpairs_AB, zpairs_CD)
-        
-        result = Array(result_d)
-    else
-        println("CUDA is not available, running on CPU")
-        result = zeros(nbl, nbl, zpairs_AB, zpairs_CD)
-        @tturbo for ell1 in 1:nbl
-            for ell2 in 1:nbl  # this could be further optimized by computing only upper triangular ells (for LLLL, GLGL, GGGG only), but not with tturbo
-                for zij in 1:zpairs_AB
-                    for zkl in 1:zpairs_CD
-                        for z1_idx in 1:z_steps
-                            for z2_idx in 1:z_steps
+                            zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
 
-                                zi, zj, zk, zl = ind_AB[zij, num_col - 1], ind_AB[zij, num_col], ind_CD[zkl, num_col - 1], ind_CD[zkl, num_col]
+                            result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] *
+                            d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
+                            d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2[z1_idx, z2_idx] *
+                            simpson_weights[z1_idx] * simpson_weights[z2_idx]
 
-                                result[ell1, ell2, zij, zkl] += cl_integral_prefactor[z1_idx] * cl_integral_prefactor[z2_idx] *
-                                d2ClAB_dVddeltab[ell1, zi, zj, z1_idx] *
-                                d2ClCD_dVddeltab[ell2, zk, zl, z2_idx] * sigma2[z1_idx, z2_idx] *
-                                simpson_weights[z1_idx] * simpson_weights[z2_idx]
-
-                            end
                         end
                     end
                 end

@@ -290,7 +290,7 @@ def sigma2_z1z2_func_vectorized_fft(
     c_r = fft_coeffs.real
 
     # interpolate C(r)
-    c_0 = simps(Pk0, k_grid)
+    c_0 = simps(y=Pk0, x=k_grid)
     c_func = interp1d(
         r_grid,
         c_r,

@@ -161,7 +161,7 @@ sample_covariance:
     fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 OneCovariance:
-    path_to_oc_executable: '/home/cosmo/davide.sciotti/data//OneCovariance/covariance.py'
+    path_to_oc_executable: '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 
@@ -323,7 +323,7 @@ precision:
     # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
     ell_min_rs: 2  # Type: int
     ell_max_rs: 100000  # Type: int
-    ell_bins_rs: 500  # Type: int
+    ell_bins_rs: 10000  # Type: int
     
     # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
     theta_bins_fine: 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
@@ -331,7 +331,7 @@ precision:
     # Integration method for the covariance projection to real space. Options:
     # - 'simps': uses simpson integration. This is faster but less accurate
     # - 'levin': uses levin integration. This is slower but more accurate
-    cov_rs_int_method: 'levin'  # Type: str.
+    cov_rs_int_method: 'simps'  # Type: str.
     levin_bin_avg: True  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
 
 misc:
@@ -349,7 +349,7 @@ misc:
     test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
     test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
-    output_path: /home/cosmo/davide.sciotti/data//Spaceborne_rs_test # Type: str. Path to the output directory
+    output_path: /home/cosmo/davide.sciotti/data/Spaceborne_rs_test # Type: str. Path to the output directory
     save_figs: True
 
 

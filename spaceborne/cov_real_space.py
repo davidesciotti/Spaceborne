@@ -913,7 +913,7 @@ class CovRealSpace:
         # original - to be repaced with _set_probes_toloop
         self.probes_toloop = self.probe_idx_dict
         # for testing purposes
-        # self.probes_toloop = ['xipxip']
+        self.probes_toloop = ['xipxip', 'xipxim', 'ximxim']
 
     def _set_terms_toloop(self):
         self.terms_toloop = []

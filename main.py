@@ -1393,6 +1393,20 @@ if compute_sb_ssc:
 
     # ! 4. Perform the integration calling the Julia module
     start = time.perf_counter()
+    cov_ssc_3x2pt_dict_8D_gpu_tullio = cov_obj.ssc_integral_julia(
+        d2CLL_dVddeltab=d2CLL_dVddeltab,
+        d2CGL_dVddeltab=d2CGL_dVddeltab,
+        d2CGG_dVddeltab=d2CGG_dVddeltab,
+        cl_integral_prefactor=cl_integral_prefactor,
+        sigma2=sigma2_b,
+        z_grid=z_grid,
+        integration_type='simps_gpu_tullio',
+        unique_probe_combs=unique_probe_combs,
+        num_threads=cfg['misc']['num_threads'],
+    )
+    print(f'SSC computed on the GPU with @tullio in {(time.perf_counter() - start) / 60:.2f} m')
+
+    start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(
         d2CLL_dVddeltab=d2CLL_dVddeltab,
         d2CGL_dVddeltab=d2CGL_dVddeltab,
@@ -1400,11 +1414,43 @@ if compute_sb_ssc:
         cl_integral_prefactor=cl_integral_prefactor,
         sigma2=sigma2_b,
         z_grid=z_grid,
-        integration_type=ssc_integration_type,
+        integration_type='simps',
         unique_probe_combs=unique_probe_combs,
-        num_threads=cfg['misc']['num_threads']
+        num_threads=cfg['misc']['num_threads'],
     )
     print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
+
+    start = time.perf_counter()
+    cov_ssc_3x2pt_dict_8D_gpu = cov_obj.ssc_integral_julia(
+        d2CLL_dVddeltab=d2CLL_dVddeltab,
+        d2CGL_dVddeltab=d2CGL_dVddeltab,
+        d2CGG_dVddeltab=d2CGG_dVddeltab,
+        cl_integral_prefactor=cl_integral_prefactor,
+        sigma2=sigma2_b,
+        z_grid=z_grid,
+        integration_type='simps_gpu',
+        unique_probe_combs=unique_probe_combs,
+        num_threads=cfg['misc']['num_threads'],
+    )
+    print(f'SSC computed on the GPU in {(time.perf_counter() - start) / 60:.2f} m')
+
+    for key in cov_ssc_3x2pt_dict_8D:
+        np.testing.assert_allclose(
+            cov_ssc_3x2pt_dict_8D[key],
+            cov_ssc_3x2pt_dict_8D_gpu[key],
+            rtol=2e-4,
+            atol=0,
+        )
+
+    for key in cov_ssc_3x2pt_dict_8D:
+        np.testing.assert_allclose(
+            cov_ssc_3x2pt_dict_8D[key],
+            cov_ssc_3x2pt_dict_8D_gpu_tullio[key],
+            rtol=2e-4,
+            atol=0,
+        )
+
+    assert False, 'stop here'
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...

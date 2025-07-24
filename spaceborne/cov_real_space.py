@@ -913,13 +913,12 @@ class CovRealSpace:
         # original - to be repaced with _set_probes_toloop
         self.probes_toloop = self.probe_idx_dict
         # for testing purposes
-        self.probes_toloop = ['xipxip']
+        # self.probes_toloop = ['xipxip']
 
     def _set_terms_toloop(self):
         self.terms_toloop = []
         if self.cfg['covariance']['G']:
-            # self.terms_toloop.extend(('sva', 'sn', 'mix'))
-            self.terms_toloop.extend(('mix',))
+            self.terms_toloop.extend(('sva', 'sn', 'mix'))
             # self.terms_toloop.extend(('gauss_ell', ))
         if self.cfg['covariance']['SSC']:
             self.terms_toloop.append('ssc')
@@ -985,6 +984,7 @@ class CovRealSpace:
         from spaceborne import pyccl_interface
 
         # recompute Cls on a finer grid
+        # TODO what if these are taken from some input files?
         cl_ll_3d = ccl_obj.compute_cls(
             self.ell_values,
             ccl_obj.p_of_k_a,

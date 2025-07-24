@@ -1163,7 +1163,7 @@ if compute_sb_ssc:
                     # r_gm = resp_obj.r1_gm_hm
                     # r_gg = resp_obj.r1_gg_hm
 
-        # for mm and gm there are redundant axes: reduce dimensionality
+        # for mm and gm there are redundant axes: reduce dimensionality (squeeze)
         dPmm_ddeltab = dPmm_ddeltab[:, :, 0, 0]
         dPgm_ddeltab = dPgm_ddeltab[:, :, :, 0]
 
@@ -1278,9 +1278,7 @@ if compute_sb_ssc:
         if cfg['covariance']['use_KE_approximation']:
             # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
             ccl_obj.set_sigma2_b(
-                z_grid=z_grid,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
+                z_grid=z_grid, which_sigma2_b=which_sigma2_b, mask_obj=mask_obj
             )
             _a, sigma2_b = ccl_obj.sigma2_b_tuple
             # quick sanity check on the a/z grid
@@ -1672,12 +1670,7 @@ for probe in cov_rs_obj.probe_idx_dict:
     #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
 
     cov_oc_4d = sl.cov_6D_to_4D_blocks(
-        cov_oc_6d,
-        nbt,
-        zpairs_ab,
-        zpairs_cd,
-        ind_ab,
-        ind_cd,
+        cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
 
     cov_oc_dict_2d[probe] = sl.cov_4D_to_2D(
@@ -1716,7 +1709,7 @@ title = (
     f'n_bisec_max {cfg["precision"]["n_bisec_max"]} - '
     f'rel_acc {cfg["precision"]["rel_acc"]}'
 )
-sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=10, )
+sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
 
 
 # compare individual terms/probes
@@ -1760,20 +1753,10 @@ for probe in cov_rs_obj.probes_toloop:
     #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
 
     cov_sb_4d = sl.cov_6D_to_4D_blocks(
-        cov_sb_6d,
-        nbt,
-        zpairs_ab,
-        zpairs_cd,
-        ind_ab,
-        ind_cd,
+        cov_sb_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
     cov_oc_4d = sl.cov_6D_to_4D_blocks(
-        cov_oc_6d,
-        nbt,
-        zpairs_ab,
-        zpairs_cd,
-        ind_ab,
-        ind_cd,
+        cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
 
     cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
@@ -1824,12 +1807,12 @@ for probe in cov_rs_obj.probes_toloop:
         ax=axs[:, 1],
     )
 
+# note that this is *not* compatible with %matplotlib inline in the interactive window!
 if cfg['misc']['save_figs']:
     output_dir = f'{output_path}/figs'
     os.makedirs(output_dir, exist_ok=True)
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
-
 
 print('done')

@@ -1693,8 +1693,8 @@ if (
                     print('Cholesky decomposition successful')
                 except np.linalg.LinAlgError:
                     print(
-                        'Cholesky decomposition failed. Consider checking the condition '
-                        'number or symmetry.'
+                        'Cholesky decomposition failed. Consider checking the condition'
+                        ' number or symmetry.'
                     )
 
             if cfg['misc']['test_numpy_inversion']:

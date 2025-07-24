@@ -1,7 +1,7 @@
 using Pkg
 
 # List of packages to check and potentially install
-required_packages = ["NPZ", "LoopVectorization", "YAML"]
+required_packages = ["NPZ", "LoopVectorization", "YAML", "Tullio", "CUDA"]
 
 for pkg_name in required_packages
     try
@@ -96,7 +96,6 @@ function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
     simpson_weights = get_simpson_weights(length(z_array))
     z_step = (last(z_array)-first(z_array)) /(length(z_array)-1)
 
-
     zpairs_AB = size(ind_AB, 1)
     zpairs_CD = size(ind_CD, 1)
     num_col = size(ind_AB, 2)
@@ -125,10 +124,6 @@ function SSC_integral_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_C
     end
     return (z_step^2) .* result
 end
-
-
-
-
 
 
 function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, ind_CD, nbl, z_steps, 
@@ -165,6 +160,146 @@ function SSC_integral_KE_4D_simps(d2ClAB_dVddeltab, d2ClCD_dVddeltab, ind_AB, in
         end
     end
     return result .* z_step
+end
+
+
+# ! GPU funcs
+function to_device(arr::Array, device_type::Symbol)
+    if device_type == :cpu
+        return arr
+    elseif device_type == :cuda
+        # Check if CUDA is available and loaded
+        if isdefined(Main, :CUDA) && CUDA.functional()
+            return CUDA.cu(arr)
+        else
+            @warn "CUDA.jl is not functional or not loaded. Falling back to CPU for CUDA device type."
+            return arr
+        end
+    elseif device_type == :metal
+        # Check if Metal is available and loaded
+        if isdefined(Main, :Metal) && Metal.functional()
+            return Metal.MtlArray(arr)
+        else
+            @warn "Metal.jl is not functional or not loaded. Falling back to CPU for Metal device type."
+            return arr
+        end
+    # Add AMDGPU/ROCm if needed
+    # elseif device_type == :rocm
+    #     if isdefined(Main, :AMDGPU) && AMDGPU.functional()
+    #         return AMDGPU.roc(arr)
+    #     else
+    #         @warn "AMDGPU.jl is not functional or not loaded. Falling back to CPU for ROCm device type."
+    #         return arr
+    #     end
+    else
+        error("Unsupported device type: $device_type. Choose :cpu, :cuda, or :metal.")
+    end
+end
+
+
+function SSC_integral_4D_simps_GPU(
+    d2ClAB_dVddeltab, d2ClCD_dVddeltab,
+    ind_AB, ind_CD, nbl, z_steps,
+    cl_integral_prefactor, sigma2, z_array::AbstractVector
+)
+    device = :cuda
+    println("Using device: $device")
+
+    z_step = (z_array[end] - z_array[begin]) / (length(z_array) - 1)
+
+    # Move everything to the GPU
+    d2ClAB_dVddeltab = cu(d2ClAB_dVddeltab)
+    d2ClCD_dVddeltab = cu(d2ClCD_dVddeltab)
+    ind_AB = cu(ind_AB)
+    ind_CD = cu(ind_CD)
+    cl_integral_prefactor = cu(cl_integral_prefactor)
+    sigma2 = cu(sigma2)
+    simpson_weights = cu(get_simpson_weights(length(z_array)))
+
+    zpairs_AB = size(ind_AB, 1)
+    zpairs_CD = size(ind_CD, 1)
+    num_col = size(ind_AB, 2)
+
+    result = CUDA.zeros(Float64, nbl, nbl, zpairs_AB, zpairs_CD)
+
+    threads_per_block_x = min(32, zpairs_AB) # Choose appropriate values, often powers of 2 up to 1024 total
+    threads_per_block_y = min(32, zpairs_CD) # Check CUDA device limits
+    threads_per_block = (threads_per_block_x, threads_per_block_y)
+
+    # Number of blocks needed
+    blocks_per_grid_x = cld(nbl, 1) # If processing one ell per block idx, need nbl blocks
+    blocks_per_grid_y = cld(nbl, 1) # If processing one ell per block idx, need nbl blocks
+    blocks_per_grid = (blocks_per_grid_x, blocks_per_grid_y)
+
+    @cuda threads=threads_per_block blocks=blocks_per_grid SSC_kernel!(
+        result, d2ClAB_dVddeltab, d2ClCD_dVddeltab,
+        ind_AB, ind_CD, cl_integral_prefactor, sigma2,
+        simpson_weights, nbl, zpairs_AB, zpairs_CD, z_steps, num_col
+    )
+
+    return (z_step^2.0) .* result
+end
+
+function SSC_kernel!(
+    result, d2ClAB_dVddeltab, d2ClCD_dVddeltab,
+    ind_AB, ind_CD, cl_integral_prefactor, sigma2,
+    simpson_weights, nbl, zpairs_AB, zpairs_CD, z_steps, num_col
+)
+    # Correctly map block and thread indices to problem dimensions
+    # Based on launch config: blocks=(nbl, nbl), threads=(min(32, zpairs_AB), min(32, zpairs_CD))
+    ell1 = blockIdx().x  # One block per ell1 (assuming nbl <= gridDim().x)
+    ell2 = blockIdx().y  # One block per ell2 (assuming nbl <= gridDim().y)
+    zij  = threadIdx().x # One thread.x per zij (within limits of blockDim().x)
+    zkl  = threadIdx().y # One thread.y per zkl (within limits of blockDim().y)
+
+    # Check bounds based on the actual dimensions
+    # Important: Ensure the thread indices don't exceed the zpair dimensions
+    # This check is crucial because threads_per_block might be smaller than zpairs_*
+    if ell1 <= nbl && ell2 <= nbl && zij <= zpairs_AB && zkl <= zpairs_CD
+        # Bounds check for thread indices within the block's assigned work
+        # Only proceed if this thread's (zij, zkl) is within the valid range for this block
+        # Since threads=(min(32, zpairs_AB), min(32, zpairs_CD)), this check is mostly
+        # redundant *if* zpairs_AB/CD <= 32. But it's good practice.
+        # If zpairs_AB or zpairs_CD could be > 32, you'd need a more complex launch
+        # strategy (e.g., multiple blocks in the z dimensions or loops in the kernel).
+
+        zi = ind_AB[zij, num_col - 1]
+        zj = ind_AB[zij, num_col]
+        zk = ind_CD[zkl, num_col - 1]
+        zl = ind_CD[zkl, num_col]
+
+        # Use Float64 for accumulation if inputs are Float64
+        acc = 0.0 # Changed from 0.0f0 to 0.0 for Float64 consistency
+
+        for z1 in 1:z_steps
+            for z2 in 1:z_steps
+                # Make sure all array accesses are within bounds
+                # Assuming d2Cl arrays are (nbl, zbins, zbins, z_steps)
+                # and indices zi,zj,zk,zl are within [1, zbins]
+                # and sigma2, cl_integral_prefactor, simpson_weights are within [1, z_steps]
+                acc += cl_integral_prefactor[z1] * cl_integral_prefactor[z2] *
+                       d2ClAB_dVddeltab[ell1, zi, zj, z1] *
+                       d2ClCD_dVddeltab[ell2, zk, zl, z2] *
+                       sigma2[z1, z2] *
+                       simpson_weights[z1] * simpson_weights[z2]
+            end
+        end
+        result[ell1, ell2, zij, zkl] = acc
+    end
+    return
+end
+
+
+
+function get_default_device()
+    if isdefined(Main, :CUDA) && CUDA.functional()
+        return :cuda
+    elseif isdefined(Main, :Metal) && Metal.functional()
+        return :metal
+    else
+        @warn "No GPU backend available. Using CPU."
+        return :cpu
+    end
 end
 
 
@@ -212,7 +347,7 @@ println("*****************\n")
 @assert size(d2CLL_dVddeltab) == (nbl, zbins, zbins, z_steps)
 @assert size(d2CGL_dVddeltab) == (nbl, zbins, zbins, z_steps)
 @assert size(d2CGG_dVddeltab) == (nbl, zbins, zbins, z_steps)
-# @assert size(sigma2) == (z_steps, z_steps)
+@assert size(sigma2) in [(z_steps, z_steps), (z_steps,)]  # for LR or KE approx
 @assert size(cl_integral_prefactor) == (z_steps,)
 @assert size(ind_auto) == (zbins*(zbins+1)/2, num_col)
 @assert size(ind_cross) == (zbins^2, num_col)
@@ -229,6 +364,8 @@ if integration_type == "trapz"
     ssc_integral_4d_func = SSC_integral_4D_trapz
 elseif integration_type == "simps"
     ssc_integral_4d_func = SSC_integral_4D_simps
+elseif integration_type == "simps_gpu"
+    ssc_integral_4d_func = SSC_integral_4D_simps_GPU
 elseif integration_type == "simps_KE_approximation"
     ssc_integral_4d_func = SSC_integral_KE_4D_simps
 elseif integration_type == "trapz-6D"

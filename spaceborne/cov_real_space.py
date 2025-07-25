@@ -8,18 +8,16 @@ sn = sampling noise
 mix = mixed term
 """
 
-from functools import partial
 import itertools
 import warnings
+from functools import partial
 
 import numpy as np
-import pandas as pd
 import pyccl as ccl
 import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
 from tqdm import tqdm
-from pprint import pprint
 
 from spaceborne import constants as const
 from spaceborne import sb_lib as sl
@@ -118,12 +116,11 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
     return product_terms
 
 
-
 # ! __ = 'no longer used'
 def __project_ellspace_cov_vec_2d(
-    theta_1_l, theta_1_u, mu,                           
-    theta_2_l, theta_2_u, nu,                           
-    Amax, ell2_values, ell1_values, cov_ell             
+    theta_1_l, theta_1_u, mu,
+    theta_2_l, theta_2_u, nu,
+    Amax, ell2_values, ell1_values, cov_ell
 ):  # fmt: skip
     """This version is fully vectorized"""
 
@@ -223,9 +220,9 @@ def __project_hs_cov_simps(
 
 
 def __project_ellspace_cov_helper(    # fmt: skip
-    self, theta_1_ix, theta_2_ix, mu, nu,    
-    zij, zkl, ind_ab, ind_cd,   
-    Amax, ell1_values, ell2_values, cov_ell,   
+    self, theta_1_ix, theta_2_ix, mu, nu,
+    zij, zkl, ind_ab, ind_cd,
+    Amax, ell1_values, ell2_values, cov_ell,
 ):  # fmt: skip
     # TODO unify helper funcs
 
@@ -238,12 +235,12 @@ def __project_ellspace_cov_helper(    # fmt: skip
     zk, zl = ind_cd[zkl, :]
 
     return (theta_1_ix, theta_2_ix, zi, zj, zk, zl,  # fmt: skip
-        __project_hs_cov_simps( 
-            theta_1_l, theta_1_u, mu, 
-            theta_2_l, theta_2_u, nu, 
-            zi, zj, zk, zl, 
-            Amax, ell1_values, ell2_values, cov_ell, 
-        ), 
+        __project_hs_cov_simps(
+            theta_1_l, theta_1_u, mu,
+            theta_2_l, theta_2_u, nu,
+            zi, zj, zk, zl,
+            Amax, ell1_values, ell2_values, cov_ell,
+        ),
     )  # fmt: skip
 
 
@@ -256,19 +253,19 @@ def __project_ellspace_cov_vec_helper(
     theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
 
     return (theta_1_ix, theta_2_ix,  # fmt: skip
-        __project_ellspace_cov_vec_1d(  
-            theta_1_l, theta_1_u, mu,  
-            theta_2_l, theta_2_u, nu,  
-            Amax, ell1_values, ell2_values, cov_ell,  
-        ),  
+        __project_ellspace_cov_vec_1d(
+            theta_1_l, theta_1_u, mu,
+            theta_2_l, theta_2_u, nu,
+            Amax, ell1_values, ell2_values, cov_ell,
+        ),
     )  # fmt: skip
 
 
 # ! ====================== COV RS W/ SIMPSON INTEGRATION ===============================
 def cov_sva_simps(
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
-    zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,  
-    cl_5d, Amax, ell_values  
+    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
+    zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+    cl_5d, Amax, ell_values
 ):  # fmt: skip
     """Computes a single entry of the real-space Gaussian SVA (sample variance)
     part of the covariance matrix.
@@ -295,9 +292,9 @@ def cov_sva_simps(
 
 
 def cov_mix_simps(
-    self, theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,  
-    ell_values, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,  
-    zi, zj, zk, zl, Amax  
+    self, theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
+    ell_values, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+    zi, zj, zk, zl, Amax
 ):  # fmt: skip
     """This function accepts self as an argument, but it's not a class method"""
 
@@ -452,10 +449,9 @@ def split_probe_ix(probe_ix):
 
 
 def integrate_bessel_single_wrapper(
-    cov_2d, mu, ell, theta_centers, n_jobs, 
+    cov_2d, mu, ell, theta_centers, n_jobs,
     logx, logy, n_sub, diagonal, n_bisec_max, rel_acc, boost_bessel, verbose,
 ):  # fmt: skip
-    
     assert cov_2d.ndim == 2, 'the input integrand must be 2D'
 
     integral_type = 1  # single cilyndrical bessel
@@ -693,7 +689,7 @@ def regularize_by_eigenvalue_cutoff(cov, threshold=1e-14):
 
 
 def integrate_single_bessel_pair(
-    integrand, x_values, ord_bes_1, theta1, ord_bes_2, theta2,   
+    integrand, x_values, ord_bes_1, theta1, ord_bes_2, theta2,
     bessel_type, n_jobs, logx, logy, n_sub, n_bisec_max,
     rel_acc, boost_bessel, verbose, diagonal
 ):  # fmt: skip
@@ -845,7 +841,7 @@ class CovRealSpace:
         self.n_probes_hs = 2  # harmonic space
         self.n_split_terms = 3
         self.cov_rs_8d = np.zeros(
-            (self.n_split_terms, self.n_probes_rs, self.n_probes_rs, 
+            (self.n_split_terms, self.n_probes_rs, self.n_probes_rs,
             self.nbt_coarse, self.nbt_coarse,
             self.zbins,  self.zbins,  self.zbins,  self.zbins,
             ))  # fmt: skip
@@ -856,7 +852,7 @@ class CovRealSpace:
 
         # for validation purposes
         self.probe_idx_dict_short_oc = {}
-        for key in const.RS_PROBE_DICT:
+        for key in const.RS_PROBE_NAME_TO_IX_DICT:
             probe_a_str, probe_b_str = split_probe_name(key)
             self.probe_idx_dict_short_oc[probe_a_str + probe_b_str] = (
                 const.RS_PROBE_DICT_SHORT[probe_a_str],
@@ -864,7 +860,7 @@ class CovRealSpace:
             )
 
         # original - to be repaced with _set_probes_toloop
-        self.probes_toloop = const.RS_PROBE_DICT
+        self.probes_toloop = const.RS_PROBE_NAME_TO_IX_DICT
         # for testing purposes
         # self.probes_toloop = ['xipxip']
 
@@ -1029,7 +1025,7 @@ class CovRealSpace:
         else:
             return np.zeros((self.zbins, self.zbins))
 
-    def cov_simps_wrapper( 
+    def cov_simps_wrapper(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, func
     ):  # fmt: skip
@@ -1045,13 +1041,13 @@ class CovRealSpace:
             'ell_values': self.ell_values,
             'Amax': self.amax,
         }
-        results = Parallel(n_jobs=self.n_jobs)( 
-            delayed(self.cov_parallel_helper)(  
-                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,  
-                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,  
-                func=func,  
+        results = Parallel(n_jobs=self.n_jobs)(
+            delayed(self.cov_parallel_helper)(
+                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
+                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
+                func=func,
                 **kwargs,
-            )  
+            )
             for theta_1_ix in tqdm(range(self.nbt_fine))
             for theta_2_ix in range(self.nbt_fine)
             for zij in range(zpairs_ab)
@@ -1063,7 +1059,7 @@ class CovRealSpace:
 
         return cov_rs_6d
 
-    def cov_sva_levin( 
+    def cov_sva_levin(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
     ):  # fmt: skip
@@ -1145,7 +1141,7 @@ class CovRealSpace:
     def cov_levin_wrapper(
         self, integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
     ):
-        """This function abstracts the reshaping of the integral before and after the 
+        """This function abstracts the reshaping of the integral before and after the
         integration, as well as encapsulating the two different functions to call
         depending on the levin_bin_avg value"""
         integrand_3d = sl.cov_6D_to_4D_blocks(
@@ -1257,19 +1253,19 @@ class CovRealSpace:
         zk, zl = ind_cd[zkl, :]
 
         return (
-            theta_1_ix, theta_2_ix, zi, zj, zk, zl, func( 
-                theta_1_l=theta_1_l, theta_1_u=theta_1_u, mu=mu, 
-                theta_2_l=theta_2_l, theta_2_u=theta_2_u, nu=nu, 
-                zi=zi, zj=zj, zk=zk, zl=zl, 
-                **kwargs, 
-            ), 
+            theta_1_ix, theta_2_ix, zi, zj, zk, zl, func(
+                theta_1_l=theta_1_l, theta_1_u=theta_1_u, mu=mu,
+                theta_2_l=theta_2_l, theta_2_u=theta_2_u, nu=nu,
+                zi=zi, zj=zj, zk=zk, zl=zl,
+                **kwargs,
+            ),
         )  # fmt: skip
 
     def combine_terms_and_probes(self):
         self.cov_rs_2d_dict = {}
         self.cov_rs_full_2d = []
         for term in self.terms_toloop:
-            for probe in const.RS_PROBE_DICT:
+            for probe in const.RS_PROBE_NAME_TO_IX_DICT:
                 split_g_ix = (
                     self.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
                 )
@@ -1323,7 +1319,9 @@ class CovRealSpace:
         )
 
         mu, nu = const.MU_DICT[twoprobe_ab_str], const.MU_DICT[twoprobe_cd_str]
-        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_DICT[probe]
+        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
+            probe
+        ]
 
         # TODO test this better, especially for cross-terms
         # TODO off-diagonal zij blocks still don't match, I think it's just a
@@ -1354,7 +1352,7 @@ class CovRealSpace:
 
             elif self.integration_method == 'levin':
                 self.cov_sva_rs_6d = self.cov_sva_levin(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
+                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
                 )  # fmt: skip
 
@@ -1363,7 +1361,7 @@ class CovRealSpace:
                 # cov_mix_simps also needs self, I pass it here directly by creating a
                 # partial function
                 self.cov_mix_rs_6d = self.cov_simps_wrapper(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, 
+                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
                     func=partial(cov_mix_simps, self=self)
                 )  # fmt: skip
@@ -1438,7 +1436,7 @@ class CovRealSpace:
                 **self.levin_prec_kw,
             )
             self.cov_svapmix_rs_6d = self.cov_svapmix_rs_6d.reshape(
-                self.nbt_fine, self.nbt_fine, 
+                self.nbt_fine, self.nbt_fine,
                 self.zbins, self.zbins, self.zbins, self.zbins,
             )  # fmt: skip
 
@@ -1548,5 +1546,3 @@ class CovRealSpace:
         self.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix, ...] = getattr(
             self, f'cov_{term}_rs_6d'
         )
-
-        return

@@ -23,7 +23,6 @@ from scipy.special import jv
 
 import spaceborne.constants as const
 
-
 # # Gaussian covariance binning
 # def bin_cov_gauss(cov, ell_values, theta_edges, fsky):
 #     binned_cov = np.zeros((len(theta_edges) - 1, len(theta_edges) - 1))
@@ -442,8 +441,7 @@ def get_git_info():
     try:
         branch = (
             subprocess.check_output(
-                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                stderr=subprocess.DEVNULL,
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], stderr=subprocess.DEVNULL
             )
             .strip()
             .decode('utf-8')
@@ -451,8 +449,7 @@ def get_git_info():
 
         commit = (
             subprocess.check_output(
-                ['git', 'rev-parse', 'HEAD'],
-                stderr=subprocess.DEVNULL,
+                ['git', 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL
             )
             .strip()
             .decode('utf-8')
@@ -2538,10 +2535,10 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     )
     for A, B, C, D in cov_10D_dict:
         cov_10D_array[
-            const.HS_PROBE_DICT[A],
-            const.HS_PROBE_DICT[B],
-            const.HS_PROBE_DICT[C],
-            const.HS_PROBE_DICT[D],
+            const.HS_PROBE_NAME_TO_IX_DICT[A],
+            const.HS_PROBE_NAME_TO_IX_DICT[B],
+            const.HS_PROBE_NAME_TO_IX_DICT[C],
+            const.HS_PROBE_NAME_TO_IX_DICT[D],
             ...,
         ] = cov_10D_dict[A, B, C, D]
 
@@ -2558,10 +2555,10 @@ def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
     for A_str, B_str in probe_ordering:
         for C_str, D_str in probe_ordering:
             A_idx, B_idx, C_idx, D_idx = (
-                const.HS_PROBE_DICT[A_str],
-                const.HS_PROBE_DICT[B_str],
-                const.HS_PROBE_DICT[C_str],
-                const.HS_PROBE_DICT[D_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[A_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[B_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[C_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[D_str],
             )
             cov_10D_dict[A_str, B_str, C_str, D_str] = cov_10D_array[
                 A_idx, B_idx, C_idx, D_idx, ...
@@ -3454,8 +3451,6 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, req_probe_combs_2d, block_index='ell')
                 f'Probe combination {a, b, c, d} does not start with '
                 '("L", "L") or ("G", "L") or ("G", "G") '
             )
-            
-    
 
     # concatenate the lists to make rows
     # (o(nly concatenate and include rows that have content)
@@ -3584,9 +3579,9 @@ def cov2corr(covariance):
 def build_noise(
     zbins: int,
     n_probes: int,
-    sigma_eps2,#: list | tuple | np.ndarray,
-    ng_shear,#: list | tuple | np.ndarray,
-    ng_clust,#: list | tuple | np.ndarray,
+    sigma_eps2,  #: list | tuple | np.ndarray,
+    ng_shear,  #: list | tuple | np.ndarray,
+    ng_clust,  #: list | tuple | np.ndarray,
     is_noiseless: bool = False,
 ) -> np.ndarray:
     """Builds the noise power spectra.
@@ -3631,16 +3626,7 @@ def build_noise(
 
     """
     # assert appropriate inputs are list, tuple or np.ndarray
-    for var, name in zip(
-        [
-            ng_shear,
-            ng_clust,
-        ],
-        [
-            'ng_shear',
-            'ng_clust',
-        ],
-    ):
+    for var, name in zip([ng_shear, ng_clust], ['ng_shear', 'ng_clust']):
         #     [ng_shear, ng_clust, sigma_eps2],
         #     ['ng_shear', 'ng_clust', 'sigma_eps2'],
         # ):

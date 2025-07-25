@@ -889,18 +889,18 @@ class CovRealSpace:
         self.sigma_eps_tot = self.sigma_eps_i * np.sqrt(2)
 
     def _set_levin_bessel_precision(self):
-        self.levin_prec_kw = dict(
+        self.levin_prec_kw = {
             # hardcoded
-            verbose=self.cfg['precision']['verbose'],
-            logx=True,
-            logy=True,
-            diagonal=False,
+            'verbose':self.cfg['precision']['verbose'],
+            'logx':True,
+            'logy':True,
+            'diagonal':False,
             # from the cfg file
-            n_sub=self.cfg['precision']['n_sub'],
-            n_bisec_max=self.cfg['precision']['n_bisec_max'],
-            rel_acc=self.cfg['precision']['rel_acc'],
-            boost_bessel=self.cfg['precision']['boost_bessel'],
-        )
+            'n_sub':self.cfg['precision']['n_sub'],
+            'n_bisec_max':self.cfg['precision']['n_bisec_max'],
+            'rel_acc':self.cfg['precision']['rel_acc'],
+            'boost_bessel':self.cfg['precision']['boost_bessel'],
+        }
 
     def _set_probe_names_idxs(self):
         self.munu_vals = (0, 2, 4)
@@ -1878,14 +1878,14 @@ class CovRealSpace:
             # cast to list to avoid problems due do "recycling" the generator
             zijkl_comb = list(itertools.product(range(self.zbins), repeat=4))
 
-            bin_2d_array_kw = dict(
-                ells_in=self.theta_centers_fine,
-                ells_out=self.theta_centers_coarse,
-                ells_out_edges=self.theta_edges_coarse,
-                weights_in=None,
-                which_binning='sum',
-                interpolate=True,
-            )
+            bin_2d_array_kw = {
+                'ells_in': self.theta_centers_fine,
+                'ells_out': self.theta_centers_coarse,
+                'ells_out_edges': self.theta_edges_coarse,
+                'weights_in': None,
+                'which_binning': 'sum',
+                'interpolate': True,
+            }
 
             results = Parallel(n_jobs=self.n_jobs, backend='loky')(
                 delayed(sl.bin_2d_array)(

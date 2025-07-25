@@ -17,6 +17,7 @@ import yaml
 from matplotlib import cm
 from scipy.interpolate import CubicSpline, RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
+
 from spaceborne import (
     bnt,
     ccl_interface,
@@ -250,7 +251,7 @@ cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
 # Type: float. This is used when ell_cuts is False, also...?
 cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
 cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
-    0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967, 
+    0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967,
     2.15443469, 3.59381366, 5.9948425, 10.0,
 ]  # fmt: skip
 
@@ -340,7 +341,9 @@ symm_probe_combs_hs, nonreq_probe_combs_hs = sl.get_probe_combs(unique_probe_com
 
 # required probe combinations to include in the 2d arrays (must include the
 # cross-terms!)
-_req_probe_combs_hs_2d = sl.build_probe_list(unique_probe_names_hs, include_cross_terms=True)
+_req_probe_combs_hs_2d = sl.build_probe_list(
+    unique_probe_names_hs, include_cross_terms=True
+)
 # as req_probe_combs_2d still only contains the upper triangle,
 # add the symemtric blocks
 symm_probe_combs_hs_2d, _ = sl.get_probe_combs(_req_probe_combs_hs_2d)
@@ -353,13 +356,16 @@ for probe in const.HS_ALL_PROBE_COMBS:
         req_probe_combs_hs_2d.append(probe)
 
 unique_probe_combs_ix_hs = [
-    [const.HS_PROBENAME_DICT_INV[idx] for idx in comb] for comb in unique_probe_combs_hs
+    [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
+    for comb in unique_probe_combs_hs
 ]
 nonreq_probe_combs_ix_hs = [
-    [const.HS_PROBENAME_DICT_INV[idx] for idx in comb] for comb in nonreq_probe_combs_hs
+    [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
+    for comb in nonreq_probe_combs_hs
 ]
 req_probe_combs_2d_ix_hs = [
-    [const.HS_PROBENAME_DICT_INV[idx] for idx in comb] for comb in req_probe_combs_hs_2d
+    [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
+    for comb in req_probe_combs_hs_2d
 ]
 
 # ! set non-gaussian cov terms to compute
@@ -1051,12 +1057,12 @@ if cfg['covariance']['space'] == 'real_space':
 
 
 # !  =============================== Build Gaussian covs ===============================
-cov_obj = sb_cov.SpaceborneCovariance(
+cov_hs_obj = sb_cov.SpaceborneCovariance(
     cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix, cov_rs_obj
 )
-cov_obj.set_ind_and_zpairs(ind, zbins)
-cov_obj.consistency_checks()
-cov_obj.set_gauss_cov(
+cov_hs_obj.set_ind_and_zpairs(ind, zbins)
+cov_hs_obj.consistency_checks()
+cov_hs_obj.set_gauss_cov(
     ccl_obj=ccl_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
     nonreq_probe_combs_ix=nonreq_probe_combs_ix_hs,
@@ -1171,6 +1177,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_obj.call_oc_from_bash()
 
     if cfg['covariance']['space'] == 'real_space':
+        # TODO double check this
         oc_output_covlist_fname = (
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
         )
@@ -1450,7 +1457,7 @@ if compute_sb_ssc:
 
     # ! 4. Perform the integration calling the Julia module
     start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(
+    cov_ssc_3x2pt_dict_8D = cov_hs_obj.ssc_integral_julia(
         d2CLL_dVddeltab=d2CLL_dVddeltab,
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
@@ -1473,7 +1480,7 @@ if compute_sb_ssc:
     else:
         raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
-    cov_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
+    cov_hs_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
@@ -1496,7 +1503,9 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_ng_cov_terms_list.append('cNG')
 
     for which_ng_cov in ccl_ng_cov_terms_list:
-        ccl_obj.initialize_trispectrum(which_ng_cov, unique_probe_combs_hs, cfg['PyCCL'])
+        ccl_obj.initialize_trispectrum(
+            which_ng_cov, unique_probe_combs_hs, cfg['PyCCL']
+        )
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
             ell_obj.ells_GC,
@@ -1507,12 +1516,12 @@ if compute_ccl_ssc or compute_ccl_cng:
         )
 
 # ! ========================== Combine covariance terms ================================
-cov_obj.build_covs(
+cov_hs_obj.build_covs(
     ccl_obj=ccl_obj,
     oc_obj=oc_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
-cov_dict = cov_obj.cov_dict
+cov_dict = cov_hs_obj.cov_dict
 
 if cfg['covariance']['space'] == 'real_space':
     print('Computing RS covariance...')
@@ -1520,12 +1529,8 @@ if cfg['covariance']['space'] == 'real_space':
     for _probe, _term in itertools.product(
         cov_rs_obj.probes_toloop, cov_rs_obj.terms_toloop
     ):
-        print(
-            f'\n***** probe {_probe} - term {_term} - '
-            f'integration {cov_rs_obj.integration_method} - '
-            f'theta bins fine {cov_rs_obj.nbt_fine} *****'
-        )
-        cov_rs_obj.compute_realspace_cov(cov_obj, _probe, _term)
+        print(f'\n***** working on probe {_probe} - term {_term} *****')
+        cov_rs_obj.compute_realspace_cov(cov_hs_obj, _probe, _term)
     cov_rs_obj.combine_terms_and_probes()
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
@@ -1569,43 +1574,43 @@ for key, cov in cov_dict.items():
     if cfg['covariance']['save_full_cov']:
         for a, b, c, d in unique_probe_combs_ix_hs:
             probe_str = (
-                f'{const.HS_PROBENAME_DICT[a]}{const.HS_PROBENAME_DICT[b]}'
-                f'{const.HS_PROBENAME_DICT[c]}{const.HS_PROBENAME_DICT[d]}'
+                f'{const.HS_PROBE_IX_TO_NAME_DICT[a]}{const.HS_PROBE_IX_TO_NAME_DICT[b]}'
+                f'{const.HS_PROBE_IX_TO_NAME_DICT[c]}{const.HS_PROBE_IX_TO_NAME_DICT[d]}'
             )
             # compute cov tot
             cov_tot_6d = (
-                cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...]
-                + cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...]
-                + cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
+                cov_hs_obj.cov_3x2pt_g_10D[a, b, c, d, ...]
+                + cov_hs_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...]
+                + cov_hs_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
             )
 
             # save
             save_func(
                 f'{output_path}/cov_{probe_str}_G_6D',
-                cov_obj.cov_3x2pt_g_10D[a, b, c, d, ...],
+                cov_hs_obj.cov_3x2pt_g_10D[a, b, c, d, ...],
             )
             save_func(
                 f'{output_path}/cov_{probe_str}_SSC_6D',
-                cov_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...],
+                cov_hs_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...],
             )
             save_func(
                 f'{output_path}/cov_{probe_str}_cNG_6D',
-                cov_obj.cov_3x2pt_cng_10D[a, b, c, d, ...],
+                cov_hs_obj.cov_3x2pt_cng_10D[a, b, c, d, ...],
             )
             save_func(f'{output_path}/cov_{probe_str}_TOT_6D', cov_tot_6d)
 
             if cfg['covariance']['split_gaussian_cov']:
                 save_func(
                     f'{output_path}/cov_{probe_str}_sva_6D',
-                    cov_obj.cov_3x2pt_sva_10D[a, b, c, d, ...],
+                    cov_hs_obj.cov_3x2pt_sva_10D[a, b, c, d, ...],
                 )
                 save_func(
                     f'{output_path}/cov_{probe_str}_sn_6D',
-                    cov_obj.cov_3x2pt_sn_10D[a, b, c, d, ...],
+                    cov_hs_obj.cov_3x2pt_sn_10D[a, b, c, d, ...],
                 )
                 save_func(
                     f'{output_path}/cov_{probe_str}_mix_6D',
-                    cov_obj.cov_3x2pt_mix_10D[a, b, c, d, ...],
+                    cov_hs_obj.cov_3x2pt_mix_10D[a, b, c, d, ...],
                 )
 
 print(f'Covariance matrices saved in {output_path}\n')
@@ -1829,7 +1834,7 @@ cov_oc_list_8d = cov_sva_oc_3x2pt_8D + cov_sn_oc_3x2pt_8D + cov_mix_oc_3x2pt_8D
 # TODO SB and OC MUST have same fmt so I can combine probes and terms with the same function!!!
 cov_oc_dict_2d = {}
 nbt = cfg['cov_real_space']['theta_bins']
-for probe in cov_rs_obj.probe_idx_dict:
+for probe in const.RS_PROBE_NAME_TO_IX_DICT:
     # split_g_ix = (
     # cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
     # )
@@ -1842,8 +1847,8 @@ for probe in cov_rs_obj.probe_idx_dict:
 
     twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
     twoprobe_ab_ix, twoprobe_cd_ix = (
-        cov_rs_obj.probe_idx_dict_short[twoprobe_ab_str],
-        cov_rs_obj.probe_idx_dict_short[twoprobe_cd_str],
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_ab_str],
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_cd_str],
     )
 
     zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
@@ -1891,7 +1896,7 @@ gc.collect()
 # )
 
 # I will compare SB against the mat fmt
-cov_sb_2d = cov_obj.cov_rs_obj.cov_rs_full_2d
+cov_sb_2d = cov_hs_obj.cov_rs_obj.cov_rs_full_2d
 cov_oc_2d = cov_oc_mat_2d
 
 title = (
@@ -1915,13 +1920,13 @@ for probe in cov_rs_obj.probes_toloop:
     title_here = title + f'\n{probe = }, {term = }'
 
     split_g_ix = (
-        cov_obj.cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+        cov_hs_obj.cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
     )
 
     twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
     twoprobe_ab_ix, twoprobe_cd_ix = (
-        cov_obj.cov_rs_obj.probe_idx_dict_short[twoprobe_ab_str],
-        cov_obj.cov_rs_obj.probe_idx_dict_short[twoprobe_cd_str],
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_ab_str],
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_cd_str],
     )
     zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
     zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
@@ -1935,7 +1940,9 @@ for probe in cov_rs_obj.probes_toloop:
     elif term == 'mix':
         cov_oc_3x2pt_8D = cov_mix_oc_3x2pt_8D
 
-    cov_sb_6d = cov_obj.cov_rs_obj.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix]
+    cov_sb_6d = cov_hs_obj.cov_rs_obj.cov_rs_8d[
+        split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix
+    ]
     cov_oc_6d = cov_oc_3x2pt_8D[twoprobe_ab_ix, twoprobe_cd_ix]
 
     if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):

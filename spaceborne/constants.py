@@ -3,7 +3,7 @@ import numpy as np
 # HS = harmonic space
 # RS = real space
 
-DEG2_IN_SPHERE = 4 * np.pi * (180 / np.pi)**2
+DEG2_IN_SPHERE = 4 * np.pi * (180 / np.pi) ** 2
 DEG2_TO_SR = (180 / np.pi) ** 2
 SR_TO_ARCMIN2 = (180 / np.pi * 60) ** 2
 
@@ -23,20 +23,12 @@ RS_ALL_PROBE_COMBS = [
     'gmxip',  'gmxim',  'gmgm',  'gmgg',
     'ggxip',  'ggxim',  'gggm',  'gggg',
 ]  # fmt: skip
-   
-HS_DIAG_PROBE_COMBS = [
-    'LLLL',
-    'GLGL',
-    'GGGG',
-]
-RS_DIAG_PROBE_COMBS = [
-    'xipxip',
-    'ximxim',
-    'gmgm',
-    'gggg',
-]
 
-HS_PROBE_DICT = {'L': 0, 'G': 1}
+HS_DIAG_PROBE_COMBS = ['LLLL', 'GLGL', 'GGGG']
+RS_DIAG_PROBE_COMBS = ['xipxip', 'ximxim', 'gmgm', 'gggg']
+
+HS_PROBE_NAME_TO_IX_DICT = {'L': 0, 'G': 1}
+HS_PROBE_IX_TO_NAME_DICT = {0: 'L', 1: 'G'}
 
 HS_SYMMETRIZE_OUTPUT_DICT = {
     ('L', 'L'): True,
@@ -45,30 +37,35 @@ HS_SYMMETRIZE_OUTPUT_DICT = {
     ('G', 'G'): True,
 }
 
-HS_PROBENAME_DICT = {0: 'L', 1: 'G'}
-HS_PROBENAME_DICT_INV = {'L': 0, 'G': 1}
-
-
 # bessel functions order for the different real space probes
 MU_DICT = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
 
 # ! careful: in this representation, xipxip and ximxim (eg) have
 # ! the same indices!!
-RS_PROBE_DICT = {
+RS_PROBE_NAME_TO_IX_DICT = {
     'xipxip': (0, 0, 0, 0),
     'xipxim': (0, 0, 0, 0),
+    'xipgm':  (0, 0, 1, 0),
+    'xipgg':  (0, 0, 1, 1),
+
+    'ximxip': (0, 0, 0, 0),
     'ximxim': (0, 0, 0, 0),
-    'gmgm': (1, 0, 1, 0),
-    'gmxim': (1, 0, 0, 0),
-    'gmxip': (1, 0, 0, 0),
-    'gggg': (1, 1, 1, 1),
-    'ggxim': (1, 1, 0, 0),
-    'gggm': (1, 1, 1, 0),
-    'ggxip': (1, 1, 0, 0),
-}
+    'ximgm':  (0, 0, 1, 0),
+    'ximgg':  (0, 0, 1, 1),
+
+    'gmxip':  (1, 0, 0, 0),
+    'gmxim':  (1, 0, 0, 0),
+    'gmgm':   (1, 0, 1, 0),
+    'gmgg':   (1, 0, 1, 1),
+
+    'ggxip':  (1, 1, 0, 0),
+    'ggxim':  (1, 1, 0, 0),
+    'gggm':   (1, 1, 1, 0),
+    'gggg':   (1, 1, 1, 1),
+}  # fmt: skip
 
 
-RS_PROBE_DICT_SHORT = {
+RS_PROBE_NAME_TO_IX_DICT_SHORT = {
     'gg': 0,  # w
     'gm': 1,  # \gamma_t
     'xip': 2,

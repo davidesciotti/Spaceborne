@@ -1,6 +1,7 @@
 import argparse
 import contextlib
 import gc
+import itertools
 import os
 import pprint
 import sys
@@ -197,6 +198,7 @@ use_h_units = False  # whether or not to normalize Megaparsecs by little h
 ell_max_max = max(cfg['ell_binning']['ell_max_WL'], cfg['ell_binning']['ell_max_GC'])
 ell_min_unb_oc = 2
 ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
+nbl_3x2pt_oc = 500
 # for the Gaussian covariance computation
 k_steps_sigma2_simps = 20_000
 k_steps_sigma2_levin = 300
@@ -265,7 +267,7 @@ cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
 # Integration scheme used for the SSC survey covariance (sigma2_b) computation. Options:
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
-cfg['covariance']['sigma2_b_integration_scheme'] = 'fft'  # Type: str.
+cfg['covariance']['sigma2_b_int_method'] = 'fft'  # Type: str.
 # Whether to load the previously computed sigma2_b.
 # No need anymore since it's quite fast
 cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
@@ -1405,16 +1407,16 @@ if compute_sb_ssc:
         else:
             # depending on the modules installed, integrate with levin or simpson
             # (in the latter case, in parallel or not)
-            s2b_integration_scheme = cfg['covariance']['sigma2_b_int_method']
+            s2b_intgr_method = cfg['covariance']['sigma2_b_int_method']
             parallel = bool(find_spec('pathos'))
 
-            if s2b_integration_scheme == 'levin':
+            if s2b_intgr_method == 'levin':
                 k_grid_s2b = k_grid
-            elif s2b_integration_scheme in ('simps', 'fft'):
+            elif s2b_intgr_method in ('simps', 'fft'):
                 k_grid_s2b = k_grid_s2b_simps
             else:
                 raise ValueError(
-                    f'Unknown sigma2_b_integration_scheme: {s2b_integration_scheme}'
+                    f'Unknown sigma2_b_integration_method: {s2b_intgr_method}'
                 )
 
             sigma2_b = sigma2_ssc.sigma2_z1z2_wrap_parallel(
@@ -1424,7 +1426,7 @@ if compute_sb_ssc:
                 which_sigma2_b=which_sigma2_b,
                 mask_obj=mask_obj,
                 n_jobs=cfg['misc']['num_threads'],
-                integration_scheme=s2b_integration_scheme,
+                integration_scheme=s2b_intgr_method,
                 batch_size=cfg['misc']['levin_batch_size'],
                 parallel=parallel,
             )
@@ -1443,7 +1445,7 @@ if compute_sb_ssc:
         z_grid=z_grid,
         integration_type=ssc_integration_type,
         unique_probe_combs=unique_probe_combs,
-        num_threads=cfg['misc']['num_threads']
+        num_threads=cfg['misc']['num_threads'],
     )
     print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
 
@@ -1498,19 +1500,19 @@ cov_obj.build_covs(
 )
 cov_dict = cov_obj.cov_dict
 
-if self.do_real_space:
-
+if cfg['cov_real_space']['do_real_space']:
     print('Computing RS covariance...')
     start_rs = time.perf_counter()
     for _probe, _term in itertools.product(
-        self.cov_rs_obj.probes_toloop, self.cov_rs_obj.terms_toloop):
+        cov_rs_obj.probes_toloop, cov_rs_obj.terms_toloop
+    ):
         print(
             f'\n***** probe {_probe} - term {_term} - '
-            f'integration {self.cov_rs_obj.integration_method} - '
-            f'theta bins fine {self.cov_rs_obj.nbt_fine} *****'
+            f'integration {cov_rs_obj.integration_method} - '
+            f'theta bins fine {cov_rs_obj.nbt_fine} *****'
         )
-        self.cov_rs_obj.compute_realspace_cov(self, _probe, _term)
-    self.cov_rs_obj.combine_terms_and_probes()
+        cov_rs_obj.compute_realspace_cov(_probe, _term)
+    cov_rs_obj.combine_terms_and_probes()
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
 

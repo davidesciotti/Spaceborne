@@ -91,13 +91,13 @@ def get_probe_combs(unique_probe_combs):
 
     # sanity checks
     for probe in unique_probe_combs:
-        if probe not in const.ALL_PROBE_COMBS:
-            raise ValueError(f'Probe {probe} not found in {const.ALL_PROBE_COMBS}')
+        if probe not in const.HS_ALL_PROBE_COMBS:
+            raise ValueError(f'Probe {probe} not found in {const.HS_ALL_PROBE_COMBS}')
         if len(probe) != 4:
             raise ValueError(f'Probe {probe} must have length 4')
 
     # take the requested probes which are not diagonal
-    _symm_probe_combs = set(unique_probe_combs) - set(const.DIAG_PROBE_COMBS)
+    _symm_probe_combs = set(unique_probe_combs) - set(const.HS_DIAG_PROBE_COMBS)
 
     # invert probe_a, probe_b <-> probe_c, probe_d
     symm_probe_combs = []
@@ -106,7 +106,7 @@ def get_probe_combs(unique_probe_combs):
 
     # lastly, find the remaining (non required) probe combinations
     nonreq_probe_combs = (
-        set(const.ALL_PROBE_COMBS) - set(unique_probe_combs) - set(symm_probe_combs)
+        set(const.HS_ALL_PROBE_COMBS) - set(unique_probe_combs) - set(symm_probe_combs)
     )
 
     return symm_probe_combs, nonreq_probe_combs
@@ -700,7 +700,7 @@ def cov_3x2pt_dict_8d_to_10d(
     zbins: int,
     ind_dict: dict,
     unique_probe_combs: list[str],
-    symmetrize_output_dict: bool = const.SYMMETRIZE_OUTPUT_DICT,
+    symmetrize_output_dict: bool = const.HS_SYMMETRIZE_OUTPUT_DICT,
 ) -> dict:
     """Expands a 3x2pt covariance dictionary from 8D to 10D.
 
@@ -2538,10 +2538,10 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     )
     for A, B, C, D in cov_10D_dict:
         cov_10D_array[
-            const.PROBE_DICT[A],
-            const.PROBE_DICT[B],
-            const.PROBE_DICT[C],
-            const.PROBE_DICT[D],
+            const.HS_PROBE_DICT[A],
+            const.HS_PROBE_DICT[B],
+            const.HS_PROBE_DICT[C],
+            const.HS_PROBE_DICT[D],
             ...,
         ] = cov_10D_dict[A, B, C, D]
 
@@ -2558,10 +2558,10 @@ def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
     for A_str, B_str in probe_ordering:
         for C_str, D_str in probe_ordering:
             A_idx, B_idx, C_idx, D_idx = (
-                const.PROBE_DICT[A_str],
-                const.PROBE_DICT[B_str],
-                const.PROBE_DICT[C_str],
-                const.PROBE_DICT[D_str],
+                const.HS_PROBE_DICT[A_str],
+                const.HS_PROBE_DICT[B_str],
+                const.HS_PROBE_DICT[C_str],
+                const.HS_PROBE_DICT[D_str],
             )
             cov_10D_dict[A_str, B_str, C_str, D_str] = cov_10D_array[
                 A_idx, B_idx, C_idx, D_idx, ...
@@ -2807,8 +2807,8 @@ def cov_3x2pt_4d_to_10d_dict(
             zbins,
             ind_dict[key[0], key[1]],
             ind_dict[key[2], key[3]],
-            const.SYMMETRIZE_OUTPUT_DICT[key[0], key[1]],
-            const.SYMMETRIZE_OUTPUT_DICT[key[2], key[3]],
+            const.HS_SYMMETRIZE_OUTPUT_DICT[key[0], key[1]],
+            const.HS_SYMMETRIZE_OUTPUT_DICT[key[2], key[3]],
         )
 
     return cov_3x2pt_10d_dict

@@ -60,6 +60,72 @@ import spaceborne.constants as const
 #     return binned_cov
 
 
+def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
+    # compare covariance
+    compare_arrays(
+        cov_a,
+        cov_b,
+        name_a,
+        name_b,
+        log_array=True,
+        log_diff=False,
+        abs_val=True,
+        plot_diff_threshold=diff_threshold,
+        title=title,
+    )
+
+    # compare correlation
+    corr_a = cov2corr(cov_a)
+    corr_b = cov2corr(cov_b)
+    matshow_arr_kw = {'cmap': 'RdBu_r', 'vmin': -1, 'vmax': 1}
+    compare_arrays(
+        corr_a,
+        corr_b,
+        name_a,
+        name_b,
+        log_array=False,
+        log_diff=False,
+        matshow_arr_kw=matshow_arr_kw,
+        plot_diff_hist=False,
+        plot_diff_threshold=diff_threshold,
+        title=title,
+    )
+
+    # compare cov diag
+    compare_funcs(
+        x=None,
+        y={
+            f'abs diag {name_a}': np.diag(np.abs(cov_a)),
+            f'abs diag {name_b}': np.diag(np.abs(cov_b)),
+        },
+        logscale_y=[True, False],
+        title=title,
+    )
+
+    # compare cov flat
+    compare_funcs(
+        x=None,
+        y={
+            f'abs flat {name_a}': np.abs(cov_a).flatten(),
+            f'abs flat {name_b}': np.abs(cov_b).flatten(),
+        },
+        logscale_y=[True, False],
+        ylim_diff=[-100, 100],
+        title=title,
+    )
+
+    # compare SB against mat - cov spectrum
+    eig_a = np.linalg.eigvals(cov_a)
+    eig_b = np.linalg.eigvals(cov_b)
+    compare_funcs(
+        x=None,
+        y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
+        logscale_y=[True, False],
+        ylim_diff=[-100, 100],
+        title=title,
+    )
+
+
 def build_probe_list(probes, include_cross_terms=False):
     """Return the list of probe combinations to compute.
 
@@ -1609,7 +1675,7 @@ def compare_arrays(
     plot_diff_threshold=None,
     white_where_zero=True,
     plot_diff_hist=False,
-    matshow_arr_kw={},
+    matshow_arr_kw=None,
     title='',
 ):
     fontsize = 25
@@ -2699,7 +2765,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d):
 
     # check that the req_probe_combs_2d  are correct
     for a, b, c, d in req_probe_combs_2d:
-        assert (a, b, c, d) in cov_3x2pt_8D_dict.keys(), (
+        assert (a, b, c, d) in cov_3x2pt_8D_dict, (
             f'Probe combination {a, b, c, d} not found in the input dictionary'
         )
 

@@ -624,6 +624,7 @@ def levin_integrate_bessel_double_wrapper(
 
     return result_levin
 
+
 def stack_probe_blocks(cov_2d_dict):
     row_1 = np.hstack(
         (
@@ -660,6 +661,7 @@ def stack_probe_blocks(cov_2d_dict):
 
     return np.vstack((row_1, row_2, row_3, row_4))
 
+
 def stack_probe_blocks_new(cov_2d_dict):
     xip_row = np.hstack(
         (
@@ -695,6 +697,7 @@ def stack_probe_blocks_new(cov_2d_dict):
     )
 
     return np.vstack((xip_row, xim_row, gm_row, gg_row))
+
 
 def twopcf_wrapper(
     cosmo, zi, zj, ell_grid, theta_grid, cl_3D, correlation_type, method

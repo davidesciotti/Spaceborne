@@ -624,7 +624,6 @@ def levin_integrate_bessel_double_wrapper(
 
     return result_levin
 
-
 def stack_probe_blocks(cov_2d_dict):
     row_1 = np.hstack(
         (
@@ -661,6 +660,41 @@ def stack_probe_blocks(cov_2d_dict):
 
     return np.vstack((row_1, row_2, row_3, row_4))
 
+def stack_probe_blocks_new(cov_2d_dict):
+    xip_row = np.hstack(
+        (
+            cov_2d_dict['xipxip'],
+            cov_2d_dict['xipxim'],
+            cov_2d_dict['xipgm'],
+            cov_2d_dict['xipgg'],
+        )
+    )
+    xim_row = np.hstack(
+        (
+            cov_2d_dict['xipxim'].T,
+            cov_2d_dict['ximxim'],
+            cov_2d_dict['ximgm'],
+            cov_2d_dict['ximgg'],
+        )
+    )
+    gm_row = np.hstack(
+        (
+            cov_2d_dict['xipgm'].T,
+            cov_2d_dict['ximgm'].T,
+            cov_2d_dict['gmgm'],
+            cov_2d_dict['gmgg'],
+        )
+    )
+    gg_row = np.hstack(
+        (
+            cov_2d_dict['xipgg'].T,
+            cov_2d_dict['ximgg'].T,
+            cov_2d_dict['gmgg'].T,
+            cov_2d_dict['gggg'],
+        )
+    )
+
+    return np.vstack((xip_row, xim_row, gm_row, gg_row))
 
 def twopcf_wrapper(
     cosmo, zi, zj, ell_grid, theta_grid, cl_3D, correlation_type, method
@@ -822,18 +856,18 @@ class CovRealSpace:
         self.sigma_eps_tot = self.sigma_eps_i * np.sqrt(2)
 
     def _set_levin_bessel_precision(self):
-        self.levin_prec_kw = dict(
+        self.levin_prec_kw = {
             # hardcoded
-            verbose=self.cfg['precision']['verbose'],
-            logx=True,
-            logy=True,
-            diagonal=False,
+            'verbose': self.cfg['precision']['verbose'],
+            'logx': True,
+            'logy': True,
+            'diagonal': False,
             # from the cfg file
-            n_sub=self.cfg['precision']['n_sub'],
-            n_bisec_max=self.cfg['precision']['n_bisec_max'],
-            rel_acc=self.cfg['precision']['rel_acc'],
-            boost_bessel=self.cfg['precision']['boost_bessel'],
-        )
+            'n_sub': self.cfg['precision']['n_sub'],
+            'n_bisec_max': self.cfg['precision']['n_bisec_max'],
+            'rel_acc': self.cfg['precision']['rel_acc'],
+            'boost_bessel': self.cfg['precision']['boost_bessel'],
+        }
 
     def _set_probe_names_idxs(self):
         self.munu_vals = (0, 2, 4)
@@ -855,14 +889,9 @@ class CovRealSpace:
         for key in const.RS_PROBE_NAME_TO_IX_DICT:
             probe_a_str, probe_b_str = split_probe_name(key)
             self.probe_idx_dict_short_oc[probe_a_str + probe_b_str] = (
-                const.RS_PROBE_DICT_SHORT[probe_a_str],
-                const.RS_PROBE_DICT_SHORT[probe_b_str],
+                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_a_str],
+                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_b_str],
             )
-
-        # original - to be repaced with _set_probes_toloop
-        self.probes_toloop = const.RS_PROBE_NAME_TO_IX_DICT
-        # for testing purposes
-        # self.probes_toloop = ['xipxip']
 
     def _set_terms_toloop(self):
         self.terms_toloop = []
@@ -895,8 +924,8 @@ class CovRealSpace:
 
         self.probes_toloop = []
 
-        for probe_comb in probe_comb_idxs:
-            probe_comb = tuple(probe_comb)
+        for _probe_comb in probe_comb_idxs:
+            probe_comb = tuple(_probe_comb)
             if probe_comb in probe_idx_dict_reversed:
                 self.probes_toloop.extend(probe_idx_dict_reversed[probe_comb])
             else:
@@ -1272,8 +1301,8 @@ class CovRealSpace:
 
                 twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
                 twoprobe_ab_ix, twoprobe_cd_ix = (
-                    const.RS_PROBE_DICT_SHORT[twoprobe_ab_str],
-                    const.RS_PROBE_DICT_SHORT[twoprobe_cd_str],
+                    const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_ab_str],
+                    const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_cd_str],
                 )
 
                 zpairs_ab = (
@@ -1314,8 +1343,8 @@ class CovRealSpace:
 
         twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
         twoprobe_ab_ix, twoprobe_cd_ix = (
-            const.RS_PROBE_DICT_SHORT[twoprobe_ab_str],
-            const.RS_PROBE_DICT_SHORT[twoprobe_cd_str],
+            const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_ab_str],
+            const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_cd_str],
         )
 
         mu, nu = const.MU_DICT[twoprobe_ab_str], const.MU_DICT[twoprobe_cd_str]
@@ -1523,14 +1552,14 @@ class CovRealSpace:
             # cast to list to avoid problems due do "recycling" the generator
             zijkl_comb = list(itertools.product(range(self.zbins), repeat=4))
 
-            bin_2d_array_kw = dict(
-                ells_in=self.theta_centers_fine,
-                ells_out=self.theta_centers_coarse,
-                ells_out_edges=self.theta_edges_coarse,
-                weights_in=None,
-                which_binning='sum',
-                interpolate=True,
-            )
+            bin_2d_array_kw = {
+                'ells_in': self.theta_centers_fine,
+                'ells_out': self.theta_centers_coarse,
+                'ells_out_edges': self.theta_edges_coarse,
+                'weights_in': None,
+                'which_binning': 'sum',
+                'interpolate': True,
+            }
 
             results = Parallel(n_jobs=self.n_jobs, backend='loky')(
                 delayed(sl.bin_2d_array)(

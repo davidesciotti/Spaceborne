@@ -1062,13 +1062,14 @@ cov_hs_obj = sb_cov.SpaceborneCovariance(
 )
 cov_hs_obj.set_ind_and_zpairs(ind, zbins)
 cov_hs_obj.consistency_checks()
+# TODO how should I treat this? SSC and cNG are required in the RS case as well
 cov_hs_obj.set_gauss_cov(
     ccl_obj=ccl_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
     nonreq_probe_combs_ix=nonreq_probe_combs_ix_hs,
 )
 
-# ! =================================== OneCov  ariance ================================
+# ! =================================== OneCovariance ================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1531,7 +1532,10 @@ if cfg['covariance']['space'] == 'real_space':
     ):
         print(f'\n***** working on probe {_probe} - term {_term} *****')
         cov_rs_obj.compute_realspace_cov(cov_hs_obj, _probe, _term)
+
+    # put everything together
     cov_rs_obj.combine_terms_and_probes()
+
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
 
@@ -1908,8 +1912,48 @@ title = (
     f'n_bisec_max {cfg["precision"]["n_bisec_max"]} - '
     f'rel_acc {cfg["precision"]["rel_acc"]}'
 )
-sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
 
+
+# # rearrange in OC 2D SB fmt
+# elem_auto = nbt * zpairs_auto
+# elem_cross = nbt * zpairs_cross
+# # these are the end indices
+# lim_1 = elem_auto
+# lim_2 = lim_1 + elem_cross
+# lim_3 = lim_2 + elem_auto
+# lim_4 = lim_3 + elem_auto
+
+# assert lim_4 == cov_oc_2d.shape[0]
+# assert lim_4 == cov_oc_2d.shape[1]
+
+# cov_oc_2d_dict = {
+#     # first OC row is gg
+#     'gggg': cov_oc_2d[:lim_1, :lim_1],
+#     'gggm': cov_oc_2d[:lim_1, lim_1:lim_2],
+#     'ggxip': cov_oc_2d[:lim_1, lim_2:lim_3],
+#     'ggxim': cov_oc_2d[:lim_1, lim_3:lim_4],
+
+#     'gmgg': cov_oc_2d[lim_1:lim_2, :lim_1],
+#     'gmgm': cov_oc_2d[lim_1:lim_2, lim_1:lim_2],
+#     'gmxip': cov_oc_2d[lim_1:lim_2,  lim_2:lim_3],
+#     'gmxim': cov_oc_2d[lim_1:lim_2,  lim_3:lim_4],
+
+#     'xipgg': cov_oc_2d[lim_2:lim_3, :lim_1],
+#     'xipgm': cov_oc_2d[lim_2:lim_3, lim_1:lim_2],
+#     'xipxip': cov_oc_2d[lim_2:lim_3,  lim_2:lim_3],
+#     'xipxim': cov_oc_2d[lim_2:lim_3,  lim_3:lim_4],
+
+#     'ximgg': cov_oc_2d[lim_3:lim_4, :lim_1],
+#     'ximgm': cov_oc_2d[lim_3:lim_4, lim_1:lim_2],
+#     'ximxip': cov_oc_2d[lim_3:lim_4,  lim_2:lim_3],
+#     'ximxim': cov_oc_2d[lim_3:lim_4,  lim_3:lim_4],
+
+# }
+
+# cov_oc_2d = cov_real_space.stack_probe_blocks(cov_oc_2d_dict)
+
+
+sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
 
 # compare individual terms/probes
 term = cov_rs_obj.terms_toloop[0]

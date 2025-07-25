@@ -139,7 +139,7 @@ def timer(msg):
         yield
     finally:
         stop = time.perf_counter()
-        print(msg % (stop - start), flush=True)
+        print(f'{msg} done in {stop - start:.2f} s', flush=True)
 
 
 def bin_2d_array(  # fmt: skip
@@ -393,6 +393,7 @@ def compare_funcs(
     title=None,
     ylim_diff=None,
     plt_kw=None,
+    ax=None,
 ):
     plt_kw = {} if plt_kw is None else plt_kw
 
@@ -403,13 +404,11 @@ def compare_funcs(
     if x is None:
         x = np.arange(len(y_tuple[0]))
 
-    fig, ax = plt.subplots(
-        2,
-        1,
-        sharex=True,
-        height_ratios=[2, 1],
-    )
-    fig.subplots_adjust(hspace=0)
+    if ax is None:
+        fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1])
+        fig.subplots_adjust(hspace=0)
+    else:
+        fig = ax[0].figure
 
     for i, _y in enumerate(y_tuple):
         ls = '--' if i > 0 else '-'
@@ -1613,6 +1612,8 @@ def compare_arrays(
     plot_diff_threshold=None,
     white_where_zero=True,
     plot_diff_hist=False,
+    matshow_arr_kw={},
+    title='',
 ):
     fontsize = 25
 
@@ -1670,11 +1671,11 @@ def compare_arrays(
         if log_array:
             A_toplot, B_toplot = np.log10(A_toplot), np.log10(B_toplot)
 
-        im = ax[0, 0].matshow(A_toplot)
+        im = ax[0, 0].matshow(A_toplot, **matshow_arr_kw)
         ax[0, 0].set_title(f'{name_A}', fontsize=fontsize)
         fig.colorbar(im, ax=ax[0, 0])
 
-        im = ax[0, 1].matshow(B_toplot)
+        im = ax[0, 1].matshow(B_toplot, **matshow_arr_kw)
         ax[0, 1].set_title(f'{name_B}', fontsize=fontsize)
         fig.colorbar(im, ax=ax[0, 1])
 
@@ -1704,7 +1705,7 @@ def compare_arrays(
 
     fig.suptitle(
         f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}\n'
-        f'plot_diff_threshold={plot_diff_threshold}%',
+        f'plot_diff_threshold={plot_diff_threshold}%\n{title}',
         fontsize=fontsize,
     )
     plt.show()
@@ -3573,13 +3574,9 @@ def cov2corr(covariance):
 
     with np.errstate(divide='ignore', invalid='ignore'):
         correlation = np.divide(covariance, outer_v)
-        correlation[covariance == 0] = (
-            0  # Ensure zero covariance entries are explicitly zero
-        )
-        correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
-
-    # Ensure diagonal elements are exactly 1
-    # np.fill_diagonal(correlation, 1)
+        # Ensure zero covariance entries are explicitly zero
+        correlation[covariance == 0] = 0
+        # correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
 
     return correlation
 
@@ -3587,9 +3584,9 @@ def cov2corr(covariance):
 def build_noise(
     zbins: int,
     n_probes: int,
-    sigma_eps2: list | tuple | np.ndarray,
-    ng_shear: list | tuple | np.ndarray,
-    ng_clust: list | tuple | np.ndarray,
+    sigma_eps2,#: list | tuple | np.ndarray,
+    ng_shear,#: list | tuple | np.ndarray,
+    ng_clust,#: list | tuple | np.ndarray,
     is_noiseless: bool = False,
 ) -> np.ndarray:
     """Builds the noise power spectra.

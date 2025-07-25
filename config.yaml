@@ -3,6 +3,7 @@
 # The type of the different values is given in the comments, and is checked at runtime.
 # Note: When not on the same line, comments always refer to the option/section immediately below.
 # Note: `None` is `null` in YAML
+# Note: Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
 
 # ROOTS:
 # pleiadi: /u/dsciotti/code
@@ -129,7 +130,7 @@ nz:
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
   #        modification to the n(z) by setting shift_nz and smooth_nz to False.
   # [NOTE] The cuts defined by clip_zmin/zmax are only applied if shift_nz is True
-  shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
+  shift_nz: True # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
   dzWL: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
   dzGC: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
   normalize_shifted_nz: True # Type: bool. Whether to normalize the shifted n(z) distributions
@@ -151,6 +152,30 @@ mask:
   survey_area_deg2: 13245 # Type: int
   apodize: False # Type: bool
   aposize: 0.1 # Type: float. Apodization scale in deg
+
+namaster:
+    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+    use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
+    workspace_path: ... # Type: str. Path to the workspace, if already computed
+
+sample_covariance:
+    compute_sample_cov: False  # Type: bool
+    # Which code to use to compute the coupled Cls on the masked maps. The results are 
+    # essentially equivalent, but 'namaster' is a bit faster.
+    # In case the decoupled (sample) covariance is requested, in both cases the 
+    # workspace.decouple_cell() function will be used. 
+    # Documentation: 
+    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
+    # Options: ['namaster', 'healpy']. 
+    which_cls: namaster  # Type: str. 
+    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
+    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
+
+OneCovariance:
+    path_to_oc_executable: '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
+    consistency_checks: False
+    oc_output_filename: 'cov_rcf_mergetest'
 
 ell_binning:
   binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
@@ -175,7 +200,7 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
@@ -218,7 +243,7 @@ covariance:
   which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
   # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
-  # Can be one of:
+  # Options:
   # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
   # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
   which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
@@ -244,26 +269,14 @@ covariance:
   # Name of the output covariance file. Change suffix to '.npy' to save as npy file.
   cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str.
 
-namaster:
-  use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-  spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
-  use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation (recommended)
-  workspace_path: ... # Type: str. Path to the workspace, if already computed
+cov_real_space:
+  do_real_space: True  # Type: bool. Whether to project the harmonic-space covariance to real space
+  
+  # theta binning for the real-space covariance matrix
+  theta_min_arcmin: 50  # Type: float | int
+  theta_max_arcmin: 300  # Type: float | int
+  theta_bins: 10  # Type: int
 
-sample_covariance:
-  compute_sample_cov: False # Type: bool
-
-  # Which code to use to compute the coupled Cls on the masked maps. The results are
-  # essentially equivalent, but 'namaster' is a bit faster than 'healpy'.
-  # In case the decoupled (sample) covariance is requested, for both choiches the
-  # workspace.decouple_cell() function will be used.
-  # Documentation:
-  # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
-  # Options: ['namaster', 'healpy'].
-  which_cls: namaster # Type: str.
-
-  nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
-  fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
@@ -283,7 +296,7 @@ PyCCL:
 
   # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
   # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
-  n_samples_wf: 1000 # Type: int
+  n_samples_wf: 1000 # Type: int  # TODO move to precision settings!
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
@@ -292,13 +305,48 @@ PyCCL:
     K_MAX_SPLINE: 300 # Type: int
   gsl_params: null # Type: dict | None
 
+
 precision:
-  # Number of iterations when computing the alms of the input map. See
-  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-  n_iter_nmt: null # Type: None | int.
+    # ==================================== NaMaster ====================================
+    # Number of iterations when computing the alms of the input map. See 
+    # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
+    n_iter_nmt: null # Type: None | int. 
+
+
+    # ===================================== pylevin ====================================
+    # Precision settings for pylevin. See the official documentation for more details:
+    # https://levin-bessel.readthedocs.io/en/latest/index.html
+    # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
+    n_sub: 20  # number of collocation points in each bisection  # default: 8
+    n_bisec_max: 500  # maximum number of bisections used  # default: 32
+    rel_acc: 1.e-7  # relative accuracy target  # default: 1.e-4
+    boost_bessel: True  # compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
+    verbose: True  # Whether to display warnings
+
+    # ================================= real space cov =================================
+    # ell binning used for the projection of the covariance from harmonic space to real space.
+    # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
+    ell_min_rs: 2  # Type: int
+    ell_max_rs: 100000  # Type: int
+    ell_bins_rs: 10000  # Type: int
+    
+    # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
+    theta_bins_fine: 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+
+    # Integration method for the covariance projection to real space. Options:
+    # - 'simps': uses simpson integration. This is faster but less accurate
+    # - 'levin': uses levin integration. This is slower but more accurate
+    cov_rs_int_method: 'simps'  # Type: str.
+    levin_bin_avg: True  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
 
 misc:
-  num_threads: 40 # Type: int. How many threads to use for the parallel computations
+    num_threads: 20 # Type: int. How many threads to use for the parallel computations
+
+    # How many integrals to compute at once for the  numerical integration of
+    # the sigma^2_b(z_1, z_2) function with pylevin. 
+    # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
+    # while computing sigma2_b), decrease this or num_threads.
+    levin_batch_size: 1000 # Type: int. 
 
   # some sanity checks on the covariance matrix. These could take a while to run.
   test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
@@ -310,5 +358,5 @@ misc:
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
   cl_triangle_plot: False # Type: bool.
 
-  save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
-  output_path: ./output # Type: str. Path to the output directory
+  output_path: /home/cosmo/davide.sciotti/data/Spaceborne_rs_test # Type: str. Path to the output directory
+  save_figs: True

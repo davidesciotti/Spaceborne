@@ -1,5 +1,6 @@
 import argparse
 import contextlib
+import gc
 import os
 import pprint
 import sys
@@ -15,7 +16,6 @@ import yaml
 from matplotlib import cm
 from scipy.interpolate import CubicSpline, RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
-
 from spaceborne import (
     bnt,
     ccl_interface,
@@ -30,10 +30,10 @@ from spaceborne import (
     sigma2_ssc,
     wf_cl_lib,
 )
-from spaceborne import covariance as sb_cov
-from spaceborne import sb_lib as sl
 from spaceborne import constants as const
+from spaceborne import covariance as sb_cov
 from spaceborne import plot_lib as sb_plt
+from spaceborne import sb_lib as sl
 
 with contextlib.suppress(ImportError):
     import pyfiglet
@@ -193,9 +193,12 @@ for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
 
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
-nbl_3x2pt_oc = 500  # number of ell bins over which to compute the Cls passed to OC
+
+ell_max_max = max(cfg['ell_binning']['ell_max_WL'], cfg['ell_binning']['ell_max_GC'])
+ell_min_unb_oc = 2
+ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
 # for the Gaussian covariance computation
-k_steps_sigma2 = 20_000
+k_steps_sigma2_simps = 20_000
 k_steps_sigma2_levin = 300
 shift_nz_interpolation_kind = 'linear'  # TODO this should be spline
 
@@ -218,13 +221,13 @@ cfg['covariance']['G_code'] = 'Spaceborne'
 cfg['covariance']['SSC_code'] = 'Spaceborne'
 cfg['covariance']['cNG_code'] = 'PyCCL'
 
-cfg['OneCovariance'] = {}
-cfg['OneCovariance']['precision_settings'] = 'default'
-cfg['OneCovariance']['path_to_oc_executable'] = (
-    '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'
-)
-cfg['OneCovariance']['path_to_oc_ini'] = './input/config_3x2pt_pure_Cell_general.ini'
-cfg['OneCovariance']['consistency_checks'] = False
+if 'OneCovariance' not in cfg:
+    cfg['OneCovariance'] = {}
+    cfg['OneCovariance']['path_to_oc_executable'] = (
+        '/home/cosmo/davide.sciotti/data//OneCovariance/covariance.py'
+    )
+    cfg['OneCovariance']['consistency_checks'] = False
+    cfg['OneCovariance']['oc_output_filename'] = 'cov_rcf_mergetest_v2_'
 
 if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
@@ -457,8 +460,9 @@ k_grid = np.logspace(
 k_grid_s2b_simps = np.logspace(
     cfg['covariance']['log10_k_min'],
     cfg['covariance']['log10_k_max'],
-    k_steps_sigma2
+    k_steps_sigma2_simps
 )  # fmt: skip
+
 if len(z_grid) < 1000:
     warnings.warn(
         'the number of steps in the redshift grid is small, '
@@ -467,8 +471,9 @@ if len(z_grid) < 1000:
     )
 
 zgrid_str = (
-    f'zmin{cfg["covariance"]["z_min"]}_zmax{cfg["covariance"]["z_max"]}'
-    f'_zsteps{cfg["covariance"]["z_steps"]}'
+    f'zmin{cfg["covariance"]["z_min"]}_'
+    f'zmax{cfg["covariance"]["z_max"]}_'
+    f'zsteps{cfg["covariance"]["z_steps"]}'
 )
 
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
@@ -540,6 +545,8 @@ ell_obj.build_ell_bins()
 ell_obj.compute_ells_3x2pt_unbinned()
 ell_obj._validate_bins()
 
+pvt_cfg['nbl_3x2pt'] = ell_obj.nbl_3x2pt
+pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
 
 # ! ===================================== Mask =========================================
 mask_obj = mask_utils.Mask(cfg['mask'])
@@ -825,12 +832,12 @@ if cfg['C_ell']['use_input_cls']:
     cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)
     cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_3x2pt)
 
-    # save the sb cls for the plot below
+    # save the sb cls for the plot comparing sb and input cls
     cl_ll_3d_sb = ccl_obj.cl_ll_3d
     cl_gl_3d_sb = ccl_obj.cl_gl_3d
     cl_gg_3d_sb = ccl_obj.cl_gg_3d
 
-    # assign them to ccl_obj
+    # assign them to ccl_obj; m-bias is applied right below
     ccl_obj.cl_ll_3d = cl_ll_3d_in
     ccl_obj.cl_gl_3d = cl_gl_3d_in
     ccl_obj.cl_gg_3d = cl_gg_3d_in
@@ -931,6 +938,15 @@ else:
 #     ),
 # }
 
+
+# cov_rs_2d_full = np.hstack((cov_obj.cov_rs_obj.cov_rs_2d_dict[xipxip, xipxim, xipxip]))
+
+# for _, cov in cov_obj.cov_rs_obj.cov_rs_full_2d:
+#     print(_)
+#     sl.plot_correlation_matrix(corr_dav)
+#     plt.title(_)
+
+
 # ! 3d cl ell cuts (*after* BNT!!)
 # TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance
 # TODO and derivatives level)
@@ -1005,11 +1021,23 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     nmt_cov_obj.cl_gg_unb_3d = cl_gg_unb_3d
 
 else:
-    nmt_cov_obj = None
+    nmt_obj = None
+
+
+# ! =============== Init real space cov object, put here for simplicity for the moment ==============
+if cfg['cov_real_space']['do_real_space']:
+    from spaceborne import cov_real_space
+
+    # initialize cov_rs_obj and set a couple useful attributes
+    cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
+    cov_rs_obj.set_ind_and_zpairs(ind, zbins)
+    cov_rs_obj.set_cls(ccl_obj=ccl_obj, cl_ccl_kwargs=cl_ccl_kwargs)
 
 
 # !  =============================== Build Gaussian covs ===============================
-cov_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix)
+cov_obj = sb_cov.SpaceborneCovariance(
+    cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix, cov_rs_obj
+)
 cov_obj.set_ind_and_zpairs(ind, zbins)
 cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(
@@ -1112,7 +1140,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         )
 
     # * 2. compute cov using the onecovariance interface class
-    print('Start NG cov computation with OneCovariance...')
+    print('Start cov computation with OneCovariance...')
     # initialize object, build cfg file
     oc_obj = oc_interface.OneCovarianceInterface(
         cfg, pvt_cfg, do_g=compute_oc_g, do_ssc=compute_oc_ssc, do_cng=compute_oc_cng
@@ -1125,10 +1153,23 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # compute covs
     oc_obj.call_oc_from_bash()
-    oc_obj.process_cov_from_list_file()
-    oc_obj.output_sanity_check(rtol=1e-4)  # .dat vs .mat
 
-    # This is an alternative method to call OC (more convoluted and more maintanable).
+    if cfg['cov_real_space']['do_real_space']:
+        oc_output_covlist_fname = (
+            f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
+        )
+        covs_8d_oc = oc_interface.process_cov_from_list_file_rs(
+            oc_output_covlist_fname,
+            n_probes_rs=4,
+            probe_idx_dict_short_oc=cov_rs_obj.probe_idx_dict_short_oc,
+            zbins=zbins,
+            df_chunk_size=5_000_000,
+        )
+    else:
+        oc_obj.process_cov_from_list_file()
+        oc_obj.output_sanity_check(rtol=1e-4)  # .dat vs .mat
+
+    # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks
     if cfg['OneCovariance']['consistency_checks']:
         # store in temp variables for later check
@@ -1238,7 +1279,7 @@ if compute_sb_ssc:
                     # r_gm = resp_obj.r1_gm_hm
                     # r_gg = resp_obj.r1_gg_hm
 
-        # for mm and gm there are redundant axes: reduce dimensionality
+        # for mm and gm there are redundant axes: reduce dimensionality (squeeze)
         dPmm_ddeltab = dPmm_ddeltab[:, :, 0, 0]
         dPgm_ddeltab = dPgm_ddeltab[:, :, :, 0]
 
@@ -1364,7 +1405,7 @@ if compute_sb_ssc:
         else:
             # depending on the modules installed, integrate with levin or simpson
             # (in the latter case, in parallel or not)
-            s2b_integration_scheme = cfg['covariance']['sigma2_b_integration_scheme']
+            s2b_integration_scheme = cfg['covariance']['sigma2_b_int_method']
             parallel = bool(find_spec('pathos'))
 
             if s2b_integration_scheme == 'levin':
@@ -1456,6 +1497,21 @@ cov_obj.build_covs(
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
 cov_dict = cov_obj.cov_dict
+
+if self.do_real_space:
+
+    print('Computing RS covariance...')
+    start_rs = time.perf_counter()
+    for _probe, _term in itertools.product(
+        self.cov_rs_obj.probes_toloop, self.cov_rs_obj.terms_toloop):
+        print(
+            f'\n***** probe {_probe} - term {_term} - '
+            f'integration {self.cov_rs_obj.integration_method} - '
+            f'theta bins fine {self.cov_rs_obj.nbt_fine} *****'
+        )
+        self.cov_rs_obj.compute_realspace_cov(self, _probe, _term)
+    self.cov_rs_obj.combine_terms_and_probes()
+    print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
 
 # ! ============================ plot & tests ==========================================
@@ -1734,3 +1790,207 @@ if cfg['misc']['save_figs']:
         fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+
+oc_path = f'{output_path}/OneCovariance'
+
+oc_output_covlist_fname = (
+    f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
+)
+covs_8d_dict_oc = oc_interface.process_cov_from_list_file_rs(
+    oc_output_covlist_fname,
+    n_probes_rs=4,
+    probe_idx_dict_short_oc=cov_rs_obj.probe_idx_dict_short_oc,
+    zbins=zbins,
+    df_chunk_size=5_000_000,
+)
+
+cov_sva_oc_3x2pt_8D = covs_8d_dict_oc['cov_sva_oc_3x2pt_8D']
+cov_sn_oc_3x2pt_8D = covs_8d_dict_oc['cov_sn_oc_3x2pt_8D']
+cov_mix_oc_3x2pt_8D = covs_8d_dict_oc['cov_mix_oc_3x2pt_8D']
+
+cov_oc_list_8d = cov_sva_oc_3x2pt_8D + cov_sn_oc_3x2pt_8D + cov_mix_oc_3x2pt_8D
+
+# TODO SB and OC MUST have same fmt so I can combine probes and terms with the same function!!!
+cov_oc_dict_2d = {}
+nbt = cfg['cov_real_space']['theta_bins']
+for probe in cov_rs_obj.probe_idx_dict:
+    # split_g_ix = (
+    # cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+    # )
+
+    # term_oc = (
+    #     'gauss'
+    #     if (len(cov_rs_obj.terms_toloop) > 1 or term == 'gauss_ell')
+    #     else term
+    # )
+
+    twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
+    twoprobe_ab_ix, twoprobe_cd_ix = (
+        cov_rs_obj.probe_idx_dict_short[twoprobe_ab_str],
+        cov_rs_obj.probe_idx_dict_short[twoprobe_cd_str],
+    )
+
+    zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
+    zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
+    ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
+    ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
+
+    # no need to assign 6d and 4d to dedicated dictionary
+    cov_oc_6d = cov_oc_list_8d[*cov_rs_obj.probe_idx_dict_short_oc[probe], ...]
+
+    # check theta simmetry
+    if np.allclose(cov_oc_6d, cov_oc_6d.transpose(1, 0, 2, 3, 4, 5), atol=0, rtol=1e-5):
+        print(f'probe {probe} is symmetric in theta_1, theta_2')
+
+    # if probe in ['gmxip', 'gmxim']:
+    #     print('I am manually transposing the OC blocks!!')
+    #     warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
+    #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
+
+    cov_oc_4d = sl.cov_6D_to_4D_blocks(
+        cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+
+    cov_oc_dict_2d[probe] = sl.cov_4D_to_2D(
+        cov_oc_4d, block_index='zpair', optimize=True
+    )
+
+
+cov_oc_list_2d = cov_real_space.stack_probe_blocks(cov_oc_dict_2d)
+
+cov_oc_mat_2d = np.genfromtxt(
+    oc_output_covlist_fname.replace('list.dat', 'matrix_gauss.mat')
+)
+cov_oc_mat_2d_2 = np.genfromtxt(
+    oc_output_covlist_fname.replace('list.dat', 'matrix.mat')
+)
+np.testing.assert_allclose(cov_oc_mat_2d, cov_oc_mat_2d_2, atol=0, rtol=1e-5)
+
+del cov_oc_mat_2d_2
+gc.collect()
+
+# compare OC list against mat - transposition issue is still present!
+# sl.compare_2d_covs(
+#     cov_oc_list_2d, cov_oc_mat_2d, 'list', 'mat', title=title, diff_threshold=1
+# )
+
+# I will compare SB against the mat fmt
+cov_sb_2d = cov_obj.cov_rs_obj.cov_rs_full_2d
+cov_oc_2d = cov_oc_mat_2d
+
+title = (
+    f'integration {cfg["precision"]["cov_rs_int_method"]} - '
+    f'ell_bins_rs {cfg["precision"]["ell_bins_rs"]} - '
+    f'ell_max_rs {cfg["precision"]["ell_max_rs"]} - '
+    f'theta bins fine {cfg["precision"]["theta_bins_fine"]}\n'
+    f'n_sub {cfg["precision"]["n_sub"]} - '
+    f'n_bisec_max {cfg["precision"]["n_bisec_max"]} - '
+    f'rel_acc {cfg["precision"]["rel_acc"]}'
+)
+sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
+
+
+# compare individual terms/probes
+term = cov_rs_obj.terms_toloop[0]
+for probe in cov_rs_obj.probes_toloop:
+    integration = cfg['precision']['cov_rs_int_method']
+    from spaceborne import cov_real_space
+
+    title_here = title + f'\n{probe = }, {term = }'
+
+    split_g_ix = (
+        cov_obj.cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+    )
+
+    twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
+    twoprobe_ab_ix, twoprobe_cd_ix = (
+        cov_obj.cov_rs_obj.probe_idx_dict_short[twoprobe_ab_str],
+        cov_obj.cov_rs_obj.probe_idx_dict_short[twoprobe_cd_str],
+    )
+    zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
+    zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
+    ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
+    ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
+
+    if term == 'sva':
+        cov_oc_3x2pt_8D = cov_sva_oc_3x2pt_8D
+    elif term == 'sn':
+        cov_oc_3x2pt_8D = cov_sn_oc_3x2pt_8D
+    elif term == 'mix':
+        cov_oc_3x2pt_8D = cov_mix_oc_3x2pt_8D
+
+    cov_sb_6d = cov_obj.cov_rs_obj.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix]
+    cov_oc_6d = cov_oc_3x2pt_8D[twoprobe_ab_ix, twoprobe_cd_ix]
+
+    if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
+        print(f'{term = } {probe = } is identically 0')
+
+    # if probe in ['gmxip', 'gmxim']:
+    #     print('I am manually transposing the OC blocks!!')
+    #     warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
+    #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
+
+    cov_sb_4d = sl.cov_6D_to_4D_blocks(
+        cov_sb_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+    cov_oc_4d = sl.cov_6D_to_4D_blocks(
+        cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+
+    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
+    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
+
+    sl.compare_arrays(
+        cov_sb_2d,
+        cov_oc_2d,
+        'SB',
+        'OC',
+        log_array=True,
+        log_diff=True,
+        abs_val=True,
+        plot_diff_threshold=10,
+        title=title,
+    )
+
+    fig, axs = plt.subplots(
+        2,
+        2,
+        figsize=(15, 6),
+        sharex='col',
+        height_ratios=[2, 1],
+        gridspec_kw={'hspace': 0, 'wspace': 0.3},
+    )
+
+    # flatten to (2,2) shape
+    axs = axs.reshape(2, 2)
+
+    sl.compare_funcs(
+        None,
+        {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
+        logscale_y=[True, False],
+        title=title_here,
+        ylim_diff=[-100, 100],
+        ax=axs[:, 0],
+    )
+
+    sl.compare_funcs(
+        None,
+        {
+            'SB flat': np.abs(cov_sb_2d).flatten(),
+            'OC flat': np.abs(cov_oc_2d).flatten(),
+        },
+        logscale_y=[True, False],
+        title=title_here,
+        ylim_diff=[-100, 100],
+        ax=axs[:, 1],
+    )
+
+# note that this is *not* compatible with %matplotlib inline in the interactive window!
+if cfg['misc']['save_figs']:
+    output_dir = f'{output_path}/figs'
+    os.makedirs(output_dir, exist_ok=True)
+    for i, fig_num in enumerate(plt.get_fignums()):
+        fig = plt.figure(fig_num)
+        fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
+
+print('done')

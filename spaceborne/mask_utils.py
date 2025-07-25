@@ -4,6 +4,7 @@ import healpy as hp
 import numpy as np
 
 from spaceborne import cosmo_lib
+from spaceborne import constants
 
 
 def get_mask_cl(mask: np.ndarray) -> tuple:
@@ -151,6 +152,10 @@ class Mask:
         self.cl_mask_norm = (
             self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
         )
+        
+        # 4. finally, set survey area in steradians and other useful quantities
+        self.survey_area_sr = self.survey_area_deg2 / constants.DEG2_TO_SR
+        self.survey_area_deg2 = self.fsky * constants.DEG2_IN_SPHERE
 
         # else:
         #     print(
@@ -162,3 +167,5 @@ class Mask:
         #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
         print(f'fsky = {self.fsky:.4f}')
+        print(f'survey_area_sr = {self.survey_area_sr:.4f}')
+        print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}')

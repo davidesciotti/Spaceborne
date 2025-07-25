@@ -6,10 +6,9 @@
 # Note: Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
 
 # ROOTS:
-# pleiadi: /u/dsciotti/code
-# local:  /home/cosmo/davide.sciotti/data
-# melodie: /home/cosmo/davide.sciotti/data
-
+# pleiadi: /_u/dsciotti/code
+# local: /_home/davide/Documenti/Lavoro/Programmi/common_data
+# melodie: /_home/davide/Documenti/Lavoro/Programmi/common_data
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
   Ob: 0.05 # Type: float. Baryonic density parameter Omega_b, at z=0
@@ -53,16 +52,19 @@ halo_model:
   halo_profile_hod: HaloProfileHOD # Type: str.
 
 probe_selection:
-  LL: False # Type: str. Whether to compute the weak lensing ('LL') term
-  GL: False # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') term
-  GG: False # Type: str. Whether to compute the photometric clustering ('GG') term
-  xip: True # Type: str. Whether to compute the xip
-  xim: True # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') term
-  gamma_t: True # Type: str. Whether to compute the photometric clustering ('GG') term
-  w: True # Type: str. Whether to compute the photometric clustering ('GG') term
-  cross_cov: True # Type: str. Whether to compute the cross-terms between the selected probes
+  LL: False # Type: bool. Whether to compute the weak lensing ('LL') term
+  GL: False # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') term
+  GG: False # Type: bool. Whether to compute the photometric clustering ('GG') term
+  
+  xip: True # Type: bool. Whether to compute \xi_+
+  xim: True # Type: bool. Whether to compute \xi_-
+  gamma_t: False # Type: bool. Whether to compute \gamma_t
+  w: False # Type: bool. Whether to compute w
+  
+  cross_cov: True # Type: bool. Whether to compute the cross-terms between the selected probes
 
 C_ell:
+
   # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
   # These should be the theoretical, decoupled Cls.
   # Note: the multiplicative shear bias specified below will NOT be applied to the input Cls.
@@ -78,9 +80,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_path:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -97,8 +99,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-  mag_bias_table_filename:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+  gal_bias_table_filename:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+  mag_bias_table_filename:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -122,8 +124,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename:  /home/davide/Documenti/Lavoro/Programmi/common_data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename:  /home/davide/Documenti/Lavoro/Programmi/common_data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -178,7 +180,7 @@ sample_covariance:
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 OneCovariance:
-    path_to_oc_executable: '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
+    path_to_oc_executable: '/home/davide/Documenti/Lavoro/Programmi/common_data/OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 
@@ -208,6 +210,7 @@ covariance:
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
+  # TODO this has almost no effect fr the moment
   space: real_space # Type: str. Whether to compute the harmonic space or real_space covariance
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
@@ -297,7 +300,7 @@ PyCCL:
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower
   # with respect to the default values.
-  use_default_k_a_grids: False
+  use_default_k_a_grids: False # Type: bool.
 
   # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
   # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
@@ -325,8 +328,8 @@ precision:
   n_sub: 20  # number of collocation points in each bisection  # default: 8
   n_bisec_max: 500  # maximum number of bisections used  # default: 32
   rel_acc: 1.e-7  # relative accuracy target  # default: 1.e-4
-  boost_bessel: True  # compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
-  verbose: True  # Whether to display warnings
+  boost_bessel: True  # Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
+  verbose: True  # Type: bool. Whether to display warnings
 
   # ================================= real space cov =================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
@@ -362,5 +365,5 @@ misc:
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
   cl_triangle_plot: False # Type: bool.
 
-  output_path: /home/cosmo/davide.sciotti/data/Spaceborne_rs_test # Type: str. Path to the output directory
+  output_path: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_rs_test # Type: str. Path to the output directory
   save_figs: True

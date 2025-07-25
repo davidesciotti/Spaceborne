@@ -372,6 +372,9 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('coupled_cov'), bool), (
             'covariance: coupled_cov must be a boolean'
         )
+        assert isinstance(cov_cfg.get('space'), str), (
+            'covariance: space must be a str'
+        )
         assert isinstance(cov_cfg.get('triu_tril'), str), (
             'covariance: triu_tril must be a string'
         )
@@ -449,9 +452,6 @@ class SpaceborneConfigChecker:
             "Section 'cov_real_space' must be a dictionary"
         )
         real_space_cfg = self.cfg['cov_real_space']
-        assert isinstance(real_space_cfg.get('do_real_space'), bool), (
-            'cov_real_space: do_real_space must be a boolean'
-        )
         assert isinstance(real_space_cfg.get('theta_min_arcmin'), (float, int)), (
             'cov_real_space: theta_min_arcmin must be a float or an int'
         )
@@ -464,9 +464,7 @@ class SpaceborneConfigChecker:
 
         # PyCCL
         pyccl_cfg = self.cfg['PyCCL']
-        assert isinstance(pyccl_cfg, dict), (
-            "Section 'PyCCL' must be a dictionary"
-        )
+        assert isinstance(pyccl_cfg, dict), "Section 'PyCCL' must be a dictionary"
         assert isinstance(pyccl_cfg.get('cov_integration_method'), str), (
             'PyCCL: cov_integration_method must be a string'
         )
@@ -672,7 +670,8 @@ class SpaceborneConfigChecker:
 
     def check_probe_selection(self) -> None:
         for key, val in self.cfg['probe_selection'].items():
-            assert key in ['LL', 'GL', 'GG', 'cross_cov'], (
+            allowed_keys = ['LL', 'GL', 'GG', 'xip', 'xim', 'gamma_t', 'w', 'cross_cov']
+            assert key in allowed_keys, (
                 f'Probe selection key {key} is not valid. '
                 'Valid keys are "LL" for lensing, '
                 '"GL" (and not LG) for galaxy-galaxy lensing, '
@@ -682,7 +681,31 @@ class SpaceborneConfigChecker:
             assert isinstance(val, bool), (
                 f'Value for {key} must be a boolean, got {type(val)}'
             )
-            
+            if self.cfg['covariance']['space'] == 'real_space':
+                assert (
+                    self.cfg['probe_selection']['xip']
+                    + self.cfg['probe_selection']['xim']
+                    + self.cfg['probe_selection']['gamma_t']
+                    + self.cfg['probe_selection']['w']
+                ) > 0, (
+                    'At least one of xip or xim must be selected for '
+                    'real space covariance'
+                )
+            elif self.cfg['covariance']['space'] == 'harmonic_space':
+                assert (
+                    self.cfg['probe_selection']['LL']
+                    + self.cfg['probe_selection']['GL']
+                    + self.cfg['probe_selection']['GG']
+                ) > 0, (
+                    'At least one of LL, GL, or GG must be selected for '
+                    'harmonic space covariance'
+                )
+            else:
+                raise ValueError(
+                    'covariance["statistics"] must be either "real_space" or '
+                    f'"harmonic_space", got {self.cfg["covariance"]["statistics"]}'
+                )
+
     def check_nmt(self) -> None:
         if self.cfg['covariance']['coupled_cov'] and self.cfg['covariance']['G']:
             assert (

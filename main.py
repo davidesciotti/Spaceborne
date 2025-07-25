@@ -309,44 +309,57 @@ which_sigma2_b = cfg['covariance']['which_sigma2_b']
 #                       format of the covmat. This includes the cross-probes whether
 #                       they are required or not (aka, they need to be present in the 2D
 #                       covmat, either as actual values or as zeros)
-unique_probe_names = []
+unique_probe_names_hs = []
 if cfg['probe_selection']['LL']:
-    unique_probe_names.append('LL')
+    unique_probe_names_hs.append('LL')
 if cfg['probe_selection']['GL']:
-    unique_probe_names.append('GL')
+    unique_probe_names_hs.append('GL')
 if cfg['probe_selection']['GG']:
-    unique_probe_names.append('GG')
+    unique_probe_names_hs.append('GG')
+
+unique_probe_names_rs = []
+if cfg['probe_selection']['xip']:
+    unique_probe_names_rs.append('xip')
+if cfg['probe_selection']['xim']:
+    unique_probe_names_rs.append('xim')
+if cfg['probe_selection']['gamma_t']:
+    unique_probe_names_rs.append('gm')  # TODO RS change this to gt
+if cfg['probe_selection']['w']:
+    unique_probe_names_rs.append('gg')  # TODO RS change this to ww?
 
 # add cross terms if requested
-unique_probe_combs = sl.build_probe_list(
-    unique_probe_names, include_cross_terms=cfg['probe_selection']['cross_cov']
+unique_probe_combs_hs = sl.build_probe_list(
+    unique_probe_names_hs, include_cross_terms=cfg['probe_selection']['cross_cov']
+)
+unique_probe_combs_rs = sl.build_probe_list(
+    unique_probe_names_rs, include_cross_terms=cfg['probe_selection']['cross_cov']
 )
 
 # probe combinations to be filled by symmetry or to exclude altogether
-symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(unique_probe_combs)
+symm_probe_combs_hs, nonreq_probe_combs_hs = sl.get_probe_combs(unique_probe_combs_hs)
 
 # required probe combinations to include in the 2d arrays (must include the
 # cross-terms!)
-_req_probe_combs_2d = sl.build_probe_list(unique_probe_names, include_cross_terms=True)
+_req_probe_combs_hs_2d = sl.build_probe_list(unique_probe_names_hs, include_cross_terms=True)
 # as req_probe_combs_2d still only contains the upper triangle,
 # add the symemtric blocks
-symm_probe_combs_2d, _ = sl.get_probe_combs(_req_probe_combs_2d)
-_req_probe_combs_2d += symm_probe_combs_2d
+symm_probe_combs_hs_2d, _ = sl.get_probe_combs(_req_probe_combs_hs_2d)
+_req_probe_combs_hs_2d += symm_probe_combs_hs_2d
 
 # reorder!
-req_probe_combs_2d = []
-for probe in const.ALL_PROBE_COMBS:
-    if probe in _req_probe_combs_2d:
-        req_probe_combs_2d.append(probe)
+req_probe_combs_hs_2d = []
+for probe in const.HS_ALL_PROBE_COMBS:
+    if probe in _req_probe_combs_hs_2d:
+        req_probe_combs_hs_2d.append(probe)
 
-unique_probe_combs_ix = [
-    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in unique_probe_combs
+unique_probe_combs_ix_hs = [
+    [const.HS_PROBENAME_DICT_INV[idx] for idx in comb] for comb in unique_probe_combs_hs
 ]
-nonreq_probe_combs_ix = [
-    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in nonreq_probe_combs
+nonreq_probe_combs_ix_hs = [
+    [const.HS_PROBENAME_DICT_INV[idx] for idx in comb] for comb in nonreq_probe_combs_hs
 ]
-req_probe_combs_2d_ix = [
-    [const.PROBENAME_DICT_INV[idx] for idx in comb] for comb in req_probe_combs_2d
+req_probe_combs_2d_ix_hs = [
+    [const.HS_PROBENAME_DICT_INV[idx] for idx in comb] for comb in req_probe_combs_hs_2d
 ]
 
 # ! set non-gaussian cov terms to compute
@@ -521,9 +534,9 @@ pvt_cfg = {
     'ind': ind,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
-    'unique_probe_combs': unique_probe_combs,
-    'probe_comb_idxs': unique_probe_combs_ix,
-    'req_probe_combs_2d': req_probe_combs_2d,
+    'unique_probe_combs': unique_probe_combs_hs,
+    'probe_comb_idxs': unique_probe_combs_ix_hs,
+    'req_probe_combs_2d': req_probe_combs_hs_2d,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
@@ -1027,12 +1040,13 @@ else:
 
 
 # ! =============== Init real space cov object, put here for simplicity for the moment ==============
-if cfg['cov_real_space']['do_real_space']:
+if cfg['covariance']['space'] == 'real_space':
     from spaceborne import cov_real_space
 
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
     cov_rs_obj.set_ind_and_zpairs(ind, zbins)
+    cov_rs_obj.probes_toloop = unique_probe_combs_rs
     cov_rs_obj.set_cls(ccl_obj=ccl_obj, cl_ccl_kwargs=cl_ccl_kwargs)
 
 
@@ -1045,7 +1059,7 @@ cov_obj.consistency_checks()
 cov_obj.set_gauss_cov(
     ccl_obj=ccl_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
-    nonreq_probe_combs_ix=nonreq_probe_combs_ix,
+    nonreq_probe_combs_ix=nonreq_probe_combs_ix_hs,
 )
 
 # ! =================================== OneCov  ariance ================================
@@ -1156,7 +1170,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # compute covs
     oc_obj.call_oc_from_bash()
 
-    if cfg['cov_real_space']['do_real_space']:
+    if cfg['covariance']['space'] == 'real_space':
         oc_output_covlist_fname = (
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
         )
@@ -1444,7 +1458,7 @@ if compute_sb_ssc:
         sigma2=sigma2_b,
         z_grid=z_grid,
         integration_type=ssc_integration_type,
-        unique_probe_combs=unique_probe_combs,
+        unique_probe_combs=unique_probe_combs_hs,
         num_threads=cfg['misc']['num_threads'],
     )
     print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
@@ -1482,13 +1496,13 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_ng_cov_terms_list.append('cNG')
 
     for which_ng_cov in ccl_ng_cov_terms_list:
-        ccl_obj.initialize_trispectrum(which_ng_cov, unique_probe_combs, cfg['PyCCL'])
+        ccl_obj.initialize_trispectrum(which_ng_cov, unique_probe_combs_hs, cfg['PyCCL'])
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
             ell_obj.ells_GC,
             mask_obj.fsky,
             integration_method=cfg['PyCCL']['cov_integration_method'],
-            unique_probe_combs=unique_probe_combs,
+            unique_probe_combs=unique_probe_combs_hs,
             ind_dict=ind_dict,
         )
 
@@ -1500,7 +1514,7 @@ cov_obj.build_covs(
 )
 cov_dict = cov_obj.cov_dict
 
-if cfg['cov_real_space']['do_real_space']:
+if cfg['covariance']['space'] == 'real_space':
     print('Computing RS covariance...')
     start_rs = time.perf_counter()
     for _probe, _term in itertools.product(
@@ -1511,7 +1525,7 @@ if cfg['cov_real_space']['do_real_space']:
             f'integration {cov_rs_obj.integration_method} - '
             f'theta bins fine {cov_rs_obj.nbt_fine} *****'
         )
-        cov_rs_obj.compute_realspace_cov(_probe, _term)
+        cov_rs_obj.compute_realspace_cov(cov_obj, _probe, _term)
     cov_rs_obj.combine_terms_and_probes()
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
@@ -1553,10 +1567,10 @@ for key, cov in cov_dict.items():
     save_func(f'{output_path}/{cov_filename}', cov)
 
     if cfg['covariance']['save_full_cov']:
-        for a, b, c, d in unique_probe_combs_ix:
+        for a, b, c, d in unique_probe_combs_ix_hs:
             probe_str = (
-                f'{const.PROBENAME_DICT[a]}{const.PROBENAME_DICT[b]}'
-                f'{const.PROBENAME_DICT[c]}{const.PROBENAME_DICT[d]}'
+                f'{const.HS_PROBENAME_DICT[a]}{const.HS_PROBENAME_DICT[b]}'
+                f'{const.HS_PROBENAME_DICT[c]}{const.HS_PROBENAME_DICT[d]}'
             )
             # compute cov tot
             cov_tot_6d = (

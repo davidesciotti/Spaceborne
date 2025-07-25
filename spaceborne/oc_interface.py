@@ -206,12 +206,7 @@ class OneCovarianceInterface:
         self.compute_ssc = do_ssc
         self.compute_cng = do_cng
 
-        if self.cfg['cov_real_space']['do_real_space']:
-            self.which_obs = 'real_space'
-        elif not self.cfg['cov_real_space']['do_real_space']:
-            self.which_obs = 'harmonic_space'
-        else:
-            raise ValueError('Observable must be harmonic or real space')
+        self.obs_space = self.cfg['covariance']['space']
 
         # paths and filenems
         self.conda_base_path = self.get_conda_base_path()
@@ -281,11 +276,11 @@ class OneCovarianceInterface:
         cfg_oc_ini['covariance terms']['ssc'] = str(self.compute_ssc)
 
         # ! [observables]
-        if self.which_obs == 'harmonic_space':
+        if self.obs_space == 'harmonic_space':
             est_shear = 'C_ell'
             est_ggl = 'C_ell'
             est_clust = 'C_ell'
-        elif self.which_obs == 'real_space':
+        elif self.obs_space == 'real_space':
             est_shear = 'xi_pm'
             est_ggl = 'gamma_t'
             est_clust = 'w'
@@ -348,7 +343,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['ell_type_lensing'] = ell_binning_type
 
         # settings specific to both observables
-        if self.which_obs == 'harmonic_space':
+        if self.obs_space == 'harmonic_space':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.pvt_cfg['ell_min_3x2pt']
             )
@@ -378,7 +373,7 @@ class OneCovarianceInterface:
                 self.optimal_ellmax
             )
 
-        elif self.which_obs == 'real_space':
+        elif self.obs_space == 'real_space':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.cfg['precision']['ell_min_rs']
             )
@@ -464,7 +459,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['hod']['modsch_b_sat'] = ', '.join([str(-0.024), str(1.149)])
 
         # ! [covTHETAspace settings]
-        if self.which_obs == 'real_space':
+        if self.obs_space == 'real_space':
             cfg_oc_ini['covTHETAspace settings']['theta_min_clustering'] = str(
                 self.cov_rs_cfg['theta_min_arcmin']
             )

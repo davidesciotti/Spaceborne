@@ -21,7 +21,7 @@ from scipy.integrate import simpson as simps
 from tqdm import tqdm
 from pprint import pprint
 
-from spaceborne import constants
+from spaceborne import constants as const
 from spaceborne import sb_lib as sl
 
 warnings.filterwarnings(
@@ -36,7 +36,7 @@ warnings.filterwarnings(
 
 
 def b_mu(x, mu):
-    """Implements the piecewise definition of the bracketed term b_mu(x)
+    r"""Implements the piecewise definition of the bracketed term b_mu(x)
     from Eq. (E.2) in Joachimi et al. (2008).
     These are just the results of
     \int_{\theta_l}^{\theta_u} d\theta \theta J_\mu(\ell \theta)
@@ -66,7 +66,7 @@ def b_mu_nobessel(x, mu):
 
 
 def k_mu(ell, thetal, thetau, mu):
-    """Computes the kernel K_mu(ell * theta_i) in Eq. (E.2):
+    r"""Computes the kernel K_mu(ell * theta_i) in Eq. (E.2):
 
     K_mu(l * theta_i) = 2 / [ (theta_u^2 - theta_l^2) * l^2 ]
                         * [ b_mu(l * theta_u) - b_mu(l * theta_l) ].
@@ -406,8 +406,8 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
 
 
 def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
-    n_eff_i *= constants.SR_TO_ARCMIN2
-    n_eff_j *= constants.SR_TO_ARCMIN2
+    n_eff_i *= const.SR_TO_ARCMIN2
+    n_eff_j *= const.SR_TO_ARCMIN2
     return np.pi * (theta_1_u**2 - theta_1_l**2) * survey_area_sr * n_eff_i * n_eff_j
 
 
@@ -779,7 +779,7 @@ class CovRealSpace:
         self.survey_area_deg2 = self.mask_obj.survey_area_deg2
         self.survey_area_sr = self.mask_obj.survey_area_sr
         self.fsky = self.mask_obj.fsky
-        self.srtoarcmin2 = constants.SR_TO_ARCMIN2
+        self.srtoarcmin2 = const.SR_TO_ARCMIN2
         # maximum survey area in sr
         self.amax = max((self.survey_area_sr, self.survey_area_sr))
 
@@ -850,45 +850,21 @@ class CovRealSpace:
             self.zbins,  self.zbins,  self.zbins,  self.zbins,
             ))  # fmt: skip
 
-        self.mu_dict = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
-
-        # ! careful: in this representation, xipxip and ximxim (eg) have
-        # ! the same indices!!
-        self.probe_idx_dict = {
-            'xipxip': (0, 0, 0, 0),
-            'xipxim': (0, 0, 0, 0),
-            'ximxim': (0, 0, 0, 0),
-            'gmgm': (1, 0, 1, 0),
-            'gmxim': (1, 0, 0, 0),
-            'gmxip': (1, 0, 0, 0),
-            'gggg': (1, 1, 1, 1),
-            'ggxim': (1, 1, 0, 0),
-            'gggm': (1, 1, 1, 0),
-            'ggxip': (1, 1, 0, 0),
-        }
-
-        self.probe_idx_dict_short = {
-            'gg': 0,  # w
-            'gm': 1,  # \gamma_t
-            'xip': 2,
-            'xim': 3,
-        }
-
         # this is only needed to be able to construct the full Gauss cov from the sum of the
         # SVA, SN and MIX covs. No particular reason behind the choice of the indices.
         self.split_g_dict = {'sva': 0, 'sn': 1, 'mix': 2}
 
         # for validation purposes
         self.probe_idx_dict_short_oc = {}
-        for key in self.probe_idx_dict:
+        for key in const.RS_PROBE_DICT:
             probe_a_str, probe_b_str = split_probe_name(key)
             self.probe_idx_dict_short_oc[probe_a_str + probe_b_str] = (
-                self.probe_idx_dict_short[probe_a_str],
-                self.probe_idx_dict_short[probe_b_str],
+                const.RS_PROBE_DICT_SHORT[probe_a_str],
+                const.RS_PROBE_DICT_SHORT[probe_b_str],
             )
 
         # original - to be repaced with _set_probes_toloop
-        self.probes_toloop = self.probe_idx_dict
+        self.probes_toloop = const.RS_PROBE_DICT
         # for testing purposes
         # self.probes_toloop = ['xipxip']
 
@@ -1293,15 +1269,15 @@ class CovRealSpace:
         self.cov_rs_2d_dict = {}
         self.cov_rs_full_2d = []
         for term in self.terms_toloop:
-            for probe in self.probe_idx_dict:
+            for probe in const.RS_PROBE_DICT:
                 split_g_ix = (
                     self.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
                 )
 
                 twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
                 twoprobe_ab_ix, twoprobe_cd_ix = (
-                    self.probe_idx_dict_short[twoprobe_ab_str],
-                    self.probe_idx_dict_short[twoprobe_cd_str],
+                    const.RS_PROBE_DICT_SHORT[twoprobe_ab_str],
+                    const.RS_PROBE_DICT_SHORT[twoprobe_cd_str],
                 )
 
                 zpairs_ab = (
@@ -1331,7 +1307,7 @@ class CovRealSpace:
         # sum terms
         self.cov_rs_full_2d = sum(self.cov_rs_full_2d)
 
-    def compute_realspace_cov(self, cov_obj, probe, term):
+    def compute_realspace_cov(self, cov_hs_obj, probe, term):
         """
         Computes the real space covariance matrix for the terms (sva, mix, sn, ssc, cng)
         and probes specfied
@@ -1342,12 +1318,12 @@ class CovRealSpace:
 
         twoprobe_ab_str, twoprobe_cd_str = split_probe_name(probe)
         twoprobe_ab_ix, twoprobe_cd_ix = (
-            self.probe_idx_dict_short[twoprobe_ab_str],
-            self.probe_idx_dict_short[twoprobe_cd_str],
+            const.RS_PROBE_DICT_SHORT[twoprobe_ab_str],
+            const.RS_PROBE_DICT_SHORT[twoprobe_cd_str],
         )
 
-        mu, nu = self.mu_dict[twoprobe_ab_str], self.mu_dict[twoprobe_cd_str]
-        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = self.probe_idx_dict[probe]
+        mu, nu = const.MU_DICT[twoprobe_ab_str], const.MU_DICT[twoprobe_cd_str]
+        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_DICT[probe]
 
         # TODO test this better, especially for cross-terms
         # TODO off-diagonal zij blocks still don't match, I think it's just a
@@ -1512,7 +1488,7 @@ class CovRealSpace:
             if term == 'cng':
                 norm *= self.amax
 
-            cov_ng_hs_10d = getattr(cov_obj, f'cov_3x2pt_{term}_10D')
+            cov_ng_hs_10d = getattr(cov_hs_obj, f'cov_3x2pt_{term}_10D')
 
             # project hs nf cov to real space using pylevin
             cov_ng_hs_6d = cov_ng_hs_10d[

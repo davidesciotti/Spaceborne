@@ -53,9 +53,13 @@ halo_model:
   halo_profile_hod: HaloProfileHOD # Type: str.
 
 probe_selection:
-  LL: True # Type: str. Whether to compute the weak lensing ('LL') covariance
-  GL: True # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
-  GG: True # Type: str. Whether to compute the photometric clustering ('GG') covariance
+  LL: False # Type: str. Whether to compute the weak lensing ('LL') term
+  GL: False # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') term
+  GG: False # Type: str. Whether to compute the photometric clustering ('GG') term
+  xip: True # Type: str. Whether to compute the xip
+  xim: True # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') term
+  gamma_t: True # Type: str. Whether to compute the photometric clustering ('GG') term
+  w: True # Type: str. Whether to compute the photometric clustering ('GG') term
   cross_cov: True # Type: str. Whether to compute the cross-terms between the selected probes
 
 C_ell:
@@ -204,6 +208,7 @@ covariance:
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
+  space: real_space # Type: str. Whether to compute the harmonic space or real_space covariance
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
   # Choose whether to use the upper ('triu') or lower ('tril') triangle
@@ -271,7 +276,6 @@ covariance:
   cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str.
 
 cov_real_space:
-  do_real_space: True  # Type: bool. Whether to project the harmonic-space covariance to real space
   
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50  # Type: float | int

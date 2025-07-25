@@ -742,7 +742,7 @@ class PycclClass:
         # blocks: the off-diagonal need *not* to be symmetric in ell1, ell2)
         for key in self.cov_ng_3x2pt_dict_8D:
             probe_str = ''.join(key)
-            if probe_str in const.DIAG_PROBE_COMBS:
+            if probe_str in const.HS_DIAG_PROBE_COMBS:
                 try:
                     cov_2d = sl.cov_4D_to_2D(
                         self.cov_ng_3x2pt_dict_8D[key], block_index='ell'
@@ -794,7 +794,7 @@ class PycclClass:
             )['arr_0']
 
             # * fill the symmetric counterparts of the required blocks
-            if probe_str not in const.DIAG_PROBE_COMBS:
+            if probe_str not in const.HS_DIAG_PROBE_COMBS:
                 self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b] = np.copy(
                     self.cov_ng_3x2pt_dict_8D[probe_tuple].transpose(1, 0, 3, 2)
                 )

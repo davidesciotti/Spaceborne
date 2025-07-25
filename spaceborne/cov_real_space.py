@@ -455,7 +455,7 @@ def integrate_bessel_single_wrapper(
     cov_2d, mu, ell, theta_centers, n_jobs, 
     logx, logy, n_sub, diagonal, n_bisec_max, rel_acc, boost_bessel, verbose,
 ):  # fmt: skip
-    """
+    
     assert cov_2d.ndim == 2, 'the input integrand must be 2D'
 
     integral_type = 1  # single cilyndrical bessel
@@ -958,7 +958,7 @@ class CovRealSpace:
         # )
 
     def set_cls(self, ccl_obj, cl_ccl_kwargs):
-        from spaceborne import pyccl_interface
+        from spaceborne import ccl_interface
 
         # recompute Cls on a finer grid
         # TODO what if these are taken from some input files?
@@ -985,7 +985,7 @@ class CovRealSpace:
         )
 
         # don't forget to apply mult shear bias
-        cl_ll_3d, cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
+        cl_ll_3d, cl_gl_3d = ccl_interface.apply_mult_shear_bias(
             cl_ll_3d,
             cl_gl_3d,
             np.array(self.cfg['C_ell']['mult_shear_bias']),

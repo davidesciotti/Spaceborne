@@ -1027,7 +1027,7 @@ class CovRealSpace:
         # )
 
     def set_cls(self, ccl_obj, cl_ccl_kwargs):
-        from spaceborne import pyccl_interface
+        from spaceborne import ccl_interface
 
         # recompute Cls on a finer grid
         cl_ll_3d = ccl_obj.compute_cls(
@@ -1053,7 +1053,7 @@ class CovRealSpace:
         )
 
         # don't forget to apply mult shear bias
-        cl_ll_3d, cl_gl_3d = pyccl_interface.apply_mult_shear_bias(
+        cl_ll_3d, cl_gl_3d = ccl_interface.apply_mult_shear_bias(
             cl_ll_3d,
             cl_gl_3d,
             np.array(self.cfg['C_ell']['mult_shear_bias']),

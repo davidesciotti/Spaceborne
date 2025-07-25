@@ -7,7 +7,8 @@
 
 # ROOTS:
 # pleiadi: /u/dsciotti/code
-# local: /home/davide/Documenti/Lavoro/Programmi
+# local:  /home/cosmo/davide.sciotti/data
+# melodie: /home/cosmo/davide.sciotti/data
 
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
@@ -20,14 +21,14 @@ cosmology:
   ODE: 0.68 # Type: float. Dark energy density parameter Omega_DE, at z=0
   m_nu: 0.06 # Type: float. Total mass of neutrinos in eV
   N_eff: 3.046 # Type: float. Effective number of relativistic species
-  Om_k0: 0 # Type: float. Curvature density parameter Omega_k, at z=0
+  Om_k0: 0.0 # Type: float. Curvature density parameter Omega_k, at z=0
 
 intrinsic_alignment:
   Aia: 0.16 # Type: float.
   eIA: 1.66 # Type: float. \eta_{IA}
   bIA: 0.0 # Type: float. \beta_{IA}
   CIA: 0.0134 # Type: float.
-  z_pivot_IA: 0 # Type: float.
+  z_pivot_IA: 0.0 # Type: float.
   lumin_ratio_filename: null # Type: str | None. null if not used, otherwise path to the file (e.g. ./input/scaledmeanlum-E2Sa.dat)
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
@@ -73,9 +74,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -92,8 +93,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+  gal_bias_table_filename:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+  mag_bias_table_filename:  /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -117,8 +118,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -134,8 +135,8 @@ nz:
   dzWL: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
   dzGC: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
   normalize_shifted_nz: True # Type: bool. Whether to normalize the shifted n(z) distributions
-  clip_zmin: 0 # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
-  clip_zmax: 3 # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
+  clip_zmin: 0. # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
+  clip_zmax: 3. # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
@@ -154,23 +155,23 @@ mask:
   aposize: 0.1 # Type: float. Apodization scale in deg
 
 namaster:
-    use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-    spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
-    use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-    workspace_path: ... # Type: str. Path to the workspace, if already computed
+  use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+  spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+  use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
+  workspace_path: ... # Type: str. Path to the workspace, if already computed
 
 sample_covariance:
-    compute_sample_cov: False  # Type: bool
-    # Which code to use to compute the coupled Cls on the masked maps. The results are 
-    # essentially equivalent, but 'namaster' is a bit faster.
-    # In case the decoupled (sample) covariance is requested, in both cases the 
-    # workspace.decouple_cell() function will be used. 
-    # Documentation: 
-    # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
-    # Options: ['namaster', 'healpy']. 
-    which_cls: namaster  # Type: str. 
-    nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
-    fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
+  compute_sample_cov: False  # Type: bool
+  # Which code to use to compute the coupled Cls on the masked maps. The results are 
+  # essentially equivalent, but 'namaster' is a bit faster.
+  # In case the decoupled (sample) covariance is requested, in both cases the 
+  # workspace.decouple_cell() function will be used. 
+  # Documentation: 
+  # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
+  # Options: ['namaster', 'healpy']. 
+  which_cls: namaster  # Type: str. 
+  nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
+  fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 OneCovariance:
     path_to_oc_executable: '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
@@ -255,8 +256,8 @@ covariance:
   include_terasawa_terms: False # Type: bool
 
   # k grid used for power spectrum and trispectrum computation
-  log10_k_min: -5 # Type: float
-  log10_k_max: 2 # Type: float
+  log10_k_min: -5.0 # Type: float
+  log10_k_max: 2.0 # Type: float
   k_steps: 20 # Type: int. Around 100 should be enough
 
   z_min: 0.02 # Type: float
@@ -307,46 +308,45 @@ PyCCL:
 
 
 precision:
-    # ==================================== NaMaster ====================================
-    # Number of iterations when computing the alms of the input map. See 
-    # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-    n_iter_nmt: null # Type: None | int. 
+  # ==================================== NaMaster ====================================
+  # Number of iterations when computing the alms of the input map. See 
+  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
+  n_iter_nmt: null # Type: None | int. 
 
 
-    # ===================================== pylevin ====================================
-    # Precision settings for pylevin. See the official documentation for more details:
-    # https://levin-bessel.readthedocs.io/en/latest/index.html
-    # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-    n_sub: 20  # number of collocation points in each bisection  # default: 8
-    n_bisec_max: 500  # maximum number of bisections used  # default: 32
-    rel_acc: 1.e-7  # relative accuracy target  # default: 1.e-4
-    boost_bessel: True  # compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
-    verbose: True  # Whether to display warnings
+  # ===================================== pylevin ====================================
+  # Precision settings for pylevin. See the official documentation for more details:
+  # https://levin-bessel.readthedocs.io/en/latest/index.html
+  # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
+  n_sub: 20  # number of collocation points in each bisection  # default: 8
+  n_bisec_max: 500  # maximum number of bisections used  # default: 32
+  rel_acc: 1.e-7  # relative accuracy target  # default: 1.e-4
+  boost_bessel: True  # compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
+  verbose: True  # Whether to display warnings
 
-    # ================================= real space cov =================================
-    # ell binning used for the projection of the covariance from harmonic space to real space.
-    # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
-    ell_min_rs: 2  # Type: int
-    ell_max_rs: 100000  # Type: int
-    ell_bins_rs: 10000  # Type: int
-    
-    # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
-    theta_bins_fine: 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+  # ================================= real space cov =================================
+  # ell binning used for the projection of the covariance from harmonic space to real space.
+  # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
+  ell_min_rs: 2  # Type: int
+  ell_max_rs: 100000  # Type: int
+  ell_bins_rs: 10000  # Type: int
+  
+  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
+  theta_bins_fine: 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
 
-    # Integration method for the covariance projection to real space. Options:
-    # - 'simps': uses simpson integration. This is faster but less accurate
-    # - 'levin': uses levin integration. This is slower but more accurate
-    cov_rs_int_method: 'simps'  # Type: str.
-    levin_bin_avg: True  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
+  # Integration method for the covariance projection to real space. Options:
+  # - 'simps': uses simpson integration. This is faster but less accurate
+  # - 'levin': uses levin integration. This is slower but more accurate
+  cov_rs_int_method: 'simps'  # Type: str.
+  levin_bin_avg: True  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
 
 misc:
-    num_threads: 20 # Type: int. How many threads to use for the parallel computations
-
-    # How many integrals to compute at once for the  numerical integration of
-    # the sigma^2_b(z_1, z_2) function with pylevin. 
-    # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
-    # while computing sigma2_b), decrease this or num_threads.
-    levin_batch_size: 1000 # Type: int. 
+  num_threads: 20 # Type: int. How many threads to use for the parallel computations
+  # How many integrals to compute at once for the  numerical integration of
+  # the sigma^2_b(z_1, z_2) function with pylevin. 
+  # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
+  # while computing sigma2_b), decrease this or num_threads.
+  levin_batch_size: 1000 # Type: int. 
 
   # some sanity checks on the covariance matrix. These could take a while to run.
   test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv

@@ -64,6 +64,29 @@ RS_PROBE_NAME_TO_IX_DICT = {
     'gggg':   (1, 1, 1, 1),
 }  # fmt: skip
 
+# TODO delete this after you finish OC checks
+# RS_PROBE_NAME_TO_IX_DICT_TRIL = {
+#     'xipxip': (0, 0, 0, 0),
+#     'xipxim': (0, 0, 0, 0),
+#     # 'xipgm':  (0, 0, 1, 0),
+#     # 'xipgg':  (0, 0, 1, 1),
+
+#     # 'ximxip': (0, 0, 0, 0),
+#     'ximxim': (0, 0, 0, 0),
+#     # 'ximgm':  (0, 0, 1, 0),
+#     # 'ximgg':  (0, 0, 1, 1),
+
+#     'gmxip':  (1, 0, 0, 0),
+#     'gmxim':  (1, 0, 0, 0),
+#     'gmgm':   (1, 0, 1, 0),
+#     # 'gmgg':   (1, 0, 1, 1),
+
+#     'ggxip':  (1, 1, 0, 0),
+#     'ggxim':  (1, 1, 0, 0),
+#     'gggm':   (1, 1, 1, 0),
+#     'gggg':   (1, 1, 1, 1),
+# }  # fmt: skip
+
 
 RS_PROBE_NAME_TO_IX_DICT_SHORT = {
     'gg': 0,  # w

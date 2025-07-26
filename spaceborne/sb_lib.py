@@ -1679,6 +1679,9 @@ def compare_arrays(
     title='',
 ):
     fontsize = 25
+    
+    if matshow_arr_kw is None:
+        matshow_arr_kw = {}
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')

@@ -8,6 +8,10 @@ sn = sampling noise
 mix = mixed term
 """
 
+# TODO the NG cov has not been re-tested against OC
+# TODO the NG cov needs a smaller number of ell bins for the simpson integration! It's
+# TODO unpractical to compute it in 1000 ell values
+
 import itertools
 import warnings
 from functools import partial
@@ -787,7 +791,6 @@ class CovRealSpace:
 
         # setters
         self._set_survey_info()
-        self._set_ell_binning()
         self._set_theta_binning()
         self._set_neff_and_sigma_eps()
         self._set_levin_bessel_precision()
@@ -816,19 +819,6 @@ class CovRealSpace:
         # maximum survey area in sr
         self.amax = max((self.survey_area_sr, self.survey_area_sr))
 
-    def _set_ell_binning(self):
-        # * basically no difference between the two recipes below!
-        # * (The one above is obviously much slower)
-        # self.ell_values = np.arange(
-        #     cfg['precision']['ell_min'], cfg['precision']['ell_max']
-        # )
-
-        self.nbl = self.cfg['precision']['ell_bins_rs']
-        self.ell_values = np.geomspace(
-            self.cfg['precision']['ell_min_rs'],
-            self.cfg['precision']['ell_max_rs'],
-            self.nbl,
-        )
 
     def _set_theta_binning(self):
         self.theta_min_arcmin = self.cfg['cov_real_space']['theta_min_arcmin']
@@ -906,7 +896,6 @@ class CovRealSpace:
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
 
-
     def set_ind_and_zpairs(self, ind, zbins):
         # set indices array
         self.ind = ind
@@ -931,50 +920,6 @@ class CovRealSpace:
         #     self.pvt_cfg['GL_OR_LG'],
         # )
 
-    def set_cls(self, ccl_obj, cl_ccl_kwargs):
-        from spaceborne import ccl_interface
-
-        # recompute Cls on a finer grid
-        # TODO what if these are taken from some input files?
-        cl_ll_3d = ccl_obj.compute_cls(
-            self.ell_values,
-            ccl_obj.p_of_k_a,
-            ccl_obj.wf_lensing_obj,
-            ccl_obj.wf_lensing_obj,
-            cl_ccl_kwargs,
-        )
-        cl_gl_3d = ccl_obj.compute_cls(
-            self.ell_values,
-            ccl_obj.p_of_k_a,
-            ccl_obj.wf_galaxy_obj,
-            ccl_obj.wf_lensing_obj,
-            cl_ccl_kwargs,
-        )
-        cl_gg_3d = ccl_obj.compute_cls(
-            self.ell_values,
-            ccl_obj.p_of_k_a,
-            ccl_obj.wf_galaxy_obj,
-            ccl_obj.wf_galaxy_obj,
-            cl_ccl_kwargs,
-        )
-
-        # don't forget to apply mult shear bias
-        cl_ll_3d, cl_gl_3d = ccl_interface.apply_mult_shear_bias(
-            cl_ll_3d,
-            cl_gl_3d,
-            np.array(self.cfg['C_ell']['mult_shear_bias']),
-            self.zbins,
-        )
-
-        cl_5d = np.zeros(
-            (self.n_probes_hs, self.n_probes_hs, self.nbl, self.zbins, self.zbins)
-        )
-        cl_5d[0, 0] = cl_ll_3d
-        cl_5d[1, 0] = cl_gl_3d
-        cl_5d[0, 1] = cl_gl_3d.transpose(0, 2, 1)
-        cl_5d[1, 1] = cl_gg_3d
-
-        self.cl_5d = cl_5d
 
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         # TODO generalize to different n(z)
@@ -1039,8 +984,8 @@ class CovRealSpace:
             'probe_b_ix': probe_b_ix,
             'probe_c_ix': probe_c_ix,
             'probe_d_ix': probe_d_ix,
-            'cl_5d': self.cl_5d,
-            'ell_values': self.ell_values,
+            'cl_5d': self.cl_3x2pt_5d,
+            'ell_values': self.ells,
             'Amax': self.amax,
         }
         results = Parallel(n_jobs=self.n_jobs)(
@@ -1067,13 +1012,13 @@ class CovRealSpace:
     ):  # fmt: skip
         a = np.einsum(
             'Lik,Ljl->Lijkl',
-            self.cl_5d[probe_a_ix, probe_c_ix],
-            self.cl_5d[probe_b_ix, probe_d_ix],
+            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
+            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
         )
         b = np.einsum(
             'Lil,Ljk->Lijkl',
-            self.cl_5d[probe_a_ix, probe_d_ix],
-            self.cl_5d[probe_b_ix, probe_c_ix],
+            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
+            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
         )
         integrand_5d = a + b
 
@@ -1107,22 +1052,22 @@ class CovRealSpace:
         a = np.einsum(
             'jl,Lik->Lijkl',
             prefac[probe_b_ix, probe_d_ix],
-            self.cl_5d[probe_a_ix, probe_c_ix],
+            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
         )
         b = np.einsum(
             'ik,Ljl->Lijkl',
             prefac[probe_a_ix, probe_c_ix],
-            self.cl_5d[probe_b_ix, probe_d_ix],
+            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
         )
         c = np.einsum(
             'jk,Lil->Lijkl',
             prefac[probe_b_ix, probe_c_ix],
-            self.cl_5d[probe_a_ix, probe_d_ix],
+            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
         )
         d = np.einsum(
             'il,Ljk->Lijkl',
             prefac[probe_a_ix, probe_d_ix],
-            self.cl_5d[probe_b_ix, probe_c_ix],
+            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
         )
         integrand_5d = a + b + c + d
 
@@ -1157,7 +1102,7 @@ class CovRealSpace:
         assert integrand_3d.shape[1:] == (zpairs_ab, zpairs_cd), 'shape mismatch'
 
         integrand_2d = integrand_3d.reshape(self.nbl, -1)
-        integrand_2d *= self.ell_values[:, None]
+        integrand_2d *= self.ells[:, None]
         integrand_2d /= 2.0 * np.pi * self.amax
 
         if self.levin_bin_avg:
@@ -1167,7 +1112,7 @@ class CovRealSpace:
         else:
             result_levin = levin_integrate_bessel_double_wrapper(
                 integrand_2d,
-                x_values=self.ell_values,
+                x_values=self.ells,
                 bessel_args=self.theta_centers_fine,
                 bessel_type=3,
                 ell_1=mu,
@@ -1207,10 +1152,10 @@ class CovRealSpace:
                 theta_q_upper = self.theta_edges_fine[q + 1]
 
                 k_mu_terms = k_mu_nobessel(
-                    self.ell_values, theta_p_lower, theta_p_upper, mu
+                    self.ells, theta_p_lower, theta_p_upper, mu
                 )
                 k_nu_terms = k_mu_nobessel(
-                    self.ell_values, theta_q_lower, theta_q_upper, nu
+                    self.ells, theta_q_lower, theta_q_upper, nu
                 )
                 product_expansion = kmuknu_nobessel(k_mu_terms, k_nu_terms)
 
@@ -1227,7 +1172,7 @@ class CovRealSpace:
                     # Integrate this term using the new single bessel pair function
                     result_levin_1d = integrate_single_bessel_pair(
                         term_integrand_for_bessel,
-                        x_values=self.ell_values,
+                        x_values=self.ells,
                         ord_bes_1=n1,
                         theta1=theta1,
                         ord_bes_2=n2,
@@ -1405,14 +1350,14 @@ class CovRealSpace:
             noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], self.nbl, axis=2)
 
             # ! no delta_ell!!
-            delta_ell = np.ones_like(self.ell_values + 1)
+            delta_ell = np.ones_like(self.ells + 1)
 
             cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = (
                 sl.covariance_einsum(
-                    self.cl_5d,
+                    self.cl_3x2pt_5d,
                     noise_5d,
                     self.fsky,
-                    self.ell_values,
+                    self.ells,
                     delta_ell,
                     split_terms=True,
                     return_only_diagonal_ells=True,
@@ -1427,9 +1372,9 @@ class CovRealSpace:
 
             self.cov_svapmix_rs_6d = levin_integrate_bessel_double_wrapper(
                 integrand=cov_svapmix_hs_6d.reshape(self.nbl, -1)
-                * self.ell_values[:, None]
-                * self.ell_values[:, None],
-                x_values=self.ell_values,
+                * self.ells[:, None]
+                * self.ells[:, None],
+                x_values=self.ells,
                 bessel_args=self.theta_centers_fine,
                 bessel_type=3,
                 ell_1=mu,
@@ -1499,7 +1444,7 @@ class CovRealSpace:
                 cov_hs=cov_ng_hs_6d,
                 mu=mu,
                 nu=nu,
-                ells=self.ell_values,
+                ells=self.ells,
                 thetas=self.theta_centers_fine,
                 zbins=self.zbins,
                 n_jobs=self.n_jobs,

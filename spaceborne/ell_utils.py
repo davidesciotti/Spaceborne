@@ -318,6 +318,8 @@ class EllBinning:
             config: The 'ell_binning' section of the main configuration dictionary.
 
         """
+        self.cfg = cfg
+        
         self.binning_type = cfg['ell_binning']['binning_type']
 
         self.ell_min_WL = cfg['ell_binning']['ell_min_WL']
@@ -514,13 +516,24 @@ class EllBinning:
         self.nbl_3x2pt = len(self.ells_3x2pt)
 
     def compute_ells_3x2pt_unbinned(self):
-        # recompute Cls ell by ell
+        """Needed for the partial-sky covariance"""
         self.ells_3x2pt_unb = np.arange(self.ell_max_3x2pt + 1)
         self.nbl_3x2pt_unb = len(self.ells_3x2pt_unb)
         self.ell_max_3x2pt_unb = self.ells_3x2pt_unb[-1]
         assert self.nbl_3x2pt_unb == self.ell_max_3x2pt + 1, (
             'nbl_tot does not match ell_max_3x2pt + 1'
         )
+
+    def compute_ells_3x2pt_rs(self):
+        """Needed for the real-space covariance"""
+        self.ells_3x2pt_for_rs = np.geomspace(
+            self.cfg['precision']['ell_min_rs'],
+            self.cfg['precision']['ell_max_rs'],
+            self.cfg['precision']['ell_bins_rs'],
+        )
+        # these are probably useless, but just to keep consistency
+        self.nbl_3x2pt_for_rs = len(self.ells_3x2pt_for_rs)
+        self.ell_max_3x2pt_for_rs = self.cfg['precision']['ell_max_rs']  
 
     def _validate_bins(self):
         for probe in ['WL', 'GC', 'XC', '3x2pt']:

@@ -37,6 +37,55 @@ def apply_mult_shear_bias(cl_ll_3d, cl_gl_3d, mult_shear_bias, zbins):
     return cl_ll_3d, cl_gl_3d
 
 
+def compute_cl_3x2pt_5d(
+    ccl_obj,
+    ells: np.ndarray,
+    zbins: int,
+    mult_shear_bias: np.ndarray,
+    cl_ccl_kwargs: dict,
+    n_probes_hs: int = 2,
+) -> np.ndarray:
+    """Just a wrapper to quickly compute the CCL cls,
+    including the multiplicative shear bias"""
+
+    nbl = len(ells)
+
+    cl_ll_3d = ccl_obj.compute_cls(
+        ells,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_lensing_obj,
+        ccl_obj.wf_lensing_obj,
+        cl_ccl_kwargs,
+    )
+    cl_gl_3d = ccl_obj.compute_cls(
+        ells,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_galaxy_obj,
+        ccl_obj.wf_lensing_obj,
+        cl_ccl_kwargs,
+    )
+    cl_gg_3d = ccl_obj.compute_cls(
+        ells,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_galaxy_obj,
+        ccl_obj.wf_galaxy_obj,
+        cl_ccl_kwargs,
+    )
+
+    # don't forget to apply mult shear bias
+    cl_ll_3d, cl_gl_3d = apply_mult_shear_bias(
+        cl_ll_3d, cl_gl_3d, mult_shear_bias, zbins
+    )
+
+    cl_3x2pt_5d = np.zeros((n_probes_hs, n_probes_hs, nbl, zbins, zbins))
+    cl_3x2pt_5d[0, 0] = cl_ll_3d
+    cl_3x2pt_5d[1, 0] = cl_gl_3d
+    cl_3x2pt_5d[0, 1] = cl_gl_3d.transpose(0, 2, 1)
+    cl_3x2pt_5d[1, 1] = cl_gg_3d
+
+    return cl_3x2pt_5d
+
+
 class PycclClass:
     def __init__(
         self,

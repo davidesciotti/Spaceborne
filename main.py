@@ -794,37 +794,22 @@ for wf_idx in range(len(wf_ccl_list)):
 
 
 # ! ======================================== Cls =======================================
+# ! note that the function below includes the multiplicative shear bias
 print('Computing Cls...')
 t0 = time.perf_counter()
-ccl_obj.cl_ll_3d = ccl_obj.compute_cls(
-    ell_obj.ells_3x2pt,
-    ccl_obj.p_of_k_a,
-    ccl_obj.wf_lensing_obj,
-    ccl_obj.wf_lensing_obj,
-    cl_ccl_kwargs,
+_cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
+    ccl_obj,
+    ells=ell_obj.ells_3x2pt,
+    zbins=zbins,
+    mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+    cl_ccl_kwargs=cl_ccl_kwargs,
+    n_probes_hs=cfg['covariance']['n_probes'],
 )
-ccl_obj.cl_gl_3d = ccl_obj.compute_cls(
-    ell_obj.ells_3x2pt,
-    ccl_obj.p_of_k_a,
-    ccl_obj.wf_galaxy_obj,
-    ccl_obj.wf_lensing_obj,
-    cl_ccl_kwargs,
-)
-ccl_obj.cl_gg_3d = ccl_obj.compute_cls(
-    ell_obj.ells_3x2pt,
-    ccl_obj.p_of_k_a,
-    ccl_obj.wf_galaxy_obj,
-    ccl_obj.wf_galaxy_obj,
-    cl_ccl_kwargs,
-)
-print(f'done in {time.perf_counter() - t0:.2f} s')
 
-# ! ============================ Multiplicative shear bias =============================
-# ! THIS SHOULD NOT BE DONE FOR THE OC Cls!! mult shear bias values are passed
-# ! in the .ini file
-ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d = ccl_interface.apply_mult_shear_bias(
-    ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
-)
+ccl_obj.cl_ll_3d = _cl_3x2pt_5d[0, 0]
+ccl_obj.cl_gl_3d = _cl_3x2pt_5d[1, 0]
+ccl_obj.cl_gg_3d = _cl_3x2pt_5d[1, 1]
+print(f'done in {time.perf_counter() - t0:.2f} s')
 
 
 if cfg['C_ell']['use_input_cls']:
@@ -866,10 +851,10 @@ if cfg['C_ell']['use_input_cls']:
 # I am creating copies here, not just a view (so modifying ccl_obj.cl_3x2pt_5d will
 # not affect ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d and vice versa)
 ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, ell_obj.nbl_3x2pt, zbins, zbins))
-ccl_obj.cl_3x2pt_5d[0, 0, :, :, :] = ccl_obj.cl_ll_3d
-ccl_obj.cl_3x2pt_5d[1, 0, :, :, :] = ccl_obj.cl_gl_3d
-ccl_obj.cl_3x2pt_5d[0, 1, :, :, :] = ccl_obj.cl_gl_3d.transpose(0, 2, 1)
-ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d
+ccl_obj.cl_3x2pt_5d[0, 0] = ccl_obj.cl_ll_3d
+ccl_obj.cl_3x2pt_5d[1, 0] = ccl_obj.cl_gl_3d
+ccl_obj.cl_3x2pt_5d[0, 1] = ccl_obj.cl_gl_3d.transpose(0, 2, 1)
+ccl_obj.cl_3x2pt_5d[1, 1] = ccl_obj.cl_gg_3d
 
 # cls plots
 plot_cls()
@@ -1010,36 +995,18 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
         cl_gg_unb_3d = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
 
     else:
-        cl_ll_unb_3d = ccl_obj.compute_cls(
-            ell_obj.ells_3x2pt_unb,
-            ccl_obj.p_of_k_a,
-            ccl_obj.wf_lensing_obj,
-            ccl_obj.wf_lensing_obj,
-            cl_ccl_kwargs,
-        )
-        cl_gl_unb_3d = ccl_obj.compute_cls(
-            ell_obj.ells_3x2pt_unb,
-            ccl_obj.p_of_k_a,
-            ccl_obj.wf_galaxy_obj,
-            ccl_obj.wf_lensing_obj,
-            cl_ccl_kwargs,
-        )
-        cl_gg_unb_3d = ccl_obj.compute_cls(
-            ell_obj.ells_3x2pt_unb,
-            ccl_obj.p_of_k_a,
-            ccl_obj.wf_galaxy_obj,
-            ccl_obj.wf_galaxy_obj,
-            cl_ccl_kwargs,
+        cl_3x2pt_5d_unb = ccl_interface.compute_cl_3x2pt_5d(
+            ccl_obj,
+            ells=ell_obj.ells_3x2pt_unb,
+            zbins=zbins,
+            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+            cl_ccl_kwargs=cl_ccl_kwargs,
+            n_probes_hs=cfg['covariance']['n_probes'],
         )
 
-        # apply mult shear bias
-        cl_ll_unb_3d, cl_gl_unb_3d = ccl_interface.apply_mult_shear_bias(
-            cl_ll_unb_3d, cl_gl_unb_3d, np.array(cfg['C_ell']['mult_shear_bias']), zbins
-        )
-
-    nmt_cov_obj.cl_ll_unb_3d = cl_ll_unb_3d
-    nmt_cov_obj.cl_gl_unb_3d = cl_gl_unb_3d
-    nmt_cov_obj.cl_gg_unb_3d = cl_gg_unb_3d
+    nmt_cov_obj.cl_ll_unb_3d = cl_3x2pt_5d_unb[0, 0]
+    nmt_cov_obj.cl_gl_unb_3d = cl_3x2pt_5d_unb[1, 0]
+    nmt_cov_obj.cl_gg_unb_3d = cl_3x2pt_5d_unb[1, 1]
 
 else:
     nmt_obj = None
@@ -1052,9 +1019,27 @@ if cfg['covariance']['space'] == 'real_space':
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
     cov_rs_obj.set_ind_and_zpairs(ind, zbins)
-    
-    # TODO BOOKMARK these should be taken from the main, a bit as is done in nmt class
-    cov_rs_obj.set_cls(ccl_obj=ccl_obj, cl_ccl_kwargs=cl_ccl_kwargs)
+    ell_obj.compute_ells_3x2pt_rs()
+    cov_rs_obj.ells = ell_obj.ells_3x2pt_for_rs
+    cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_for_rs)
+
+    # set 3x2pt cls: recompute cls on the finer ell grid...
+    if cfg['C_ell']['use_input_cls']:
+        cl_ll_3d_for_rs = cl_ll_3d_spline(cov_rs_obj.ells)
+        cl_gl_3d_for_rs = cl_gl_3d_spline(cov_rs_obj.ells)
+        cl_gg_3d_for_rs = cl_gg_3d_spline(cov_rs_obj.ells)
+
+    else:
+        cl_3x2pt_5d_for_rs = ccl_interface.compute_cl_3x2pt_5d(
+            ccl_obj,
+            ells=cov_rs_obj.ells,
+            zbins=zbins,
+            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+            cl_ccl_kwargs=cl_ccl_kwargs,
+            n_probes_hs=cfg['covariance']['n_probes'],
+        )
+    # ...and store them in the cov_rs object
+    cov_rs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_rs
 
 
 # !  =============================== Build Gaussian covs ===============================
@@ -1527,6 +1512,8 @@ cov_dict = cov_hs_obj.cov_dict
 if cfg['covariance']['space'] == 'real_space':
     print('Computing RS covariance...')
     start_rs = time.perf_counter()
+
+    # now compute the real space covariance
     for _probe, _term in itertools.product(
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
@@ -1936,22 +1923,18 @@ cov_oc_2d_dict = {
     'gggm': cov_oc_2d[:lim_1, lim_1:lim_2],
     'ggxip': cov_oc_2d[:lim_1, lim_2:lim_3],
     'ggxim': cov_oc_2d[:lim_1, lim_3:lim_4],
-
     'gmgg': cov_oc_2d[lim_1:lim_2, :lim_1],
     'gmgm': cov_oc_2d[lim_1:lim_2, lim_1:lim_2],
-    'gmxip': cov_oc_2d[lim_1:lim_2,  lim_2:lim_3],
-    'gmxim': cov_oc_2d[lim_1:lim_2,  lim_3:lim_4],
-
+    'gmxip': cov_oc_2d[lim_1:lim_2, lim_2:lim_3],
+    'gmxim': cov_oc_2d[lim_1:lim_2, lim_3:lim_4],
     'xipgg': cov_oc_2d[lim_2:lim_3, :lim_1],
     'xipgm': cov_oc_2d[lim_2:lim_3, lim_1:lim_2],
-    'xipxip': cov_oc_2d[lim_2:lim_3,  lim_2:lim_3],
-    'xipxim': cov_oc_2d[lim_2:lim_3,  lim_3:lim_4],
-
+    'xipxip': cov_oc_2d[lim_2:lim_3, lim_2:lim_3],
+    'xipxim': cov_oc_2d[lim_2:lim_3, lim_3:lim_4],
     'ximgg': cov_oc_2d[lim_3:lim_4, :lim_1],
     'ximgm': cov_oc_2d[lim_3:lim_4, lim_1:lim_2],
-    'ximxip': cov_oc_2d[lim_3:lim_4,  lim_2:lim_3],
-    'ximxim': cov_oc_2d[lim_3:lim_4,  lim_3:lim_4],
-
+    'ximxip': cov_oc_2d[lim_3:lim_4, lim_2:lim_3],
+    'ximxim': cov_oc_2d[lim_3:lim_4, lim_3:lim_4],
 }
 
 cov_oc_2d = cov_real_space.stack_probe_blocks(cov_oc_2d_dict)
@@ -1967,9 +1950,7 @@ for probe in cov_rs_obj.probes_toloop:
 
     title_here = title + f'\n{probe = }, {term = }'
 
-    split_g_ix = (
-        cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
-    )
+    split_g_ix = cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
 
     twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
     twoprobe_ab_ix, twoprobe_cd_ix = (
@@ -1988,9 +1969,7 @@ for probe in cov_rs_obj.probes_toloop:
     elif term == 'mix':
         cov_oc_3x2pt_8D = cov_mix_oc_3x2pt_8D
 
-    cov_sb_6d = cov_rs_obj.cov_rs_8d[
-        split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix
-    ]
+    cov_sb_6d = cov_rs_obj.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix]
     cov_oc_6d = cov_oc_3x2pt_8D[twoprobe_ab_ix, twoprobe_cd_ix]
 
     if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):

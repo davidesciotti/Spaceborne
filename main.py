@@ -1052,14 +1052,13 @@ if cfg['covariance']['space'] == 'real_space':
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
     cov_rs_obj.set_ind_and_zpairs(ind, zbins)
-    cov_rs_obj.probes_toloop = unique_probe_combs_rs
+    
+    # TODO BOOKMARK these should be taken from the main, a bit as is done in nmt class
     cov_rs_obj.set_cls(ccl_obj=ccl_obj, cl_ccl_kwargs=cl_ccl_kwargs)
 
 
 # !  =============================== Build Gaussian covs ===============================
-cov_hs_obj = sb_cov.SpaceborneCovariance(
-    cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix, cov_rs_obj
-)
+cov_hs_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix)
 cov_hs_obj.set_ind_and_zpairs(ind, zbins)
 cov_hs_obj.consistency_checks()
 # TODO how should I treat this? SSC and cNG are required in the RS case as well
@@ -1524,11 +1523,12 @@ cov_hs_obj.build_covs(
 )
 cov_dict = cov_hs_obj.cov_dict
 
+# BOOKMARK 1
 if cfg['covariance']['space'] == 'real_space':
     print('Computing RS covariance...')
     start_rs = time.perf_counter()
     for _probe, _term in itertools.product(
-        cov_rs_obj.probes_toloop, cov_rs_obj.terms_toloop
+        unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
         print(f'\n***** working on probe {_probe} - term {_term} *****')
         cov_rs_obj.compute_realspace_cov(cov_hs_obj, _probe, _term)
@@ -1816,6 +1816,8 @@ if cfg['misc']['save_figs']:
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
 
+# BOOKMARK 2
+# ! read OC files: list
 oc_path = f'{output_path}/OneCovariance'
 
 oc_output_covlist_fname = (
@@ -1883,6 +1885,7 @@ for probe in const.RS_PROBE_NAME_TO_IX_DICT:
 
 cov_oc_list_2d = cov_real_space.stack_probe_blocks(cov_oc_dict_2d)
 
+# ! read OC files: mat
 cov_oc_mat_2d = np.genfromtxt(
     oc_output_covlist_fname.replace('list.dat', 'matrix_gauss.mat')
 )
@@ -1899,8 +1902,9 @@ gc.collect()
 #     cov_oc_list_2d, cov_oc_mat_2d, 'list', 'mat', title=title, diff_threshold=1
 # )
 
+# ! compare full 2d SB against mat fmt
 # I will compare SB against the mat fmt
-cov_sb_2d = cov_hs_obj.cov_rs_obj.cov_rs_full_2d
+cov_sb_2d = cov_rs_obj.cov_rs_full_2d
 cov_oc_2d = cov_oc_mat_2d
 
 title = (
@@ -1915,42 +1919,42 @@ title = (
 
 
 # # rearrange in OC 2D SB fmt
-# elem_auto = nbt * zpairs_auto
-# elem_cross = nbt * zpairs_cross
-# # these are the end indices
-# lim_1 = elem_auto
-# lim_2 = lim_1 + elem_cross
-# lim_3 = lim_2 + elem_auto
-# lim_4 = lim_3 + elem_auto
+elem_auto = nbt * zpairs_auto
+elem_cross = nbt * zpairs_cross
+# these are the end indices
+lim_1 = elem_auto
+lim_2 = lim_1 + elem_cross
+lim_3 = lim_2 + elem_auto
+lim_4 = lim_3 + elem_auto
 
-# assert lim_4 == cov_oc_2d.shape[0]
-# assert lim_4 == cov_oc_2d.shape[1]
+assert lim_4 == cov_oc_2d.shape[0]
+assert lim_4 == cov_oc_2d.shape[1]
 
-# cov_oc_2d_dict = {
-#     # first OC row is gg
-#     'gggg': cov_oc_2d[:lim_1, :lim_1],
-#     'gggm': cov_oc_2d[:lim_1, lim_1:lim_2],
-#     'ggxip': cov_oc_2d[:lim_1, lim_2:lim_3],
-#     'ggxim': cov_oc_2d[:lim_1, lim_3:lim_4],
+cov_oc_2d_dict = {
+    # first OC row is gg
+    'gggg': cov_oc_2d[:lim_1, :lim_1],
+    'gggm': cov_oc_2d[:lim_1, lim_1:lim_2],
+    'ggxip': cov_oc_2d[:lim_1, lim_2:lim_3],
+    'ggxim': cov_oc_2d[:lim_1, lim_3:lim_4],
 
-#     'gmgg': cov_oc_2d[lim_1:lim_2, :lim_1],
-#     'gmgm': cov_oc_2d[lim_1:lim_2, lim_1:lim_2],
-#     'gmxip': cov_oc_2d[lim_1:lim_2,  lim_2:lim_3],
-#     'gmxim': cov_oc_2d[lim_1:lim_2,  lim_3:lim_4],
+    'gmgg': cov_oc_2d[lim_1:lim_2, :lim_1],
+    'gmgm': cov_oc_2d[lim_1:lim_2, lim_1:lim_2],
+    'gmxip': cov_oc_2d[lim_1:lim_2,  lim_2:lim_3],
+    'gmxim': cov_oc_2d[lim_1:lim_2,  lim_3:lim_4],
 
-#     'xipgg': cov_oc_2d[lim_2:lim_3, :lim_1],
-#     'xipgm': cov_oc_2d[lim_2:lim_3, lim_1:lim_2],
-#     'xipxip': cov_oc_2d[lim_2:lim_3,  lim_2:lim_3],
-#     'xipxim': cov_oc_2d[lim_2:lim_3,  lim_3:lim_4],
+    'xipgg': cov_oc_2d[lim_2:lim_3, :lim_1],
+    'xipgm': cov_oc_2d[lim_2:lim_3, lim_1:lim_2],
+    'xipxip': cov_oc_2d[lim_2:lim_3,  lim_2:lim_3],
+    'xipxim': cov_oc_2d[lim_2:lim_3,  lim_3:lim_4],
 
-#     'ximgg': cov_oc_2d[lim_3:lim_4, :lim_1],
-#     'ximgm': cov_oc_2d[lim_3:lim_4, lim_1:lim_2],
-#     'ximxip': cov_oc_2d[lim_3:lim_4,  lim_2:lim_3],
-#     'ximxim': cov_oc_2d[lim_3:lim_4,  lim_3:lim_4],
+    'ximgg': cov_oc_2d[lim_3:lim_4, :lim_1],
+    'ximgm': cov_oc_2d[lim_3:lim_4, lim_1:lim_2],
+    'ximxip': cov_oc_2d[lim_3:lim_4,  lim_2:lim_3],
+    'ximxim': cov_oc_2d[lim_3:lim_4,  lim_3:lim_4],
 
-# }
+}
 
-# cov_oc_2d = cov_real_space.stack_probe_blocks(cov_oc_2d_dict)
+cov_oc_2d = cov_real_space.stack_probe_blocks(cov_oc_2d_dict)
 
 
 sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
@@ -1964,7 +1968,7 @@ for probe in cov_rs_obj.probes_toloop:
     title_here = title + f'\n{probe = }, {term = }'
 
     split_g_ix = (
-        cov_hs_obj.cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+        cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
     )
 
     twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
@@ -1984,7 +1988,7 @@ for probe in cov_rs_obj.probes_toloop:
     elif term == 'mix':
         cov_oc_3x2pt_8D = cov_mix_oc_3x2pt_8D
 
-    cov_sb_6d = cov_hs_obj.cov_rs_obj.cov_rs_8d[
+    cov_sb_6d = cov_rs_obj.cov_rs_8d[
         split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix
     ]
     cov_oc_6d = cov_oc_3x2pt_8D[twoprobe_ab_ix, twoprobe_cd_ix]

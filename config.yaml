@@ -52,14 +52,14 @@ halo_model:
   halo_profile_hod: HaloProfileHOD # Type: str.
 
 probe_selection:
-  LL: False # Type: bool. Whether to compute the weak lensing ('LL') term
+  LL: True # Type: bool. Whether to compute the weak lensing ('LL') term
   GL: False # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') term
   GG: False # Type: bool. Whether to compute the photometric clustering ('GG') term
   
   xip: True # Type: bool. Whether to compute \xi_+
   xim: True # Type: bool. Whether to compute \xi_-
-  gamma_t: False # Type: bool. Whether to compute \gamma_t
-  w: False # Type: bool. Whether to compute w
+  gamma_t: True # Type: bool. Whether to compute \gamma_t
+  w: True # Type: bool. Whether to compute w
   
   cross_cov: True # Type: bool. Whether to compute the cross-terms between the selected probes
 
@@ -109,7 +109,7 @@ C_ell:
   # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
   has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
   has_IA: True # Type: bool. Enable/disable intrinsic alignment.
-  has_magnification_bias: False # Type: bool. Enable/disable magnification bias.
+  has_magnification_bias: True # Type: bool. Enable/disable magnification bias.
 
   # Keyword arguments for CCL Cl calculation (excluding `p_of_k_a`), described in
   # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl

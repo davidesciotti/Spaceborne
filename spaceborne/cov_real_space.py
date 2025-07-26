@@ -625,7 +625,7 @@ def levin_integrate_bessel_double_wrapper(
     return result_levin
 
 
-def stack_probe_blocks(cov_2d_dict):
+def stack_probe_blocks_old(cov_2d_dict):
     row_1 = np.hstack(
         (
             cov_2d_dict['gggg'],
@@ -662,7 +662,7 @@ def stack_probe_blocks(cov_2d_dict):
     return np.vstack((row_1, row_2, row_3, row_4))
 
 
-def stack_probe_blocks_new(cov_2d_dict):
+def stack_probe_blocks(cov_2d_dict):
     xip_row = np.hstack(
         (
             cov_2d_dict['xipxip'],
@@ -906,36 +906,6 @@ class CovRealSpace:
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
 
-    def _set_probes_toloop(self, probe_comb_idxs: list):
-        """
-        Sets the list of probes to loop over. This method is public since it needs the
-        probe_comb_idxs, passed from the main.
-
-        probe_comb_idxs: list of lists
-            containts the indices of the harmonic space probes
-        """
-        raise NotImplementedError('This method is not implemented yet. ')
-
-        probe_idx_dict_reversed = {
-            (0, 0, 0, 0): ('xipxip', 'xipxim', 'ximxim'),
-            (1, 0, 1, 0): ('gmgm',),
-            (1, 0, 0, 0): ('gmxim', 'gmxip'),
-            (1, 1, 0, 0): ('ggxim', 'ggxip'),
-            (1, 1, 1, 1): ('gggg',),
-            (1, 1, 1, 0): ('gggm',),
-        }
-
-        self.probes_toloop = []
-
-        for _probe_comb in probe_comb_idxs:
-            probe_comb = tuple(_probe_comb)
-            if probe_comb in probe_idx_dict_reversed:
-                self.probes_toloop.extend(probe_idx_dict_reversed[probe_comb])
-            else:
-                raise ValueError(
-                    f'Invalid probe combination: {probe_comb}. '
-                    f'Expected one of {list(probe_idx_dict_reversed.keys())}.'
-                )
 
     def set_ind_and_zpairs(self, ind, zbins):
         # set indices array

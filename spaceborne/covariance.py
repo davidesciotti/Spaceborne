@@ -10,7 +10,7 @@ from spaceborne import sb_lib as sl
 
 
 class SpaceborneCovariance:
-    def __init__(self, cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix, cov_rs_obj):
+    def __init__(self, cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix):
         self.cfg = cfg
         self.cov_cfg = cfg['covariance']
         self.ell_dict = {}
@@ -54,7 +54,6 @@ class SpaceborneCovariance:
         self.do_real_space = self.cfg['covariance']['space'] == 'real_space'
         # other useful objects
         self.nmt_obj = nmt_obj
-        self.cov_rs_obj = cov_rs_obj
 
         if self.cov_ordering_2d == 'probe_ell_zpair':
             self.block_index = 'ell'

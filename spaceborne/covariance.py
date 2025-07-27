@@ -9,6 +9,18 @@ from spaceborne import bnt as bnt_utils
 from spaceborne import sb_lib as sl
 
 
+def build_cov_dict(cov_obj: object):
+    # Automatically store attributes containing "2D" in cov_dict
+    cov_dict = {}
+    for attr_name in dir(cov_obj):
+        if attr_name.endswith('_2D') and not attr_name.startswith('__'):
+            attr_value = getattr(cov_obj, attr_name)
+            cov_dict[attr_name] = attr_value
+
+    # order the keys and return
+    return dict(sorted(cov_dict.items()))
+
+
 class SpaceborneCovariance:
     def __init__(self, cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix):
         self.cfg = cfg
@@ -16,11 +28,7 @@ class SpaceborneCovariance:
         self.ell_dict = {}
         self.ell_obj = ell_obj
         self.bnt_matrix = bnt_matrix
-        self.probe_names_dict = {
-            'LL': 'WL',
-            'GG': 'GC',
-            '3x2pt': '3x2pt',
-        }
+        self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
         # TODO these should probably be defined on a higher level
         self.llll_ixs = (0, 0, 0, 0)
         self.glgl_ixs = (1, 0, 1, 0)
@@ -279,11 +287,7 @@ class SpaceborneCovariance:
             )
 
         # ! compute 3x2pt fsky Gaussian covariance: by default, split SVA, SN and MIX
-        (
-            cov_3x2pt_sva_10D,
-            cov_3x2pt_sn_10D,
-            cov_3x2pt_mix_10D,
-        ) = sl.covariance_einsum(
+        (cov_3x2pt_sva_10D, cov_3x2pt_sn_10D, cov_3x2pt_mix_10D) = sl.covariance_einsum(
             cl_5d=cl_3x2pt_5d,
             noise_5d=noise_3x2pt_5d,
             fsky=self.fsky,
@@ -544,8 +548,7 @@ class SpaceborneCovariance:
                 self.cov_GC_g_2D, self.ell_dict['idxs_to_delete_dict']['GG']
             )
             self.cov_XC_g_2D = sl.remove_rows_cols_array2D(
-                self.cov_XC_g_2D,
-                self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG],
+                self.cov_XC_g_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
             )
             self.cov_3x2pt_g_2D = sl.remove_rows_cols_array2D(
                 self.cov_3x2pt_g_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
@@ -558,8 +561,7 @@ class SpaceborneCovariance:
                 self.cov_GC_ssc_2D, self.ell_dict['idxs_to_delete_dict']['GG']
             )
             self.cov_XC_ssc_2D = sl.remove_rows_cols_array2D(
-                self.cov_XC_ssc_2D,
-                self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG],
+                self.cov_XC_ssc_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
             )
             self.cov_3x2pt_ssc_2D = sl.remove_rows_cols_array2D(
                 self.cov_3x2pt_ssc_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
@@ -572,8 +574,7 @@ class SpaceborneCovariance:
                 self.cov_GC_cng_2D, self.ell_dict['idxs_to_delete_dict']['GG']
             )
             self.cov_XC_cng_2D = sl.remove_rows_cols_array2D(
-                self.cov_XC_cng_2D,
-                self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG],
+                self.cov_XC_cng_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
             )
             self.cov_3x2pt_cng_2D = sl.remove_rows_cols_array2D(
                 self.cov_3x2pt_cng_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
@@ -650,55 +651,7 @@ class SpaceborneCovariance:
             self.cov_3x2pt_g_2D + self.cov_3x2pt_ssc_2D + self.cov_3x2pt_cng_2D
         )
 
-        # Automatically store attributes containing "2D" in cov_dict
-        self.cov_dict = {}
-        for attr_name in dir(self):
-            if attr_name.endswith('_2D') and not attr_name.startswith('__'):
-                attr_value = getattr(self, attr_name)
-                self.cov_dict[attr_name] = attr_value
-
-        # order the keys
-        self.cov_dict = dict(sorted(self.cov_dict.items()))
-
-        # # ! store 2D covs in dictionary
-        # # TODO is this necessary? I can probably do everything with cov_obj...
-        # probe_names = ('WL', 'GC', 'XC', '3x2pt')
-        # covs_g_2D = (
-        #     self.cov_WL_g_2D,
-        #     self.cov_GC_g_2D,
-        #     self.cov_XC_g_2D,
-        #     self.cov_3x2pt_g_2D,
-        # )
-        # covs_ssc_2D = (
-        #     self.cov_WL_ssc_2D,
-        #     self.cov_GC_ssc_2D,
-        #     self.cov_XC_ssc_2D,
-        #     self.cov_3x2pt_ssc_2D,
-        # )
-        # covs_cng_2D = (
-        #     self.cov_WL_cng_2D,
-        #     self.cov_GC_cng_2D,
-        #     self.cov_XC_cng_2D,
-        #     self.cov_3x2pt_cng_2D,
-        # )
-        # covs_tot_2D = (
-        #     self.cov_WL_g_2D + self.cov_WL_ssc_2D + self.cov_WL_cng_2D,
-        #     self.cov_GC_g_2D + self.cov_GC_ssc_2D + self.cov_GC_cng_2D,
-        #     self.cov_XC_g_2D + self.cov_XC_ssc_2D + self.cov_XC_cng_2D,
-        #     self.cov_3x2pt_g_2D + self.cov_3x2pt_ssc_2D + self.cov_3x2pt_cng_2D,
-        # )
-
-        # for probe_name, cov_g_2D, cov_ssc_2D, cov_cng_2D, cov_tot_2D in zip(
-        #     probe_names, covs_g_2D, covs_ssc_2D, covs_cng_2D, covs_tot_2D
-        # ):
-        #     self.cov_dict[f'cov_{probe_name}_g_2D'] = cov_g_2D
-        #     self.cov_dict[f'cov_{probe_name}_ssc_2D'] = cov_ssc_2D
-        #     self.cov_dict[f'cov_{probe_name}_cng_2D'] = cov_cng_2D
-        #     self.cov_dict[f'cov_{probe_name}_tot_2D'] = cov_tot_2D
-
         print('Covariance matrices computed')
-
-        return self.cov_dict
 
     def _bnt_transform_3x2pt_wrapper(self):
         # turn 3x2pt 10d array to dict for the BNT function

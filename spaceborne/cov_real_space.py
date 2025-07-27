@@ -819,7 +819,6 @@ class CovRealSpace:
         # maximum survey area in sr
         self.amax = max((self.survey_area_sr, self.survey_area_sr))
 
-
     def _set_theta_binning(self):
         self.theta_min_arcmin = self.cfg['cov_real_space']['theta_min_arcmin']
         self.theta_max_arcmin = self.cfg['cov_real_space']['theta_max_arcmin']
@@ -919,7 +918,6 @@ class CovRealSpace:
         #     self.zbins,
         #     self.pvt_cfg['GL_OR_LG'],
         # )
-
 
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         # TODO generalize to different n(z)
@@ -1151,12 +1149,8 @@ class CovRealSpace:
                 theta_q_lower = self.theta_edges_fine[q]
                 theta_q_upper = self.theta_edges_fine[q + 1]
 
-                k_mu_terms = k_mu_nobessel(
-                    self.ells, theta_p_lower, theta_p_upper, mu
-                )
-                k_nu_terms = k_mu_nobessel(
-                    self.ells, theta_q_lower, theta_q_upper, nu
-                )
+                k_mu_terms = k_mu_nobessel(self.ells, theta_p_lower, theta_p_upper, mu)
+                k_nu_terms = k_mu_nobessel(self.ells, theta_q_lower, theta_q_upper, nu)
                 product_expansion = kmuknu_nobessel(k_mu_terms, k_nu_terms)
 
                 cov_pq_element = np.zeros(result_shape)

@@ -203,7 +203,7 @@ nbl_3x2pt_oc = 500
 # for the Gaussian covariance computation
 k_steps_sigma2_simps = 20_000
 k_steps_sigma2_levin = 300
-shift_nz_interpolation_kind = 'linear'  # TODO this should be spline
+shift_nz_interpolation_kind = 'linear'
 
 # whether or not to symmetrize the covariance probe blocks when
 # reshaping it from 4D to 6D.
@@ -418,7 +418,7 @@ if not cfg['ell_cuts']['apply_ell_cuts']:
 
 
 # ! sanity checks on the configs
-# TODO update this when cfg are done
+# TODO update this periodically
 cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg, zbins)
 cfg_check_obj.run_all_checks()
 
@@ -1046,7 +1046,6 @@ if cfg['covariance']['space'] == 'real_space':
 cov_hs_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix)
 cov_hs_obj.set_ind_and_zpairs(ind, zbins)
 cov_hs_obj.consistency_checks()
-# TODO how should I treat this? SSC and cNG are required in the RS case as well
 cov_hs_obj.set_gauss_cov(
     ccl_obj=ccl_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
@@ -1506,7 +1505,7 @@ cov_hs_obj.build_covs(
     oc_obj=oc_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
-cov_dict = cov_hs_obj.cov_dict
+cov_dict_hs = sb_cov.build_cov_dict(cov_hs_obj)
 
 # BOOKMARK 1
 if cfg['covariance']['space'] == 'real_space':
@@ -1514,6 +1513,8 @@ if cfg['covariance']['space'] == 'real_space':
     start_rs = time.perf_counter()
 
     # now compute the real space covariance
+    # TODO understand a bit better how to treat real-space SSC and cNG
+
     for _probe, _term in itertools.product(
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
@@ -1522,6 +1523,10 @@ if cfg['covariance']['space'] == 'real_space':
 
     # put everything together
     cov_rs_obj.combine_terms_and_probes()
+    # construct dict of 2D covs, as done above
+    cov_dict_rs = sb_cov.build_cov_dict(cov_rs_obj)
+    # join dictionaries
+    cov_dict = {**cov_dict_hs, **cov_dict_rs}
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 

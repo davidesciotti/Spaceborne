@@ -1944,7 +1944,7 @@ sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold
 
 # compare individual terms/probes
 term = cov_rs_obj.terms_toloop[0]
-for probe in cov_rs_obj.probes_toloop:
+for probe in unique_probe_combs_rs:
     integration = cfg['precision']['cov_rs_int_method']
     from spaceborne import cov_real_space
 

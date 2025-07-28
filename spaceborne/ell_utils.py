@@ -410,6 +410,29 @@ class EllBinning:
                 output_ell_bin_edges=True,
             )
 
+        elif self.binning_type == 'log_anglib':
+
+            b_WL = nmt_log_binning(self.ell_min_WL, self.ell_max_WL, self.nbl_WL)
+            b_GC = nmt_log_binning(self.ell_min_GC, self.ell_max_GC, self.nbl_GC)
+
+            self.ells_WL = b_WL.get_effective_ells()
+            self.delta_l_WL = np.zeros_like(self.ells_WL)
+            self.ell_edges_WL = np.zeros(self.ells_WL.size+1)
+
+            self.ells_GC = b_GC.get_effective_ells()
+            self.delta_l_GC = np.zeros_like(self.ells_GC)
+            self.ell_edges_GC = np.zeros(self.ells_GC.size+1)
+
+            for i in range(b_WL.get_effective_ells().size):
+                self.delta_l_WL[i] = b_WL.get_ell_max(i) - b_WL.get_ell_min(i)
+                self.ell_edges_WL[i] = b_WL.get_ell_min(i)
+            self.ell_edges_WL[-1] = b_WL.get_ell_max(b_WL.get_effective_ells().size-1)+1
+
+            for i in range(b_GC.get_effective_ells().size):
+                self.delta_l_GC[i] = b_GC.get_ell_max(i) - b_GC.get_ell_min(i)
+                self.ell_edges_GC[i] = b_GC.get_ell_min(i)
+            self.ell_edges_GC[-1] = b_GC.get_ell_max(b_GC.get_effective_ells().size-1)+1
+
         elif self.binning_type == 'lin':
             self.ells_WL, self.delta_l_WL, self.ell_edges_WL = compute_ells(
                 nbl=self.nbl_WL,

@@ -1522,7 +1522,7 @@ if cfg['covariance']['space'] == 'real_space':
         cov_rs_obj.compute_realspace_cov(cov_hs_obj, _probe, _term)
 
     # put everything together
-    cov_rs_obj.combine_terms_and_probes()
+    cov_rs_obj.combine_terms_and_probes(cov_hs_obj.block_index)
     # construct dict of 2D covs, as done above
     cov_dict_rs = sb_cov.build_cov_dict(cov_rs_obj)
     # join dictionaries

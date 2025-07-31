@@ -1202,7 +1202,7 @@ class CovRealSpace:
             ),
         )  # fmt: skip
 
-    def combine_terms_and_probes(self):
+    def combine_terms_and_probes(self, block_index):
         self.cov_rs_2d_dict = {}
         self.cov_rs_full_2d = []
         for term in self.terms_toloop:
@@ -1235,7 +1235,7 @@ class CovRealSpace:
                     ind_cd,
                 )
                 self.cov_rs_2d_dict[probe] = sl.cov_4D_to_2D(
-                    self.cov_rs_4d, block_index='zpair', optimize=True
+                    self.cov_rs_4d, block_index=block_index, optimize=True
                 )
 
             # sack (join) probes
@@ -1264,8 +1264,6 @@ class CovRealSpace:
             probe
         ]
 
-        # TODO test this better, especially for cross-terms
-        # TODO off-diagonal zij blocks still don't match, I think it's just a
         ind_ab = (
             self.ind_auto[:, 2:] if probe_a_ix == probe_b_ix
             else self.ind_cross[:, 2:]
@@ -1420,7 +1418,7 @@ class CovRealSpace:
         elif term in ['ssc', 'cng']:
             # TODO this is yet to be checked
             # TODO this has to be computed on a sufficiently fine ell grid, may pose
-            # memory issues?
+            # TODO memory issues?
 
             # set normalization depending on the term
             norm = 4 * np.pi**2

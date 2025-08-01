@@ -117,7 +117,6 @@ nz:
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
-  # TODO get actual values
   ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
   ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
 
@@ -204,7 +203,6 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  # TODO get actual values
   sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the

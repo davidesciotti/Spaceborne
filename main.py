@@ -565,7 +565,6 @@ zgrid_nz_lns = io_obj.zgrid_nz_lns
 nz_src = io_obj.nz_src
 nz_lns = io_obj.nz_lns
 
-
 # nz may be subjected to a shift: save the original arrays
 nz_unshifted_src = nz_src
 nz_unshifted_lns = nz_lns
@@ -613,13 +612,14 @@ nz_src_norm = simps(y=nz_src, x=zgrid_nz_src, axis=0)
 
 if not np.allclose(nz_lns_norm, 1, atol=0, rtol=1e-3):
     warnings.warn(
-        'The lens n(z) are not normalised. Proceeding to normalise them', stacklevel=2
+        '\nThe lens n(z) are not normalised. Proceeding to normalise them', stacklevel=2
     )
     nz_lns /= nz_lns_norm
 
 if not np.allclose(nz_src_norm, 1, atol=0, rtol=1e-3):
     warnings.warn(
-        'The source n(z) are not normalised. Proceeding to normalise them', stacklevel=2
+        '\nThe source n(z) are not normalised. Proceeding to normalise them',
+        stacklevel=2,
     )
     nz_src /= nz_src_norm
 
@@ -864,9 +864,7 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d
 # cls plots
 plot_cls()
 
-assert False, 'stop here'
-
-# this is a lil bit convoluted: the cls used by the code (wither from input or from sb)
+# this is a lil' bit convoluted: the cls used by the code (wither from input or from sb)
 # are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
 # is True and are only plotted in that case
 _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
@@ -1504,14 +1502,20 @@ for key, cov in cov_dict.items():
 
     if cov_filename.endswith('.npz'):
         save_func = np.savez_compressed
+        save_kw = {}
     elif cov_filename.endswith('.npy'):
         save_func = np.save
+        save_kw = {}
+    elif cov_filename.endswith('.dat') or cov_filename.endswith('.txt'):
+        save_func = np.savetxt
+        save_kw = {'fmt': '%.10e'}
     else:
         raise ValueError(
-            f'the extension for cov_filename = {cov_filename} should be .npz or .npy'
+            f'the extension for cov_filename = {cov_filename} should be '
+            '.npz, .npy, .txt or .dat'
         )
 
-    save_func(f'{output_path}/{cov_filename}', cov)
+    save_func(f'{output_path}/{cov_filename}', cov, **save_kw)
 
     if cfg['covariance']['save_full_cov']:
         for a, b, c, d in unique_probe_combs_ix:

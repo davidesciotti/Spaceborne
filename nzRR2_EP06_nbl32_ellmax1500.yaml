@@ -1,0 +1,190 @@
+BNT:
+  cl_BNT_transform: false
+  cov_BNT_transform: false
+C_ell:
+  cl_CCL_kwargs:
+    l_limber: -1
+    limber_integration_method: spline
+    non_limber_integration_method: FKEM
+  cl_GG_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/cl_gg.txt
+  cl_GL_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/cl_gl.txt
+  cl_LL_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/cl_ll.txt
+  gal_bias_table_filename: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/gal_bias.txt
+  galaxy_bias_fit_coeff:
+  - 1.33291
+  - -0.72414
+  - 1.0183
+  - -0.14913
+  has_IA: true
+  has_magnification_bias: true
+  has_rsd: false
+  mag_bias_table_filename: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/mag_bias.txt
+  magnification_bias_fit_coeff:
+  - -1.50685
+  - 1.35034
+  - 0.08321
+  - 0.04279
+  mult_shear_bias:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  use_input_cls: false
+  which_gal_bias: FS2_polynomial_fit
+  which_mag_bias: FS2_polynomial_fit
+PyCCL:
+  cov_integration_method: spline
+  gsl_params: null
+  load_cached_tkka: true
+  n_samples_wf: 1000
+  spline_params:
+    A_SPLINE_NA_PK: 240
+    K_MAX_SPLINE: 300
+  use_default_k_a_grids: false
+cosmology:
+  N_eff: 3.046
+  ODE: 0.68
+  Ob: 0.05
+  Om: 0.32
+  Om_k0: 0
+  h: 0.6732
+  m_nu: 0.06
+  ns: 0.966
+  s8: 0.8155
+  wa: 0.0
+  wz: -1.0
+covariance:
+  G: true
+  SSC: true
+  cNG: true
+  coupled_cov: false
+  cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.dat
+  covariance_ordering_2D: ell_probe_zpair
+  include_b2g: true
+  include_terasawa_terms: false
+  k_steps: 150
+  log10_k_max: 2
+  log10_k_min: -5
+  no_sampling_noise: false
+  row_col_major: row-major
+  save_full_cov: false
+  sigma_eps_i:
+  - 0.266
+  - 0.275
+  - 0.282
+  - 0.29
+  - 0.292
+  - 0.298
+  split_gaussian_cov: false
+  triu_tril: triu
+  use_KE_approximation: false
+  which_b1g_in_resp: from_input
+  which_pk_responses: halo_model
+  z_max: 3.0
+  z_min: 0.02
+  z_steps: 7000
+  z_steps_trisp: 50
+ell_binning:
+  binning_type: log
+  ell_bins_GC: 32
+  ell_bins_WL: 32
+  ell_bins_ref: 32
+  ell_max_GC: 1500
+  ell_max_WL: 1500
+  ell_max_ref: 1500
+  ell_min_GC: 10
+  ell_min_WL: 10
+  ell_min_ref: 10
+extra_parameters:
+  camb:
+    HMCode_logT_AGN: 7.75
+    dark_energy_model: ppf
+    halofit_version: mead2020_feedback
+    kmax: 100
+    num_massive_neutrinos: 1
+halo_model:
+  concentration: ConcentrationDuffy08
+  halo_bias: HaloBiasTinker10
+  halo_profile_dm: HaloProfileNFW
+  halo_profile_hod: HaloProfileHOD
+  mass_def: MassDef200m
+  mass_function: MassFuncTinker10
+intrinsic_alignment:
+  Aia: 0.16
+  CIA: 0.0134
+  bIA: 0.0
+  eIA: 1.66
+  lumin_ratio_filename: null
+  z_pivot_IA: 0
+mask:
+  apodize: false
+  aposize: 0.1
+  generate_polar_cap: false
+  load_mask: true
+  mask_path: /home/cosmo/davide.sciotti/data/common_data/RR2/Davide/EUC_LE3_COVERAGE_RR2-R1-NOBADAOCS_20250714T134732.590089Z_00.00.fits.gz
+  nside: 1024
+  survey_area_deg2: 13245
+misc:
+  cl_triangle_plot: false
+  num_threads: 40
+  output_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500
+  save_figs: true
+  test_cholesky_decomposition: true
+  test_condition_number: true
+  test_numpy_inversion: true
+  test_symmetry: true
+namaster:
+  spin0: false
+  use_INKA: true
+  use_namaster: false
+  workspace_path: '...'
+nz:
+  clip_zmax: 3
+  clip_zmin: 0
+  dzGC:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  dzWL:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  ngal_lenses:
+  - 2.87799343223134
+  - 2.098809385748583
+  - 1.8471870250265632
+  - 1.3455375854538179
+  - 0.36423337434626685
+  - 0.09234518996285011
+  ngal_sources:
+  - 2.1279869461396435
+  - 2.8237964415236063
+  - 2.564394831195362
+  - 1.2930977380060946
+  - 0.4702026378518463
+  - 0.1069525663290778
+  nz_lenses_filename: /home/cosmo/davide.sciotti/data/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits
+  nz_sources_filename: /home/cosmo/davide.sciotti/data/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits
+  shift_nz: false
+  sigma_smoothing: 5
+  smooth_nz: true
+precision:
+  n_iter_nmt: null
+probe_selection:
+  GG: true
+  GL: true
+  LL: true
+  cross_cov: true
+sample_covariance:
+  compute_sample_cov: false
+  fix_seed: true
+  nreal: 5000
+  which_cls: namaster

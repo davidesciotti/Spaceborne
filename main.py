@@ -227,7 +227,7 @@ cfg['covariance']['cNG_code'] = 'PyCCL'
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
     cfg['OneCovariance']['path_to_oc_executable'] = (
-        '/home/cosmo/davide.sciotti/data//OneCovariance/covariance.py'
+        '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
     )
     cfg['OneCovariance']['consistency_checks'] = False
     cfg['OneCovariance']['oc_output_filename'] = 'cov_rcf_mergetest_v2_'
@@ -1028,6 +1028,11 @@ if cfg['covariance']['space'] == 'real_space':
         cl_ll_3d_for_rs = cl_ll_3d_spline(cov_rs_obj.ells)
         cl_gl_3d_for_rs = cl_gl_3d_spline(cov_rs_obj.ells)
         cl_gg_3d_for_rs = cl_gg_3d_spline(cov_rs_obj.ells)
+        cl_3x2pt_5d_for_rs = np.zeros((n_probes, n_probes, cov_rs_obj.nbl, zbins, zbins)) 
+        cl_3x2pt_5d_for_rs[0, 0] = cl_ll_3d_for_rs
+        cl_3x2pt_5d_for_rs[1, 0] = cl_gl_3d_for_rs
+        cl_3x2pt_5d_for_rs[0, 1] = cl_gl_3d_for_rs.transpose(0, 2, 1)
+        cl_3x2pt_5d_for_rs[1, 1] = cl_gg_3d_for_rs
 
     else:
         cl_3x2pt_5d_for_rs = ccl_interface.compute_cl_3x2pt_5d(

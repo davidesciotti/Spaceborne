@@ -77,16 +77,7 @@ def process_cov_from_list_file_rs(
         subtract_one = True
 
     # ! import .list covariance file
-    shape = (
-        n_probes_rs,
-        n_probes_rs,
-        nbt_oc,
-        nbt_oc,
-        zbins,
-        zbins,
-        zbins,
-        zbins,
-    )
+    shape = (n_probes_rs, n_probes_rs, nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
     cov_g_oc_3x2pt_8D = np.zeros(shape)
     cov_sva_oc_3x2pt_8D = np.zeros(shape)
     cov_mix_oc_3x2pt_8D = np.zeros(shape)
@@ -287,11 +278,23 @@ class OneCovarianceInterface:
         else:
             raise ValueError('self.which_obs must he "harmonic_space" or "real_space"')
 
-        cfg_oc_ini['observables']['cosmic_shear'] = str(True)
+        cosmic_shear, ggl, clustering = False, False, False
+        if (
+            self.cfg['probe_selection']['LL']
+            or self.cfg['probe_selection']['xip']
+            or self.cfg['probe_selection']['xim']
+        ):
+            cosmic_shear = True
+        if self.cfg['probe_selection']['GL'] or self.cfg['probe_selection']['gamma_t']:
+            ggl = True
+        if self.cfg['probe_selection']['GG'] or self.cfg['probe_selection']['w']:
+            clustering = True
+
+        cfg_oc_ini['observables']['cosmic_shear'] = str(cosmic_shear)
         cfg_oc_ini['observables']['est_shear'] = est_shear
-        cfg_oc_ini['observables']['ggl'] = str(True)
+        cfg_oc_ini['observables']['ggl'] = str(ggl)
         cfg_oc_ini['observables']['est_ggl'] = est_ggl
-        cfg_oc_ini['observables']['clustering'] = str(True)
+        cfg_oc_ini['observables']['clustering'] = str(clustering)
         cfg_oc_ini['observables']['est_clust'] = est_clust
         cfg_oc_ini['observables']['cstellar_mf'] = str(False)
         cfg_oc_ini['observables']['cross_terms'] = str(True)
@@ -489,8 +492,8 @@ class OneCovarianceInterface:
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
 
-            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(True)
-            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(True)
+            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(self.cfg['probe_selection']['xip'])
+            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(self.cfg['probe_selection']['xim'])
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
             cfg_oc_ini['covTHETAspace settings']['integration_intervals'] = str(40)
 
@@ -970,10 +973,7 @@ class OneCovarianceInterface:
             ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)
         }
 
-        probe_idx_dict = {
-            'm': 0,
-            'g': 1,
-        }
+        probe_idx_dict = {'m': 0, 'g': 1}
 
         # ! import .list covariance file
         shape = (

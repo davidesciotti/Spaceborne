@@ -171,8 +171,8 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
-  cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
@@ -231,7 +231,7 @@ covariance:
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5 # Type: float
   log10_k_max: 2 # Type: float
-  k_steps: 200 # Type: int. Around 100 should be enough
+  k_steps: 150 # Type: int. Around 100 should be enough
 
   z_min: 0.02 # Type: float
   z_max: 3.0 # Type: float
@@ -240,8 +240,8 @@ covariance:
 
   use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
-  # Name of the output covariance file. Change suffix to '.npy' to save as npy file.
-  cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str.
+  # Name of the output covariance file. The extension can be `npz`, `npy`, `txt` or `dat`
+  cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.dat # Type: str.
 
 namaster:
   use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
@@ -300,14 +300,14 @@ misc:
   num_threads: 40 # Type: int. How many threads to use for the parallel computations
 
   # some sanity checks on the covariance matrix. These could take a while to run.
-  test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
-  test_condition_number: True # Type: bool. Check if condition number is above 1e10
-  test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
-  test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
+  test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
+  test_condition_number: False # Type: bool. Check if condition number is above 1e10
+  test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
+  test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
-  cl_triangle_plot: True # Type: bool. 
+  cl_triangle_plot: False # Type: bool. 
   
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
   output_path:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/vincenzo_2025_07/RR2/Pes # Type: str. Path to the output directory

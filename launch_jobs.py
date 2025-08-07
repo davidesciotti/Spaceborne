@@ -4,8 +4,6 @@ from copy import deepcopy
 
 import yaml
 
-# TODO sigma_eps is still missing!
-# TODO adapt length of mult shear bias balues for 13 bin case
 
 
 def generate_zipped_configs(base_config: dict, changes_list: list[dict]) -> list:
@@ -137,6 +135,7 @@ configs_to_run = [
             'smooth_nz': False,
         },
         'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
+        'covariance': {'sigma_eps_i': [0.26] * 6},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
             'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP06_nbl32_ellmax5000'
@@ -157,6 +156,7 @@ configs_to_run = [
         },
         'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
         'C_ell': {'mult_shear_bias': [0.]*13},
+        'covariance': {'sigma_eps_i': [0.26] * 13},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
             'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP13_nbl32_ellmax5000'
@@ -174,6 +174,7 @@ configs_to_run = [
         },
         'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
         'C_ell': {'mult_shear_bias': [0.]*13},
+        'covariance': {'sigma_eps_i': [0.26] * 13},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
             'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP13_nbl32_ellmax5000_BNT'

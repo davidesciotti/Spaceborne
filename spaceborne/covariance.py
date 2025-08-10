@@ -623,7 +623,7 @@ class SpaceborneCovariance:
             start = time.perf_counter()
             self._bnt_transform_3x2pt_wrapper()
             print(
-                f'Covariance matrices BNT-transformed in '
+                f'...done in '
                 f'{time.perf_counter() - start:.2f} s'
             )
 

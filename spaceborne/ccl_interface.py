@@ -705,8 +705,8 @@ class PycclClass:
                 integration_method=integration_method,
             )
 
-            # * fill the symmetric counterparts of the required blocks
-            # * (excluding diagonal blocks)
+        # * fill the symmetric counterparts of the required blocks
+        # * (excluding diagonal blocks)
         for probe_str in symm_probe_combs:
             probe_a, probe_b, probe_c, probe_d = probe_str
             key_orig = (probe_a, probe_b, probe_c, probe_d)

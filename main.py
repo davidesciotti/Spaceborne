@@ -8,6 +8,7 @@ import warnings
 from copy import deepcopy
 from functools import partial
 from importlib.util import find_spec
+from scipy.integrate import simpson as simps
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -564,7 +565,6 @@ zgrid_nz_lns = io_obj.zgrid_nz_lns
 nz_src = io_obj.nz_src
 nz_lns = io_obj.nz_lns
 
-
 # nz may be subjected to a shift: save the original arrays
 nz_unshifted_src = nz_src
 nz_unshifted_lns = nz_lns
@@ -587,7 +587,7 @@ if shift_nz:
         zgrid_nz_lns,
         nz_unshifted_lns,
         cfg['nz']['dzGC'],
-        normalize=cfg['nz']['normalize_shifted_nz'],
+        normalize=False,
         plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
         bounds_error=False,
@@ -606,6 +606,23 @@ if cfg['nz']['smooth_nz']:
             nz_lns[:, zi], sigma=cfg['nz']['sigma_smoothing']
         )
 
+# check if they are normalised, and if not do so
+nz_lns_norm = simps(y=nz_lns, x=zgrid_nz_lns, axis=0)
+nz_src_norm = simps(y=nz_src, x=zgrid_nz_src, axis=0)
+
+if not np.allclose(nz_lns_norm, 1, atol=0, rtol=1e-3):
+    warnings.warn(
+        '\nThe lens n(z) are not normalised. Proceeding to normalise them', stacklevel=2
+    )
+    nz_lns /= nz_lns_norm
+
+if not np.allclose(nz_src_norm, 1, atol=0, rtol=1e-3):
+    warnings.warn(
+        '\nThe source n(z) are not normalised. Proceeding to normalise them',
+        stacklevel=2,
+    )
+    nz_src /= nz_src_norm
+
 
 ccl_obj.set_nz(
     nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),
@@ -614,6 +631,7 @@ ccl_obj.set_nz(
 ccl_obj.check_nz_tuple(zbins)
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
+
 
 # ! ========================================= IA =======================================
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
@@ -846,8 +864,7 @@ ccl_obj.cl_3x2pt_5d[1, 1, :, :, :] = ccl_obj.cl_gg_3d
 # cls plots
 plot_cls()
 
-
-# this is a lil bit convoluted: the cls used by the code (wither from input or from sb)
+# this is a lil' bit convoluted: the cls used by the code (wither from input or from sb)
 # are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
 # is True and are only plotted in that case
 _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
@@ -1402,7 +1419,7 @@ if compute_sb_ssc:
         z_grid=z_grid,
         integration_type=ssc_integration_type,
         unique_probe_combs=unique_probe_combs,
-        num_threads=cfg['misc']['num_threads']
+        num_threads=cfg['misc']['num_threads'],
     )
     print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
 
@@ -1485,14 +1502,20 @@ for key, cov in cov_dict.items():
 
     if cov_filename.endswith('.npz'):
         save_func = np.savez_compressed
+        save_kw = {}
     elif cov_filename.endswith('.npy'):
         save_func = np.save
+        save_kw = {}
+    elif cov_filename.endswith('.dat') or cov_filename.endswith('.txt'):
+        save_func = np.savetxt
+        save_kw = {'fmt': '%.10e'}
     else:
         raise ValueError(
-            f'the extension for cov_filename = {cov_filename} should be .npz or .npy'
+            f'the extension for cov_filename = {cov_filename} should be '
+            '.npz, .npy, .txt or .dat'
         )
 
-    save_func(f'{output_path}/{cov_filename}', cov)
+    save_func(f'{output_path}/{cov_filename}', cov, **save_kw)
 
     if cfg['covariance']['save_full_cov']:
         for a, b, c, d in unique_probe_combs_ix:
@@ -1541,6 +1564,35 @@ print(f'Covariance matrices saved in {output_path}\n')
 # save cfg file
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
+
+# save nz
+nz_header = (
+    'This is the actual redshift distribution used internally in the\n'
+    'code (albeit not necessarily on this z grid).\n'
+    'Please beware that, depending on the settings in the config file,\n'
+    'it might have been shifted/smoothed/interpolated/normalized with respect\n'
+    'to the raw input one. Also, if you use it directly as input for a subsequent\n'
+    'run, make sure to turn off the relevant flags in the config file (e.g. to avoid\n'
+    'shifting it twice).\n\n'
+)
+col_width = 24
+labels = ['z'] + [f'n_{i + 1}(z)' for i in range(zbins)]
+additional_str = ''.join(label.ljust(col_width) for label in labels)
+# additional_str = 'z\t' + '\t'.join([f'n_{zi+1}(z)' for zi in range(zbins)])
+nz_header += f'{additional_str}'
+
+np.savetxt(
+    f'{output_path}/nz_pos.txt',
+    np.column_stack((zgrid_nz_lns, nz_lns)),
+    header=nz_header,
+    fmt='%.18e',
+)
+np.savetxt(
+    f'{output_path}/nz_shear.txt',
+    np.column_stack((zgrid_nz_src, nz_src)),
+    header=nz_header,
+    fmt='%.18e',
+)
 
 # save cls
 sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
@@ -1610,6 +1662,7 @@ if cfg['misc']['save_output_as_benchmark']:
                 )
                 _ell_dict[key] = _ell_dict[key].get_effective_ells()
 
+    # save metadata
     import datetime
 
     branch, commit = sl.get_git_info()

@@ -73,9 +73,6 @@ class SpaceborneConfigChecker:
         assert isinstance(self.cfg['covariance']['load_cached_sigma2_b'], bool), (
             'load_cached_sigma2_b must be a boolean'
         )
-        assert isinstance(self.cfg['nz']['normalize_shifted_nz'], bool), (
-            'b2g_from_halomodel must be a boolean'
-        )
 
     def check_ell_binning(self) -> None:
         # assert self.cfg['ell_binning']['nbl_WL_opt'] == 32, (

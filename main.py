@@ -231,11 +231,9 @@ if 'cNG_code' not in cfg['covariance']:
 
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
-    cfg['OneCovariance']['path_to_oc_executable'] = (
-        '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
-    )
+    cfg['OneCovariance']['path_to_oc_executable'] = ...
     cfg['OneCovariance']['consistency_checks'] = False
-    cfg['OneCovariance']['oc_output_filename'] = 'cov_rcf_mergetest_v2_'
+    cfg['OneCovariance']['oc_output_filename'] = 'XXX'
 
 if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
@@ -645,13 +643,13 @@ nz_src_norm = simps(y=nz_src, x=zgrid_nz_src, axis=0)
 
 if not np.allclose(nz_lns_norm, 1, atol=0, rtol=1e-3):
     warnings.warn(
-        '\nThe lens n(z) are not normalised. Proceeding to normalise them', stacklevel=2
+        '\n\nThe lens n(z) are not normalised. Proceeding to normalise them', stacklevel=2
     )
     nz_lns /= nz_lns_norm
 
 if not np.allclose(nz_src_norm, 1, atol=0, rtol=1e-3):
     warnings.warn(
-        '\nThe source n(z) are not normalised. Proceeding to normalise them',
+        '\n\nThe source n(z) are not normalised. Proceeding to normalise them',
         stacklevel=2,
     )
     nz_src /= nz_src_norm
@@ -1050,7 +1048,9 @@ if cfg['covariance']['space'] == 'real_space':
         cl_ll_3d_for_rs = cl_ll_3d_spline(cov_rs_obj.ells)
         cl_gl_3d_for_rs = cl_gl_3d_spline(cov_rs_obj.ells)
         cl_gg_3d_for_rs = cl_gg_3d_spline(cov_rs_obj.ells)
-        cl_3x2pt_5d_for_rs = np.zeros((n_probes, n_probes, cov_rs_obj.nbl, zbins, zbins)) 
+        cl_3x2pt_5d_for_rs = np.zeros(
+            (n_probes, n_probes, cov_rs_obj.nbl, zbins, zbins)
+        )
         cl_3x2pt_5d_for_rs[0, 0] = cl_ll_3d_for_rs
         cl_3x2pt_5d_for_rs[1, 0] = cl_gl_3d_for_rs
         cl_3x2pt_5d_for_rs[0, 1] = cl_gl_3d_for_rs.transpose(0, 2, 1)
@@ -1093,13 +1093,18 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_path = f'{output_path}/OneCovariance'
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
+        
+    # replace extension with .ascii and set the shift_dz string
+    nz_src_extension = cfg['nz']['nz_sources_filename'].split('.')[-1]
+    nz_lns_extension = cfg['nz']['nz_lenses_filename'].split('.')[-1]
 
     nz_src_ascii_filename = cfg['nz']['nz_sources_filename'].replace(
-        '.dat', f'_dzshifts{shift_nz}.ascii'
+        nz_src_extension, f'_dzshifts{shift_nz}.ascii'
     )
     nz_lns_ascii_filename = cfg['nz']['nz_lenses_filename'].replace(
-        '.dat', f'_dzshifts{shift_nz}.ascii'
+        nz_lns_extension, f'_dzshifts{shift_nz}.ascii'
     )
+    
     nz_src_ascii_filename = nz_src_ascii_filename.format(**pvt_cfg)
     nz_lns_ascii_filename = nz_lns_ascii_filename.format(**pvt_cfg)
     nz_src_ascii_filename = os.path.basename(nz_src_ascii_filename)
@@ -1111,7 +1116,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # oc needs finer ell sampling to avoid issues with ell bin edges
     ells_3x2pt_oc = np.geomspace(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc
+        ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )
     cl_ll_3d_oc = ccl_obj.compute_cls(
         ells_3x2pt_oc,

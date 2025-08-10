@@ -307,6 +307,7 @@ class OneCovarianceInterface:
             [f'{self.cov_oc_fname}_list.dat', f'{self.cov_oc_fname}_matrix.mat']
         )
         cfg_oc_ini['output settings']['style'] = ', '.join(['list', 'matrix'])
+        # TODO make this below conditional on covariance_ordering_2D!
         cfg_oc_ini['output settings']['list_style_spatial_first'] = str(True)
         cfg_oc_ini['output settings']['corrmatrix_plot'] = (
             f'{self.cov_oc_fname}_corrplot.pdf'
@@ -314,7 +315,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_configs'] = 'save_configs.ini'
         cfg_oc_ini['output settings']['save_Cells'] = str(True)
         cfg_oc_ini['output settings']['save_trispectra'] = str(False)
-        cfg_oc_ini['output settings']['save_alms'] = str(True)
+        cfg_oc_ini['output settings']['save_alms'] = str(False)
         cfg_oc_ini['output settings']['use_tex'] = str(False)
 
         # ! [covELLspace settings]
@@ -383,10 +384,18 @@ class OneCovarianceInterface:
             cfg_oc_ini['covELLspace settings']['ell_max'] = str(
                 self.cfg['precision']['ell_max_rs']
             )
-            cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
-                self.cfg['precision']['ell_bins_rs']
-            )
             cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
+
+            # spaceborne uses simps, which is much faster than levin but needs a larger
+            # number of ell bins
+            ell_bins_rs = (
+                self.cfg['precision']['ell_bins_rs']
+                if self.cfg['precision']['ell_bins_rs'] < 500
+                else 500
+            )
+            cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
+                ell_bins_rs
+            )
 
         # ! [survey specs]
         # commented out to avoid loading mask file by accident
@@ -472,7 +481,9 @@ class OneCovarianceInterface:
             cfg_oc_ini['covTHETAspace settings']['theta_bins_clustering'] = str(
                 self.cfg['cov_real_space']['theta_bins']
             )
-            cfg_oc_ini['covTHETAspace settings']['theta_type_clustering'] = 'lin'
+            cfg_oc_ini['covTHETAspace settings']['theta_type_clustering'] = str(
+                self.cfg['cov_real_space']['binning_type']
+            )
             cfg_oc_ini['covTHETAspace settings']['theta_min_lensing'] = str(
                 self.cov_rs_cfg['theta_min_arcmin']
             )
@@ -492,8 +503,12 @@ class OneCovarianceInterface:
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
 
-            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(self.cfg['probe_selection']['xip'])
-            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(self.cfg['probe_selection']['xim'])
+            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(
+                self.cfg['probe_selection']['xip']
+            )
+            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(
+                self.cfg['probe_selection']['xim']
+            )
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
             cfg_oc_ini['covTHETAspace settings']['integration_intervals'] = str(40)
 
@@ -578,16 +593,17 @@ class OneCovarianceInterface:
 
     def call_oc_from_bash(self):
         """This function runs OneCovariance"""
-        activate_and_run = f"""
-        source {self.conda_base_path}/activate cov20_env
-        python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
-        source {self.conda_base_path}/deactivate
-        source {self.conda_base_path}/activate spaceborne-dav
-        """
-        # python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
-
-        process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
-        process.communicate()
+        try:
+            subprocess.run(
+                ['python', self.path_to_oc_executable, self.path_to_config_oc_ini],
+                check=True,
+                text=True,
+                capture_output=True,
+            )
+        except subprocess.CalledProcessError as e:
+            print('STDOUT:\n', e.stdout)
+            print('STDERR:\n', e.stderr)
+            raise
 
     def call_oc_from_class(self):
         """This interface was originally created by Robert Reischke.
@@ -955,7 +971,7 @@ class OneCovarianceInterface:
         # note use delim_whitespace=True instead of sep='\s+' if this gives
         # compatibility issues
         self.ells_oc_load = pd.read_csv(
-            f'{self.oc_path}/{self.cov_oc_fname}_list.dat', usecols=['ell1'], sep='\s+'
+            f'{self.oc_path}/{self.cov_oc_fname}_list.dat', usecols=['ell1'], sep=r'\s+'
         )['ell1'].unique()
 
         # check if the saved ells are within 1% of the required ones;

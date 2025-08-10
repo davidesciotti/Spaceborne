@@ -79,7 +79,7 @@ covariance:
   - 0.26
   split_gaussian_cov: false
   triu_tril: triu
-  use_KE_approximation: false
+  use_KE_approximation: true
   which_b1g_in_resp: from_input
   which_pk_responses: halo_model
   z_max: 3.0

@@ -180,12 +180,13 @@ sample_covariance:
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 OneCovariance:
-    path_to_oc_executable: '/home/cosmo/davide.sciotti/data/common_data/OneCovariance/covariance.py'
-    consistency_checks: False
-    oc_output_filename: 'cov_pierre_laila_check'
+  path_to_oc_executable: '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
+  consistency_checks: False
+  oc_output_filename: 'cov_pierre_laila_check'
+  load_precomputed_covs: True
 
 ell_binning:
-  binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
 
   ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL
@@ -210,7 +211,9 @@ covariance:
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
-  # TODO this has almost no effect fr the moment
+  G_code: Spaceborne
+
+  # TODO this has almost no effect for the moment
   space: real_space # Type: str. Whether to compute the harmonic space or real_space covariance
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
@@ -280,7 +283,7 @@ covariance:
 
 cov_real_space:
   
-  # theta binning for the real-space covariance matrix
+  # theta binning for the real-space covariance matrix (theta values are in arcmin)
   theta_min_arcmin: 0.1  # Type: float | int
   theta_max_arcmin: 300  # Type: float | int
   theta_bins: 20  # Type: int
@@ -338,7 +341,7 @@ precision:
   ell_bins_rs: 10000  # Type: int
   
   # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
-  theta_bins_fine: 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+  theta_bins_fine: 20  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
 
   # Integration method for the covariance projection to real space. Options:
   # - 'simps': uses simpson integration. This is faster but less accurate
@@ -347,7 +350,7 @@ precision:
   levin_bin_avg: True  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
 
 misc:
-  num_threads: 20 # Type: int. How many threads to use for the parallel computations
+  num_threads: 40 # Type: int. How many threads to use for the parallel computations
   # How many integrals to compute at once for the  numerical integration of
   # the sigma^2_b(z_1, z_2) function with pylevin. 
   # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
@@ -364,5 +367,5 @@ misc:
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
   cl_triangle_plot: False # Type: bool.
 
-  output_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/RR2_Pierre_Laila/output # Type: str. Path to the output directory
+  output_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/RR2_Pierre_Laila/output_nbt20 # Type: str. Path to the output directory
   save_figs: True

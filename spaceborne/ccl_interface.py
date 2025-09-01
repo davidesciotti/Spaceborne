@@ -451,8 +451,8 @@ class PycclClass:
                     )
                 except FileNotFoundError as e:
                     print(
-                        'No trispectra files found in the cache. '
-                        'Proceeding to compute them. Error message:\n'
+                        'No files found in the cache. '
+                        'Proceeding to compute the trispectrum term.\nError message:\n'
                     )
                     print(e)
 
@@ -621,7 +621,7 @@ class PycclClass:
 
         self.gal_bias_dict = {'L': np.ones_like(gal_bias_1d), 'G': gal_bias_1d}
 
-    def compute_ng_cov_ccl(
+    def compute_ng_cov_probe_block(
         self,
         which_ng_cov,
         kernel_A,
@@ -634,6 +634,7 @@ class PycclClass:
         ind_AB,
         ind_CD,
         integration_method,
+        symmetrize_zpairs,
     ):
         zpairs_AB = ind_AB.shape[0]
         zpairs_CD = ind_CD.shape[0]
@@ -652,21 +653,45 @@ class PycclClass:
             raise ValueError("Invalid value for which_ng_cov. Must be 'SSC' or 'cNG'.")
 
         cov_ng_4D = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
-        for ij in tqdm(range(zpairs_AB)):
-            for kl in range(zpairs_CD):
-                cov_ng_4D[:, :, ij, kl] = ccl_ng_cov_func(
-                    self.cosmo_ccl,
-                    tracer1=kernel_A[ind_AB[ij, -2]],
-                    tracer2=kernel_B[ind_AB[ij, -1]],
-                    ell=ell,
-                    t_of_kk_a=tkka,
-                    fsky=fsky,
-                    tracer3=kernel_C[ind_CD[kl, -2]],
-                    tracer4=kernel_D[ind_CD[kl, -1]],
-                    ell2=None,
-                    integration_method=integration_method,
-                    **sigma2_b_arg,
-                )
+
+        # Diagonal probe blocks case e.g. LLLL, GGGG, GLGL where (A,B) == (C,D)
+        if symmetrize_zpairs:
+            for ij in tqdm(range(zpairs_AB)):
+                for kl in range(ij, zpairs_CD):  # Note: loop starts from ij
+                    res = ccl_ng_cov_func(
+                        self.cosmo_ccl,
+                        tracer1=kernel_A[ind_AB[ij, -2]],
+                        tracer2=kernel_B[ind_AB[ij, -1]],
+                        ell=ell,
+                        t_of_kk_a=tkka,
+                        fsky=fsky,
+                        tracer3=kernel_C[ind_CD[kl, -2]],
+                        tracer4=kernel_D[ind_CD[kl, -1]],
+                        ell2=None,
+                        integration_method=integration_method,
+                        **sigma2_b_arg,
+                    )
+                    cov_ng_4D[:, :, ij, kl] = res
+                    if kl != ij:
+                        cov_ng_4D[:, :, kl, ij] = res.T
+
+        # Off-diagonal probe blocks case e.g. LLGL, LLGG, etc.
+        else:
+            for ij in tqdm(range(zpairs_AB)):
+                for kl in range(zpairs_CD):
+                    cov_ng_4D[:, :, ij, kl] = ccl_ng_cov_func(
+                        self.cosmo_ccl,
+                        tracer1=kernel_A[ind_AB[ij, -2]],
+                        tracer2=kernel_B[ind_AB[ij, -1]],
+                        ell=ell,
+                        t_of_kk_a=tkka,
+                        fsky=fsky,
+                        tracer3=kernel_C[ind_CD[kl, -2]],
+                        tracer4=kernel_D[ind_CD[kl, -1]],
+                        ell2=None,
+                        integration_method=integration_method,
+                        **sigma2_b_arg,
+                    )
 
         print(
             f'{which_ng_cov} computed with pyccl in '
@@ -688,10 +713,11 @@ class PycclClass:
         # * compute required blocks
         for probe_str in unique_probe_combs:
             probe_a, probe_b, probe_c, probe_d = probe_str
-            key = (probe_a, probe_b, probe_c, probe_d)
-            print('CCL 3x2pt cov: computing probe combination ', key)
+            probe_tpl = (probe_a, probe_b, probe_c, probe_d)
+            symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
+            print('CCL 3x2pt cov: computing probe combination ', probe_tpl)
 
-            cov_ng_3x2pt_dict_8D[key] = self.compute_ng_cov_ccl(
+            cov_ng_3x2pt_dict_8D[probe_tpl] = self.compute_ng_cov_probe_block(
                 which_ng_cov=which_ng_cov,
                 kernel_A=kernel_dict[probe_a],
                 kernel_B=kernel_dict[probe_b],
@@ -703,30 +729,33 @@ class PycclClass:
                 ind_AB=ind_dict[probe_a, probe_b],
                 ind_CD=ind_dict[probe_c, probe_d],
                 integration_method=integration_method,
+                symmetrize_zpairs=symmetrize_zpairs,
             )
 
         # * fill the symmetric counterparts of the required blocks
         # * (excluding diagonal blocks)
         for probe_str in symm_probe_combs:
             probe_a, probe_b, probe_c, probe_d = probe_str
-            key_orig = (probe_a, probe_b, probe_c, probe_d)
-            key_symm = (probe_c, probe_d, probe_a, probe_b)
-            print(f'CCL 3x2pt cov: filling probe combination {key_orig} by symmetry')
+            probe_tpl_orig = (probe_a, probe_b, probe_c, probe_d)
+            probe_tpl_symm = (probe_c, probe_d, probe_a, probe_b)
+            print(f'CCL 3x2pt cov: filling probe combination {probe_tpl_orig} by symmetry')
 
-            cov_ng_3x2pt_dict_8D[key_orig] = (
-                cov_ng_3x2pt_dict_8D[key_symm].transpose(1, 0, 3, 2)
+            cov_ng_3x2pt_dict_8D[probe_tpl_orig] = (
+                cov_ng_3x2pt_dict_8D[probe_tpl_symm].transpose(1, 0, 3, 2)
             ).copy
 
         # * if block is not required, set it to 0
         for probe_str in nonreq_probe_combs:
             probe_a, probe_b, probe_c, probe_d = probe_str
-            key = (probe_a, probe_b, probe_c, probe_d)
-            print('CCL 3x2pt cov: skipping probe combination ', key)
+            probe_tpl = (probe_a, probe_b, probe_c, probe_d)
+            print('CCL 3x2pt cov: skipping probe combination ', probe_tpl)
 
             zpairs_ab = ind_dict[probe_a, probe_b].shape[0]
             zpairs_cd = ind_dict[probe_c, probe_d].shape[0]
             nbl = len(ells)
-            cov_ng_3x2pt_dict_8D[key] = np.zeros((nbl, nbl, zpairs_ab, zpairs_cd))
+            cov_ng_3x2pt_dict_8D[probe_tpl] = np.zeros(
+                (nbl, nbl, zpairs_ab, zpairs_cd)
+            )
 
         self.cov_ng_3x2pt_dict_8D = cov_ng_3x2pt_dict_8D
 

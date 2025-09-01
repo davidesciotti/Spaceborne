@@ -109,7 +109,7 @@ def process_cov_from_list_file_rs(
             z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
 
         # Vectorized assignment to the arrays
-        index_tuple = (  # fmt: skip
+        index_tuple = ( 
             probe_idx_arr[:, 0], probe_idx_arr[:, 1], theta1_idx, theta2_idx,
             z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
         )  # fmt: skip
@@ -493,7 +493,9 @@ class OneCovarianceInterface:
             cfg_oc_ini['covTHETAspace settings']['theta_bins_lensing'] = str(
                 self.cov_rs_cfg['theta_bins']
             )
-            cfg_oc_ini['covTHETAspace settings']['theta_type_lensing'] = 'lin'
+            cfg_oc_ini['covTHETAspace settings']['theta_type_lensing'] = str(
+                self.cfg['cov_real_space']['binning_type']
+            )
 
             cfg_oc_ini['covTHETAspace settings']['theta_min'] = str(
                 self.cov_rs_cfg['theta_min_arcmin']
@@ -501,7 +503,9 @@ class OneCovarianceInterface:
             cfg_oc_ini['covTHETAspace settings']['theta_max'] = str(
                 self.cov_rs_cfg['theta_max_arcmin']
             )
-            cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
+            cfg_oc_ini['covTHETAspace settings']['theta_type'] = str(
+                self.cfg['cov_real_space']['binning_type']
+            )
 
             cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(
                 self.cfg['probe_selection']['xip']
@@ -598,7 +602,7 @@ class OneCovarianceInterface:
                 ['python', self.path_to_oc_executable, self.path_to_config_oc_ini],
                 check=True,
                 text=True,
-                capture_output=True,
+                capture_output=False,
             )
         except subprocess.CalledProcessError as e:
             print('STDOUT:\n', e.stdout)

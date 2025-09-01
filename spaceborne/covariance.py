@@ -2,6 +2,7 @@ import itertools
 import os
 import time
 from copy import deepcopy
+import warnings
 
 import numpy as np
 
@@ -10,7 +11,7 @@ from spaceborne import sb_lib as sl
 
 
 def build_cov_dict(cov_obj: object):
-    # Automatically store attributes containing "2D" in cov_dict
+    """Automatically store attributes containing "2D" in cov_dict"""
     cov_dict = {}
     for attr_name in dir(cov_obj):
         if attr_name.endswith('_2D') and not attr_name.startswith('__'):
@@ -607,9 +608,10 @@ class SpaceborneCovariance:
         """
 
         if self.g_code == 'OneCovariance':
-            raise NotImplementedError(
+            warnings.warn(
                 'OneCovariance g term not yet implemented: split terms '
-                'and probe-specific ell binning missing'
+                'and probe-specific ell binning missing',
+                stacklevel=2
             )
             self.cov_WL_g_6D = oc_obj.cov_g_oc_3x2pt_10D[0, 0, 0, 0]
             self.cov_GC_g_6D = oc_obj.cov_g_oc_3x2pt_10D[1, 1, 1, 1]

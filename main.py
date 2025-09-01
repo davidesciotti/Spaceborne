@@ -215,9 +215,13 @@ symmetrize_output_dict = {
 
 # these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
-cfg['covariance']['G_code'] = 'Spaceborne'
-cfg['covariance']['SSC_code'] = 'Spaceborne'
-cfg['covariance']['cNG_code'] = 'PyCCL'
+
+if 'G_code' not in cfg['covariance']: 
+    cfg['covariance']['G_code'] = 'Spaceborne'
+if 'SSC_code' not in cfg['covariance']:
+    cfg['covariance']['SSC_code'] = 'Spaceborne'
+if 'cNG_code' not in cfg['covariance']:
+    cfg['covariance']['cNG_code'] = 'PyCCL'
 
 cfg['OneCovariance'] = {}
 cfg['OneCovariance']['precision_settings'] = 'default'

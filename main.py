@@ -1079,6 +1079,7 @@ cov_hs_obj.set_gauss_cov(
     nonreq_probe_combs_ix=nonreq_probe_combs_ix_hs,
 )
 
+
 # ! =================================== OneCovariance ================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
@@ -1189,14 +1190,17 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_obj.ells_sb = ell_obj.ells_3x2pt
     oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
 
-    # compute covs
-    oc_obj.call_oc_from_bash()
+    # compute covs, if requested
+    if not cfg['OneCovariance']['load_precomputed_covs']:
+        oc_obj.call_oc_from_bash()
 
     if cfg['covariance']['space'] == 'real_space':
         # TODO double check this
         oc_output_covlist_fname = (
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
         )
+        # todo this should be made more consistent with the method below, 
+        # todo oc_obj.process_cov_from_list_file()
         covs_8d_oc = oc_interface.process_cov_from_list_file_rs(
             oc_output_covlist_fname,
             n_probes_rs=4,
@@ -1558,10 +1562,12 @@ if cfg['covariance']['space'] == 'real_space':
     # construct dict of 2D covs, as done above
     cov_dict_rs = sb_cov.build_cov_dict(cov_rs_obj)
     # join dictionaries
-    cov_dict = {**cov_dict_hs, **cov_dict_rs}
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
+else:
+    cov_dict_rs = {}
 
+cov_dict = {**cov_dict_hs, **cov_dict_rs}
 
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):
@@ -1960,6 +1966,9 @@ gc.collect()
 cov_sb_2d = cov_rs_obj.cov_rs_full_2d
 cov_oc_2d = cov_oc_mat_2d
 
+
+
+
 title = (
     f'integration {cfg["precision"]["cov_rs_int_method"]} - '
     f'ell_bins_rs {cfg["precision"]["ell_bins_rs"]} - '
@@ -1979,6 +1988,17 @@ lim_1 = elem_auto
 lim_2 = lim_1 + elem_cross
 lim_3 = lim_2 + elem_auto
 lim_4 = lim_3 + elem_auto
+
+assert False, 'the code below is quite awful, just for a quick OC vs SB comparison. You should Implement proper SB cov saving, too!'
+cov_sb_2d_cut = cov_sb_2d[:2*elem_auto, :2*elem_auto]
+sl.compare_2d_covs(
+    cov_oc_2d, cov_sb_2d_cut, 'OC', 'SB', title=title, diff_threshold=1
+)
+np.savez_compressed(f'{output_path}/cov_sb_2d_RS.npz', cov_sb_2d_cut)
+cov_sb_2d = np.load(f'{output_path}/cov_sb_2d_RS.npz')['arr_0']
+cov_sb_2d_2 = np.load(f'{output_path.replace("nbt20", "nbt40")}/cov_sb_2d_RS.npz')['arr_0']
+
+assert False, 'stop here'
 
 assert lim_4 == cov_oc_2d.shape[0]
 assert lim_4 == cov_oc_2d.shape[1]

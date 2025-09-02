@@ -291,7 +291,7 @@ base_cfg = {
         'apodize': False,
         'aposize': 0.1,
     },
-    'ell_binning': {
+    'binning': {
         'binning_type': 'ref_cut',
         'ell_min_WL': 10,
         'ell_max_WL': 3000,
@@ -377,20 +377,20 @@ configs_to_test = [
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'log'},
+        'binning': {'binning_type': 'log'},
     },
     # G nmt spin0, lin ell binning
     # ==============================
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'lin'},
+        'binning': {'binning_type': 'lin'},
     },
     # G nmt spin2, lin ell binning
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': False},
-        'ell_binning': {'binning_type': 'lin'},
+        'binning': {'binning_type': 'lin'},
     },
     # SSC KE
     {'covariance': {'G': True, 'SSC': True, 'cNG': False}},

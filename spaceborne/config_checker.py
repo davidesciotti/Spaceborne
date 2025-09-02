@@ -314,39 +314,48 @@ class SpaceborneConfigChecker:
         )
 
         # Ell Binning
-        assert isinstance(self.cfg.get('ell_binning'), dict), (
-            "Section 'ell_binning' must be a dictionary"
+        assert isinstance(self.cfg.get('binning'), dict), (
+            "Section 'binning' must be a dictionary"
         )
-        ell_bin_cfg = self.cfg['ell_binning']
-        assert isinstance(ell_bin_cfg.get('binning_type'), str), (
-            'ell_binning: binning_type must be a string'
+        bining_cfg = self.cfg['binning']
+        assert isinstance(bining_cfg.get('binning_type'), str), (
+            'binning: binning_type must be a string'
         )
-        assert isinstance(ell_bin_cfg.get('ell_min_WL'), int), (
-            'ell_binning: ell_min_WL must be an int'
+        assert isinstance(bining_cfg.get('ell_min_WL'), int), (
+            'binning: ell_min_WL must be an int'
         )
-        assert isinstance(ell_bin_cfg.get('ell_max_WL'), int), (
-            'ell_binning: ell_max_WL must be an int'
+        assert isinstance(bining_cfg.get('ell_max_WL'), int), (
+            'binning: ell_max_WL must be an int'
         )
-        assert isinstance(ell_bin_cfg.get('ell_bins_WL'), int), (
-            'ell_binning: ell_bins_WL must be an int'
+        assert isinstance(bining_cfg.get('ell_bins_WL'), int), (
+            'binning: ell_bins_WL must be an int'
         )
-        assert isinstance(ell_bin_cfg.get('ell_min_GC'), int), (
-            'ell_binning: ell_min_GC must be an int'
+        assert isinstance(bining_cfg.get('ell_min_GC'), int), (
+            'binning: ell_min_GC must be an int'
         )
-        assert isinstance(ell_bin_cfg.get('ell_max_GC'), int), (
-            'ell_binning: ell_max_GC must be an int'
+        assert isinstance(bining_cfg.get('ell_max_GC'), int), (
+            'binning: ell_max_GC must be an int'
         )
-        assert isinstance(ell_bin_cfg.get('ell_bins_GC'), int), (
-            'ell_binning: ell_bins_GC must be an int'
+        assert isinstance(bining_cfg.get('ell_bins_GC'), int), (
+            'binning: ell_bins_GC must be an int'
         )
-        assert isinstance(ell_bin_cfg.get('ell_min_ref'), int), (
-            'ell_binning: ell_min_ref must be an int'
+        assert isinstance(bining_cfg.get('ell_min_ref'), int), (
+            'binning: ell_min_ref must be an int'
         )
-        assert isinstance(ell_bin_cfg.get('ell_max_ref'), int), (
-            'ell_binning: ell_max_ref must be an int'
+        assert isinstance(bining_cfg.get('ell_max_ref'), int), (
+            'binning: ell_max_ref must be an int'
         )
-        assert isinstance(ell_bin_cfg.get('ell_bins_ref'), int), (
-            'ell_binning: ell_bins_ref must be an int'
+        assert isinstance(bining_cfg.get('ell_bins_ref'), int), (
+            'binning: ell_bins_ref must be an int'
+        )
+        assert isinstance(bining_cfg.get('theta_min_arcmin'), (float, int)), (
+            'binning: theta_min_arcmin must be a float or an int'
+        )
+        assert isinstance(bining_cfg.get('theta_max_arcmin'), (float, int)), (
+            'binning: theta_max_arcmin must be a float or an int'
+        )
+        assert isinstance(bining_cfg.get('theta_bins'), int), (
+            'binning: theta_bins must be an int'
         )
 
         # BNT
@@ -447,21 +456,6 @@ class SpaceborneConfigChecker:
             'covariance: cov_filename must be a string'
         )
 
-        # cov_real_space
-        assert isinstance(self.cfg.get('cov_real_space'), dict), (
-            "Section 'cov_real_space' must be a dictionary"
-        )
-        real_space_cfg = self.cfg['cov_real_space']
-        assert isinstance(real_space_cfg.get('theta_min_arcmin'), (float, int)), (
-            'cov_real_space: theta_min_arcmin must be a float or an int'
-        )
-        assert isinstance(real_space_cfg.get('theta_max_arcmin'), (float, int)), (
-            'cov_real_space: theta_max_arcmin must be a float or an int'
-        )
-        assert isinstance(real_space_cfg.get('theta_bins'), int), (
-            'cov_real_space: theta_bins must be an int'
-        )
-
         # PyCCL
         pyccl_cfg = self.cfg['PyCCL']
         assert isinstance(pyccl_cfg, dict), "Section 'PyCCL' must be a dictionary"
@@ -527,9 +521,6 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('ell_bins_rs'), int), (
             'precision: ell_bins_rs must be an int'
         )
-        assert isinstance(precision_cfg.get('theta_bins_fine'), int), (
-            'precision: theta_bins_fine must be an int'
-        )
         assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
             'precision: cov_rs_int_method must be a string'
         )
@@ -563,15 +554,15 @@ class SpaceborneConfigChecker:
         )
 
     def check_ell_binning(self) -> None:
-        # assert self.cfg['ell_binning']['nbl_WL_opt'] == 32, (
+        # assert self.cfg['binning']['nbl_WL_opt'] == 32, (
         #     'this is used as the reference binning, from which the cuts are made'
         # )
-        # assert self.cfg['ell_binning']['ell_max_WL_opt'] == 5000, (
+        # assert self.cfg['binning']['ell_max_WL_opt'] == 5000, (
         #     'this is used as the reference binning, from which the cuts are made'
         # )
         # assert (
-        #     self.cfg['ell_binning']['ell_max_WL'],
-        #     self.cfg['ell_binning']['ell_max_GC'],
+        #     self.cfg['binning']['ell_max_WL'],
+        #     self.cfg['binning']['ell_max_GC'],
         # ) == (5000, 3000) or (1500, 750), (
         #     'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
         # )
@@ -717,7 +708,7 @@ class SpaceborneConfigChecker:
                 'cfg["sample_covariance"]["compute_sample_cov"] must be True'
             )
         if self.cfg['namaster']['use_namaster']:
-            assert self.cfg['ell_binning']['binning_type'] != 'ref_cut', (
+            assert self.cfg['binning']['binning_type'] != 'ref_cut', (
                 'ref_cut case incompatible with nmt for the moment. '
                 'Please use a different binning type.'
             )

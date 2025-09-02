@@ -820,10 +820,10 @@ class CovRealSpace:
         self.amax = max((self.survey_area_sr, self.survey_area_sr))
 
     def _set_theta_binning(self):
-        self.theta_min_arcmin = self.cfg['cov_real_space']['theta_min_arcmin']
-        self.theta_max_arcmin = self.cfg['cov_real_space']['theta_max_arcmin']
-        self.nbt_coarse = self.cfg['cov_real_space']['theta_bins']
-        self.nbt_fine = self.cfg['precision']['theta_bins_fine']
+        self.theta_min_arcmin = self.cfg['binning']['theta_min_arcmin']
+        self.theta_max_arcmin = self.cfg['binning']['theta_max_arcmin']
+        self.nbt_coarse = self.cfg['binning']['theta_bins']
+        self.nbt_fine = self.nbt_coarse
 
         # TODO in principle this could be changed
         # Use a loop to set up fine and coarse theta binning

@@ -320,19 +320,19 @@ class EllBinning:
         """
         self.cfg = cfg
         
-        self.binning_type = cfg['ell_binning']['binning_type']
+        self.binning_type = cfg['binning']['binning_type']
 
-        self.ell_min_WL = cfg['ell_binning']['ell_min_WL']
-        self.ell_max_WL = cfg['ell_binning']['ell_max_WL']
-        self.nbl_WL = cfg['ell_binning']['ell_bins_WL']
+        self.ell_min_WL = cfg['binning']['ell_min_WL']
+        self.ell_max_WL = cfg['binning']['ell_max_WL']
+        self.nbl_WL = cfg['binning']['ell_bins_WL']
 
-        self.ell_min_GC = cfg['ell_binning']['ell_min_GC']
-        self.ell_max_GC = cfg['ell_binning']['ell_max_GC']
-        self.nbl_GC = cfg['ell_binning']['ell_bins_GC']
+        self.ell_min_GC = cfg['binning']['ell_min_GC']
+        self.ell_max_GC = cfg['binning']['ell_max_GC']
+        self.nbl_GC = cfg['binning']['ell_bins_GC']
 
-        self.ell_min_ref = cfg['ell_binning']['ell_min_ref']
-        self.ell_max_ref = cfg['ell_binning']['ell_max_ref']
-        self.nbl_ref = cfg['ell_binning']['ell_bins_ref']
+        self.ell_min_ref = cfg['binning']['ell_min_ref']
+        self.ell_max_ref = cfg['binning']['ell_max_ref']
+        self.nbl_ref = cfg['binning']['ell_bins_ref']
 
         self.use_namaster = cfg['namaster']['use_namaster']
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']

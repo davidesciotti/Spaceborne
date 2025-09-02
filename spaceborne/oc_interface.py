@@ -192,7 +192,6 @@ class OneCovarianceInterface:
         """
         self.cfg = cfg
         self.oc_cfg = self.cfg['OneCovariance']
-        self.cov_rs_cfg = self.cfg['cov_real_space']
         self.pvt_cfg = pvt_cfg
         self.n_probes = cfg['covariance']['n_probes']
         self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
@@ -324,8 +323,8 @@ class OneCovarianceInterface:
         )
         delta_z = np.diff(self.z_grid_trisp_sb)[0]
 
-        ell_binning_type = self.cfg['ell_binning']['binning_type']
-        if self.cfg['ell_binning']['binning_type'] == 'ref_cut':
+        ell_binning_type = self.cfg['binning']['binning_type']
+        if self.cfg['binning']['binning_type'] == 'ref_cut':
             ell_binning_type = 'log'
 
         # settings common to both observables
@@ -461,31 +460,31 @@ class OneCovarianceInterface:
         # ! [covTHETAspace settings]
         if self.obs_space == 'real_space':
             cfg_oc_ini['covTHETAspace settings']['theta_min_clustering'] = str(
-                self.cov_rs_cfg['theta_min_arcmin']
+                self.cfg['binning']['theta_min_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_max_clustering'] = str(
-                self.cov_rs_cfg['theta_max_arcmin']
+                self.cfg['binning']['theta_max_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_bins_clustering'] = str(
-                self.cfg['cov_real_space']['theta_bins']
+                self.cfg['binning']['theta_bins']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type_clustering'] = 'lin'
             cfg_oc_ini['covTHETAspace settings']['theta_min_lensing'] = str(
-                self.cov_rs_cfg['theta_min_arcmin']
+                self.cfg['binning']['theta_min_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_max_lensing'] = str(
-                self.cov_rs_cfg['theta_max_arcmin']
+                self.cfg['binning']['theta_max_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_bins_lensing'] = str(
-                self.cov_rs_cfg['theta_bins']
+                self.cfg['binning']['theta_bins']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type_lensing'] = 'lin'
 
             cfg_oc_ini['covTHETAspace settings']['theta_min'] = str(
-                self.cov_rs_cfg['theta_min_arcmin']
+                self.cfg['binning']['theta_min_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_max'] = str(
-                self.cov_rs_cfg['theta_max_arcmin']
+                self.cfg['binning']['theta_max_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
 

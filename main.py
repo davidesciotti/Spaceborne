@@ -379,6 +379,15 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
+if compute_ccl_cng and 'GLGL' in req_probe_combs_2d:
+    raise ValueError(
+        'There seems to be some issue with the symmetry of the GLGL '
+        'block in the '
+        'CCL cNG covariance, so for the moment it is disabled. '
+        'The LLLL and GGGG blocks are not affected, so you can still '
+        'compute the single-probe cNG covariances.'
+    )
+
 if cfg['covariance']['use_KE_approximation']:
     cl_integral_convention_ssc = 'Euclid_KE_approximation'
     ssc_integration_type = 'simps_KE_approximation'

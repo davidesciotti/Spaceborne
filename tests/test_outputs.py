@@ -122,14 +122,11 @@ bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_
 
 # ... or run specific tests
 bench_yaml_names = [
-    'config_0006',
-    'config_0007',
-    'config_0008',
-    'config_0009',
-    'config_0010',
-    'config_0011',
-    'config_0012',
-    'config_0013',
+    'config_0014',
+    'config_0015',
+    'config_0016',
+    'config_0017',
+    'config_0018',
 ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'

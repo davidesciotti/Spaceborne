@@ -7,8 +7,9 @@
 
 # ROOTS:
 # pleiadi: /_u/dsciotti/code
-# local: /_home/davide/Documenti/Lavoro/Programmi/common_data
-# melodie: /_home/davide/Documenti/Lavoro/Programmi/common_data
+# local: /_home/davide/Documenti/Lavoro/Programmi
+# melodie: /_home/cosmo/davide.sciotti/data
+
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
   Ob: 0.05 # Type: float. Baryonic density parameter Omega_b, at z=0
@@ -348,7 +349,7 @@ precision:
   levin_bin_avg: True  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
 
 misc:
-  num_threads: 20 # Type: int. How many threads to use for the parallel computations
+  num_threads: 40 # Type: int. How many threads to use for the parallel computations
   # How many integrals to compute at once for the  numerical integration of
   # the sigma^2_b(z_1, z_2) function with pylevin. 
   # IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing

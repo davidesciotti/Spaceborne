@@ -5,15 +5,14 @@ import pprint
 import sys
 import time
 import warnings
-from copy import deepcopy
 from functools import partial
 from importlib.util import find_spec
-from scipy.integrate import simpson as simps
 
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 from matplotlib import cm
+from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline, RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
 
@@ -31,10 +30,10 @@ from spaceborne import (
     sigma2_ssc,
     wf_cl_lib,
 )
-from spaceborne import covariance as sb_cov
-from spaceborne import sb_lib as sl
 from spaceborne import constants as const
+from spaceborne import covariance as sb_cov
 from spaceborne import plot_lib as sb_plt
+from spaceborne import sb_lib as sl
 
 with contextlib.suppress(ImportError):
     import pyfiglet
@@ -216,7 +215,7 @@ symmetrize_output_dict = {
 # these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
 
-if 'G_code' not in cfg['covariance']: 
+if 'G_code' not in cfg['covariance']:
     cfg['covariance']['G_code'] = 'Spaceborne'
 if 'SSC_code' not in cfg['covariance']:
     cfg['covariance']['SSC_code'] = 'Spaceborne'
@@ -1292,7 +1291,7 @@ if compute_sb_ssc:
         ell_grid, z_grid, use_h_units, ccl_obj.cosmo_ccl
     )
 
-    z_grid_test = deepcopy(z_grid)
+    z_grid_test = z_grid.copy()
     while kmax_limber > k_max_resp:
         print(
             f'kmax_limber > k_max_dPk '

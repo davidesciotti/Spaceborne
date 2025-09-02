@@ -437,8 +437,8 @@ class EllBinning:
                 output_ell_bin_edges=True,
             )
 
-            self.ells_WL = np.copy(self.ells_ref[self.ells_ref < self.ell_max_WL])
-            self.ells_GC = np.copy(self.ells_ref[self.ells_ref < self.ell_max_GC])
+            self.ells_WL = self.ells_ref[self.ells_ref < self.ell_max_WL].copy()
+            self.ells_GC = self.ells_ref[self.ells_ref < self.ell_max_GC].copy()
 
             # TODO why not save all edges??
             # store edges *except last one for dimensional consistency* in the ell_dict
@@ -449,11 +449,11 @@ class EllBinning:
                 self.ell_edges_ref, self.ell_max_GC, atol=0, rtol=1e-5
             )
 
-            self.ell_edges_WL = np.copy(self.ell_edges_ref[edge_mask_wl])
-            self.ell_edges_GC = np.copy(self.ell_edges_ref[edge_mask_gc])
+            self.ell_edges_WL = self.ell_edges_ref[edge_mask_wl].copy()
+            self.ell_edges_GC = self.ell_edges_ref[edge_mask_gc].copy()
 
-            self.delta_l_WL = np.copy(self.delta_l_ref[: len(self.ells_WL)])
-            self.delta_l_GC = np.copy(self.delta_l_ref[: len(self.ells_GC)])
+            self.delta_l_WL = self.delta_l_ref[: len(self.ells_WL)].copy()
+            self.delta_l_GC = self.delta_l_ref[: len(self.ells_GC)].copy()
 
         else:
             raise ValueError(f'binning_type {self.binning_type} not recognized.')
@@ -493,19 +493,19 @@ class EllBinning:
             ), 'ell_max from nmt_bin_obj_GC does not match ell_max from get_ell_max'
 
         # XC follows GC
-        self.ells_XC = np.copy(self.ells_GC)
-        self.ell_edges_XC = np.copy(self.ell_edges_GC)
-        self.delta_l_XC = np.copy(self.delta_l_GC)
-        self.ell_min_XC = np.copy(self.ell_min_GC)
-        self.ell_max_XC = np.copy(self.ell_max_GC)
+        self.ells_XC = self.ells_GC.copy()
+        self.ell_edges_XC = self.ell_edges_GC.copy()
+        self.delta_l_XC = self.delta_l_GC.copy()
+        self.ell_min_XC = self.ell_min_GC.copy()
+        self.ell_max_XC = self.ell_max_GC.copy()
 
         # 3x2pt as well
         # TODO change this to be more general
-        self.ells_3x2pt = np.copy(self.ells_GC)
-        self.ell_edges_3x2pt = np.copy(self.ell_edges_GC)
-        self.delta_l_3x2pt = np.copy(self.delta_l_GC)
-        self.ell_min_3x2pt = np.copy(self.ell_min_GC)
-        self.ell_max_3x2pt = np.copy(self.ell_max_GC)
+        self.ells_3x2pt = self.ells_GC.copy()
+        self.ell_edges_3x2pt = self.ell_edges_GC.copy()
+        self.delta_l_3x2pt = self.delta_l_GC.copy()
+        self.ell_min_3x2pt = self.ell_min_GC.copy()
+        self.ell_max_3x2pt = self.ell_max_GC.copy()
 
         # set nbl
         self.nbl_WL = len(self.ells_WL)

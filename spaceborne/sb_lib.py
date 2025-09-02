@@ -1049,9 +1049,9 @@ def load_cov_from_probe_blocks(path, filename, unique_probe_combs):
             ]['arr_0']
 
         # Lower triangle, set using symmetry
-        cov_ssc_dict_8D[probe_c, probe_d, probe_a, probe_b] = deepcopy(
+        cov_ssc_dict_8D[probe_c, probe_d, probe_a, probe_b] = (
             cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d].transpose(1, 0, 3, 2)
-        )
+        ).copy()
 
     for key, cov in cov_ssc_dict_8D.items():
         assert cov.ndim == 4, (
@@ -1862,7 +1862,7 @@ def mask_fisher(
     """Trim the Fisher matrix to remove null rows/columns and/or fix nuisance
     parameters.
     """
-    fm = deepcopy(fm)
+    fm = fm.copy()
     fiducials_dict = deepcopy(fiducials_dict)
 
     assert len(list(fiducials_dict.keys())) == fm.shape[0] == fm.shape[1], (
@@ -1887,7 +1887,7 @@ def mask_fisher(
 
 def fix_params_in_fm(fm, names_params_to_fix, fiducials_dict):
     param_names = list(fiducials_dict.keys())
-    fm = deepcopy(fm)
+    fm = fm.copy()
     fiducials_dict = deepcopy(fiducials_dict)
 
     # check the correctness of the parameters' names
@@ -1909,7 +1909,7 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
     """Adds a FM of priors (with elements 1/sigma in the correct positions) to
     the input FM.
     """
-    fm = deepcopy(fm)
+    fm = fm.copy()
     fiducials_dict = deepcopy(fiducials_dict)
 
     assert len(list(fiducials_dict.keys())) == fm.shape[0] == fm.shape[1], (

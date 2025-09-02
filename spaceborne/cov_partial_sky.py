@@ -1026,9 +1026,9 @@ class NmtCov:
         # )
         # assert np.all(delta_ells_bpw == ells_per_band), 'delta_ell from bpw does not match ells_per_band'
 
-        cl_gg_4covnmt = np.copy(self.cl_gg_unb_3d)
-        cl_gl_4covnmt = np.copy(self.cl_gl_unb_3d)
-        cl_ll_4covnmt = np.copy(self.cl_ll_unb_3d)
+        cl_gg_4covnmt = self.cl_gg_unb_3d.copy()
+        cl_gl_4covnmt = self.cl_gl_unb_3d.copy()
+        cl_ll_4covnmt = self.cl_ll_unb_3d.copy()
 
         # ! create nmt field from the mask (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None

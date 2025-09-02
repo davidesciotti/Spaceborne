@@ -46,7 +46,6 @@ halo_model:
   halo_profile_dm: HaloProfileNFW # Type: str. 'dm' = 'dark matter'
   halo_profile_hod: HaloProfileHOD # Type: str.
 
-
 probe_selection:
   LL: True # Type: str. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -107,7 +106,7 @@ C_ell:
     non_limber_integration_method: FKEM # Type: str
 
 nz:
-  # Paths to source (for WL) and lens (for GCph) redshift distributions.
+  # Paths to source (for WL) and lens (for GCph) normalised redshift distributions.
   # These must have shape (z_points, zbins + 1) where z_points is the number of
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
@@ -127,12 +126,12 @@ nz:
   shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
   dzWL: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
   dzGC: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
-  normalize_shifted_nz: True # Type: bool. Whether to normalize the shifted n(z) distributions
+
   clip_zmin: 0 # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
   clip_zmax: 3 # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
-  sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
+  sigma_smoothing: 5 # Type: int | float. Standard deviation of the Gaussian kernel.
 
 mask:
   load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
@@ -235,7 +234,7 @@ covariance:
 
   use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
-  # Name of the output covariance file. Change suffix to '.npy' to save as npy file.
+  # Name of the output covariance file. The extension can be `npz`, `npy`, `txt` or `dat`
   cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str.
 
 namaster:
@@ -302,8 +301,8 @@ misc:
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
-  cl_triangle_plot: False # Type: bool. 
-  
+  cl_triangle_plot: False # Type: bool.
+
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
   output_path:  /u/dsciotti/code/common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
-    
+

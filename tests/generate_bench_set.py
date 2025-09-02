@@ -374,30 +374,32 @@ configs_to_test = [
     #  G without split
     {'covariance': {'G': True, 'split_gaussian_cov': True}},
     # G nmt spin0, log ell binning
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'log'},
-    },
-    # G nmt spin0, lin ell binning
-    # ==============================
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'lin'},
-    },
-    # G nmt spin2, lin ell binning
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': False},
-        'ell_binning': {'binning_type': 'lin'},
-    },
     # SSC KE
     {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
     # SSC LR
     {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
     # cNG
     {'covariance': {'G': True, 'SSC': False, 'cNG': True}},
+    
+    # === namaster runs, quite slow ===
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'ell_binning': {'binning_type': 'log'},
+    },
+    # G spin0, lin ell binning
+    # ==============================
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'ell_binning': {'binning_type': 'lin'},
+    },
+    # G spin2, lin ell binning
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': False},
+        'ell_binning': {'binning_type': 'lin'},
+    },
 ]
 
 
@@ -406,7 +408,7 @@ configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_path_cfg)
 print(f'Generated {len(configs)} configurations')
 
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=6)
+yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=14)
 
 # Run benchmarks
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)

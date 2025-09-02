@@ -742,7 +742,7 @@ class PycclClass:
 
             cov_ng_3x2pt_dict_8D[probe_tpl_orig] = (
                 cov_ng_3x2pt_dict_8D[probe_tpl_symm].transpose(1, 0, 3, 2)
-            ).copy
+            ).copy()
 
         # * if block is not required, set it to 0
         for probe_str in nonreq_probe_combs:
@@ -824,6 +824,6 @@ class PycclClass:
 
             # * fill the symmetric counterparts of the required blocks
             if probe_str not in const.DIAG_PROBE_COMBS:
-                self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b] = np.copy(
-                    self.cov_ng_3x2pt_dict_8D[probe_tuple].transpose(1, 0, 3, 2)
+                self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b] = (
+                    self.cov_ng_3x2pt_dict_8D[probe_tuple].transpose(1, 0, 3, 2).copy()
                 )

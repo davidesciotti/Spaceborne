@@ -167,10 +167,10 @@ different indices; to do this, we need to choose the order of the loops, which w
 determine the structure of the 2D covariance matrix. This can be specified with the
 ``covariance_ordering_2D`` key in the configuration file. The possible options are:
 
-* ``ell_probe_zpair``: the :math:`\ell` index will be the outermost one, followed by the
-  probe and the redshift pair indices.
-* ``probe_ell_zpair``: the probe index will be the outermost one, followed by the
-  multipole and the redshift pair indices.
+* ``scale_probe_zpair``: the angular scale index (:math:`\ell` or :math:`\theta`) 
+  will be the outermost one, followed by the probe and the redshift pair indices.
+* ``probe_scale_zpair``: the probe index will be the outermost one, followed by the
+  scale and the redshift pair indices.
 
 Sometimes retrieving specific elements of the covariance matrix can be tricky. To
 make life easier for the user, the code offers the possibility to save the covariance 
@@ -182,9 +182,9 @@ the ``save_full_cov`` key to ``True`` in the configuration file.
 .. figure:: images/ell_probe_zpair_slide.png
    :width: 100%
    :align: center
-   :alt: ell_probe_zpair
+   :alt: scale_probe_zpair
 
-   Example of the 2D covariance matrix for the ``ell_probe_zpair`` ordering scheme.
+   Example of the 2D covariance matrix for the ``scale_probe_zpair`` ordering scheme.
    These plots display the log10 of the absolute value of the covariance matrix elements. 
    In this ordering, the blocks seen in the left panel correspond to the 
    different :math:`\ell_1-\ell_2` combinations ("ell-blocks"); 
@@ -197,9 +197,9 @@ the ``save_full_cov`` key to ``True`` in the configuration file.
 .. figure:: images/probe_zpair_ell_slide.png
    :width: 100%
    :align: center
-   :alt: ell_probe_zpair
+   :alt: scale_probe_zpair
 
-   Example of the 2D covariance matrix for the ``probe_zpair_ell`` ordering scheme.
+   Example of the 2D covariance matrix for the ``probe_zpair_scale`` ordering scheme.
    These plots display the log10 of the absolute value of the covariance matrix elements. 
    In this ordering, the blocks seen in the left panel correspond to the 
    different probe combinations ("probe-blocks", labeled in the figure). 

@@ -227,17 +227,19 @@ covariance:
   # Within the upper or lower triangle, count indices in
   # a row-major or column-major order.
   row_col_major: row-major # Type: str. Options: ['row-major', 'column-major']
+  
   # Determines the ordering of the covariance matrix in 2D, with the outermost
-  # loop corresponding to the leftmost index.
-  # Options: [ell_probe_zpair, probe_ell_zpair, probe_zpair_ell, zpair_probe_ell]
+  # loop corresponding to the leftmost index. 
+  # `scale` = ell or theta, depending on the 'space' requested.
+  # Options: [scale_probe_zpair, probe_scale_zpair, probe_zpair_scale, zpair_probe_scale]
   # Examples:
-  # - ell_probe_zpair: Ordered by multipole (ell), then probe type, then redshift pair.
-  # - probe_ell_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
-  covariance_ordering_2D: probe_ell_zpair # Type: str.
+  # - scale_probe_zpair: Ordered by scale index (ell or theta), then probe type, then redshift pair.
+  # - probe_scale_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
+  covariance_ordering_2D: probe_zpair_scale # Type: str.
 
   # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping.
   # In the case of the single probes, this is an array of shape
-  # (ell_bins, ell_bins, zbins, zbins, zbins, zbins).
+  # ({ell, theta}_bins, {ell, theta}_bins, zbins, zbins, zbins, zbins).
   save_full_cov: False # Type: bool
 
   # Whether to split the Gaussian covariance term into the

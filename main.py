@@ -294,12 +294,12 @@ GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 # RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu). 
 # From then, the covariance was rebinned to cfg['binning']['theta_bins'].
 # This works but is not ideal, as the proper bin averaging is more correct.
-# cfg['precision']['theta_bins_fine'] = 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
 
 # Integration method for the covariance projection to real space. Options:
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
-cfg['precision']['cov_rs_int_method'] = 'levin'  # Type: str.
+cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
 # setting this to False makes the code resort to the less accurate bin averaging method
 # mentioned above
 cfg['precision']['levin_bin_avg'] = True # Type: bool.
@@ -1549,15 +1549,16 @@ if cfg['covariance']['space'] == 'real_space':
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):
     for cov_name, cov in cov_dict.items():
-        fig, ax = plt.subplots(1, 2, figsize=(10, 6))
-        ax[0].matshow(np.log10(cov))
-        ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
+        if not np.allclose(cov, 0, atol=0, rtol=1e-6):
+            fig, ax = plt.subplots(1, 2, figsize=(10, 6))
+            ax[0].matshow(np.log10(cov))
+            ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
 
-        plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
-        plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
-        ax[0].set_title('log10 cov')
-        ax[1].set_title('corr')
-        fig.suptitle(f'{cov_name.replace("cov_", "")}', y=0.9)
+            plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
+            plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
+            ax[0].set_title('log10 cov')
+            ax[1].set_title('corr')
+            fig.suptitle(f'{cov_name.replace("cov_", "")}', y=0.9)
 
 for key, cov in cov_dict.items():
     probe = key.split('_')[1]

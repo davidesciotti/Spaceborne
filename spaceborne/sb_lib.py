@@ -3177,7 +3177,7 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
         return np.allclose(array_2d, array_2d.T, rtol=rtol, atol=0)
 
 
-def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):
+def slice_cov_3x2pt_2D_scale_probe_zpair(cov_2D_scale_probe_zpair, nbl, zbins, probe):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
     matrix in ell, probe and zpair (unpacked in this order)
     """
@@ -3193,19 +3193,19 @@ def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe
     else:
         raise ValueError('probe must be WL or GC')
 
-    cov_1D_ell_probe_zpair = [0] * nbl
+    cov_1D_scale_probe_zpair = [0] * nbl
     for ell_bin in range(nbl):
         # block_index * block_size + probe_starting index in each block
         start = ell_bin * ell_block_size + probe_start
         stop = start + probe_stop
-        cov_1D_ell_probe_zpair[ell_bin] = cov_2D_ell_probe_zpair[start:stop, start:stop]
+        cov_1D_scale_probe_zpair[ell_bin] = cov_2D_scale_probe_zpair[start:stop, start:stop]
 
-    cov_2D_ell_probe_zpair_sliced = scipy.linalg.block_diag(*cov_1D_ell_probe_zpair)
+    cov_2D_scale_probe_zpair_sliced = scipy.linalg.block_diag(*cov_1D_scale_probe_zpair)
 
-    return cov_2D_ell_probe_zpair_sliced
+    return cov_2D_scale_probe_zpair_sliced
 
 
-def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, probe):
+def slice_cl_3x2pt_1D_scale_probe_zpair(cl_3x2pt_1D_scale_probe_zpair, nbl, zbins, probe):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
     matrix in ell, probe and zpair (unpacked in this order)
     """
@@ -3221,16 +3221,16 @@ def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, p
     else:
         raise ValueError('probe must be WL or GC')
 
-    cl_1D_ell_probe_zpair_list = [0] * nbl
+    cl_1D_scale_probe_zpair_list = [0] * nbl
     for ell_bin in range(nbl):
         # block_index * block_size + probe_starting index in each block
         start = ell_bin * ell_block_size + probe_start
         stop = start + probe_stop
-        cl_1D_ell_probe_zpair_list[ell_bin] = cl_3x2pt_1D_ell_probe_zpair[start:stop]
+        cl_1D_scale_probe_zpair_list[ell_bin] = cl_3x2pt_1D_scale_probe_zpair[start:stop]
 
-    cl_1D_ell_probe_zpair = np.array(list(itertools.chain(*cl_1D_ell_probe_zpair_list)))
+    cl_1D_scale_probe_zpair = np.array(list(itertools.chain(*cl_1D_scale_probe_zpair_list)))
 
-    return cl_1D_ell_probe_zpair
+    return cl_1D_scale_probe_zpair
 
 
 # @njit
@@ -3385,9 +3385,9 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, req_probe_combs_2d, block_index='ell')
     ordering (LL, LG/GL, GG) is hardcoded, this function won't work with
     other combinations (but it TODO will work both for LG and GL) !
     Important note: block_index = 'ell' means that the overall ordering
-    will ! be probe_ell_zpair. ! Setting it to 'zpair' will give you the
-    ordering probe_zpair_ell. ! Bottom line: the probe is the outermost
-    loop in any case. ! The ordering used by CLOE v2 is probe_ell_zpair,
+    will ! be probe_scale_zpair. ! Setting it to 'zpair' will give you the
+    ordering probe_scale_zpair. ! Bottom line: the probe is the outermost
+    loop in any case. ! The ordering used by CLOE v2 is probe_scale_zpair,
     so block_index = 'ell' is ! the correct choice in this case.
     """
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
@@ -3606,7 +3606,7 @@ def cov_2d_dav_to_cloe(cov_2d_dav, nbl, zbins, block_index_in, block_index_out):
     convention, that is, from the probe being unraveled in the first for loop
     to the probe being unraveled in the second for loop.
 
-    example: from ell_probe_zpair (my convention) to probe_ell_zpair (CLOE).
+    example: from scale_probe_zpair (my convention) to probe_scale_zpair (CLOE).
     The zpairs <-> ell ordering is decided by 'block_idex' (setting the first,
     or outermost, of the two)
     """
@@ -3622,7 +3622,7 @@ def cov_2d_cloe_to_dav(cov_2d_cloe, nbl, zbins, block_index_in, block_index_out)
     convention, that is, from the probe being unraveled in the second for loop
     to the probe being unraveled in the first for loop.
 
-    example: from probe_ell_zpair (CLOE) to ell_probe_zpair (my convention).
+    example: from probe_scale_zpair (CLOE) to scale_probe_zpair (my convention).
     The zpairs <-> ell ordering is decided by 'block_idex' (setting the first,
     or outermost, of the two)
     """

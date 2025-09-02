@@ -311,7 +311,7 @@ base_cfg = {
         'coupled_cov': False,
         'triu_tril': 'triu',
         'row_col_major': 'row-major',
-        'covariance_ordering_2D': 'probe_ell_zpair',
+        'covariance_ordering_2D': 'probe_scale_zpair',
         'save_full_cov': True,
         'split_gaussian_cov': False,
         'sigma_eps_i': [0.26, 0.26, 0.26],

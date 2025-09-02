@@ -97,7 +97,7 @@ def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
 
 def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_cfg):
     """This function tries to implement the indexing for the
-    flattening ell_probe_zpair
+    flattening scale_probe_zpair
     """
     if (covariance_cfg['triu_tril'], covariance_cfg['row_col_major']) != (
         'triu',
@@ -135,7 +135,7 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_
 def get_idxs_to_delete_3x2pt_v0(
     ell_values_3x2pt, ell_cuts_dict, nbl_3x2pt, zpairs_auto, zpairs_cross
 ):
-    """This implements the indexing for the flattening probe_ell_zpair"""
+    """This implements the indexing for the flattening probe_scale_zpair"""
     raise Exception(
         'Concatenation must be done *before* flattening, this function '
         'is not compatible with the '

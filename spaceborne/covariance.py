@@ -63,7 +63,7 @@ class SpaceborneCovariance:
         # other useful objects
         self.nmt_obj = nmt_obj
 
-        if self.cov_ordering_2d == 'probe_ell_zpair':
+        if self.cov_ordering_2d == 'probe_scale_zpair':
             self.block_index = 'ell'
             self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2DCLOE_3x2pt
             self.cov_4D_to_2D_3x2pt_func_kw = {
@@ -71,7 +71,7 @@ class SpaceborneCovariance:
                 'zbins': self.zbins,
                 'req_probe_combs_2d': self.req_probe_combs_2d,
             }
-        elif self.cov_ordering_2d == 'probe_zpair_ell':
+        elif self.cov_ordering_2d == 'probe_zpair_scale':
             self.block_index = 'zpair'
             self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2DCLOE_3x2pt
             self.cov_4D_to_2D_3x2pt_func_kw = {
@@ -79,14 +79,14 @@ class SpaceborneCovariance:
                 'zbins': self.zbins,
                 'req_probe_combs_2d': self.req_probe_combs_2d,
             }
-        elif self.cov_ordering_2d == 'ell_probe_zpair':
+        elif self.cov_ordering_2d == 'scale_probe_zpair':
             self.block_index = 'ell'
             self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2D
             self.cov_4D_to_2D_3x2pt_func_kw = {
                 'block_index': self.block_index,
                 'optimize': True,
             }
-        elif self.cov_ordering_2d == 'zpair_probe_ell':
+        elif self.cov_ordering_2d == 'zpair_probe_scale':
             self.block_index = 'zpair'
             self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2D
             self.cov_4D_to_2D_3x2pt_func_kw = {

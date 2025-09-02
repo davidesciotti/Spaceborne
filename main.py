@@ -196,7 +196,7 @@ for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
-ell_max_max = max(cfg['ell_binning']['ell_max_WL'], cfg['ell_binning']['ell_max_GC'])
+ell_max_max = max(cfg['binning']['ell_max_WL'], cfg['binning']['ell_max_GC'])
 ell_min_unb_oc = 2
 ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
 nbl_3x2pt_oc = 500
@@ -227,7 +227,7 @@ cfg['covariance']['cNG_code'] = 'PyCCL'
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
     cfg['OneCovariance']['path_to_oc_executable'] = (
-        '/home/cosmo/davide.sciotti/data//OneCovariance/covariance.py'
+        '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
     )
     cfg['OneCovariance']['consistency_checks'] = False
     cfg['OneCovariance']['oc_output_filename'] = 'cov_rcf_mergetest_v2_'
@@ -288,6 +288,21 @@ cfg['covariance']['probe_ordering'] = [
 
 probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
+
+# This has been deprecated since i am no longer using Levin integration.
+# This variable used to control the number of bins over which to compute the Levin
+# RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu). 
+# From then, the covariance was rebinned to cfg['binning']['theta_bins'].
+# This works but is not ideal, as the proper bin averaging is more correct.
+# cfg['precision']['theta_bins_fine'] = 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+
+# Integration method for the covariance projection to real space. Options:
+# - 'simps': uses simpson integration. This is faster but less accurate
+# - 'levin': uses levin integration. This is slower but more accurate
+cfg['precision']['cov_rs_int_method'] = 'levin'  # Type: str.
+# setting this to False makes the code resort to the less accurate bin averaging method
+# mentioned above
+cfg['precision']['levin_bin_avg'] = True # Type: bool.
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # convenence settings that have been hardcoded
@@ -296,7 +311,7 @@ which_sigma2_b = cfg['covariance']['which_sigma2_b']
 
 # ! probe selection
 
-# * small dictionary:
+# * small developer guide:
 # - unique_probe_combs: the probe combinations which are actually computed, meaning the
 #                       diagonal or upper triangle of the probe matrix
 # - symm_probe_combs: the lower triangle, (or an empty list if cross terms are not
@@ -1084,7 +1099,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # oc needs finer ell sampling to avoid issues with ell bin edges
     ells_3x2pt_oc = np.geomspace(
-        cfg['ell_binning']['ell_min'], cfg['ell_binning']['ell_max_3x2pt'], nbl_3x2pt_oc
+        cfg['binning']['ell_min'], cfg['binning']['ell_max_3x2pt'], nbl_3x2pt_oc
     )
     cl_ll_3d_oc = ccl_obj.compute_cls(
         ells_3x2pt_oc,
@@ -1831,7 +1846,7 @@ cov_oc_list_8d = cov_sva_oc_3x2pt_8D + cov_sn_oc_3x2pt_8D + cov_mix_oc_3x2pt_8D
 
 # TODO SB and OC MUST have same fmt so I can combine probes and terms with the same function!!!
 cov_oc_dict_2d = {}
-nbt = cfg['cov_real_space']['theta_bins']
+nbt = cfg['binning']['theta_bins']
 for probe in const.RS_PROBE_NAME_TO_IX_DICT:
     # split_g_ix = (
     # cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
@@ -2048,4 +2063,4 @@ if cfg['misc']['save_figs']:
         fig = plt.figure(fig_num)
         fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
 
-print('done')
+print('Done')

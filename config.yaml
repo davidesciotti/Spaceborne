@@ -77,13 +77,13 @@ C_ell:
   # with `ell` the ell value, zi the i-th tomographic bin index, and zj the j-th tomographic bin index.
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
+  # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the `binning`
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_path:  /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path:  /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path:  /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -100,8 +100,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename:  /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-  mag_bias_table_filename:  /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+  gal_bias_table_filename:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+  mag_bias_table_filename:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -125,8 +125,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename:  /u/dsciotti/code/common_data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename:  /u/dsciotti/code/common_data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename:  /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -181,12 +181,12 @@ sample_covariance:
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 OneCovariance:
-    path_to_oc_executable: '/u/dsciotti/code/common_data/OneCovariance/covariance.py'
+    path_to_oc_executable: '/home/cosmo/davide.sciotti/data/common_data/OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 
-ell_binning:
-  binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+binning:
+  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
 
   ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL
@@ -201,6 +201,11 @@ ell_binning:
   ell_min_ref: 10 # Type: int. Minimum ell for reference case
   ell_max_ref: 1500 # Type: int. Maximum ell for reference case
   ell_bins_ref: 32 # Type: int. Number of bins for reference case
+
+  # theta binning for the real-space covariance matrix
+  theta_min_arcmin: 50  # Type: float | int
+  theta_max_arcmin: 300  # Type: float | int
+  theta_bins: 10  # Type: int
 
 BNT:
   cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
@@ -243,7 +248,6 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  # TODO get actual values
   sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the
@@ -278,13 +282,6 @@ covariance:
 
   # Name of the output covariance file. Change suffix to '.npy' to save as npy file.
   cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str.
-
-cov_real_space:
-  
-  # theta binning for the real-space covariance matrix
-  theta_min_arcmin: 50  # Type: float | int
-  theta_max_arcmin: 300  # Type: float | int
-  theta_bins: 10  # Type: int
 
 
 PyCCL:
@@ -321,7 +318,6 @@ precision:
   # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
   n_iter_nmt: null # Type: None | int. 
 
-
   # ===================================== pylevin ====================================
   # Precision settings for pylevin. See the official documentation for more details:
   # https://levin-bessel.readthedocs.io/en/latest/index.html
@@ -337,16 +333,8 @@ precision:
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_rs: 2  # Type: int
   ell_max_rs: 100000  # Type: int
-  ell_bins_rs: 10000  # Type: int
+  ell_bins_rs: 500  # Type: int. Should be high to get accurate results with Simpson integration
   
-  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
-  theta_bins_fine: 10  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
-
-  # Integration method for the covariance projection to real space. Options:
-  # - 'simps': uses simpson integration. This is faster but less accurate
-  # - 'levin': uses levin integration. This is slower but more accurate
-  cov_rs_int_method: 'simps'  # Type: str.
-  levin_bin_avg: True  # TODO deprecate this, ideally I only want to compute Levin with exact bin avg
 
 misc:
   num_threads: 40 # Type: int. How many threads to use for the parallel computations
@@ -366,5 +354,5 @@ misc:
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
   cl_triangle_plot: False # Type: bool.
 
-  output_path: /u/dsciotti/code/common_data/Spaceborne_rs_test # Type: str. Path to the output directory
+  output_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_rs_test # Type: str. Path to the output directory
   save_figs: True

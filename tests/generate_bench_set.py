@@ -21,7 +21,7 @@ NOTES
 
 1. The code will raise an error if the benchmark files are already present.
    If you want to dverwrite them, delete the existing ones in e.g.
-   /u/dsciotti/code/Spaceborne_bench/bench_set_output/config_0005.yaml
+  f {ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
 """
 
 import gc
@@ -199,7 +199,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
 
 
 # Example usage
-ROOT = '/u/dsciotti/code'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 bench_set_path = f'{ROOT}/Spaceborne_bench'
 bench_set_path_cfg = f'{bench_set_path}/bench_set_cfg'
 bench_set_path_results = f'{bench_set_path}/bench_set_output'
@@ -249,15 +249,15 @@ base_cfg = {
     'probe_selection': {'LL': True, 'GL': True, 'GG': True, 'cross_cov': True},
     'C_ell': {
         'use_input_cls': False,
-        'cl_LL_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_ll.txt',
-        'cl_GL_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gl.txt',
-        'cl_GG_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gg.txt',
+        'cl_LL_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt',
+        'cl_GL_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt',
+        'cl_GG_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt',
         'which_gal_bias': 'FS2_polynomial_fit',
         'which_mag_bias': 'FS2_polynomial_fit',
         'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
         'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
-        'gal_bias_table_filename': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/gal_bias.txt',
-        'mag_bias_table_filename': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/mag_bias.txt',
+        'gal_bias_table_filename': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt',
+        'mag_bias_table_filename': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt',
         'mult_shear_bias': [0.0, 0.0, 0.0],
         'has_rsd': False,
         'has_IA': False,
@@ -269,8 +269,8 @@ base_cfg = {
         },
     },
     'nz': {
-        'nz_sources_filename': '/u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
-        'nz_lenses_filename': '/u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_sources_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_lenses_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
         'ngal_sources': [8.09216, 8.09215, 8.09215],
         'ngal_lenses': [8.09216, 8.09215, 8.09215],
         'shift_nz': False,
@@ -406,7 +406,7 @@ configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_path_cfg)
 print(f'Generated {len(configs)} configurations')
 
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=6)
+yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=7)
 
 # Run benchmarks
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)

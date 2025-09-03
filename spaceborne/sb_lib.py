@@ -60,6 +60,35 @@ import spaceborne.constants as const
 #     return binned_cov
 
 
+def split_probe_name(full_probe_name):
+    """Splits a full probe name (e.g., 'gmxim') into two component probes.
+
+    Possible probe names are 'xip', 'xim', 'gg', 'gm'.
+
+    Args:
+        full_probe_name (str): A string containing two probe types concatenated.
+
+    Returns:
+        tuple: A tuple of two strings representing the split probes.
+
+    Raises:
+        ValueError: If the input string does not contain exactly two valid probes.
+
+    """
+    valid_probes = {'xip', 'xim', 'gg', 'gm'}
+
+    # Try splitting at each possible position
+    for i in range(2, len(full_probe_name)):
+        first, second = full_probe_name[:i], full_probe_name[i:]
+        if first in valid_probes and second in valid_probes:
+            return first, second
+
+    raise ValueError(
+        f'Invalid probe name: {full_probe_name}. '
+        f'Expected two of {valid_probes} concatenated.'
+    )
+
+
 def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
     # compare covariance
     compare_arrays(
@@ -150,28 +179,43 @@ def build_probe_list(probes, include_cross_terms=False):
     return [p1 + p2 for p1, p2 in itertools.combinations_with_replacement(probes, 2)]
 
 
-def get_probe_combs(unique_probe_combs):
+def get_probe_combs(unique_probe_combs, space):
     """Given the desired probe combinations, builds a list the ones to be filled by
     symmetry and the ones fo be skipped"""
 
+    assert space in ['harmonic', 'real'], 'Invalid space specified'
+
+    if space == 'harmonic':
+        ALL_PROBE_COMBS = const.HS_ALL_PROBE_COMBS
+        DIAG_PROBE_COMBS = const.HS_DIAG_PROBE_COMBS
+    elif space == 'real':
+        ALL_PROBE_COMBS = const.RS_ALL_PROBE_COMBS
+        DIAG_PROBE_COMBS = const.RS_DIAG_PROBE_COMBS
+
     # sanity checks
     for probe in unique_probe_combs:
-        if probe not in const.HS_ALL_PROBE_COMBS:
-            raise ValueError(f'Probe {probe} not found in {const.HS_ALL_PROBE_COMBS}')
-        if len(probe) != 4:
+        if probe not in ALL_PROBE_COMBS:
+            raise ValueError(f'Probe {probe} not found in {ALL_PROBE_COMBS}')
+        # real space probes have variable length
+        if len(probe) != 4 and space == 'harmonic':
             raise ValueError(f'Probe {probe} must have length 4')
 
     # take the requested probes which are not diagonal
-    _symm_probe_combs = set(unique_probe_combs) - set(const.HS_DIAG_PROBE_COMBS)
+    _symm_probe_combs = set(unique_probe_combs) - set(DIAG_PROBE_COMBS)
 
     # invert probe_a, probe_b <-> probe_c, probe_d
     symm_probe_combs = []
     for probe in _symm_probe_combs:
-        symm_probe_combs.append(probe[2:] + probe[:2])
+        if space == 'harmonic':
+            probe_ab, probe_cd = probe[:2], probe[2:]
+        elif space == 'real':
+            probe_ab, probe_cd = split_probe_name(probe)
+
+        symm_probe_combs.append(probe_cd + probe_ab)
 
     # lastly, find the remaining (non required) probe combinations
     nonreq_probe_combs = (
-        set(const.HS_ALL_PROBE_COMBS) - set(unique_probe_combs) - set(symm_probe_combs)
+        set(ALL_PROBE_COMBS) - set(unique_probe_combs) - set(symm_probe_combs)
     )
 
     return symm_probe_combs, nonreq_probe_combs
@@ -1679,7 +1723,7 @@ def compare_arrays(
     title='',
 ):
     fontsize = 25
-    
+
     if matshow_arr_kw is None:
         matshow_arr_kw = {}
 
@@ -2749,7 +2793,7 @@ def cov_3x2pt_10D_to_4D(
     return cov_3x2pt_4D
 
 
-def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d):
+def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmonic'):
     """Convert a dictionary of 4D blocks into a single 4D array.
 
     This is the same code as
@@ -2767,40 +2811,78 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d):
         )
 
     # check that the req_probe_combs_2d  are correct
-    for a, b, c, d in req_probe_combs_2d:
-        assert (a, b, c, d) in cov_3x2pt_8D_dict, (
-            f'Probe combination {a, b, c, d} not found in the input dictionary'
+    for probe in req_probe_combs_2d:
+        if space == 'harmonic':
+            probe_tpl = tuple(probe)
+        elif space == 'real':
+            probe_tpl = split_probe_name(probe)
+
+        assert probe_tpl in cov_3x2pt_8D_dict, (
+            f'Probe combination {probe_tpl} not found in the input dictionary'
         )
 
-    row_ll_list, row_gl_list, row_gg_list = [], [], []
-    for a, b, c, d in req_probe_combs_2d:
-        if (a, b) == ('L', 'L'):
-            row_ll_list.append(cov_3x2pt_8D_dict[a, b, c, d])
-        elif (a, b) == ('G', 'L'):
-            row_gl_list.append(cov_3x2pt_8D_dict[a, b, c, d])
-        elif (a, b) == ('G', 'G'):
-            row_gg_list.append(cov_3x2pt_8D_dict[a, b, c, d])
-        else:
-            raise ValueError(
-                f'Probe combination {a, b, c, d} does not start with '
-                '("L", "L") or ("G", "L") or ("G", "G") '
-            )
-
-    # concatenate the lists to make rows
-    # o(nly concatenate and include rows that have content)
     final_rows = []
 
-    if row_ll_list:
-        row_ll = np.concatenate(row_ll_list, axis=3)
-        final_rows.append(row_ll)
+    if space == 'harmonic':
+        row_ll_list, row_gl_list, row_gg_list = [], [], []
+        for a, b, c, d in req_probe_combs_2d:
+            if (a, b) == ('L', 'L'):
+                row_ll_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+            elif (a, b) == ('G', 'L'):
+                row_gl_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+            elif (a, b) == ('G', 'G'):
+                row_gg_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+            else:
+                raise ValueError(
+                    f'Probe combination {a, b, c, d} does not start with '
+                    '("L", "L") or ("G", "L") or ("G", "G") '
+                )
+        # concatenate the lists to make rows
+        # o(nly concatenate and include rows that have content)
+        if row_ll_list:
+            row_ll = np.concatenate(row_ll_list, axis=3)
+            final_rows.append(row_ll)
+        if row_gl_list:
+            row_gl = np.concatenate(row_gl_list, axis=3)
+            final_rows.append(row_gl)
+        if row_gg_list:
+            row_gg = np.concatenate(row_gg_list, axis=3)
+            final_rows.append(row_gg)
 
-    if row_gl_list:
-        row_gl = np.concatenate(row_gl_list, axis=3)
-        final_rows.append(row_gl)
+    elif space == 'real':
+        row_xip_list, row_xim_list, row_gm_list, row_gg_list = [], [], [], []
+        for probe in req_probe_combs_2d:
+            probe_ab, probe_cd = split_probe_name(probe)
+            if (probe_ab) == 'xip':
+                row_xip_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            elif (probe_ab) == ('xim'):
+                row_xim_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            elif (probe_ab) == ('gm'):
+                row_gm_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            elif (probe_ab) == ('gg'):
+                row_gg_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            else:
+                raise ValueError(
+                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    '("xip") or ("xim") or ("gm") or ("gg") '
+                )
+        # concatenate the lists to make rows
+        # o(nly concatenate and include rows that have content)
+        if row_xip_list:
+            row_xip = np.concatenate(row_xip_list, axis=3)
+            final_rows.append(row_xip)
+        if row_xim_list:
+            row_xim = np.concatenate(row_xim_list, axis=3)
+            final_rows.append(row_xim)
+        if row_gm_list:
+            row_gm = np.concatenate(row_gm_list, axis=3)
+            final_rows.append(row_gm)
+        if row_gg_list:
+            row_gg = np.concatenate(row_gg_list, axis=3)
+            final_rows.append(row_gg)
 
-    if row_gg_list:
-        row_gg = np.concatenate(row_gg_list, axis=3)
-        final_rows.append(row_gg)
+    else:
+        raise ValueError(f'space must me "harmonic" or "real", not: {space}')
 
     # concatenate the rows to construct the final matrix
     if final_rows:
@@ -3198,14 +3280,18 @@ def slice_cov_3x2pt_2D_scale_probe_zpair(cov_2D_scale_probe_zpair, nbl, zbins, p
         # block_index * block_size + probe_starting index in each block
         start = ell_bin * ell_block_size + probe_start
         stop = start + probe_stop
-        cov_1D_scale_probe_zpair[ell_bin] = cov_2D_scale_probe_zpair[start:stop, start:stop]
+        cov_1D_scale_probe_zpair[ell_bin] = cov_2D_scale_probe_zpair[
+            start:stop, start:stop
+        ]
 
     cov_2D_scale_probe_zpair_sliced = scipy.linalg.block_diag(*cov_1D_scale_probe_zpair)
 
     return cov_2D_scale_probe_zpair_sliced
 
 
-def slice_cl_3x2pt_1D_scale_probe_zpair(cl_3x2pt_1D_scale_probe_zpair, nbl, zbins, probe):
+def slice_cl_3x2pt_1D_scale_probe_zpair(
+    cl_3x2pt_1D_scale_probe_zpair, nbl, zbins, probe
+):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
     matrix in ell, probe and zpair (unpacked in this order)
     """
@@ -3226,9 +3312,13 @@ def slice_cl_3x2pt_1D_scale_probe_zpair(cl_3x2pt_1D_scale_probe_zpair, nbl, zbin
         # block_index * block_size + probe_starting index in each block
         start = ell_bin * ell_block_size + probe_start
         stop = start + probe_stop
-        cl_1D_scale_probe_zpair_list[ell_bin] = cl_3x2pt_1D_scale_probe_zpair[start:stop]
+        cl_1D_scale_probe_zpair_list[ell_bin] = cl_3x2pt_1D_scale_probe_zpair[
+            start:stop
+        ]
 
-    cl_1D_scale_probe_zpair = np.array(list(itertools.chain(*cl_1D_scale_probe_zpair_list)))
+    cl_1D_scale_probe_zpair = np.array(
+        list(itertools.chain(*cl_1D_scale_probe_zpair_list))
+    )
 
     return cl_1D_scale_probe_zpair
 
@@ -3299,7 +3389,9 @@ def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
 
 
 # @njit
-def cov_4D_to_2D(cov_4D, block_index, optimize=True):
+def cov_4D_to_2D(
+    cov_4D: np.ndarray, block_index: str, optimize: bool = True
+) -> np.ndarray:
     """Reshapes the covariance from 4D to 2D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
 
@@ -3323,6 +3415,10 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     the missing elements in the
     higher-dimensional array are needed.
     """
+    assert type(cov_4D) is np.ndarray, 'cov_4D must be numpy array'
+    assert type(block_index) is str, 'block_index must be a string'
+    assert type(optimize) is bool, 'optimize must be a boolean'
+
     assert block_index in ['ell', 'C-style'] + ['zpair', 'F-style'], (
         'block_index must be "ell", "C-style" or "zpair", "F-style"'
     )
@@ -3377,7 +3473,123 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     return cov_2D
 
 
-def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
+def _cov_4D_to_2D_assembler(cov_4D, zbins, probe_order, probe_sizes, block_index='ell'):
+    """
+    Reshapes and assembles a 2D covariance matrix from a 4D covariance matrix
+    containing blocks for different probes.
+
+    Parameters
+    ----------
+    cov_4D : np.ndarray
+        The 4D covariance matrix (n_scales, n_scales, n_pairs_total, n_pairs_total).
+    zbins : int
+        Number of redshift bins.
+    probe_order : list of str
+        Ordered list of probe names (e.g., ['LL', 'GL', 'GG']).
+    probe_sizes : dict
+        Dictionary mapping probe name to its number of pairs (e.g., {'LL': 55, 'GL': 100, 'GG': 55}).
+    block_index : str, optional
+        Indexing for reshaping ('ell' or 'zpair'), by default 'ell'.
+
+    Returns
+    -------
+    np.ndarray
+        The assembled 2D covariance matrix.
+    """
+    kw = {'block_index': block_index, 'optimize': True}
+
+    # Calculate offsets for each probe block
+    offsets = {}
+    current_offset = 0
+    for probe in probe_order:
+        offsets[probe] = current_offset
+        current_offset += probe_sizes[probe]
+
+    # Slice cov_4D into a dictionary of 4D blocks and convert to 2D
+    cov_dict_2d = {}
+    for p1 in probe_order:
+        for p2 in probe_order:
+            start1, stop1 = offsets[p1], offsets[p1] + probe_sizes[p1]
+            start2, stop2 = offsets[p2], offsets[p2] + probe_sizes[p2]
+            cov_block_4D = cov_4D[:, :, start1:stop1, start2:stop2]
+            cov_dict_2d[(p1, p2)] = cov_4D_to_2D(cov_block_4D, **kw)
+
+    # Assemble the final 2D matrix
+    rows = []
+    for p1 in probe_order:
+        row_blocks = [cov_dict_2d[(p1, p2)] for p2 in probe_order]
+        rows.append(np.hstack(row_blocks))
+
+    if not rows:
+        raise ValueError('No valid probe combinations found!')
+
+    return np.vstack(rows)
+
+
+def cov_4D_to_2DCLOE_3x2pt_hs(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
+    """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
+    ordering for harmonic space 3x2pt probes.
+    """
+    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
+
+    probe_sizes = {'LL': zpairs_auto, 'GL': zpairs_cross, 'GG': zpairs_auto}
+
+    # Determine the order of probes present in the covariance matrix
+    probe_order = []
+    if any('LL' in p for p in req_probe_combs_2d):
+        probe_order.append('LL')
+    if any('GL' in p for p in req_probe_combs_2d):
+        probe_order.append('GL')
+    if any('GG' in p for p in req_probe_combs_2d):
+        probe_order.append('GG')
+
+    if not probe_order:
+        raise ValueError(
+            'No valid 3x2pt probe combinations found in req_probe_combs_2d'
+        )
+
+    return _cov_4D_to_2D_assembler(cov_4D, zbins, probe_order, probe_sizes, block_index)
+
+
+def cov_4D_to_2DCLOE_3x2pt_rs(
+    cov_3x2pt_4d, zbins, req_probe_combs_2d, block_index='ell'
+):
+    """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
+    ordering for real space 3x2pt probes.
+    """
+    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
+
+    probe_sizes = {
+        'xip': zpairs_auto,
+        'xim': zpairs_auto,
+        'gm': zpairs_cross,
+        'gg': zpairs_auto,
+    }
+
+    # Determine the order of probes present in the covariance matrix
+    probe_order = []
+    # The order matters and should correspond to how cov_4D is constructed.
+    # Assuming a standard order for real space probes.
+    if any('xip' in p for p in req_probe_combs_2d):
+        probe_order.append('xip')
+    if any('xim' in p for p in req_probe_combs_2d):
+        probe_order.append('xim')
+    if any('gm' in p for p in req_probe_combs_2d):
+        probe_order.append('gm')
+    if any('gg' in p for p in req_probe_combs_2d):
+        probe_order.append('gg')
+
+    if not probe_order:
+        raise ValueError(
+            'No valid real space probe combinations found in req_probe_combs_2d'
+        )
+
+    return _cov_4D_to_2D_assembler(
+        cov_3x2pt_4d, zbins, probe_order, probe_sizes, block_index
+    )
+
+
+def cov_4D_to_2DCLOE_3x2pt_old(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
     """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
     ordering.
 
@@ -3611,7 +3823,7 @@ def cov_2d_dav_to_cloe(cov_2d_dav, nbl, zbins, block_index_in, block_index_out):
     or outermost, of the two)
     """
     cov_4D = cov_2D_to_4D(cov_2d_dav, nbl, block_index=block_index_in, optimize=True)
-    cov_2d_cloe = cov_4D_to_2DCLOE_3x2pt(
+    cov_2d_cloe = cov_4D_to_2DCLOE_3x2pt_hs(
         cov_4D, zbins=zbins, block_index=block_index_out
     )
     return cov_2d_cloe

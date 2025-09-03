@@ -53,13 +53,18 @@ halo_model:
   halo_profile_hod: HaloProfileHOD # Type: str.
 
 probe_selection:
+
+  # Whether to compute the covariance matrix in real or harmonic space.
+  # Options: ['harmonic_space', 'real_space'].
+  space: real_space # Type: str. 
+
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') term
-  GL: False # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') term
+  GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') term
   GG: False # Type: bool. Whether to compute the photometric clustering ('GG') term
   
   xip: True # Type: bool. Whether to compute \xi_+
-  xim: True # Type: bool. Whether to compute \xi_-
-  gamma_t: True # Type: bool. Whether to compute \gamma_t
+  xim: False # Type: bool. Whether to compute \xi_-
+  gamma_t: False # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
   
   cross_cov: True # Type: bool. Whether to compute the cross-terms between the selected probes
@@ -216,8 +221,6 @@ covariance:
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
-  # TODO this has almost no effect fr the moment
-  space: real_space # Type: str. Whether to compute the harmonic space or real_space covariance
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
   # Choose whether to use the upper ('triu') or lower ('tril') triangle
@@ -237,10 +240,11 @@ covariance:
   # - probe_scale_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
-  # Whether to save the full 6D covariance matrix, without to any indices compression or reshaping.
-  # In the case of the single probes, this is an array of shape
+  # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
+  # The output will be a npz file for each term, containing arrays of shape
   # ({ell, theta}_bins, {ell, theta}_bins, zbins, zbins, zbins, zbins).
-  save_full_cov: False # Type: bool
+  # for each (unique) probe combination.
+  save_full_cov: True # Type: bool
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms

@@ -291,10 +291,11 @@ GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 
 # This has been deprecated since i am no longer using Levin integration.
 # This variable used to control the number of bins over which to compute the Levin
-# RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu). 
+# RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu).
 # From then, the covariance was rebinned to cfg['binning']['theta_bins'].
 # This works but is not ideal, as the proper bin averaging is more correct.
-cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']  # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+# Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
 
 # Integration method for the covariance projection to real space. Options:
 # - 'simps': uses simpson integration. This is faster but less accurate
@@ -302,7 +303,7 @@ cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']  # Type: int.
 cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
 # setting this to False makes the code resort to the less accurate bin averaging method
 # mentioned above
-cfg['precision']['levin_bin_avg'] = True # Type: bool.
+cfg['precision']['levin_bin_avg'] = True  # Type: bool.
 # ! END HARDCODED OPTIONS/PARAMETERS
 
 # convenence settings that have been hardcoded
@@ -311,13 +312,13 @@ which_sigma2_b = cfg['covariance']['which_sigma2_b']
 
 # ! probe selection
 
-# * small developer guide:
+# * small naming guide for the confused developer:
 # - unique_probe_combs: the probe combinations which are actually computed, meaning the
-#                       diagonal or upper triangle of the probe matrix
+#                       elements of the diagonal and, if requested, the cross-terms.
 # - symm_probe_combs: the lower triangle, (or an empty list if cross terms are not
-#                     required), which are the blocks filled by symemtry
-# - nonreq_probe_combs: the blocks which not required at all, and are set to 0 in the
-#                       10D/6D matrix. This does *not* include the probes in
+#                     required), which are the blocks filled by symmetry
+# - nonreq_probe_combs: the blocks which are not required at all, and are set to 0 in
+#                       the 10D/6D matrix. This does *not* include the probes in
 #                       symm_probe_combs! "Required" means I want that probe combination
 #                       in the final covariance matrix, not that I want to explicitly
 #                       compute it
@@ -325,6 +326,13 @@ which_sigma2_b = cfg['covariance']['which_sigma2_b']
 #                       format of the covmat. This includes the cross-probes whether
 #                       they are required or not (aka, they need to be present in the 2D
 #                       covmat, either as actual values or as zeros)
+
+# example: I request LL and GL, no cross-terms
+# unique_probe_combs = ['LLLL', 'GLGL']
+# symm_probe_combs = []
+# nonreq_probe_combs = {'GGGG', 'GGGL', 'GGLL', 'GLGG', 'GLLL', 'LLGG', 'LLGL'}
+# req_probe_combs_2d = ['LLLL', 'LLGL', 'GLLL', 'GLGL']
+
 unique_probe_names_hs = []
 if cfg['probe_selection']['LL']:
     unique_probe_names_hs.append('LL')
@@ -352,23 +360,37 @@ unique_probe_combs_rs = sl.build_probe_list(
 )
 
 # probe combinations to be filled by symmetry or to exclude altogether
-symm_probe_combs_hs, nonreq_probe_combs_hs = sl.get_probe_combs(unique_probe_combs_hs)
+symm_probe_combs_hs, nonreq_probe_combs_hs = sl.get_probe_combs(
+    unique_probe_combs_hs, space='harmonic'
+)
+symm_probe_combs_rs, nonreq_probe_combs_rs = sl.get_probe_combs(
+    unique_probe_combs_rs, space='real'
+)
 
 # required probe combinations to include in the 2d arrays (must include the
 # cross-terms!)
 _req_probe_combs_hs_2d = sl.build_probe_list(
     unique_probe_names_hs, include_cross_terms=True
 )
+_req_probe_combs_rs_2d = sl.build_probe_list(
+    unique_probe_names_rs, include_cross_terms=True
+)
 # as req_probe_combs_2d still only contains the upper triangle,
 # add the symemtric blocks
-symm_probe_combs_hs_2d, _ = sl.get_probe_combs(_req_probe_combs_hs_2d)
+symm_probe_combs_hs_2d, _ = sl.get_probe_combs(_req_probe_combs_hs_2d, space='harmonic')
+symm_probe_combs_rs_2d, _ = sl.get_probe_combs(_req_probe_combs_rs_2d, space='real')
 _req_probe_combs_hs_2d += symm_probe_combs_hs_2d
+_req_probe_combs_rs_2d += symm_probe_combs_rs_2d
 
 # reorder!
 req_probe_combs_hs_2d = []
 for probe in const.HS_ALL_PROBE_COMBS:
     if probe in _req_probe_combs_hs_2d:
         req_probe_combs_hs_2d.append(probe)
+req_probe_combs_rs_2d = []
+for probe in const.RS_ALL_PROBE_COMBS:
+    if probe in _req_probe_combs_rs_2d:
+        req_probe_combs_rs_2d.append(probe)
 
 unique_probe_combs_ix_hs = [
     [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
@@ -1028,11 +1050,12 @@ else:
 
 
 # ! =============== Init real space cov object, put here for simplicity for the moment ==============
-if cfg['covariance']['space'] == 'real_space':
+if cfg['probe_selection']['space'] == 'real_space':
     from spaceborne import cov_real_space
 
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
+    cov_rs_obj.set_cov_2d_ordering(req_probe_combs_2d=req_probe_combs_rs_2d)
     cov_rs_obj.set_ind_and_zpairs(ind, zbins)
     ell_obj.compute_ells_3x2pt_rs()
     cov_rs_obj.ells = ell_obj.ells_3x2pt_for_rs
@@ -1175,7 +1198,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # compute covs
     oc_obj.call_oc_from_bash()
 
-    if cfg['covariance']['space'] == 'real_space':
+    if cfg['probe_selection']['space'] == 'real_space':
         # TODO double check this
         oc_output_covlist_fname = (
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
@@ -1520,35 +1543,113 @@ cov_hs_obj.build_covs(
     oc_obj=oc_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
-cov_dict_hs = sb_cov.build_cov_dict(cov_hs_obj)
 
-# BOOKMARK 1
-if cfg['covariance']['space'] == 'real_space':
+
+if cfg['probe_selection']['space'] == 'real_space':
     print('Computing RS covariance...')
     start_rs = time.perf_counter()
 
-    # now compute the real space covariance
     # TODO understand a bit better how to treat real-space SSC and cNG
-
     for _probe, _term in itertools.product(
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
         print(f'\n***** working on probe {_probe} - term {_term} *****')
-        cov_rs_obj.compute_realspace_cov(cov_hs_obj, _probe, _term)
+        cov_rs_obj.compute_realspace_cov(
+            cov_hs_obj=cov_hs_obj, probe=_probe, term=_term
+        )
+
+    for term in cov_rs_obj.terms_toloop:
+        cov_rs_obj.fill_remaining_probe_blocks(
+            term, symm_probe_combs_rs, nonreq_probe_combs_rs
+        )
 
     # put everything together
-    cov_rs_obj.combine_terms_and_probes(cov_hs_obj.block_index)
-    # construct dict of 2D covs, as done above
-    cov_dict_rs = sb_cov.build_cov_dict(cov_rs_obj)
-    # join dictionaries
-    cov_dict = {**cov_dict_hs, **cov_dict_rs}
+    cov_rs_obj.combine_terms_and_probes(
+        unique_probe_combs=unique_probe_combs_rs,
+        req_probe_combs_2d=req_probe_combs_rs_2d,
+    )
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
 
+if cfg['probe_selection']['space'] == 'harmonic_space':
+    _cov_obj = cov_hs_obj
+    _probes = unique_probe_combs_hs
+elif cfg['probe_selection']['space'] == 'real_space':
+    _cov_obj = cov_rs_obj
+    _probes = unique_probe_combs_rs
+else:
+    raise ValueError(
+        f'Unknown cfg["probe_selection"]["space"]: {cfg["probe_selection"]["space"]}'
+    )
+
+# ! save 2D covs (for each term) in npz archive
+cov_dict_tosave_2d = {}
+if cfg['covariance']['G']:
+    cov_dict_tosave_2d['Gauss'] = _cov_obj.cov_3x2pt_g_2d
+if cfg['covariance']['SSC']:
+    cov_dict_tosave_2d['SSC'] = _cov_obj.cov_3x2pt_ssc_2d
+if cfg['covariance']['cNG']:
+    cov_dict_tosave_2d['cNG'] = _cov_obj.cov_3x2pt_cng_2d
+if cfg['covariance']['split_gaussian_cov']:
+    cov_dict_tosave_2d['SVA'] = _cov_obj.cov_3x2pt_sva_2d
+    cov_dict_tosave_2d['SN'] = _cov_obj.cov_3x2pt_sn_2d
+    cov_dict_tosave_2d['MIX'] = _cov_obj.cov_3x2pt_mix_2d
+# the total covariance is equal to the Gaussian one if neither SSC nor cNG are computed,
+# so only save it if at least one of the two is computed
+if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
+    cov_dict_tosave_2d['TOT'] = _cov_obj.cov_3x2pt_tot_2d
+
+np.savez_compressed(f'{output_path}/covs_2D.npz', **cov_dict_tosave_2d)
+
+# ! save 6D covs (for each probe and term) in npz archive.
+# ! note that the 6D covs are always probe-specific,
+# ! i.e. there is no cov_3x2pt_{term}_6d
+if cfg['covariance']['save_full_cov']:
+    cov_dict_tosave_6d = {}
+    for _probe in _probes:
+        probe_a, probe_b, probe_c, probe_d = tuple(_probe)
+        probe_ixs = (
+            const.HS_PROBE_NAME_TO_IX_DICT[probe_a],
+            const.HS_PROBE_NAME_TO_IX_DICT[probe_b],
+            const.HS_PROBE_NAME_TO_IX_DICT[probe_c],
+            const.HS_PROBE_NAME_TO_IX_DICT[probe_d],
+        )
+
+        if cfg['covariance']['G']:
+            cov_dict_tosave_6d[f'{_probe}_Gauss'] = _cov_obj.cov_3x2pt_g_10d[
+                *probe_ixs, ...
+            ]
+        if cfg['covariance']['SSC']:
+            cov_dict_tosave_6d[f'{_probe}_SSC'] = _cov_obj.cov_3x2pt_ssc_10d[
+                *probe_ixs, ...
+            ]
+        if cfg['covariance']['cNG']:
+            cov_dict_tosave_6d[f'{_probe}_cNG'] = _cov_obj.cov_3x2pt_cng_10d[
+                *probe_ixs, ...
+            ]
+        if cfg['covariance']['split_gaussian_cov']:
+            cov_dict_tosave_6d[f'{_probe}_SVA'] = _cov_obj.cov_3x2pt_sva_10d[
+                *probe_ixs, ...
+            ]
+            cov_dict_tosave_6d[f'{_probe}_SN'] = _cov_obj.cov_3x2pt_sn_10d[
+                *probe_ixs, ...
+            ]
+            cov_dict_tosave_6d[f'{_probe}_MIX'] = _cov_obj.cov_3x2pt_mix_10d[
+                *probe_ixs, ...
+            ]
+        if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
+            cov_dict_tosave_6d[f'{_probe}_TOT'] = _cov_obj.cov_3x2pt_tot_10d[
+                *probe_ixs, ...
+            ]
+
+    np.savez_compressed(f'{output_path}/covs_6D.npz', **cov_dict_tosave_6d)
+
+print(f'Covariance matrices saved in {output_path}\n')
+
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):
-    for cov_name, cov in cov_dict.items():
+    for cov_name, cov in cov_dict_tosave_2d.items():
         if not np.allclose(cov, 0, atol=0, rtol=1e-6):
             fig, ax = plt.subplots(1, 2, figsize=(10, 6))
             ax[0].matshow(np.log10(cov))
@@ -1558,74 +1659,9 @@ with np.errstate(invalid='ignore', divide='ignore'):
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
             ax[0].set_title('log10 cov')
             ax[1].set_title('corr')
-            fig.suptitle(f'{cov_name.replace("cov_", "")}', y=0.9)
+            fig.suptitle(f'{cov_name.replace("cov_", "cov")}', y=0.9)
 
-for key, cov in cov_dict.items():
-    probe = key.split('_')[1]
-    which_ng_cov = key.split('_')[2]
-    ndim = key.split('_')[3]
-    cov_filename = cfg['covariance']['cov_filename'].format(
-        which_ng_cov=which_ng_cov, probe=probe, ndim=ndim
-    )
-    cov_filename = cov_filename.replace('_g_', '_G_')
-    cov_filename = cov_filename.replace('_ssc_', '_SSC_')
-    cov_filename = cov_filename.replace('_cng_', '_cNG_')
-    cov_filename = cov_filename.replace('_tot_', '_TOT_')
 
-    if cov_filename.endswith('.npz'):
-        save_func = np.savez_compressed
-    elif cov_filename.endswith('.npy'):
-        save_func = np.save
-    else:
-        raise ValueError(
-            f'the extension for cov_filename = {cov_filename} should be .npz or .npy'
-        )
-
-    save_func(f'{output_path}/{cov_filename}', cov)
-
-    if cfg['covariance']['save_full_cov']:
-        for a, b, c, d in unique_probe_combs_ix_hs:
-            probe_str = (
-                f'{const.HS_PROBE_IX_TO_NAME_DICT[a]}{const.HS_PROBE_IX_TO_NAME_DICT[b]}'
-                f'{const.HS_PROBE_IX_TO_NAME_DICT[c]}{const.HS_PROBE_IX_TO_NAME_DICT[d]}'
-            )
-            # compute cov tot
-            cov_tot_6d = (
-                cov_hs_obj.cov_3x2pt_g_10D[a, b, c, d, ...]
-                + cov_hs_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...]
-                + cov_hs_obj.cov_3x2pt_cng_10D[a, b, c, d, ...]
-            )
-
-            # save
-            save_func(
-                f'{output_path}/cov_{probe_str}_G_6D',
-                cov_hs_obj.cov_3x2pt_g_10D[a, b, c, d, ...],
-            )
-            save_func(
-                f'{output_path}/cov_{probe_str}_SSC_6D',
-                cov_hs_obj.cov_3x2pt_ssc_10D[a, b, c, d, ...],
-            )
-            save_func(
-                f'{output_path}/cov_{probe_str}_cNG_6D',
-                cov_hs_obj.cov_3x2pt_cng_10D[a, b, c, d, ...],
-            )
-            save_func(f'{output_path}/cov_{probe_str}_TOT_6D', cov_tot_6d)
-
-            if cfg['covariance']['split_gaussian_cov']:
-                save_func(
-                    f'{output_path}/cov_{probe_str}_sva_6D',
-                    cov_hs_obj.cov_3x2pt_sva_10D[a, b, c, d, ...],
-                )
-                save_func(
-                    f'{output_path}/cov_{probe_str}_sn_6D',
-                    cov_hs_obj.cov_3x2pt_sn_10D[a, b, c, d, ...],
-                )
-                save_func(
-                    f'{output_path}/cov_{probe_str}_mix_6D',
-                    cov_hs_obj.cov_3x2pt_mix_10D[a, b, c, d, ...],
-                )
-
-print(f'Covariance matrices saved in {output_path}\n')
 
 # save cfg file
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
@@ -1757,7 +1793,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
-        **cov_dict,
+        **cov_dict_tosave_2d,
         metadata=metadata,
     )
 
@@ -1768,52 +1804,51 @@ if (
     or cfg['misc']['test_numpy_inversion']
     or cfg['misc']['test_symmetry']
 ):
-    for cov_name, cov in cov_dict.items():
-        if '3x2pt' in cov_name and 'tot' in cov_name:
-            print(f'Testing {cov_name}...\n')
+    for cov_name, cov in cov_dict_tosave_2d.items():
+        print(f'Testing cov {cov_name}...\n')
 
-            if cfg['misc']['test_condition_number']:
-                cond_number = np.linalg.cond(cov)
-                print(f'Condition number = {cond_number:.4e}')
+        if cfg['misc']['test_condition_number']:
+            cond_number = np.linalg.cond(cov)
+            print(f'Condition number = {cond_number:.4e}')
 
-            if cfg['misc']['test_cholesky_decomposition']:
-                try:
-                    np.linalg.cholesky(cov)
-                    print('Cholesky decomposition successful')
-                except np.linalg.LinAlgError:
+        if cfg['misc']['test_cholesky_decomposition']:
+            try:
+                np.linalg.cholesky(cov)
+                print('Cholesky decomposition successful')
+            except np.linalg.LinAlgError:
+                print(
+                    'Cholesky decomposition failed. Consider checking the condition'
+                    ' number or symmetry.'
+                )
+
+        if cfg['misc']['test_numpy_inversion']:
+            try:
+                inv_cov = np.linalg.inv(cov)
+                print('Numpy inversion successful.')
+                # Test correctness of inversion:
+                identity_check = np.allclose(
+                    np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
+                )
+                if identity_check:
                     print(
-                        'Cholesky decomposition failed. Consider checking the condition'
-                        ' number or symmetry.'
+                        'Inverse test successfully (M @ M^{-1} is identity). '
+                        'atol=1e-9, rtol=1e-7'
                     )
-
-            if cfg['misc']['test_numpy_inversion']:
-                try:
-                    inv_cov = np.linalg.inv(cov)
-                    print('Numpy inversion successful.')
-                    # Test correctness of inversion:
-                    identity_check = np.allclose(
-                        np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
-                    )
-                    if identity_check:
-                        print(
-                            'Inverse test successfully (M @ M^{-1} is identity). '
-                            'atol=1e-9, rtol=1e-7'
-                        )
-                    else:
-                        print(
-                            f'Warning: Inverse test failed (M @ M^{-1} '
-                            'deviates from identity). atol=0, rtol=1e-7'
-                        )
-                except np.linalg.LinAlgError:
-                    print(
-                        'Numpy inversion failed: Matrix is singular or near-singular.'
-                    )
-
-            if cfg['misc']['test_symmetry']:
-                if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
-                    print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
                 else:
-                    print('Matrix is symmetric. atol=0, rtol=1e-7')
+                    print(
+                        f'Warning: Inverse test failed (M @ M^{-1} '
+                        'deviates from identity). atol=0, rtol=1e-7'
+                    )
+            except np.linalg.LinAlgError:
+                print('Numpy inversion failed: Matrix is singular or near-singular.')
+
+        if cfg['misc']['test_symmetry']:
+            if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
+                print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
+            else:
+                print('Matrix is symmetric. atol=0, rtol=1e-7')
+
+        print('')
 
 if cfg['misc']['save_figs']:
     output_dir = f'{output_path}/figs'

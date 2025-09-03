@@ -403,12 +403,7 @@ def compare_funcs(
     if x is None:
         x = np.arange(len(y_tuple[0]))
 
-    fig, ax = plt.subplots(
-        2,
-        1,
-        sharex=True,
-        height_ratios=[2, 1],
-    )
+    fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1])
     fig.subplots_adjust(hspace=0)
 
     for i, _y in enumerate(y_tuple):
@@ -443,8 +438,7 @@ def get_git_info():
     try:
         branch = (
             subprocess.check_output(
-                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                stderr=subprocess.DEVNULL,
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], stderr=subprocess.DEVNULL
             )
             .strip()
             .decode('utf-8')
@@ -452,8 +446,7 @@ def get_git_info():
 
         commit = (
             subprocess.check_output(
-                ['git', 'rev-parse', 'HEAD'],
-                stderr=subprocess.DEVNULL,
+                ['git', 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL
             )
             .strip()
             .decode('utf-8')
@@ -1610,15 +1603,17 @@ def compare_arrays(
     log_array=True,
     log_diff=False,
     abs_val=False,
-    plot_diff_threshold=None,
+    plot_diff_perc_threshold=None,
     white_where_zero=True,
     plot_diff_hist=False,
+    early_return=True,
 ):
     fontsize = 25
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
-        return
+        if early_return:
+            return
 
     for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
         if np.allclose(A, B, rtol=rtol, atol=0):
@@ -1626,10 +1621,11 @@ def compare_arrays(
                 f'{name_A} and {name_B} are close within relative tolerance '
                 f'of {rtol * 100}%) ✅'
             )
-            return
+            if early_return:
+                return
 
     diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
-    higher_rtol = plot_diff_threshold or 5.0
+    higher_rtol = plot_diff_perc_threshold or 5.0
     max_diff = np.max(diff_AB)
     result_emoji = '❌' if max_diff > higher_rtol or np.isnan(max_diff) else '✅'
     no_outliers = np.sum(diff_AB > higher_rtol)
@@ -1683,11 +1679,11 @@ def compare_arrays(
         diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=abs_val)
         diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=False, abs_val=abs_val)
 
-        if plot_diff_threshold is not None:
+        if plot_diff_perc_threshold is not None:
             # Mask out small differences (set them to white via the colormap's
             # "bad" color)
-            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, diff_AB)
-            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, diff_BA)
+            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_perc_threshold, diff_AB)
+            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_perc_threshold, diff_BA)
 
         if log_diff:
             # Replace nonpositive with nan to avoid -inf
@@ -1704,7 +1700,7 @@ def compare_arrays(
 
     fig.suptitle(
         f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}\n'
-        f'plot_diff_threshold={plot_diff_threshold}%',
+        f'plot_diff_threshold={plot_diff_perc_threshold}%',
         fontsize=fontsize,
     )
     plt.show()
@@ -3453,8 +3449,6 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, req_probe_combs_2d, block_index='ell')
                 f'Probe combination {a, b, c, d} does not start with '
                 '("L", "L") or ("G", "L") or ("G", "G") '
             )
-            
-    
 
     # concatenate the lists to make rows
     # (o(nly concatenate and include rows that have content)
@@ -3634,16 +3628,7 @@ def build_noise(
 
     """
     # assert appropriate inputs are list, tuple or np.ndarray
-    for var, name in zip(
-        [
-            ng_shear,
-            ng_clust,
-        ],
-        [
-            'ng_shear',
-            'ng_clust',
-        ],
-    ):
+    for var, name in zip([ng_shear, ng_clust], ['ng_shear', 'ng_clust']):
         #     [ng_shear, ng_clust, sigma_eps2],
         #     ['ng_shear', 'ng_clust', 'sigma_eps2'],
         # ):

@@ -1692,7 +1692,7 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
         'cov_oc_2d',
         log_diff=True,
         abs_val=True,
-        plot_diff_threshold=10,
+        plot_diff_perc_threshold=10,
         plot_diff_hist=False,
     )
 
@@ -1844,7 +1844,7 @@ sl.compare_arrays(
     'cov SB',
     'cov OC',
     log_diff=True,
-    plot_diff_threshold=10,
+    plot_diff_perc_threshold=10,
 )
 
 # ! this file has been overwritten with the ellspace cov
@@ -1865,7 +1865,7 @@ cov_oc_mat = np.genfromtxt(
 )
 
 sl.compare_arrays(
-    cov_sb_full_2d, cov_oc_mat, 'SB', 'OC mat', log_diff=False, plot_diff_threshold=10
+    cov_sb_full_2d, cov_oc_mat, 'SB', 'OC mat', log_diff=False, plot_diff_perc_threshold=10
 )
 
 

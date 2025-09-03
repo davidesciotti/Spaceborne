@@ -496,16 +496,16 @@ class EllBinning:
         self.ells_XC = self.ells_GC.copy()
         self.ell_edges_XC = self.ell_edges_GC.copy()
         self.delta_l_XC = self.delta_l_GC.copy()
-        self.ell_min_XC = self.ell_min_GC.copy()
-        self.ell_max_XC = self.ell_max_GC.copy()
+        self.ell_min_XC = self.ell_min_GC
+        self.ell_max_XC = self.ell_max_GC
 
         # 3x2pt as well
         # TODO change this to be more general
         self.ells_3x2pt = self.ells_GC.copy()
         self.ell_edges_3x2pt = self.ell_edges_GC.copy()
         self.delta_l_3x2pt = self.delta_l_GC.copy()
-        self.ell_min_3x2pt = self.ell_min_GC.copy()
-        self.ell_max_3x2pt = self.ell_max_GC.copy()
+        self.ell_min_3x2pt = self.ell_min_GC
+        self.ell_max_3x2pt = self.ell_max_GC
 
         # set nbl
         self.nbl_WL = len(self.ells_WL)

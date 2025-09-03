@@ -205,7 +205,7 @@ class OneCovarianceInterface:
         self.compute_ssc = do_ssc
         self.compute_cng = do_cng
 
-        self.obs_space = self.cfg['covariance']['space']
+        self.obs_space = self.cfg['probe_selection']['space']
 
         # paths and filenems
         self.conda_base_path = self.get_conda_base_path()

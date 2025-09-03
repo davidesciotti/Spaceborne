@@ -833,16 +833,16 @@ class OneCovarianceInterface:
             self.GL_OR_LG,
         )
 
-        cov_list_g_2d = sl.cov_4D_to_2DCLOE_3x2pt(
+        cov_list_g_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
             cov_list_g_4d, self.zbins, block_index='zpair'
         )
-        cov_list_ssc_2d = sl.cov_4D_to_2DCLOE_3x2pt(
+        cov_list_ssc_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
             cov_list_ssc_4d, self.zbins, block_index='zpair'
         )
-        cov_list_cng_2d = sl.cov_4D_to_2DCLOE_3x2pt(
+        cov_list_cng_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
             cov_list_cng_4d, self.zbins, block_index='zpair'
         )
-        cov_list_tot_2d = sl.cov_4D_to_2DCLOE_3x2pt(
+        cov_list_tot_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
             cov_list_tot_4d, self.zbins, block_index='zpair'
         )
 

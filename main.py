@@ -452,6 +452,13 @@ z_grid_trisp = np.linspace(
     cfg['covariance']['z_max'],
     cfg['covariance']['z_steps_trisp'],
 )
+# this is instantiated for better efficiency in the z sampling of the cNG (not the SSC!)
+# trispectrum, as linear z grids waste points at high z
+a_grid_trisp = np.linspace(
+    cosmo_lib.z_to_a(cfg['covariance']['z_max']),
+    cosmo_lib.z_to_a(cfg['covariance']['z_min']),
+    cfg['covariance']['z_steps_trisp'],
+)
 k_grid = np.logspace(
     cfg['covariance']['log10_k_min'],
     cfg['covariance']['log10_k_max'],
@@ -477,11 +484,11 @@ zgrid_str = (
 
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
-# TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
 z_grid_tkka_SSC = z_grid_trisp
 z_grid_tkka_cNG = z_grid_trisp
 ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_tkka_SSC)[::-1]
 ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_tkka_cNG)[::-1]
+# ccl_obj.a_grid_tkka_cNG = a_grid_trisp
 ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
 ccl_obj.logn_k_grid_tkka_cNG = np.log(k_grid)
 

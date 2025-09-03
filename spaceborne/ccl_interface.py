@@ -658,8 +658,8 @@ class PycclClass:
 
         self.halo_profile_dict = {'L': self.halo_profile_dm, 'G': self.halo_profile_hod}
 
+        # see https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
         self.prof_2pt_dict = {
-            # see https://github.com/LSSTDESC/CCLX/blob/master/Halo-model-Pk.ipynb
             ('L', 'L'): ccl.halos.Profile2pt(),
             ('G', 'L'): ccl.halos.Profile2pt(),
             ('L', 'G'): ccl.halos.Profile2pt(),
@@ -754,8 +754,8 @@ class PycclClass:
                 integration_method=integration_method,
             )
 
-            # * fill the symmetric counterparts of the required blocks
-            # * (excluding diagonal blocks)
+        # * fill the symmetric counterparts of the required blocks
+        # * (excluding diagonal blocks)
         for probe_str in symm_probe_combs:
             probe_a, probe_b, probe_c, probe_d = probe_str
             key_orig = (probe_a, probe_b, probe_c, probe_d)
@@ -764,7 +764,7 @@ class PycclClass:
 
             cov_ng_3x2pt_dict_8D[key_orig] = (
                 cov_ng_3x2pt_dict_8D[key_symm].transpose(1, 0, 3, 2)
-            ).copy
+            ).copy()
 
         # * if block is not required, set it to 0
         for probe_str in nonreq_probe_combs:

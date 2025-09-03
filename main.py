@@ -1479,17 +1479,17 @@ cov_dict = cov_obj.cov_dict
 
 
 # ! ============================ plot & tests ==========================================
-with np.errstate(invalid='ignore', divide='ignore'):
-    for cov_name, cov in cov_dict.items():
-        fig, ax = plt.subplots(1, 2, figsize=(10, 6))
-        ax[0].matshow(np.log10(cov))
-        ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
+# with np.errstate(invalid='ignore', divide='ignore'):
+#     for cov_name, cov in cov_dict.items():
+#         fig, ax = plt.subplots(1, 2, figsize=(10, 6))
+#         ax[0].matshow(np.log10(cov))
+#         ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
 
-        plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
-        plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
-        ax[0].set_title('log10 cov')
-        ax[1].set_title('corr')
-        fig.suptitle(f'{cov_name.replace("cov_", "")}', y=0.9)
+#         plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
+#         plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
+#         ax[0].set_title('log10 cov')
+#         ax[1].set_title('corr')
+#         fig.suptitle(f'{cov_name.replace("cov_", "")}', y=0.9)
 
 for key, cov in cov_dict.items():
     probe = key.split('_')[1]
@@ -1788,5 +1788,25 @@ if cfg['misc']['save_figs']:
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
+
+gl_start = zpairs_auto * ell_obj.nbl_3x2pt
+gl_stop = (zpairs_auto + zpairs_cross) * ell_obj.nbl_3x2pt
+
+# cov = cov_obj.cov_3x2pt_cng_2D[gl_start:gl_stop, gl_start:gl_stop]
+cov = cov_obj.cov_3x2pt_cng_2D
+perc_diff = sl.percent_diff(cov, cov.T)
+sl.matshow(np.where(np.abs(perc_diff) > .01, np.abs(perc_diff), np.nan), log=False)
+# perc_diff = cov/cov.T-1
+sl.matshow(np.where(np.abs(perc_diff) == 0, np.nan, np.abs(perc_diff)), log=True)
+
+sl.compare_arrays(
+    cov,
+    cov.T,
+    early_return=False,
+    plot_diff_hist=True,
+    log_diff=True,
+    plot_diff_perc_threshold=None,
+    abs_val=True,
+)
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')

@@ -1926,7 +1926,7 @@ for probe in const.RS_PROBE_NAME_TO_IX_DICT:
     )
 
 
-cov_oc_list_2d = cov_real_space.stack_probe_blocks(cov_oc_dict_2d)
+cov_oc_list_2d = cov_real_space.stack_probe_blocks_deprecated(cov_oc_dict_2d)
 
 # ! read OC files: mat
 cov_oc_mat_2d = np.genfromtxt(
@@ -1993,7 +1993,7 @@ cov_oc_2d_dict = {
     'ximxim': cov_oc_2d[lim_3:lim_4, lim_3:lim_4],
 }
 
-cov_oc_2d = cov_real_space.stack_probe_blocks(cov_oc_2d_dict)
+cov_oc_2d = cov_real_space.stack_probe_blocks_deprecated(cov_oc_2d_dict)
 
 
 sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)

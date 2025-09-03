@@ -606,6 +606,7 @@ ell_obj._validate_bins()
 pvt_cfg['nbl_3x2pt'] = ell_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
 
+
 # ! ===================================== Mask =========================================
 mask_obj = mask_utils.Mask(cfg['mask'])
 mask_obj.process()
@@ -679,6 +680,7 @@ ccl_obj.set_nz(
 ccl_obj.check_nz_tuple(zbins)
 
 wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
+
 
 # ! ========================================= IA =======================================
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
@@ -767,6 +769,7 @@ z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 #     'z_means_ll_bnt should be monotonically increasing '
 #     '(not a strict condition, valid only if we do not shift the n(z) in this part)'
 # )
+
 
 # ! ===================================== \ell cuts ====================================
 # TODO need to adapt this to the class structure
@@ -1607,41 +1610,72 @@ np.savez_compressed(f'{output_path}/covs_2D.npz', **cov_dict_tosave_2d)
 # ! i.e. there is no cov_3x2pt_{term}_6d
 if cfg['covariance']['save_full_cov']:
     cov_dict_tosave_6d = {}
+    
     for _probe in _probes:
-        probe_a, probe_b, probe_c, probe_d = tuple(_probe)
-        probe_ixs = (
-            const.HS_PROBE_NAME_TO_IX_DICT[probe_a],
-            const.HS_PROBE_NAME_TO_IX_DICT[probe_b],
-            const.HS_PROBE_NAME_TO_IX_DICT[probe_c],
-            const.HS_PROBE_NAME_TO_IX_DICT[probe_d],
-        )
+        if cfg['probe_selection']['space'] == 'harmonic_space':
+            probe_a, probe_b, probe_c, probe_d = tuple(_probe)
+            probe_ixs = (
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_a],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_b],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_c],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_d],
+            )
+            if cfg['covariance']['G']:
+                cov_dict_tosave_6d[f'{_probe}_Gauss'] = _cov_obj.cov_3x2pt_g_10d[
+                    *probe_ixs, ...
+                ]
+            if cfg['covariance']['SSC']:
+                cov_dict_tosave_6d[f'{_probe}_SSC'] = _cov_obj.cov_3x2pt_ssc_10d[
+                    *probe_ixs, ...
+                ]
+            if cfg['covariance']['cNG']:
+                cov_dict_tosave_6d[f'{_probe}_cNG'] = _cov_obj.cov_3x2pt_cng_10d[
+                    *probe_ixs, ...
+                ]
+            if cfg['covariance']['split_gaussian_cov']:
+                cov_dict_tosave_6d[f'{_probe}_SVA'] = _cov_obj.cov_3x2pt_sva_10d[
+                    *probe_ixs, ...
+                ]
+                cov_dict_tosave_6d[f'{_probe}_SN'] = _cov_obj.cov_3x2pt_sn_10d[
+                    *probe_ixs, ...
+                ]
+                cov_dict_tosave_6d[f'{_probe}_MIX'] = _cov_obj.cov_3x2pt_mix_10d[
+                    *probe_ixs, ...
+                ]
+            if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
+                cov_dict_tosave_6d[f'{_probe}_TOT'] = _cov_obj.cov_3x2pt_tot_10d[
+                    *probe_ixs, ...
+                ]
 
-        if cfg['covariance']['G']:
-            cov_dict_tosave_6d[f'{_probe}_Gauss'] = _cov_obj.cov_3x2pt_g_10d[
-                *probe_ixs, ...
-            ]
-        if cfg['covariance']['SSC']:
-            cov_dict_tosave_6d[f'{_probe}_SSC'] = _cov_obj.cov_3x2pt_ssc_10d[
-                *probe_ixs, ...
-            ]
-        if cfg['covariance']['cNG']:
-            cov_dict_tosave_6d[f'{_probe}_cNG'] = _cov_obj.cov_3x2pt_cng_10d[
-                *probe_ixs, ...
-            ]
-        if cfg['covariance']['split_gaussian_cov']:
-            cov_dict_tosave_6d[f'{_probe}_SVA'] = _cov_obj.cov_3x2pt_sva_10d[
-                *probe_ixs, ...
-            ]
-            cov_dict_tosave_6d[f'{_probe}_SN'] = _cov_obj.cov_3x2pt_sn_10d[
-                *probe_ixs, ...
-            ]
-            cov_dict_tosave_6d[f'{_probe}_MIX'] = _cov_obj.cov_3x2pt_mix_10d[
-                *probe_ixs, ...
-            ]
-        if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
-            cov_dict_tosave_6d[f'{_probe}_TOT'] = _cov_obj.cov_3x2pt_tot_10d[
-                *probe_ixs, ...
-            ]
+        # This case is a bit different, no cov_3x2pt_10d is ever created, but I have
+        # individual attributes for the 6d covs for each probe
+        elif cfg['probe_selection']['space'] == 'real_space':
+            if cfg['covariance']['G']:
+                cov_dict_tosave_6d[f'{_probe}_Gauss'] = getattr(
+                    _cov_obj, f'cov_{probe}_g_6d'
+                )
+            if cfg['covariance']['SSC']:
+                cov_dict_tosave_6d[f'{_probe}_SSC'] = getattr(
+                    _cov_obj, f'cov_{probe}_ssc_6d'
+                )
+            if cfg['covariance']['cNG']:
+                cov_dict_tosave_6d[f'{_probe}_cNG'] = getattr(
+                    _cov_obj, f'cov_{probe}_cng_6d'
+                )
+            if cfg['covariance']['split_gaussian_cov']:
+                cov_dict_tosave_6d[f'{_probe}_SVA'] = getattr(
+                    _cov_obj, f'cov_{probe}_sva_6d'
+                )
+                cov_dict_tosave_6d[f'{_probe}_SN'] = getattr(
+                    _cov_obj, f'cov_{probe}_sn_6d'
+                )
+                cov_dict_tosave_6d[f'{_probe}_MIX'] = getattr(
+                    _cov_obj, f'cov_{probe}_mix_6d'
+                )
+            if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
+                cov_dict_tosave_6d[f'{_probe}_TOT'] = getattr(
+                    _cov_obj, f'cov_{probe}_tot_6d'
+                )
 
     np.savez_compressed(f'{output_path}/covs_6D.npz', **cov_dict_tosave_6d)
 
@@ -1659,8 +1693,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
             ax[0].set_title('log10 cov')
             ax[1].set_title('corr')
-            fig.suptitle(f'{cov_name.replace("cov_", "cov")}', y=0.9)
-
+            fig.suptitle(f'cov {cov_name}', y=0.9)
 
 
 # save cfg file
@@ -1894,7 +1927,7 @@ for probe in const.RS_PROBE_NAME_TO_IX_DICT:
     #     else term
     # )
 
-    twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
+    twoprobe_ab_str, twoprobe_cd_str = sl.split_probe_name(probe)
     twoprobe_ab_ix, twoprobe_cd_ix = (
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_ab_str],
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_cd_str],

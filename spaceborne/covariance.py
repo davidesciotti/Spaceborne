@@ -9,18 +9,6 @@ from spaceborne import bnt as bnt_utils
 from spaceborne import sb_lib as sl
 
 
-def build_cov_dict(cov_obj: object):
-    # Automatically store attributes containing "2D" in cov_dict
-    cov_dict = {}
-    for attr_name in dir(cov_obj):
-        if attr_name.endswith('_2D') and not attr_name.startswith('__'):
-            attr_value = getattr(cov_obj, attr_name)
-            cov_dict[attr_name] = attr_value
-
-    # order the keys and return
-    return dict(sorted(cov_dict.items()))
-
-
 class SpaceborneCovariance:
     def __init__(self, cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix):
         self.cfg = cfg
@@ -59,7 +47,7 @@ class SpaceborneCovariance:
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
         self.use_nmt = self.cfg['namaster']['use_namaster']
         self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
-        self.do_real_space = self.cfg['covariance']['space'] == 'real_space'
+        self.do_real_space = self.cfg['probe_selection']['space'] == 'real_space'
         # other useful objects
         self.nmt_obj = nmt_obj
 
@@ -345,7 +333,7 @@ class SpaceborneCovariance:
         split_gaussian_cov : bool
             Whether to split (hence to reshape) the SVA/SN/MIX parts of the G cov
         """
-        self.cov_3x2pt_g_2D = self.reshape_cov(
+        self.cov_3x2pt_g_2d = self.reshape_cov(
             cov_in=self.cov_3x2pt_g_10D,
             ndim_in=10,
             ndim_out=2,
@@ -355,7 +343,7 @@ class SpaceborneCovariance:
             is_3x2pt=True,
         )
         if split_gaussian_cov:
-            self.cov_3x2pt_sva_2D = self.reshape_cov(
+            self.cov_3x2pt_sva_2d = self.reshape_cov(
                 cov_in=self.cov_3x2pt_sva_10D,
                 ndim_in=10,
                 ndim_out=2,
@@ -364,7 +352,7 @@ class SpaceborneCovariance:
                 ind_probe=self.ind,
                 is_3x2pt=True,
             )
-            self.cov_3x2pt_sn_2D = self.reshape_cov(
+            self.cov_3x2pt_sn_2d = self.reshape_cov(
                 cov_in=self.cov_3x2pt_sn_10D,
                 ndim_in=10,
                 ndim_out=2,
@@ -373,7 +361,7 @@ class SpaceborneCovariance:
                 ind_probe=self.ind,
                 is_3x2pt=True,
             )
-            self.cov_3x2pt_mix_2D = self.reshape_cov(
+            self.cov_3x2pt_mix_2d = self.reshape_cov(
                 cov_in=self.cov_3x2pt_mix_10D,
                 ndim_in=10,
                 ndim_out=2,
@@ -449,70 +437,70 @@ class SpaceborneCovariance:
         """Helper function to slice the 3x2pt covariance into WL, GC and XC.
         Note that I am not touching the ell bins here, not even just to exclude
         a subset of them
-        (e.g. cov_WL_g_6D = cov_3x2pt_g_10D[llll_ixs, :nbl_WL, :nbl_WL, ...])"""
+        (e.g. cov_WL_g_6d = cov_3x2pt_g_10D[llll_ixs, :nbl_WL, :nbl_WL, ...])"""
 
-        self.cov_WL_g_6D = deepcopy(self.cov_3x2pt_g_10D[*self.llll_ixs])
-        self.cov_WL_ssc_6D = deepcopy(self.cov_3x2pt_ssc_10D[*self.llll_ixs])
-        self.cov_WL_cng_6D = deepcopy(self.cov_3x2pt_cng_10D[*self.llll_ixs])
+        self.cov_WL_g_6d = deepcopy(self.cov_3x2pt_g_10D[*self.llll_ixs])
+        self.cov_WL_ssc_6d = deepcopy(self.cov_3x2pt_ssc_10D[*self.llll_ixs])
+        self.cov_WL_cng_6d = deepcopy(self.cov_3x2pt_cng_10D[*self.llll_ixs])
 
-        self.cov_GC_g_6D = deepcopy(self.cov_3x2pt_g_10D[*self.gggg_ixs])
-        self.cov_GC_ssc_6D = deepcopy(self.cov_3x2pt_ssc_10D[*self.gggg_ixs])
-        self.cov_GC_cng_6D = deepcopy(self.cov_3x2pt_cng_10D[*self.gggg_ixs])
+        self.cov_GC_g_6d = deepcopy(self.cov_3x2pt_g_10D[*self.gggg_ixs])
+        self.cov_GC_ssc_6d = deepcopy(self.cov_3x2pt_ssc_10D[*self.gggg_ixs])
+        self.cov_GC_cng_6d = deepcopy(self.cov_3x2pt_cng_10D[*self.gggg_ixs])
 
-        self.cov_XC_g_6D = deepcopy(self.cov_3x2pt_g_10D[*self.glgl_ixs])
-        self.cov_XC_ssc_6D = deepcopy(self.cov_3x2pt_ssc_10D[*self.glgl_ixs])
-        self.cov_XC_cng_6D = deepcopy(self.cov_3x2pt_cng_10D[*self.glgl_ixs])
+        self.cov_XC_g_6d = deepcopy(self.cov_3x2pt_g_10D[*self.glgl_ixs])
+        self.cov_XC_ssc_6d = deepcopy(self.cov_3x2pt_ssc_10D[*self.glgl_ixs])
+        self.cov_XC_cng_6d = deepcopy(self.cov_3x2pt_cng_10D[*self.glgl_ixs])
 
         if split_gaussian_cov:
-            self.cov_WL_sva_6D = deepcopy(self.cov_3x2pt_sva_10D[*self.llll_ixs])
-            self.cov_WL_sn_6D = deepcopy(self.cov_3x2pt_sn_10D[*self.llll_ixs])
-            self.cov_WL_mix_6D = deepcopy(self.cov_3x2pt_mix_10D[*self.llll_ixs])
+            self.cov_WL_sva_6d = deepcopy(self.cov_3x2pt_sva_10D[*self.llll_ixs])
+            self.cov_WL_sn_6d = deepcopy(self.cov_3x2pt_sn_10D[*self.llll_ixs])
+            self.cov_WL_mix_6d = deepcopy(self.cov_3x2pt_mix_10D[*self.llll_ixs])
 
-            self.cov_GC_sva_6D = deepcopy(self.cov_3x2pt_sva_10D[*self.gggg_ixs])
-            self.cov_GC_sn_6D = deepcopy(self.cov_3x2pt_sn_10D[*self.gggg_ixs])
-            self.cov_GC_mix_6D = deepcopy(self.cov_3x2pt_mix_10D[*self.gggg_ixs])
+            self.cov_GC_sva_6d = deepcopy(self.cov_3x2pt_sva_10D[*self.gggg_ixs])
+            self.cov_GC_sn_6d = deepcopy(self.cov_3x2pt_sn_10D[*self.gggg_ixs])
+            self.cov_GC_mix_6d = deepcopy(self.cov_3x2pt_mix_10D[*self.gggg_ixs])
 
-            self.cov_XC_sva_6D = deepcopy(self.cov_3x2pt_sva_10D[*self.glgl_ixs])
-            self.cov_XC_sn_6D = deepcopy(self.cov_3x2pt_sn_10D[*self.glgl_ixs])
-            self.cov_XC_mix_6D = deepcopy(self.cov_3x2pt_mix_10D[*self.glgl_ixs])
+            self.cov_XC_sva_6d = deepcopy(self.cov_3x2pt_sva_10D[*self.glgl_ixs])
+            self.cov_XC_sn_6d = deepcopy(self.cov_3x2pt_sn_10D[*self.glgl_ixs])
+            self.cov_XC_mix_6d = deepcopy(self.cov_3x2pt_mix_10D[*self.glgl_ixs])
 
     def _all_covs_10d_or_6d_to_2d(self, split_gaussian_cov):
         """reshapes all covs (g, sva, sn, mix, ssc, cng) for all probes to 2D"""
         reshape_args = [ 
             # WL
-            ('cov_WL_g_2D', self.cov_WL_g_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-            ('cov_WL_ssc_2D', self.cov_WL_ssc_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-            ('cov_WL_cng_2D', self.cov_WL_cng_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            ('cov_WL_g_2d', self.cov_WL_g_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            ('cov_WL_ssc_2d', self.cov_WL_ssc_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+            ('cov_WL_cng_2d', self.cov_WL_cng_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
             
             # GC
-            ('cov_GC_g_2D', self.cov_GC_g_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-            ('cov_GC_ssc_2D', self.cov_GC_ssc_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-            ('cov_GC_cng_2D', self.cov_GC_cng_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            ('cov_GC_g_2d', self.cov_GC_g_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            ('cov_GC_ssc_2d', self.cov_GC_ssc_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+            ('cov_GC_cng_2d', self.cov_GC_cng_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
             
             # XC
-            ('cov_XC_g_2D', self.cov_XC_g_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-            ('cov_XC_ssc_2D', self.cov_XC_ssc_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-            ('cov_XC_cng_2D', self.cov_XC_cng_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+            ('cov_XC_g_2d', self.cov_XC_g_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+            ('cov_XC_ssc_2d', self.cov_XC_ssc_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+            ('cov_XC_cng_2d', self.cov_XC_cng_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
             
             # 3x2pt
-            ('cov_3x2pt_g_2D', self.cov_3x2pt_g_10D, 10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True),
-            ('cov_3x2pt_ssc_2D', self.cov_3x2pt_ssc_10D,10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True),
-            ('cov_3x2pt_cng_2D', self.cov_3x2pt_cng_10D,10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True)
+            ('cov_3x2pt_g_2d', self.cov_3x2pt_g_10D, 10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True),
+            ('cov_3x2pt_ssc_2d', self.cov_3x2pt_ssc_10D,10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True),
+            ('cov_3x2pt_cng_2d', self.cov_3x2pt_cng_10D,10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True)
         ]  # fmt: skip
 
         if split_gaussian_cov:
             reshape_args.extend([
-                ('cov_WL_sva_2D', self.cov_WL_sva_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-                ('cov_WL_sn_2D', self.cov_WL_sn_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-                ('cov_WL_mix_2D', self.cov_WL_mix_6D, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+                ('cov_WL_sva_2d', self.cov_WL_sva_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+                ('cov_WL_sn_2d', self.cov_WL_sn_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
+                ('cov_WL_mix_2d', self.cov_WL_mix_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
                 
-                ('cov_GC_sva_2D', self.cov_GC_sva_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-                ('cov_GC_sn_2D', self.cov_GC_sn_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-                ('cov_GC_mix_2D', self.cov_GC_mix_6D, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+                ('cov_GC_sva_2d', self.cov_GC_sva_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+                ('cov_GC_sn_2d', self.cov_GC_sn_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
+                ('cov_GC_mix_2d', self.cov_GC_mix_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
                 
-                ('cov_XC_sva_2D', self.cov_XC_sva_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-                ('cov_XC_sn_2D', self.cov_XC_sn_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-                ('cov_XC_mix_2D', self.cov_XC_mix_6D, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+                ('cov_XC_sva_2d', self.cov_XC_sva_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+                ('cov_XC_sn_2d', self.cov_XC_sn_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
+                ('cov_XC_mix_2d', self.cov_XC_mix_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
             ]
             )  # fmt: skip
 
@@ -541,43 +529,43 @@ class SpaceborneCovariance:
             raise NotImplementedError('Ell cuts not implemented for the moment')
 
             print('Performing ell cuts on the 2d covariance matrix...')
-            self.cov_WL_g_2D = sl.remove_rows_cols_array2D(
-                self.cov_WL_g_2D, self.ell_dict['idxs_to_delete_dict']['LL']
+            self.cov_WL_g_2d = sl.remove_rows_cols_array2D(
+                self.cov_WL_g_2d, self.ell_dict['idxs_to_delete_dict']['LL']
             )
-            self.cov_GC_g_2D = sl.remove_rows_cols_array2D(
-                self.cov_GC_g_2D, self.ell_dict['idxs_to_delete_dict']['GG']
+            self.cov_GC_g_2d = sl.remove_rows_cols_array2D(
+                self.cov_GC_g_2d, self.ell_dict['idxs_to_delete_dict']['GG']
             )
-            self.cov_XC_g_2D = sl.remove_rows_cols_array2D(
-                self.cov_XC_g_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
+            self.cov_XC_g_2d = sl.remove_rows_cols_array2D(
+                self.cov_XC_g_2d, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
             )
-            self.cov_3x2pt_g_2D = sl.remove_rows_cols_array2D(
-                self.cov_3x2pt_g_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
-            )
-
-            self.cov_WL_ssc_2D = sl.remove_rows_cols_array2D(
-                self.cov_WL_ssc_2D, self.ell_dict['idxs_to_delete_dict']['LL']
-            )
-            self.cov_GC_ssc_2D = sl.remove_rows_cols_array2D(
-                self.cov_GC_ssc_2D, self.ell_dict['idxs_to_delete_dict']['GG']
-            )
-            self.cov_XC_ssc_2D = sl.remove_rows_cols_array2D(
-                self.cov_XC_ssc_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
-            )
-            self.cov_3x2pt_ssc_2D = sl.remove_rows_cols_array2D(
-                self.cov_3x2pt_ssc_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
+            self.cov_3x2pt_g_2d = sl.remove_rows_cols_array2D(
+                self.cov_3x2pt_g_2d, self.ell_dict['idxs_to_delete_dict']['3x2pt']
             )
 
-            self.cov_WL_cng_2D = sl.remove_rows_cols_array2D(
-                self.cov_WL_cng_2D, self.ell_dict['idxs_to_delete_dict']['LL']
+            self.cov_WL_ssc_2d = sl.remove_rows_cols_array2D(
+                self.cov_WL_ssc_2d, self.ell_dict['idxs_to_delete_dict']['LL']
             )
-            self.cov_GC_cng_2D = sl.remove_rows_cols_array2D(
-                self.cov_GC_cng_2D, self.ell_dict['idxs_to_delete_dict']['GG']
+            self.cov_GC_ssc_2d = sl.remove_rows_cols_array2D(
+                self.cov_GC_ssc_2d, self.ell_dict['idxs_to_delete_dict']['GG']
             )
-            self.cov_XC_cng_2D = sl.remove_rows_cols_array2D(
-                self.cov_XC_cng_2D, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
+            self.cov_XC_ssc_2d = sl.remove_rows_cols_array2D(
+                self.cov_XC_ssc_2d, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
             )
-            self.cov_3x2pt_cng_2D = sl.remove_rows_cols_array2D(
-                self.cov_3x2pt_cng_2D, self.ell_dict['idxs_to_delete_dict']['3x2pt']
+            self.cov_3x2pt_ssc_2d = sl.remove_rows_cols_array2D(
+                self.cov_3x2pt_ssc_2d, self.ell_dict['idxs_to_delete_dict']['3x2pt']
+            )
+
+            self.cov_WL_cng_2d = sl.remove_rows_cols_array2D(
+                self.cov_WL_cng_2d, self.ell_dict['idxs_to_delete_dict']['LL']
+            )
+            self.cov_GC_cng_2d = sl.remove_rows_cols_array2D(
+                self.cov_GC_cng_2d, self.ell_dict['idxs_to_delete_dict']['GG']
+            )
+            self.cov_XC_cng_2d = sl.remove_rows_cols_array2D(
+                self.cov_XC_cng_2d, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
+            )
+            self.cov_3x2pt_cng_2d = sl.remove_rows_cols_array2D(
+                self.cov_3x2pt_cng_2d, self.ell_dict['idxs_to_delete_dict']['3x2pt']
             )
 
     def build_covs(self, ccl_obj: object, oc_obj: object, split_gaussian_cov: bool):
@@ -599,9 +587,9 @@ class SpaceborneCovariance:
         -------
         dict
             Dictionary containing the computed covariance matrices with keys:
-            - cov_{probe}_g_2D: Gaussian-only covariance
-            - cov_{probe}_ng_2D: ng-only covariance (SSC, cNG or the sum of the two)
-            - cov_{probe}_tot_2D: g + ng covariance
+            - cov_{probe}_g_2d: Gaussian-only covariance
+            - cov_{probe}_ng_2d: ng-only covariance (SSC, cNG or the sum of the two)
+            - cov_{probe}_tot_2d: g + ng covariance
             where {probe} can be: WL (weak lensing), GC (galaxy clustering),
             3x2pt (WL + XC + GC), XC (cross-correlation)
         """
@@ -611,8 +599,8 @@ class SpaceborneCovariance:
                 'OneCovariance g term not yet implemented: split terms '
                 'and probe-specific ell binning missing'
             )
-            self.cov_WL_g_6D = oc_obj.cov_g_oc_3x2pt_10D[0, 0, 0, 0]
-            self.cov_GC_g_6D = oc_obj.cov_g_oc_3x2pt_10D[1, 1, 1, 1]
+            self.cov_WL_g_6d = oc_obj.cov_g_oc_3x2pt_10D[0, 0, 0, 0]
+            self.cov_GC_g_6d = oc_obj.cov_g_oc_3x2pt_10D[1, 1, 1, 1]
             self.cov_3x2pt_g_10D = oc_obj.cov_g_oc_3x2pt_10D
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
@@ -644,11 +632,11 @@ class SpaceborneCovariance:
         self._cov_2d_ell_cuts(split_gaussian_cov)
 
         # ! sum different terms to get total cov
-        self.cov_WL_tot_2D = self.cov_WL_g_2D + self.cov_WL_ssc_2D + self.cov_WL_cng_2D
-        self.cov_GC_tot_2D = self.cov_GC_g_2D + self.cov_GC_ssc_2D + self.cov_GC_cng_2D
-        self.cov_XC_tot_2D = self.cov_XC_g_2D + self.cov_XC_ssc_2D + self.cov_XC_cng_2D
-        self.cov_3x2pt_tot_2D = (
-            self.cov_3x2pt_g_2D + self.cov_3x2pt_ssc_2D + self.cov_3x2pt_cng_2D
+        self.cov_WL_tot_2d = self.cov_WL_g_2d + self.cov_WL_ssc_2d + self.cov_WL_cng_2d
+        self.cov_GC_tot_2d = self.cov_GC_g_2d + self.cov_GC_ssc_2d + self.cov_GC_cng_2d
+        self.cov_XC_tot_2d = self.cov_XC_g_2d + self.cov_XC_ssc_2d + self.cov_XC_cng_2d
+        self.cov_3x2pt_tot_2d = (
+            self.cov_3x2pt_g_2d + self.cov_3x2pt_ssc_2d + self.cov_3x2pt_cng_2d
         )
 
         print('Covariance matrices computed')
@@ -715,23 +703,23 @@ class SpaceborneCovariance:
         mcm_3x2pt_arr[0, 1] = self.nmt_cov_obj.mcm_et_binned
         mcm_3x2pt_arr[1, 1] = self.nmt_cov_obj.mcm_tt_binned
 
-        # cov_WL_ssc_6D = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[0, 0], cov_WL_ssc_6D, mcm_3x2pt_arr[0, 0].T
+        # cov_WL_ssc_6d = cov_partial_sky.couple_cov_6d(
+        #     mcm_3x2pt_arr[0, 0], cov_WL_ssc_6d, mcm_3x2pt_arr[0, 0].T
         # )
-        # cov_WL_cng_6D = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[0, 0], cov_WL_cng_6D, mcm_3x2pt_arr[0, 0].T
+        # cov_WL_cng_6d = cov_partial_sky.couple_cov_6d(
+        #     mcm_3x2pt_arr[0, 0], cov_WL_cng_6d, mcm_3x2pt_arr[0, 0].T
         # )
-        # cov_GC_ssc_6D = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[1, 1], cov_GC_ssc_6D, mcm_3x2pt_arr[1, 1].T
+        # cov_GC_ssc_6d = cov_partial_sky.couple_cov_6d(
+        #     mcm_3x2pt_arr[1, 1], cov_GC_ssc_6d, mcm_3x2pt_arr[1, 1].T
         # )
-        # cov_GC_cng_6D = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[1, 1], cov_GC_cng_6D, mcm_3x2pt_arr[1, 1].T
+        # cov_GC_cng_6d = cov_partial_sky.couple_cov_6d(
+        #     mcm_3x2pt_arr[1, 1], cov_GC_cng_6d, mcm_3x2pt_arr[1, 1].T
         # )
-        # cov_XC_ssc_6D = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[1, 0], cov_XC_ssc_6D, mcm_3x2pt_arr[1, 0].T
+        # cov_XC_ssc_6d = cov_partial_sky.couple_cov_6d(
+        #     mcm_3x2pt_arr[1, 0], cov_XC_ssc_6d, mcm_3x2pt_arr[1, 0].T
         # )
-        # cov_XC_cng_6D = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[1, 0], cov_XC_cng_6D, mcm_3x2pt_arr[1, 0].T
+        # cov_XC_cng_6d = cov_partial_sky.couple_cov_6d(
+        #     mcm_3x2pt_arr[1, 0], cov_XC_cng_6d, mcm_3x2pt_arr[1, 0].T
         # )
 
         for a, b, c, d in itertools.product(range(2), repeat=4):

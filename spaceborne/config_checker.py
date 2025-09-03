@@ -109,7 +109,10 @@ class SpaceborneConfigChecker:
 
         # probe selection
         for par, val in self.cfg['probe_selection'].items():
-            assert isinstance(val, bool), f'Parameter {par} must be a bool'
+            if par != 'space':
+                assert isinstance(val, bool), f'Parameter {par} must be a bool'
+            else:
+                assert isinstance(val, str), f'Parameter {par} must be a str'
 
         # C_ell
         assert isinstance(self.cfg.get('C_ell'), dict), (
@@ -380,9 +383,6 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('cNG'), bool), 'covariance: cNG must be a boolean'
         assert isinstance(cov_cfg.get('coupled_cov'), bool), (
             'covariance: coupled_cov must be a boolean'
-        )
-        assert isinstance(cov_cfg.get('space'), str), (
-            'covariance: space must be a str'
         )
         assert isinstance(cov_cfg.get('triu_tril'), str), (
             'covariance: triu_tril must be a string'
@@ -660,42 +660,41 @@ class SpaceborneConfigChecker:
         ), 'Only one of `use_namaster` and `compute_sample_cov` can be True — not both.'
 
     def check_probe_selection(self) -> None:
-        for key, val in self.cfg['probe_selection'].items():
-            allowed_keys = ['LL', 'GL', 'GG', 'xip', 'xim', 'gamma_t', 'w', 'cross_cov']
+        
+        allowed_keys = ['space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gamma_t', 
+                        'w', 'cross_cov']
+        
+        for key in self.cfg['probe_selection']:
+            
             assert key in allowed_keys, (
                 f'Probe selection key {key} is not valid. '
-                'Valid keys are "LL" for lensing, '
-                '"GL" (and not LG) for galaxy-galaxy lensing, '
-                '"GG" for photometric galaxy clustering, '
-                'and "cross_cov" for cross-covariance.'
             )
-            assert isinstance(val, bool), (
-                f'Value for {key} must be a boolean, got {type(val)}'
+            
+            
+        if self.cfg['probe_selection']['space'] == 'real_space':
+            assert (
+                self.cfg['probe_selection']['xip']
+                + self.cfg['probe_selection']['xim']
+                + self.cfg['probe_selection']['gamma_t']
+                + self.cfg['probe_selection']['w']
+            ) > 0, (
+                'At least one of xip or xim must be selected for '
+                'real space covariance'
             )
-            if self.cfg['covariance']['space'] == 'real_space':
-                assert (
-                    self.cfg['probe_selection']['xip']
-                    + self.cfg['probe_selection']['xim']
-                    + self.cfg['probe_selection']['gamma_t']
-                    + self.cfg['probe_selection']['w']
-                ) > 0, (
-                    'At least one of xip or xim must be selected for '
-                    'real space covariance'
-                )
-            elif self.cfg['covariance']['space'] == 'harmonic_space':
-                assert (
-                    self.cfg['probe_selection']['LL']
-                    + self.cfg['probe_selection']['GL']
-                    + self.cfg['probe_selection']['GG']
-                ) > 0, (
-                    'At least one of LL, GL, or GG must be selected for '
-                    'harmonic space covariance'
-                )
-            else:
-                raise ValueError(
-                    'covariance["statistics"] must be either "real_space" or '
-                    f'"harmonic_space", got {self.cfg["covariance"]["statistics"]}'
-                )
+        elif self.cfg['probe_selection']['space'] == 'harmonic_space':
+            assert (
+                self.cfg['probe_selection']['LL']
+                + self.cfg['probe_selection']['GL']
+                + self.cfg['probe_selection']['GG']
+            ) > 0, (
+                'At least one of LL, GL, or GG must be selected for '
+                'harmonic space covariance'
+            )
+        else:
+            raise ValueError(
+                'probe_selection: "space" must be either "real_space" or '
+                f'"harmonic_space", got {self.cfg["probe_selection"]["space"]}'
+            )
 
     def check_nmt(self) -> None:
         if self.cfg['covariance']['coupled_cov'] and self.cfg['covariance']['G']:

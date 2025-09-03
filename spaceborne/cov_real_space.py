@@ -1363,7 +1363,7 @@ class CovRealSpace:
             # ! no delta_ell!!
             delta_ell = np.ones_like(self.ells + 1)
 
-            cov_sva_sb_hs_10D, cov_sn_sb_hs_10D, cov_mix_sb_hs_10D = (
+            cov_sva_sb_hs_10d, _cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = (
                 sl.covariance_einsum(
                     self.cl_3x2pt_5d,
                     noise_5d,
@@ -1377,8 +1377,8 @@ class CovRealSpace:
 
             # sum sva and mix in harmonic space ("svapmix" = "sva plus mix")
             cov_svapmix_hs_6d = (
-                cov_sva_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-                + cov_mix_sb_hs_10D[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+                cov_sva_sb_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
+                + cov_mix_sb_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
             )
 
             self.cov_svapmix_rs_6d = levin_integrate_bessel_double_wrapper(
@@ -1416,25 +1416,25 @@ class CovRealSpace:
         # get OC SSC in ell space
         # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
         # (
-        #     cov_sva_oc_3x2pt_10D,
-        #     cov_mix_oc_3x2pt_10D,
-        #     cov_sn_oc_3x2pt_10D,
-        #     cov_g_oc_3x2pt_10D,
-        #     cov_ssc_oc_3x2pt_10D,
+        #     cov_sva_oc_3x2pt_10d,
+        #     cov_mix_oc_3x2pt_10d,
+        #     cov_sn_oc_3x2pt_10d,
+        #     cov_g_oc_3x2pt_10d,
+        #     cov_ssc_oc_3x2pt_10d,
         # ) = covs_oc_hs
 
         # np.savez(
-        #     f'{covs_path}/covs_oc_10D.npz',
-        #     cov_sva_oc_3x2pt_10D=cov_sva_oc_3x2pt_10D,
-        #     cov_mix_oc_3x2pt_10D=cov_mix_oc_3x2pt_10D,
-        #     cov_sn_oc_3x2pt_10D=cov_sn_oc_3x2pt_10D,
-        #     cov_g_oc_3x2pt_10D=cov_g_oc_3x2pt_10D,
-        #     cov_ssc_oc_3x2pt_10D=cov_ssc_oc_3x2pt_10D,
+        #     f'{covs_path}/covs_oc_10d.npz',
+        #     cov_sva_oc_3x2pt_10d=cov_sva_oc_3x2pt_10d,
+        #     cov_mix_oc_3x2pt_10d=cov_mix_oc_3x2pt_10d,
+        #     cov_sn_oc_3x2pt_10d=cov_sn_oc_3x2pt_10d,
+        #     cov_g_oc_3x2pt_10d=cov_g_oc_3x2pt_10d,
+        #     cov_ssc_oc_3x2pt_10d=cov_ssc_oc_3x2pt_10d,
         # )
 
-        # covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10D.npz')
-        # cov_ssc_oc_3x2pt_10D = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10D']
-        # cov_cng_oc_3x2pt_10D = covs_oc_hs_npz['cov_ng_oc_3x2pt_10D']
+        # covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10d.npz')
+        # cov_ssc_oc_3x2pt_10d = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10d']
+        # cov_cng_oc_3x2pt_10d = covs_oc_hs_npz['cov_ng_oc_3x2pt_10d']
 
         elif term in ['ssc', 'cng']:
             # TODO this is yet to be checked
@@ -1446,7 +1446,7 @@ class CovRealSpace:
             if term == 'cng':
                 norm *= self.amax
 
-            cov_ng_hs_10d = getattr(cov_hs_obj, f'cov_3x2pt_{term}_10D')
+            cov_ng_hs_10d = getattr(cov_hs_obj, f'cov_3x2pt_{term}_10d')
 
             # project hs nf cov to real space using pylevin
             cov_ng_hs_6d = cov_ng_hs_10d[

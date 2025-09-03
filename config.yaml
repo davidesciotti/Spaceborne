@@ -51,9 +51,9 @@ halo_model:
   halo_profile_hod: HaloProfileHOD # Type: str.
 
 probe_selection:
-  LL: True # Type: str. Whether to compute the weak lensing ('LL') covariance
+  LL: False # Type: str. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: str. Whether to compute the galaxy-galaxy lensing ('GL') covariance
-  GG: True # Type: str. Whether to compute the photometric clustering ('GG') covariance
+  GG: False # Type: str. Whether to compute the photometric clustering ('GG') covariance
   cross_cov: True # Type: str. Whether to compute the cross-terms between the selected probes
 
 C_ell:
@@ -228,9 +228,9 @@ covariance:
   include_terasawa_terms: False # Type: bool
 
   # k grid used for power spectrum and trispectrum computation
-  log10_k_min: -5 # Type: float
+  log10_k_min: -4 # Type: float
   log10_k_max: 2 # Type: float
-  k_steps: 20 # Type: int. Around 100 should be enough
+  k_steps: 100 # Type: int. Around 100 should be enough
 
   z_min: 0.02 # Type: float
   z_max: 3.0 # Type: float
@@ -272,7 +272,7 @@ PyCCL:
   cov_integration_method: spline # Type: str
 
   # Whether or not to load the previously computed trispectrum.
-  load_cached_tkka: True # Type: bool.
+  load_cached_tkka: False # Type: bool.
 
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower

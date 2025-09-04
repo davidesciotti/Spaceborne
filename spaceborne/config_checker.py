@@ -671,7 +671,7 @@ class SpaceborneConfigChecker:
             )
             
             
-        if self.cfg['probe_selection']['space'] == 'real_space':
+        if self.cfg['probe_selection']['space'] == 'real':
             assert (
                 self.cfg['probe_selection']['xip']
                 + self.cfg['probe_selection']['xim']
@@ -681,7 +681,7 @@ class SpaceborneConfigChecker:
                 'At least one of xip or xim must be selected for '
                 'real space covariance'
             )
-        elif self.cfg['probe_selection']['space'] == 'harmonic_space':
+        elif self.cfg['probe_selection']['space'] == 'harmonic':
             assert (
                 self.cfg['probe_selection']['LL']
                 + self.cfg['probe_selection']['GL']
@@ -692,8 +692,8 @@ class SpaceborneConfigChecker:
             )
         else:
             raise ValueError(
-                'probe_selection: "space" must be either "real_space" or '
-                f'"harmonic_space", got {self.cfg["probe_selection"]["space"]}'
+                'probe_selection: "space" must be either "real" or '
+                f'"harmonic", got {self.cfg["probe_selection"]["space"]}'
             )
 
     def check_nmt(self) -> None:

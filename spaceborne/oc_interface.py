@@ -255,7 +255,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['observables'] = {}
         cfg_oc_ini['output settings'] = {}
         cfg_oc_ini['covELLspace settings'] = {}
-        cfg_oc_ini['covTHETAspace settings'] = {}  # For real_space case
+        cfg_oc_ini['covTHETAspace settings'] = {}  # For real space case
         cfg_oc_ini['survey specs'] = {}
         cfg_oc_ini['redshift'] = {}
         cfg_oc_ini['cosmo'] = {}
@@ -275,16 +275,16 @@ class OneCovarianceInterface:
         cfg_oc_ini['covariance terms']['ssc'] = str(self.compute_ssc)
 
         # ! [observables]
-        if self.obs_space == 'harmonic_space':
+        if self.obs_space == 'harmonic':
             est_shear = 'C_ell'
             est_ggl = 'C_ell'
             est_clust = 'C_ell'
-        elif self.obs_space == 'real_space':
+        elif self.obs_space == 'real':
             est_shear = 'xi_pm'
             est_ggl = 'gamma_t'
             est_clust = 'w'
         else:
-            raise ValueError('self.which_obs must he "harmonic_space" or "real_space"')
+            raise ValueError('self.which_obs must he "harmonic" or "real"')
 
         cfg_oc_ini['observables']['cosmic_shear'] = str(True)
         cfg_oc_ini['observables']['est_shear'] = est_shear
@@ -342,7 +342,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['ell_type_lensing'] = ell_binning_type
 
         # settings specific to both observables
-        if self.obs_space == 'harmonic_space':
+        if self.obs_space == 'harmonic':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.pvt_cfg['ell_min_3x2pt']
             )
@@ -372,7 +372,7 @@ class OneCovarianceInterface:
                 self.optimal_ellmax
             )
 
-        elif self.obs_space == 'real_space':
+        elif self.obs_space == 'real':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.cfg['precision']['ell_min_rs']
             )
@@ -458,7 +458,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['hod']['modsch_b_sat'] = ', '.join([str(-0.024), str(1.149)])
 
         # ! [covTHETAspace settings]
-        if self.obs_space == 'real_space':
+        if self.obs_space == 'real':
             cfg_oc_ini['covTHETAspace settings']['theta_min_clustering'] = str(
                 self.cfg['binning']['theta_min_arcmin']
             )
@@ -1102,6 +1102,7 @@ class OneCovarianceInterface:
                 zbins=self.zbins,
                 ind_dict=ind_dict,
                 probe_ordering=self.cfg['covariance']['probe_ordering'],
+                space=self.obs_space,
                 symmetrize_output_dict=symmetrize_output_dict,
             )
 

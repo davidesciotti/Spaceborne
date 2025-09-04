@@ -1053,7 +1053,7 @@ else:
 
 
 # ! =============== Init real space cov object, put here for simplicity for the moment ==============
-if cfg['probe_selection']['space'] == 'real_space':
+if cfg['probe_selection']['space'] == 'real':
     from spaceborne import cov_real_space
 
     # initialize cov_rs_obj and set a couple useful attributes
@@ -1201,7 +1201,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # compute covs
     oc_obj.call_oc_from_bash()
 
-    if cfg['probe_selection']['space'] == 'real_space':
+    if cfg['probe_selection']['space'] == 'real':
         # TODO double check this
         oc_output_covlist_fname = (
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
@@ -1548,7 +1548,7 @@ cov_hs_obj.build_covs(
 )
 
 
-if cfg['probe_selection']['space'] == 'real_space':
+if cfg['probe_selection']['space'] == 'real':
     print('Computing RS covariance...')
     start_rs = time.perf_counter()
 
@@ -1575,10 +1575,10 @@ if cfg['probe_selection']['space'] == 'real_space':
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
 
-if cfg['probe_selection']['space'] == 'harmonic_space':
+if cfg['probe_selection']['space'] == 'harmonic':
     _cov_obj = cov_hs_obj
     _probes = unique_probe_combs_hs
-elif cfg['probe_selection']['space'] == 'real_space':
+elif cfg['probe_selection']['space'] == 'real':
     _cov_obj = cov_rs_obj
     _probes = unique_probe_combs_rs
 else:
@@ -1610,9 +1610,9 @@ np.savez_compressed(f'{output_path}/covs_2D.npz', **cov_dict_tosave_2d)
 # ! i.e. there is no cov_3x2pt_{term}_6d
 if cfg['covariance']['save_full_cov']:
     cov_dict_tosave_6d = {}
-    
+
     for _probe in _probes:
-        if cfg['probe_selection']['space'] == 'harmonic_space':
+        if cfg['probe_selection']['space'] == 'harmonic':
             probe_a, probe_b, probe_c, probe_d = tuple(_probe)
             probe_ixs = (
                 const.HS_PROBE_NAME_TO_IX_DICT[probe_a],
@@ -1649,7 +1649,7 @@ if cfg['covariance']['save_full_cov']:
 
         # This case is a bit different, no cov_3x2pt_10d is ever created, but I have
         # individual attributes for the 6d covs for each probe
-        elif cfg['probe_selection']['space'] == 'real_space':
+        elif cfg['probe_selection']['space'] == 'real':
             if cfg['covariance']['G']:
                 cov_dict_tosave_6d[f'{_probe}_Gauss'] = getattr(
                     _cov_obj, f'cov_{probe}_g_6d'

@@ -807,6 +807,7 @@ def cov_3x2pt_dict_8d_to_10d(
     zbins: int,
     ind_dict: dict,
     unique_probe_combs: list[str],
+    space: str,
     symmetrize_output_dict: bool = const.HS_SYMMETRIZE_OUTPUT_DICT,
 ) -> dict:
     """Expands a 3x2pt covariance dictionary from 8D to 10D.
@@ -819,7 +820,7 @@ def cov_3x2pt_dict_8d_to_10d(
         assert len(_probe_str) == 4, '_probe_str must have length 4'
 
     # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
-    symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs)
+    symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs, space)
 
     cov_3x2pt_dict_10D = {}
 

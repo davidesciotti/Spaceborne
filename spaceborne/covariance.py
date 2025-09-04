@@ -47,7 +47,7 @@ class SpaceborneCovariance:
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
         self.use_nmt = self.cfg['namaster']['use_namaster']
         self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
-        self.do_real_space = self.cfg['probe_selection']['space'] == 'real_space'
+        self.do_real_space = self.cfg['probe_selection']['space'] == 'real'
         # other useful objects
         self.nmt_obj = nmt_obj
 
@@ -376,12 +376,13 @@ class SpaceborneCovariance:
     def _cov_8d_dict_to_10d_arr(self, cov_dict_8D):
         """Helper function to process a single covariance component"""
         cov_dict_10d = sl.cov_3x2pt_dict_8d_to_10d(
-            cov_dict_8D,
-            self.ell_obj.nbl_3x2pt,
-            self.zbins,
-            self.ind_dict,
-            self.unique_probe_combs,
-            self.symmetrize_output_dict,
+            cov_3x2pt_dict_8D=cov_dict_8D,
+            nbl=self.ell_obj.nbl_3x2pt,
+            zbins=self.zbins,
+            ind_dict=self.ind_dict,
+            unique_probe_combs=self.unique_probe_combs,
+            space='harmonic',
+            symmetrize_output_dict=self.symmetrize_output_dict
         )
 
         return sl.cov_10D_dict_to_array(

@@ -61,6 +61,41 @@ import spaceborne.constants as const
 #     return binned_cov
 
 
+def matshow_custom_bins(data_array, bin_edges):
+    """
+    Plots a 2D matrix with a colorbar based on custom bins.
+
+    Args:
+        data_array (np.ndarray): The 2D array to plot (e.g., an array of percentages).
+        bin_edges (list or np.ndarray): A list of the bin boundaries.
+    Example:
+        bin_edges = [1e-2, 1e-1, 1, 5, 10, np.max(perc_diff)]
+        matshow_custom_bins(perc_diff, bin_edges)
+    """
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Create the colormap and the norm for the bins.
+    # The lowest bin edge is a very small number to handle floating-point
+    # issues and prevent overlapping '0' ticks.
+    cmap = plt.cm.viridis
+    norm = BoundaryNorm(bin_edges, cmap.N)
+
+    # Plot the data using the custom norm
+    im = ax.matshow(data_array, cmap=cmap, norm=norm)
+    
+    # Create the colorbar and explicitly set the ticks to match your bin edges.
+    cbar = fig.colorbar(im, ax=ax, ticks=bin_edges)
+    cbar.set_label('Discrepancy (%)')
+    
+    # You might want to format the tick labels to avoid scientific notation
+    # and show the '0' clearly.
+    tick_labels = [f'{b:g}' for b in bin_edges]
+    cbar.set_ticklabels(tick_labels)
+
+    ax.set_title('Custom Binned Plot')
+    plt.show()
+    
+
 def build_probe_list(probes, include_cross_terms=False):
     """Return the list of probe combinations to compute.
 

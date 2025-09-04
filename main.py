@@ -1196,7 +1196,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_obj.z_grid_trisp_sb = z_grid_trisp
     oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
     oc_obj.ells_sb = ell_obj.ells_3x2pt
-    oc_obj.build_save_oc_ini(ascii_filenames_dict, print_ini=True)
+    oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
 
     # compute covs
     oc_obj.call_oc_from_bash()

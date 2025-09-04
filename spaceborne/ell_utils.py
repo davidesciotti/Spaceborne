@@ -336,7 +336,20 @@ class EllBinning:
 
         self.use_namaster = cfg['namaster']['use_namaster']
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
+        self.do_real_cov = cfg['observables']['space'] == 'real'
+        
+        # TODO finish this but it already looks a bit messy, I don't have NG-specific 
+        # TODO ell binning...
+        if self.do_real_cov:
+            self.ell_min_WL = cfg['precision']['ell_min_WL']
+            self.ell_max_WL = cfg['precision']['ell_max_WL']
+            self.nbl_WL = cfg['precision']['ell_bins_WL']
 
+            self.ell_min_GC = cfg['precision']['ell_min_GC']
+            self.ell_max_GC = cfg['precision']['ell_max_GC']
+            self.nbl_GC = cfg['precision']['ell_bins_GC']
+            
+            
     def build_ell_bins(self):
         """Builds ell bins based on the specified configuration."""
         # if self.use_namaster:

@@ -1826,8 +1826,8 @@ sl.compare_arrays(
     'cov_hiprec',
     early_return=False,
     plot_diff_hist=True,
-    log_diff=True,
-    plot_diff_perc_threshold=1,
+    log_diff=False,
+    plot_diff_perc_threshold=10,
     abs_val=True,
 )
 

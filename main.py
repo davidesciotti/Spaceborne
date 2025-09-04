@@ -1802,6 +1802,7 @@ gl_stop = (zpairs_auto + zpairs_cross) * ell_obj.nbl_3x2pt
 
 # cov = cov_obj.cov_3x2pt_cng_2D[gl_start:gl_stop, gl_start:gl_stop]
 cov = cov_obj.cov_3x2pt_cng_2D
+cov_hiprec = np.load(f'{output_path}/cov_cNG_3x2pt_2D_hiprec.npz')['arr_0']
 perc_diff = sl.percent_diff(cov, cov.T)
 sl.matshow(np.where(np.abs(perc_diff) > 0.01, np.abs(perc_diff), np.nan), log=False)
 # perc_diff = cov/cov.T-1
@@ -1810,10 +1811,23 @@ sl.matshow(np.where(np.abs(perc_diff) == 0, np.nan, np.abs(perc_diff)), log=True
 sl.compare_arrays(
     cov,
     cov.T,
+    'cov',
+    'cov.T',
     early_return=False,
     plot_diff_hist=True,
     log_diff=True,
     plot_diff_perc_threshold=None,
+    abs_val=True,
+)
+sl.compare_arrays(
+    cov,
+    cov_hiprec,
+    'cov',
+    'cov_hiprec',
+    early_return=False,
+    plot_diff_hist=True,
+    log_diff=True,
+    plot_diff_perc_threshold=1,
     abs_val=True,
 )
 

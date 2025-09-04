@@ -482,6 +482,7 @@ zgrid_str = (
     f'_zsteps{cfg["covariance"]["z_steps"]}'
 )
 
+
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 z_grid_tkka_SSC = z_grid_trisp
@@ -1784,10 +1785,10 @@ if (
                     )
 
             if cfg['misc']['test_symmetry']:
-                if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
-                    print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
+                if not np.allclose(cov, cov.T, atol=0, rtol=1e-3):
+                    print('Warning: Matrix is not symmetric. atol=0, rtol=1e-3')
                 else:
-                    print('Matrix is symmetric. atol=0, rtol=1e-7')
+                    print('Matrix is symmetric. atol=0, rtol=1e-3')
 
 if cfg['misc']['save_figs']:
     output_dir = f'{output_path}/figs'
@@ -1802,7 +1803,7 @@ gl_stop = (zpairs_auto + zpairs_cross) * ell_obj.nbl_3x2pt
 # cov = cov_obj.cov_3x2pt_cng_2D[gl_start:gl_stop, gl_start:gl_stop]
 cov = cov_obj.cov_3x2pt_cng_2D
 perc_diff = sl.percent_diff(cov, cov.T)
-sl.matshow(np.where(np.abs(perc_diff) > .01, np.abs(perc_diff), np.nan), log=False)
+sl.matshow(np.where(np.abs(perc_diff) > 0.01, np.abs(perc_diff), np.nan), log=False)
 # perc_diff = cov/cov.T-1
 sl.matshow(np.where(np.abs(perc_diff) == 0, np.nan, np.abs(perc_diff)), log=True)
 

@@ -228,7 +228,7 @@ class OneCovarianceInterface:
             print(f'Error occurred: {e}')
             return None
 
-    def build_save_oc_ini(self, ascii_filenames_dict, print_ini=True):
+    def build_save_oc_ini(self, ascii_filenames_dict, h, print_ini=True):
         # this is just to preserve case sensitivity
         class CaseConfigParser(configparser.ConfigParser):
             def optionxform(self, optionstr):
@@ -522,10 +522,10 @@ class OneCovarianceInterface:
             self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
         )
         cfg_oc_ini['powspec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min']
+            self.cfg['covariance']['log10_k_min'] * h 
         )
         cfg_oc_ini['powspec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max']
+            self.cfg['covariance']['log10_k_max'] * h 
         )
         cfg_oc_ini['powspec evaluation']['log10k_bins'] = str(
             self.cfg['covariance']['k_steps']
@@ -533,10 +533,10 @@ class OneCovarianceInterface:
 
         # ! [trispec evaluation]
         cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min']
+            self.cfg['covariance']['log10_k_min'] * h 
         )
         cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max']
+            self.cfg['covariance']['log10_k_max'] * h 
         )
         cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
             self.cfg['covariance']['k_steps']

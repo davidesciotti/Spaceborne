@@ -681,6 +681,11 @@ class SpaceborneConfigChecker:
                 'At least one of xip or xim must be selected for '
                 'real space covariance'
             )
+            if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']:
+                raise NotImplementedError(
+                    'The projection of non-gaussian covariance terms to real space '
+                    'is not implemented yet'
+                )
         elif self.cfg['probe_selection']['space'] == 'harmonic':
             assert (
                 self.cfg['probe_selection']['LL']

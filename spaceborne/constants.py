@@ -97,3 +97,15 @@ RS_PROBE_NAME_TO_IX_DICT_SHORT = {
     'xip': 2,
     'xim': 3,
 }
+
+RS_PROBE_NAME_TO_LATEX = {
+    'xip': r'$\xi_{+}$',
+    'xim':  r'$\xi_{-}$',
+    'gm':  r'$\gamma_{t}$',
+    'gg':  r'$w$',
+}
+HS_PROBE_NAME_TO_LATEX = {
+    'LL': r'${\rm LL}$',
+    'GL':  r'${\rm GL}$',
+    'GG':  r'${\rm GG}$',
+}

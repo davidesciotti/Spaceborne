@@ -1672,29 +1672,29 @@ if cfg['covariance']['save_full_cov']:
         elif cfg['probe_selection']['space'] == 'real':
             if cfg['covariance']['G']:
                 cov_dict_tosave_6d[f'{_probe}_Gauss'] = getattr(
-                    _cov_obj, f'cov_{probe}_g_6d'
+                    _cov_obj, f'cov_{_probe}_g_6d'
                 )
             if cfg['covariance']['SSC']:
                 cov_dict_tosave_6d[f'{_probe}_SSC'] = getattr(
-                    _cov_obj, f'cov_{probe}_ssc_6d'
+                    _cov_obj, f'cov_{_probe}_ssc_6d'
                 )
             if cfg['covariance']['cNG']:
                 cov_dict_tosave_6d[f'{_probe}_cNG'] = getattr(
-                    _cov_obj, f'cov_{probe}_cng_6d'
+                    _cov_obj, f'cov_{_probe}_cng_6d'
                 )
             if cfg['covariance']['split_gaussian_cov']:
                 cov_dict_tosave_6d[f'{_probe}_SVA'] = getattr(
-                    _cov_obj, f'cov_{probe}_sva_6d'
+                    _cov_obj, f'cov_{_probe}_sva_6d'
                 )
                 cov_dict_tosave_6d[f'{_probe}_SN'] = getattr(
-                    _cov_obj, f'cov_{probe}_sn_6d'
+                    _cov_obj, f'cov_{_probe}_sn_6d'
                 )
                 cov_dict_tosave_6d[f'{_probe}_MIX'] = getattr(
-                    _cov_obj, f'cov_{probe}_mix_6d'
+                    _cov_obj, f'cov_{_probe}_mix_6d'
                 )
             if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
                 cov_dict_tosave_6d[f'{_probe}_TOT'] = getattr(
-                    _cov_obj, f'cov_{probe}_tot_6d'
+                    _cov_obj, f'cov_{_probe}_tot_6d'
                 )
 
     np.savez_compressed(f'{output_path}/covs_6D.npz', **cov_dict_tosave_6d)
@@ -1702,6 +1702,7 @@ if cfg['covariance']['save_full_cov']:
 print(f'Covariance matrices saved in {output_path}\n')
 
 # ! ============================ plot & tests ==========================================
+
 with np.errstate(invalid='ignore', divide='ignore'):
     for cov_name, cov in cov_dict_tosave_2d.items():
         if not np.allclose(cov, 0, atol=0, rtol=1e-6):
@@ -1710,14 +1711,19 @@ with np.errstate(invalid='ignore', divide='ignore'):
             ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
 
             # ! add lines and labels for the different selected probes
-            if cfg['covariance']['covariance_ordering_2D'].startswith('probe'):
+            if (
+                cfg['covariance']['covariance_ordering_2D'].startswith('probe') 
+                and cfg['misc']['plot_probe_names']
+            ):
                 if cfg['probe_selection']['space'] == 'harmonic':
                     unique_probe_combs = unique_probe_combs_hs
                     diag_probe_combs = const.HS_DIAG_PROBE_COMBS
+                    latex_labels = const.HS_PROBE_NAME_TO_LATEX
                     scale_bins = ell_obj.nbl_3x2pt
                 elif cfg['probe_selection']['space'] == 'real':
                     unique_probe_combs = unique_probe_combs_rs
                     diag_probe_combs = const.RS_DIAG_PROBE_COMBS
+                    latex_labels = const.RS_PROBE_NAME_TO_LATEX
                     scale_bins = cov_rs_obj.nbt_coarse
 
                 # this is to get the names and order of the *required* probes 
@@ -1747,8 +1753,6 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     if cfg['probe_selection']['space'] == 'real':
                         probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
 
-                    print(probe_ab, probe_cd)
-
                     kw = {'color': 'k', 'alpha': 0.7, 'ls': '--'}
                     ax[0].axvline(start_ab + lim_dict[probe_ab], **kw)
                     ax[0].axhline(start_ab + lim_dict[probe_ab], **kw)
@@ -1763,34 +1767,35 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     start_ab += lim_dict[probe_ab]
                     start_cd += lim_dict[probe_cd]
 
-            xticks, xlabels = [], []
-            yticks, ylabels = [], []
+                xticks, xlabels = [], []
+                yticks, ylabels = [], []
 
-            start_ab, start_cd = 0, 0
-            for probe_abcd in req_diag_probes:
-                if cfg['probe_selection']['space'] == 'harmonic':
-                    probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
-                if cfg['probe_selection']['space'] == 'real':
-                    probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+                start_ab, start_cd = 0, 0
+                for probe_abcd in req_diag_probes:
+                    if cfg['probe_selection']['space'] == 'harmonic':
+                        probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
+                    if cfg['probe_selection']['space'] == 'real':
+                        probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
 
-                # x direction
-                center_ab = start_ab + lim_dict[probe_ab] / 2
-                xticks.append(center_ab)
-                xlabels.append(const.RS_PROBE_NAME_TO_LATEX[probe_ab])
+                    # x direction
+                    center_ab = start_ab + lim_dict[probe_ab] / 2
+                    xticks.append(center_ab)
+                    xlabels.append(latex_labels[probe_ab])
 
-                # y direction
-                center_cd = start_cd + lim_dict[probe_cd] / 2
-                yticks.append(center_cd)
-                ylabels.append(const.RS_PROBE_NAME_TO_LATEX[probe_cd])
+                    # y direction
+                    center_cd = start_cd + lim_dict[probe_cd] / 2
+                    yticks.append(center_cd)
+                    ylabels.append(latex_labels[probe_cd])
 
-                start_ab += lim_dict[probe_ab]
-                start_cd += lim_dict[probe_cd]
-                
-            for a in ax:  # apply to both panels
-                a.set_xticks(xticks)
-                a.set_xticklabels(xlabels)
-                a.set_yticks(yticks)
-                a.set_yticklabels(ylabels)
+                    start_ab += lim_dict[probe_ab]
+                    start_cd += lim_dict[probe_cd]
+                    
+                for a in ax:  # apply to both panels
+                    a.set_xticks(xticks)
+                    a.set_xticklabels(xlabels)
+                    a.set_yticks(yticks)
+                    a.set_yticklabels(ylabels)
+                    
 
             plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)

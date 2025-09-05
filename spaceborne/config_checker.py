@@ -681,6 +681,11 @@ class SpaceborneConfigChecker:
                 'At least one of xip or xim must be selected for '
                 'real space covariance'
             )
+            if self.cfg['namaster']['use_namaster']:
+                raise NotImplementedError(
+                    'The projection of the partial-sky Gaussian covariance to real '
+                    'spaceis not implemented yet'
+                )
             if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']:
                 raise NotImplementedError(
                     'The projection of non-gaussian covariance terms to real space '

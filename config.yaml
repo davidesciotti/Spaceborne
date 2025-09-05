@@ -56,7 +56,7 @@ halo_model:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real'].
-  space: harmonic # Type: str. 
+  space: real # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') term
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') term
@@ -64,7 +64,7 @@ probe_selection:
   
   xip: True # Type: bool. Whether to compute \xi_+
   xim: False # Type: bool. Whether to compute \xi_-
-  gamma_t: True # Type: bool. Whether to compute \gamma_t
+  gt: True # Type: bool. Whether to compute \gamma_t
   w: False # Type: bool. Whether to compute w
   
   cross_cov: False # Type: bool. Whether to compute the cross-terms between the selected probes
@@ -237,7 +237,7 @@ covariance:
 
   which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
-  # Which first-order galaxy bias to use in the computation of the counterterms for the gm and gg responses.
+  # Which first-order galaxy bias to use in the computation of the counterterms for the GL and GG responses.
   # Options:
   # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
   # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB

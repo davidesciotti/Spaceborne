@@ -1709,6 +1709,89 @@ with np.errstate(invalid='ignore', divide='ignore'):
             ax[0].matshow(np.log10(cov))
             ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
 
+            # ! add lines and labels for the different selected probes
+            if cfg['covariance']['covariance_ordering_2D'].startswith('probe'):
+                if cfg['probe_selection']['space'] == 'harmonic':
+                    unique_probe_combs = unique_probe_combs_hs
+                    diag_probe_combs = const.HS_DIAG_PROBE_COMBS
+                    scale_bins = ell_obj.nbl_3x2pt
+                elif cfg['probe_selection']['space'] == 'real':
+                    unique_probe_combs = unique_probe_combs_rs
+                    diag_probe_combs = const.RS_DIAG_PROBE_COMBS
+                    scale_bins = cov_rs_obj.nbt_coarse
+
+                # this is to get the names and order of the *required* probes 
+                # along the diagonel
+                req_diag_probes = list(set(unique_probe_combs) & set(diag_probe_combs))
+                req_diag_probes = [p for p in diag_probe_combs if p in req_diag_probes]
+
+                # set the boundaries
+                elem_auto = zpairs_auto * scale_bins
+                elem_cross = zpairs_cross * scale_bins
+
+                lim_dict = {
+                    'LL': elem_auto,
+                    'GL': elem_cross,
+                    'GG': elem_auto,
+                    'xip': elem_auto,
+                    'xim': elem_auto,
+                    'gm': elem_cross,
+                    'gg': elem_auto,
+                }
+
+                # draw the boundaries
+                start_ab, start_cd = 0, 0
+                for probe_abcd in req_diag_probes[:-1]:
+                    if cfg['probe_selection']['space'] == 'harmonic':
+                        probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
+                    if cfg['probe_selection']['space'] == 'real':
+                        probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+
+                    print(probe_ab, probe_cd)
+
+                    kw = {'color': 'k', 'alpha': 0.7, 'ls': '--'}
+                    ax[0].axvline(start_ab + lim_dict[probe_ab], **kw)
+                    ax[0].axhline(start_ab + lim_dict[probe_ab], **kw)
+                    ax[0].axvline(start_cd + lim_dict[probe_cd], **kw)
+                    ax[0].axhline(start_cd + lim_dict[probe_cd], **kw)
+
+                    ax[1].axvline(start_ab + lim_dict[probe_ab], **kw)
+                    ax[1].axhline(start_ab + lim_dict[probe_ab], **kw)
+                    ax[1].axvline(start_cd + lim_dict[probe_cd], **kw)
+                    ax[1].axhline(start_cd + lim_dict[probe_cd], **kw)
+
+                    start_ab += lim_dict[probe_ab]
+                    start_cd += lim_dict[probe_cd]
+
+            xticks, xlabels = [], []
+            yticks, ylabels = [], []
+
+            start_ab, start_cd = 0, 0
+            for probe_abcd in req_diag_probes:
+                if cfg['probe_selection']['space'] == 'harmonic':
+                    probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
+                if cfg['probe_selection']['space'] == 'real':
+                    probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+
+                # x direction
+                center_ab = start_ab + lim_dict[probe_ab] / 2
+                xticks.append(center_ab)
+                xlabels.append(const.RS_PROBE_NAME_TO_LATEX[probe_ab])
+
+                # y direction
+                center_cd = start_cd + lim_dict[probe_cd] / 2
+                yticks.append(center_cd)
+                ylabels.append(const.RS_PROBE_NAME_TO_LATEX[probe_cd])
+
+                start_ab += lim_dict[probe_ab]
+                start_cd += lim_dict[probe_cd]
+                
+            for a in ax:  # apply to both panels
+                a.set_xticks(xticks)
+                a.set_xticklabels(xlabels)
+                a.set_yticks(yticks)
+                a.set_yticklabels(ylabels)
+
             plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
             ax[0].set_title('log10 cov')

@@ -684,7 +684,7 @@ class SpaceborneConfigChecker:
             if self.cfg['namaster']['use_namaster']:
                 raise NotImplementedError(
                     'The projection of the partial-sky Gaussian covariance to real '
-                    'spaceis not implemented yet'
+                    'space is not implemented yet'
                 )
             if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']:
                 raise NotImplementedError(

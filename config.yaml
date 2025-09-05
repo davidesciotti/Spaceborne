@@ -56,16 +56,16 @@ halo_model:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real'].
-  space: real # Type: str. 
+  space: harmonic # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') term
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') term
   GG: False # Type: bool. Whether to compute the photometric clustering ('GG') term
   
-  xip: False # Type: bool. Whether to compute \xi_+
+  xip: True # Type: bool. Whether to compute \xi_+
   xim: False # Type: bool. Whether to compute \xi_-
   gamma_t: True # Type: bool. Whether to compute \gamma_t
-  w: True # Type: bool. Whether to compute w
+  w: False # Type: bool. Whether to compute w
   
   cross_cov: False # Type: bool. Whether to compute the cross-terms between the selected probes
 
@@ -368,6 +368,11 @@ misc:
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
   cl_triangle_plot: False # Type: bool.
+  
+  # If the covariance_ordering_2D starts with "probe", setting this to True 
+  # automatically displays the labels and limits for the different probe blocks.
+  # set this to False to display the number of elements in the covariance instead
+  plot_probe_names: True # Type: bool
 
   output_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_rs_test # Type: str. Path to the output directory
   save_figs: True

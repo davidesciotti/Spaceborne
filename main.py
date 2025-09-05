@@ -346,10 +346,10 @@ if cfg['probe_selection']['xip']:
     unique_probe_names_rs.append('xip')
 if cfg['probe_selection']['xim']:
     unique_probe_names_rs.append('xim')
-if cfg['probe_selection']['gamma_t']:
-    unique_probe_names_rs.append('gm')  # TODO RS change this to gt
+if cfg['probe_selection']['gt']:
+    unique_probe_names_rs.append('gt')
 if cfg['probe_selection']['w']:
-    unique_probe_names_rs.append('gg')  # TODO RS change this to ww?
+    unique_probe_names_rs.append('gg')
 
 # add cross terms if requested
 unique_probe_combs_hs = sl.build_probe_list(
@@ -446,7 +446,7 @@ elif cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
     cfg['probe_selection']['LL'] = (
         cfg['probe_selection']['xip'] or cfg['probe_selection']['xim']
     )
-    cfg['probe_selection']['GL'] = cfg['probe_selection']['gamma_t']
+    cfg['probe_selection']['GL'] = cfg['probe_selection']['gt']
     cfg['probe_selection']['GG'] = cfg['probe_selection']['w']
 
 else:
@@ -1712,7 +1712,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
             # ! add lines and labels for the different selected probes
             if (
-                cfg['covariance']['covariance_ordering_2D'].startswith('probe') 
+                cfg['covariance']['covariance_ordering_2D'].startswith('probe')
                 and cfg['misc']['plot_probe_names']
             ):
                 if cfg['probe_selection']['space'] == 'harmonic':
@@ -1726,7 +1726,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     latex_labels = const.RS_PROBE_NAME_TO_LATEX
                     scale_bins = cov_rs_obj.nbt_coarse
 
-                # this is to get the names and order of the *required* probes 
+                # this is to get the names and order of the *required* probes
                 # along the diagonel
                 req_diag_probes = list(set(unique_probe_combs) & set(diag_probe_combs))
                 req_diag_probes = [p for p in diag_probe_combs if p in req_diag_probes]
@@ -1741,7 +1741,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     'GG': elem_auto,
                     'xip': elem_auto,
                     'xim': elem_auto,
-                    'gm': elem_cross,
+                    'gt': elem_cross,
                     'gg': elem_auto,
                 }
 
@@ -1789,13 +1789,12 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
                     start_ab += lim_dict[probe_ab]
                     start_cd += lim_dict[probe_cd]
-                    
+
                 for a in ax:  # apply to both panels
                     a.set_xticks(xticks)
                     a.set_xticklabels(xlabels)
                     a.set_yticks(yticks)
                     a.set_yticklabels(ylabels)
-                    
 
             plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
@@ -2053,7 +2052,7 @@ for probe in const.RS_PROBE_NAME_TO_IX_DICT:
     if np.allclose(cov_oc_6d, cov_oc_6d.transpose(1, 0, 2, 3, 4, 5), atol=0, rtol=1e-5):
         print(f'probe {probe} is symmetric in theta_1, theta_2')
 
-    # if probe in ['gmxip', 'gmxim']:
+    # if probe in ['gtxip', 'gtxim']:
     #     print('I am manually transposing the OC blocks!!')
     #     warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
     #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
@@ -2117,19 +2116,19 @@ assert lim_4 == cov_oc_2d.shape[1]
 cov_oc_2d_dict = {
     # first OC row is gg
     'gggg': cov_oc_2d[:lim_1, :lim_1],
-    'gggm': cov_oc_2d[:lim_1, lim_1:lim_2],
+    'gggt': cov_oc_2d[:lim_1, lim_1:lim_2],
     'ggxip': cov_oc_2d[:lim_1, lim_2:lim_3],
     'ggxim': cov_oc_2d[:lim_1, lim_3:lim_4],
-    'gmgg': cov_oc_2d[lim_1:lim_2, :lim_1],
-    'gmgm': cov_oc_2d[lim_1:lim_2, lim_1:lim_2],
-    'gmxip': cov_oc_2d[lim_1:lim_2, lim_2:lim_3],
-    'gmxim': cov_oc_2d[lim_1:lim_2, lim_3:lim_4],
+    'gtgg': cov_oc_2d[lim_1:lim_2, :lim_1],
+    'gtgt': cov_oc_2d[lim_1:lim_2, lim_1:lim_2],
+    'gtxip': cov_oc_2d[lim_1:lim_2, lim_2:lim_3],
+    'gtxim': cov_oc_2d[lim_1:lim_2, lim_3:lim_4],
     'xipgg': cov_oc_2d[lim_2:lim_3, :lim_1],
-    'xipgm': cov_oc_2d[lim_2:lim_3, lim_1:lim_2],
+    'xipgt': cov_oc_2d[lim_2:lim_3, lim_1:lim_2],
     'xipxip': cov_oc_2d[lim_2:lim_3, lim_2:lim_3],
     'xipxim': cov_oc_2d[lim_2:lim_3, lim_3:lim_4],
     'ximgg': cov_oc_2d[lim_3:lim_4, :lim_1],
-    'ximgm': cov_oc_2d[lim_3:lim_4, lim_1:lim_2],
+    'ximgt': cov_oc_2d[lim_3:lim_4, lim_1:lim_2],
     'ximxip': cov_oc_2d[lim_3:lim_4, lim_2:lim_3],
     'ximxim': cov_oc_2d[lim_3:lim_4, lim_3:lim_4],
 }
@@ -2172,7 +2171,7 @@ for probe in unique_probe_combs_rs:
     if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
         print(f'{term = } {probe = } is identically 0')
 
-    # if probe in ['gmxip', 'gmxim']:
+    # if probe in ['gtxip', 'gtxim']:
     #     print('I am manually transposing the OC blocks!!')
     #     warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
     #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)

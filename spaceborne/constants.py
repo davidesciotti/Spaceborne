@@ -18,17 +18,17 @@ HS_ALL_PROBE_COMBS = [
 ]  # fmt: skip
 
 RS_ALL_PROBE_COMBS = [
-    'xipxip', 'xipxim', 'xipgm', 'xipgg',
-    'ximxip', 'ximxim', 'ximgm', 'ximgg',
-    'gmxip',  'gmxim',  'gmgm',  'gmgg',
-    'ggxip',  'ggxim',  'gggm',  'gggg',
+    'xipxip', 'xipxim', 'xipgt', 'xipgg',
+    'ximxip', 'ximxim', 'ximgt', 'ximgg',
+    'gtxip',  'gtxim',  'gtgt',  'gtgg',
+    'ggxip',  'ggxim',  'gggt',  'gggg',
 ]  # fmt: skip
 
 HS_DIAG_PROBE_COMBS = ['LLLL', 'GLGL', 'GGGG']
-RS_DIAG_PROBE_COMBS = ['xipxip', 'ximxim', 'gmgm', 'gggg']
+RS_DIAG_PROBE_COMBS = ['xipxip', 'ximxim', 'gtgt', 'gggg']
 # not used for the moment
 HS_DIAG_PROBES = [ 'LL', 'GL', 'GG']
-RS_DIAG_PROBES = [ 'xip', 'xim', 'gm', 'gg']
+RS_DIAG_PROBES = [ 'xip', 'xim', 'gt', 'gg']
 
 HS_PROBE_NAME_TO_IX_DICT = {'L': 0, 'G': 1}
 HS_PROBE_IX_TO_NAME_DICT = {0: 'L', 1: 'G'}
@@ -41,29 +41,29 @@ HS_SYMMETRIZE_OUTPUT_DICT = {
 }
 
 # bessel functions order for the different real space probes
-MU_DICT = {'gg': 0, 'gm': 2, 'xip': 0, 'xim': 4}
+MU_DICT = {'gg': 0, 'gt': 2, 'xip': 0, 'xim': 4}
 
 # ! careful: in this representation, xipxip and ximxim (eg) have
 # ! the same indices!!
 RS_PROBE_NAME_TO_IX_DICT = {
     'xipxip': (0, 0, 0, 0),
     'xipxim': (0, 0, 0, 0),
-    'xipgm':  (0, 0, 1, 0),
+    'xipgt':  (0, 0, 1, 0),
     'xipgg':  (0, 0, 1, 1),
 
     'ximxip': (0, 0, 0, 0),
     'ximxim': (0, 0, 0, 0),
-    'ximgm':  (0, 0, 1, 0),
+    'ximgt':  (0, 0, 1, 0),
     'ximgg':  (0, 0, 1, 1),
 
-    'gmxip':  (1, 0, 0, 0),
-    'gmxim':  (1, 0, 0, 0),
-    'gmgm':   (1, 0, 1, 0),
-    'gmgg':   (1, 0, 1, 1),
+    'gtxip':  (1, 0, 0, 0),
+    'gtxim':  (1, 0, 0, 0),
+    'gtgt':   (1, 0, 1, 0),
+    'gtgg':   (1, 0, 1, 1),
 
     'ggxip':  (1, 1, 0, 0),
     'ggxim':  (1, 1, 0, 0),
-    'gggm':   (1, 1, 1, 0),
+    'gggt':   (1, 1, 1, 0),
     'gggg':   (1, 1, 1, 1),
 }  # fmt: skip
 
@@ -71,29 +71,29 @@ RS_PROBE_NAME_TO_IX_DICT = {
 # RS_PROBE_NAME_TO_IX_DICT_TRIL = {
 #     'xipxip': (0, 0, 0, 0),
 #     'xipxim': (0, 0, 0, 0),
-#     # 'xipgm':  (0, 0, 1, 0),
+#     # 'xipgt':  (0, 0, 1, 0),
 #     # 'xipgg':  (0, 0, 1, 1),
 
 #     # 'ximxip': (0, 0, 0, 0),
 #     'ximxim': (0, 0, 0, 0),
-#     # 'ximgm':  (0, 0, 1, 0),
+#     # 'ximgt':  (0, 0, 1, 0),
 #     # 'ximgg':  (0, 0, 1, 1),
 
-#     'gmxip':  (1, 0, 0, 0),
-#     'gmxim':  (1, 0, 0, 0),
-#     'gmgm':   (1, 0, 1, 0),
-#     # 'gmgg':   (1, 0, 1, 1),
+#     'gtxip':  (1, 0, 0, 0),
+#     'gtxim':  (1, 0, 0, 0),
+#     'gtgt':   (1, 0, 1, 0),
+#     # 'gtgg':   (1, 0, 1, 1),
 
 #     'ggxip':  (1, 1, 0, 0),
 #     'ggxim':  (1, 1, 0, 0),
-#     'gggm':   (1, 1, 1, 0),
+#     'gggt':   (1, 1, 1, 0),
 #     'gggg':   (1, 1, 1, 1),
 # }  # fmt: skip
 
 
 RS_PROBE_NAME_TO_IX_DICT_SHORT = {
     'gg': 0,  # w
-    'gm': 1,  # \gamma_t
+    'gt': 1,  # \gamma_t
     'xip': 2,
     'xim': 3,
 }
@@ -101,7 +101,7 @@ RS_PROBE_NAME_TO_IX_DICT_SHORT = {
 RS_PROBE_NAME_TO_LATEX = {
     'xip': r'$\xi_{+}$',
     'xim':  r'$\xi_{-}$',
-    'gm':  r'$\gamma_{t}$',
+    'gt':  r'$\gamma_{t}$',
     'gg':  r'$w$',
 }
 HS_PROBE_NAME_TO_LATEX = {

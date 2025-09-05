@@ -661,7 +661,7 @@ class SpaceborneConfigChecker:
 
     def check_probe_selection(self) -> None:
         
-        allowed_keys = ['space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gamma_t', 
+        allowed_keys = ['space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gt', 
                         'w', 'cross_cov']
         
         for key in self.cfg['probe_selection']:
@@ -675,7 +675,7 @@ class SpaceborneConfigChecker:
             assert (
                 self.cfg['probe_selection']['xip']
                 + self.cfg['probe_selection']['xim']
-                + self.cfg['probe_selection']['gamma_t']
+                + self.cfg['probe_selection']['gt']
                 + self.cfg['probe_selection']['w']
             ) > 0, (
                 'At least one of xip or xim must be selected for '

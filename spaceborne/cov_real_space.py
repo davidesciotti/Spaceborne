@@ -604,23 +604,23 @@ def stack_probe_blocks_old_deprecated(cov_2d_dict):
     row_1 = np.hstack(
         (
             cov_2d_dict['gggg'],
-            cov_2d_dict['gggm'],
+            cov_2d_dict['gggt'],
             cov_2d_dict['ggxip'],
             cov_2d_dict['ggxim'],
         )
     )
     row_2 = np.hstack(
         (
-            cov_2d_dict['gggm'].T,
-            cov_2d_dict['gmgm'],
-            cov_2d_dict['gmxip'],
-            cov_2d_dict['gmxim'],
+            cov_2d_dict['gggt'].T,
+            cov_2d_dict['gtgt'],
+            cov_2d_dict['gtxip'],
+            cov_2d_dict['gtxim'],
         )
     )
     row_3 = np.hstack(
         (
             cov_2d_dict['ggxip'].T,
-            cov_2d_dict['gmxip'].T,
+            cov_2d_dict['gtxip'].T,
             cov_2d_dict['xipxip'],
             cov_2d_dict['xipxim'],
         )
@@ -628,7 +628,7 @@ def stack_probe_blocks_old_deprecated(cov_2d_dict):
     row_4 = np.hstack(
         (
             cov_2d_dict['ggxim'].T,
-            cov_2d_dict['gmxim'].T,
+            cov_2d_dict['gtxim'].T,
             cov_2d_dict['xipxim'].T,
             cov_2d_dict['ximxim'],
         )
@@ -642,7 +642,7 @@ def stack_probe_blocks_deprecated(cov_2d_dict):
         (
             cov_2d_dict['xipxip'],
             cov_2d_dict['xipxim'],
-            cov_2d_dict['xipgm'],
+            cov_2d_dict['xipgt'],
             cov_2d_dict['xipgg'],
         )
     )
@@ -650,28 +650,28 @@ def stack_probe_blocks_deprecated(cov_2d_dict):
         (
             cov_2d_dict['xipxim'].T,
             cov_2d_dict['ximxim'],
-            cov_2d_dict['ximgm'],
+            cov_2d_dict['ximgt'],
             cov_2d_dict['ximgg'],
         )
     )
-    gm_row = np.hstack(
+    gt_row = np.hstack(
         (
-            cov_2d_dict['xipgm'].T,
-            cov_2d_dict['ximgm'].T,
-            cov_2d_dict['gmgm'],
-            cov_2d_dict['gmgg'],
+            cov_2d_dict['xipgt'].T,
+            cov_2d_dict['ximgt'].T,
+            cov_2d_dict['gtgt'],
+            cov_2d_dict['gtgg'],
         )
     )
     gg_row = np.hstack(
         (
             cov_2d_dict['xipgg'].T,
             cov_2d_dict['ximgg'].T,
-            cov_2d_dict['gmgg'].T,
+            cov_2d_dict['gtgg'].T,
             cov_2d_dict['gggg'],
         )
     )
 
-    return np.vstack((xip_row, xim_row, gm_row, gg_row))
+    return np.vstack((xip_row, xim_row, gt_row, gg_row))
 
 
 def twopcf_wrapper(
@@ -1338,7 +1338,7 @@ class CovRealSpace:
 
         elif term == 'sn':
             # this is 0 for
-            # ['xipxim', 'gmxim', 'gmxip', 'ggxim', 'gggm', 'ggxip']
+            # ['xipxim', 'gtxim', 'gtxip', 'ggxim', 'gggt', 'ggxip']
             # but is very fast to compute so I don't skip these terms
             cov_out_6d = self.cov_sn_rs(
                 probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu

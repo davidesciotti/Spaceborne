@@ -61,9 +61,9 @@ import spaceborne.constants as const
 
 
 def split_probe_name(full_probe_name):
-    """Splits a full probe name (e.g., 'gmxim') into two component probes.
+    """Splits a full probe name (e.g., 'gtxim') into two component probes.
 
-    Possible probe names are 'xip', 'xim', 'gg', 'gm'.
+    Possible probe names are 'xip', 'xim', 'gg', 'gt'.
 
     Args:
         full_probe_name (str): A string containing two probe types concatenated.
@@ -75,7 +75,7 @@ def split_probe_name(full_probe_name):
         ValueError: If the input string does not contain exactly two valid probes.
 
     """
-    valid_probes = {'xip', 'xim', 'gg', 'gm'}
+    valid_probes = {'xip', 'xim', 'gg', 'gt'}
 
     # Try splitting at each possible position
     for i in range(2, len(full_probe_name)):
@@ -2851,21 +2851,21 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
             final_rows.append(row_gg)
 
     elif space == 'real':
-        row_xip_list, row_xim_list, row_gm_list, row_gg_list = [], [], [], []
+        row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
         for probe in req_probe_combs_2d:
             probe_ab, probe_cd = split_probe_name(probe)
             if (probe_ab) == 'xip':
                 row_xip_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
             elif (probe_ab) == ('xim'):
                 row_xim_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
-            elif (probe_ab) == ('gm'):
-                row_gm_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            elif (probe_ab) == ('gt'):
+                row_gt_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
             elif (probe_ab) == ('gg'):
                 row_gg_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
             else:
                 raise ValueError(
                     f'Probe combination {probe_ab, probe_cd} does not start with '
-                    '("xip") or ("xim") or ("gm") or ("gg") '
+                    '("xip") or ("xim") or ("gt") or ("gg") '
                 )
         # concatenate the lists to make rows
         # o(nly concatenate and include rows that have content)
@@ -2875,9 +2875,9 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
         if row_xim_list:
             row_xim = np.concatenate(row_xim_list, axis=3)
             final_rows.append(row_xim)
-        if row_gm_list:
-            row_gm = np.concatenate(row_gm_list, axis=3)
-            final_rows.append(row_gm)
+        if row_gt_list:
+            row_gt = np.concatenate(row_gt_list, axis=3)
+            final_rows.append(row_gt)
         if row_gg_list:
             row_gg = np.concatenate(row_gg_list, axis=3)
             final_rows.append(row_gg)
@@ -3563,7 +3563,7 @@ def cov_4D_to_2DCLOE_3x2pt_rs(
     probe_sizes = {
         'xip': zpairs_auto,
         'xim': zpairs_auto,
-        'gm': zpairs_cross,
+        'gt': zpairs_cross,
         'gg': zpairs_auto,
     }
 
@@ -3575,8 +3575,8 @@ def cov_4D_to_2DCLOE_3x2pt_rs(
         probe_order.append('xip')
     if any('xim' in p for p in req_probe_combs_2d):
         probe_order.append('xim')
-    if any('gm' in p for p in req_probe_combs_2d):
-        probe_order.append('gm')
+    if any('gt' in p for p in req_probe_combs_2d):
+        probe_order.append('gt')
     if any('gg' in p for p in req_probe_combs_2d):
         probe_order.append('gg')
 

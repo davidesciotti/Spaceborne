@@ -436,6 +436,26 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
+# ! set HS probes to compute depending on RS ones
+# Set HS probes depending on RS ones
+if cfg['probe_selection']['space'] != 'real':
+    pass  # nothing to do
+
+elif cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
+    # Otherwise switch on HS probes corresponding to selected RS probes
+    cfg['probe_selection']['LL'] = (
+        cfg['probe_selection']['xip'] or cfg['probe_selection']['xim']
+    )
+    cfg['probe_selection']['GL'] = cfg['probe_selection']['gamma_t']
+    cfg['probe_selection']['GG'] = cfg['probe_selection']['w']
+
+else:
+    # If neither SSC nor cNG are active → turn off all HS probes
+    cfg['probe_selection']['LL'] = False
+    cfg['probe_selection']['GL'] = False
+    cfg['probe_selection']['GG'] = False
+
+
 if cfg['covariance']['use_KE_approximation']:
     cl_integral_convention_ssc = 'Euclid_KE_approximation'
     ssc_integration_type = 'simps_KE_approximation'
@@ -1980,7 +2000,7 @@ gc.collect()
 
 # ! compare full 2d SB against mat fmt
 # I will compare SB against the mat fmt
-cov_sb_2d = cov_rs_obj.cov_rs_full_2d
+cov_sb_2d = cov_rs_obj.cov_3x2pt_g_2d
 cov_oc_2d = cov_oc_mat_2d
 
 title = (

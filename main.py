@@ -1,6 +1,7 @@
 import argparse
 import os
 import multiprocessing
+from sympy import true
 from tqdm import tqdm
 num_cores = multiprocessing.cpu_count()
 os.environ['OMP_NUM_THREADS'] = '30'
@@ -972,6 +973,47 @@ if compute_sb_ssc:
 
 # TODO integrate this with Spaceborne_covg
 
+root = '/home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper'
+v4 = 'output_CCL_cNG_v4trispfix'
+v5 = 'output_CCL_cNG_v5trispfixGLGL'
+
+cov_g_v4 = np.load(f'{root}/{v4}/cov_3x2pt_g_2D.npz')['arr_0']
+cov_g_v5 = np.load(f'{root}/{v5}/cov_3x2pt_g_2D.npz')['arr_0']
+
+cov_ssc_ccl_v4 = np.load(f'{root}/{v4}/cov_3x2pt_ssc_2D.npz')['arr_0']
+
+cov_cng_oc = np.load(f'{root}/output_OC_cNG/cov_3x2pt_cng_2D.npz')['arr_0']
+cov_cng_ccl_v4 = np.load(f'{root}/{v4}/cov_3x2pt_cng_2D.npz')['arr_0']
+cov_cng_ccl_v5 = np.load(f'{root}/{v5}/cov_3x2pt_cng_2D.npz')['arr_0']
+
+cov_tot_ccl_v4 = np.load(f'{root}/{v4}/CovMat-3x2pt-GaussSSCcNGCCL-32Bins-13245deg2.npy')
+cov_tot_ccl_v5 = np.load(f'{root}/{v5}/CovMat-3x2pt-GaussSSCcNGCCLv5-32Bins-13245deg2.npy')
+
+# cov_tot_ccl_v5 = cov_g_v5 + cov_cng_ssc_v4 + cov_cng_ccl_v5
+
+atol, rtol = 0, 1e-5
+np.testing.assert_allclose(cov_g_v4, cov_g_v5, rtol, atol)
+np.testing.assert_allclose(cov_g_v4 + cov_ssc_ccl_v4 + cov_cng_ccl_v4, cov_tot_ccl_v4, rtol, atol)
+np.testing.assert_allclose(cov_g_v5 + cov_cng_ccl_v5, cov_tot_ccl_v5, rtol, atol)
+np.testing.assert_allclose(cov_cng_ccl_v4, cov_cng_ccl_v4.T, rtol, atol)
+np.testing.assert_allclose(cov_cng_ccl_v5, cov_cng_ccl_v5.T, rtol, atol)
+
+lim1 = zpairs_auto * 32
+lim2 = (zpairs_auto + zpairs_cross) * 32
+
+# mm.matshow(cov_cng_oc[lim1:lim2, lim1:lim2])
+# mm.matshow(cov_cng_ccl_v4[lim1:lim2, lim1:lim2])
+# mm.matshow(cov_cng_ccl_v5[lim1:lim2, lim1:lim2])
+
+perc_diff = (cov_cng_ccl_v4/cov_cng_ccl_v4.T - 1) * 100
+perc_diff = np.abs(perc_diff)
+plt.matshow(perc_diff, vmin=0, vmax=10)
+plt.colorbar()
+
+
+
+assert False, 'UNDO LAST COMMIT TO RESTORE REPO TO THE STATE USED FOR THE RUNS'
+
 # ! ========================================== PyCCL ===================================================
 if (compute_ccl_ssc or compute_ccl_cng):
 
@@ -993,10 +1035,117 @@ if (compute_ccl_ssc or compute_ccl_cng):
 
     for which_ng_cov in ccl_ng_cov_terms_list:
 
+        probe_ordering = [['G', 'L'], ]
         ccl_obj.initialize_trispectrum(which_ng_cov, probe_ordering, cfg['PyCCL'])
         ccl_obj.compute_ng_cov_3x2pt(which_ng_cov, ell_dict['ell_3x2pt'], cfg['mask']['fsky'],
                                      integration_method=cfg['PyCCL']['cov_integration_method'],
                                      probe_ordering=probe_ordering, ind_dict=ind_dict)
+
+cov_4d = ccl_obj.cov_ng_3x2pt_dict_8D['G', 'L', 'G', 'L']
+cov_2d = mm.cov_4D_to_2D(cov_4d, block_index='ell')
+cov_2d = np.load('/home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper/output_CCL_cNG_v4trispfix/cov_3x2pt_cng_2D.npz')['arr_0']
+
+mm.compare_arrays(
+    cov_2d,
+    cov_2d.T,
+    'cov',
+    'cov.T',
+    plot_diff_hist=True,
+    log_diff=True,
+    plot_diff_threshold=None,
+    abs_val=True,
+)
+
+# a mano
+perc_diff = (cov_2d/cov_2d.T - 1) *100
+perc_diff = np.abs(perc_diff)
+# perc_diff[perc_diff <= 1] = 0
+
+# plt.matshow(np.log10(perc_diff))
+# plt.colorbar()
+
+plt.matshow(perc_diff, vmin=0, vmax=1)
+plt.colorbar()
+
+triu_ixs = np.triu_indices(perc_diff.shape[0])
+tril_ixs = np.tril_indices(perc_diff.shape[0])
+
+
+
+cov_2d_symmetrised = np.zeros_like(cov_2d)
+cov_2d_symmetrised[triu_ixs] = cov_2d[triu_ixs]
+cov_2d_symmetrised = cov_2d_symmetrised + cov_2d_symmetrised.T - np.diag(np.diag(cov_2d_symmetrised))
+
+mm.matshow(cov_2d_symmetrised)
+
+perc_diff = (cov_2d_symmetrised/cov_2d_symmetrised.T - 1) *100
+perc_diff = np.abs(perc_diff)
+# perc_diff[perc_diff <= 1] = 0
+
+# plt.matshow(np.log10(perc_diff))
+# plt.colorbar()
+
+plt.matshow(perc_diff, vmin=0, vmax=1)
+plt.colorbar()
+
+mm.matshow(mm.percent_diff(cov_2d_symmetrised, cov_2d))
+
+root = '/home/cosmo/davide.sciotti/data/CLOE_ISTNL/covs_for_paper'
+
+g_cov = np.load(f'{root}/output_CCL_cNG_v4trispfix/cov_3x2pt_g_2D.npz')['arr_0']
+tot_cov = g_cov + cov_2d_symmetrised
+
+# np.savez_compressed(f'{root}/output_CCL_cNG_v5trispfixGLGL/cov_3x2pt_cng_2D.npz', cov_2d_symmetrised)
+# np.savez_compressed(f'{root}/output_CCL_cNG_v5trispfixGLGL/cov_3x2pt_g_2D.npz', g_cov)
+# np.save(f'{root}/output_CCL_cNG_v5trispfixGLGL/CovMat-3x2pt-GaussSSCcNGCCL-32Bins-13245deg2.npy', tot_cov)
+
+mm.matshow(tot_cov)
+
+def matshow_custom_bins(data_array, bin_edges):
+    """
+    Plots a 2D matrix with a colorbar based on custom bins.
+
+    Args:
+        data_array (np.ndarray): The 2D array to plot (e.g., an array of percentages).
+        bin_edges (list or np.ndarray): A list of the bin boundaries.
+    Example:
+        bin_edges = [1e-2, 1e-1, 1, 5, 10, np.max(perc_diff)]
+        matshow_custom_bins(perc_diff, bin_edges)
+    """
+    from matplotlib.colors import BoundaryNorm
+    
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Create the colormap and the norm for the bins.
+    # The lowest bin edge is a very small number to handle floating-point
+    # issues and prevent overlapping '0' ticks.
+    cmap = plt.cm.viridis
+    norm = BoundaryNorm(bin_edges, cmap.N)
+
+    # Plot the data using the custom norm
+    im = ax.matshow(data_array, cmap=cmap, norm=norm)
+    
+    # Create the colorbar and explicitly set the ticks to match your bin edges.
+    cbar = fig.colorbar(im, ax=ax, ticks=bin_edges)
+    cbar.set_label('Discrepancy (%)')
+    
+    # You might want to format the tick labels to avoid scientific notation
+    # and show the '0' clearly.
+    tick_labels = [f'{b:g}' for b in bin_edges]
+    cbar.set_ticklabels(tick_labels)
+
+    ax.set_title('Custom Binned Plot')
+    plt.show()
+    
+bin_edges = [1e-2, 1e-1, 1, 5, 10, np.max(perc_diff)]
+matshow_custom_bins(perc_diff, bin_edges)
+    
+
+mm.matshow(np.where(np.abs(perc_diff) > 1, perc_diff, np.nan), log=True)
+
+plt.hist(perc_diff[np.abs(perc_diff) < 10].flatten(), density=False, bins=50, log=True)
+plt.xlim(-1, 10)
+assert False, 'stop here to check GLGL tkka'
 
 # ! ========================================== combine covariance terms ================================================
 cov_obj.build_covs(ccl_obj=ccl_obj, oc_obj=oc_obj)

@@ -2,7 +2,6 @@ import itertools
 import re
 import time
 import warnings
-from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -273,11 +272,7 @@ def cov_sn_rs(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
                 theta_1_l = theta_edges[theta_ix]
                 theta_1_u = theta_edges[theta_ix + 1]
                 npair_arr[theta_ix, zi, zj] = get_npair(
-                    theta_1_u,
-                    theta_1_l,
-                    survey_area_sr,
-                    n_eff_lens[zi],
-                    n_eff_lens[zj],
+                    theta_1_u, theta_1_l, survey_area_sr, n_eff_lens[zi], n_eff_lens[zj]
                 )
 
     delta_mu_nu = 1.0 if (mu == nu) else 0.0
@@ -651,10 +646,7 @@ def integrate_bessel_single_wrapper(cov_2d, mu, ell, theta_centers, n_jobs):
 
 
 def oc_cov_list_to_array(oc_output_path):
-    probe_idx_dict_ell = {
-        'm': 0,
-        'g': 1,
-    }
+    probe_idx_dict_ell = {'m': 0, 'g': 1}
 
     # set df column names
     with open(oc_output_path) as file:
@@ -741,15 +733,17 @@ def oc_cov_list_to_array(oc_output_path):
     ]
 
     for cov_10d in covs_10d:
-        cov_10d[0, 0, 1, 1] = deepcopy(
-            np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-        )
-        cov_10d[1, 0, 0, 0] = deepcopy(
-            np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-        )
-        cov_10d[1, 0, 1, 1] = deepcopy(
-            np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-        )
+        cov_10d[0, 0, 1, 1] = np.transpose(
+            cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3)
+        ).copy()
+
+        cov_10d[1, 0, 0, 0] = np.transpose(
+            cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3)
+        ).copy()
+
+        cov_10d[1, 0, 1, 1] = np.transpose(
+            cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3)
+        ).copy()
 
     return covs_10d
 
@@ -1036,11 +1030,7 @@ probe_idx_dict_short = {
 
 # this is only needed to be able to construct the full Gauss cov from the sum of the
 # SVA, SN and MIX covs. No particular reason behind the choice of the indices.
-split_g_dict = {
-    'sva': 0,
-    'sn': 1,
-    'mix': 2,
-}
+split_g_dict = {'sva': 0, 'sn': 1, 'mix': 2}
 
 
 probe_idx_dict_short_oc = {}
@@ -1607,15 +1597,15 @@ for probe, term in itertools.product(probes_toloop, terms_toloop):
     ]
 
     # for cov_8d in covs_8d:
-    #     cov_8d[0, 0, 1, 1] = deepcopy(
+    #     cov_8d[0, 0, 1, 1] = (
     #         np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-    #     )
-    #     cov_8d[1, 0, 0, 0] = deepcopy(
+    #     ).copy()
+    #     cov_8d[1, 0, 0, 0] = (
     #         np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-    #     )
-    #     cov_8d[1, 0, 1, 1] = deepcopy(
+    #     ).copy()
+    #     cov_8d[1, 0, 1, 1] = (
     #         np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-    #     )
+    #     ).copy()
 
     # ! ================================================================================
 
@@ -1828,12 +1818,7 @@ for term in terms_toloop:
             ind_cd,
         )
         cov_oc_4d = sl.cov_6D_to_4D_blocks(
-            cov_oc_6d,
-            nbt_coarse,
-            zpairs_ab,
-            zpairs_cd,
-            ind_ab,
-            ind_cd,
+            cov_oc_6d, nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
         )
 
         cov_sb_2d_dict[probe] = sl.cov_4D_to_2D(
@@ -2015,11 +2000,7 @@ x = np.linspace(dof_oc - dof_oc * 0.4, dof_oc + dof_oc * 0.4, 1000)
 
 chi2_dist = chi2.pdf(x, df=dof_oc)
 plt.plot(
-    x,
-    chi2_dist,
-    label=f'th $\chi^2$ (eff. dof={dof_oc:.2f})',
-    linestyle='--',
-    c='k',
+    x, chi2_dist, label=f'th $\chi^2$ (eff. dof={dof_oc:.2f})', linestyle='--', c='k'
 )
 plt.legend()
 plt.xlabel('$\chi^2$')

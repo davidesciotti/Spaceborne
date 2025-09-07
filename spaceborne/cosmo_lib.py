@@ -147,12 +147,12 @@ def growth_factor_ccl(z, cosmo_ccl):
 
 
 def deg2_to_fsky(survey_area_deg2):
-    f_sky = survey_area_deg2 * (np.pi / 180) ** 2 / (4 * np.pi)
-    return f_sky
+    fsky = survey_area_deg2 * (np.pi / 180) ** 2 / (4 * np.pi)
+    return fsky
 
 
-def fsky_to_deg2(f_sky):
-    return f_sky * 4 * np.pi / (np.pi / 180) ** 2
+def fsky_to_deg2(fsky):
+    return fsky * 4 * np.pi / (np.pi / 180) ** 2
 
 
 def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):

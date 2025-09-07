@@ -73,9 +73,6 @@ class SpaceborneConfigChecker:
         assert isinstance(self.cfg['covariance']['load_cached_sigma2_b'], bool), (
             'load_cached_sigma2_b must be a boolean'
         )
-        assert isinstance(self.cfg['nz']['normalize_shifted_nz'], bool), (
-            'b2g_from_halomodel must be a boolean'
-        )
 
     def check_ell_binning(self) -> None:
         # assert self.cfg['ell_binning']['nbl_WL_opt'] == 32, (
@@ -173,6 +170,34 @@ class SpaceborneConfigChecker:
             'row_col_major must be either "row-major" or "col-major"'
         )
 
+        if self.cfg['covariance']['split_gaussian_cov'] and (
+            self.cfg['namaster']['use_namaster']
+            or self.cfg['sample_covariance']['compute_sample_cov']
+        ):
+            raise ValueError(
+                'cfg["covariance"]["split_gaussian_cov"] cannot be '
+                'set to True with either '
+                'cfg["namaster"]["use_namaster"] or '
+                'cfg["sample_covariance"]["compute_sample_cov"].'
+            )
+        assert not (
+            self.cfg['namaster']['use_namaster']
+            and self.cfg['sample_covariance']['compute_sample_cov']
+        ), 'Only one of `use_namaster` and `compute_sample_cov` can be True — not both.'
+
+    def check_probe_selection(self) -> None:
+        for key, val in self.cfg['probe_selection'].items():
+            assert key in ['LL', 'GL', 'GG', 'cross_cov'], (
+                f'Probe selection key {key} is not valid. '
+                'Valid keys are "LL" for lensing, '
+                '"GL" (and not LG) for galaxy-galaxy lensing, '
+                '"GG" for photometric galaxy clustering, '
+                'and "cross_cov" for cross-covariance.'
+            )
+            assert isinstance(val, bool), (
+                f'Value for {key} must be a boolean, got {type(val)}'
+            )
+            
     def check_nmt(self) -> None:
         if self.cfg['covariance']['coupled_cov'] and self.cfg['covariance']['G']:
             assert (
@@ -196,6 +221,7 @@ class SpaceborneConfigChecker:
         self.check_KE_approximation()
         self.check_lists()
         # self.check_fsky()
+        self.check_probe_selection()
         self.check_types()
         self.check_ell_binning()
         self.check_misc()

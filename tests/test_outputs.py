@@ -112,7 +112,7 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/u/dsciotti/code'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run all tests...
@@ -121,9 +121,13 @@ bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 
 # ... or run specific tests
-# bench_yaml_names = [
-#     'config_0000.yaml',
-# ]
+bench_yaml_names = [
+    'config_0014',
+    'config_0015',
+    'config_0016',
+    'config_0017',
+    'config_0018',
+]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'
@@ -146,7 +150,7 @@ if os.path.exists(f'{temp_output_filename}.npz'):
         os.remove(f'{temp_output_filename}.npz')
 
 for bench_name in bench_yaml_names:
-    print(f'Testing {bench_name}...')
+    print(f'\n\n🧪🧪🧪 Testing {bench_name} 🧪🧪🧪...\n')
 
     # ! update the cfg file to avoid overwriting the benchmarks
     # Load the benchmark config

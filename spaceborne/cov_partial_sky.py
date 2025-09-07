@@ -50,8 +50,9 @@ def bin_mcm(mbm_unbinned: np.ndarray, nmt_bin_obj) -> np.ndarray:
     return mcm_binned
 
 
-def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # fmt: skip
+def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
                      cw, w00, w02, w22,
+                     unique_probe_combs,
                      coupled=False, ells_in=None, ells_out=None,
                      ells_out_edges=None, which_binning=None, weights=None):  # fmt: skip
     """Unified function to compute Gaussian covariance using NaMaster.
@@ -104,95 +105,142 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
 
     z_combinations = list(itertools.product(range(zbins), repeat=4))
     for zi, zj, zk, zl in tqdm(z_combinations):
-        covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              cl_00_list(zi, zk),
-                                              cl_00_list(zi, zl),
-                                              cl_00_list(zj, zk),
-                                              cl_00_list(zj, zl),
-                                              coupled=coupled,
-                                              wa=w00, wb=w00).reshape([nell, 1, nell, 1])  # fmt: skip
-        covar_TT_TT = covar_00_00[:, 0, :, 0]
+        if 'GGGG' in unique_probe_combs:
+            covar_00_00 = nmt.gaussian_covariance(cw, 
+                                                0, 0, 0, 0,
+                                                cl_00_list(zi, zk),
+                                                cl_00_list(zi, zl),
+                                                cl_00_list(zj, zk),
+                                                cl_00_list(zj, zl),
+                                                coupled=coupled,
+                                                wa=w00, wb=w00).reshape([nell, 1, nell, 1])  # fmt: skip
+            covar_TT_TT = covar_00_00[:, 0, :, 0]
+        else:
+            covar_TT_TT = np.zeros((nell, nell))
 
-        covar_00_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 2,
-                                              cl_00_list(zi, zk),
-                                              cl_02_list(zi, zl),
-                                              cl_00_list(zj, zk),
-                                              cl_02_list(zj, zl),
-                                              coupled=coupled,
-                                              wa=w00, wb=w02).reshape([nell, 1, nell, 2])  # fmt: skip
-        covar_TT_TE = covar_00_02[:, 0, :, 0]
-        _covar_TT_TB = covar_00_02[:, 0, :, 1]
+        if 'GGGL' in unique_probe_combs or 'GLGG' in unique_probe_combs:
+            covar_00_02 = nmt.gaussian_covariance(cw, 
+                                                0, 0, 0, 2,
+                                                cl_00_list(zi, zk),
+                                                cl_02_list(zi, zl),
+                                                cl_00_list(zj, zk),
+                                                cl_02_list(zj, zl),
+                                                coupled=coupled,
+                                                wa=w00, wb=w02).reshape([nell, 1, nell, 2])  # fmt: skip
+            covar_TT_TE = covar_00_02[:, 0, :, 0]
+            covar_TT_TB = covar_00_02[:, 0, :, 1]
+        else:
+            covar_TT_TE = np.zeros((nell, nell))
+            covar_TT_TB = np.zeros((nell, nell))
 
-        covar_00_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 2, 2,
-                                              cl_02_list(zi, zk),
-                                              cl_02_list(zi, zl),
-                                              cl_02_list(zj, zk),
-                                              cl_02_list(zj, zl),
-                                              coupled=coupled,
-                                              wa=w00, wb=w22).reshape([nell, 1, nell, 4])  # fmt: skip
-        covar_TT_EE = covar_00_22[:, 0, :, 0]
-        _covar_TT_EB = covar_00_22[:, 0, :, 1]
-        _covar_TT_BE = covar_00_22[:, 0, :, 2]
-        _covar_TT_BB = covar_00_22[:, 0, :, 3]
+        if 'GGLL' in unique_probe_combs or 'LLGG' in unique_probe_combs:
+            covar_00_22 = nmt.gaussian_covariance(cw, 
+                                                0, 0, 2, 2,
+                                                cl_02_list(zi, zk),
+                                                cl_02_list(zi, zl),
+                                                cl_02_list(zj, zk),
+                                                cl_02_list(zj, zl),
+                                                coupled=coupled,
+                                                wa=w00, wb=w22).reshape([nell, 1, nell, 4])  # fmt: skip
+            covar_TT_EE = covar_00_22[:, 0, :, 0]
+            covar_TT_EB = covar_00_22[:, 0, :, 1]
+            covar_TT_BE = covar_00_22[:, 0, :, 2]
+            covar_TT_BB = covar_00_22[:, 0, :, 3]
+        else:
+            covar_TT_EE = np.zeros((nell, nell))
+            covar_TT_EB = np.zeros((nell, nell))
+            covar_TT_BE = np.zeros((nell, nell))
+            covar_TT_BB = np.zeros((nell, nell))
 
-        covar_02_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 2, 0, 2,
-                                              cl_00_list(zi, zk),
-                                              cl_02_list(zi, zl),
-                                              cl_20_list(zj, zk),
-                                              cl_22_list(zj, zl),
-                                              coupled=coupled,
-                                              wa=w02, wb=w02).reshape([nell, 2, nell, 2])  # fmt: skip
-        covar_TE_TE = covar_02_02[:, 0, :, 0]
-        _covar_TE_TB = covar_02_02[:, 0, :, 1]
-        _covar_TB_TE = covar_02_02[:, 1, :, 0]
-        _covar_TB_TB = covar_02_02[:, 1, :, 1]
+        if 'GLGL' in unique_probe_combs:
+            covar_02_02 = nmt.gaussian_covariance(cw, 
+                                                0, 2, 0, 2,
+                                                cl_00_list(zi, zk),
+                                                cl_02_list(zi, zl),
+                                                cl_20_list(zj, zk),
+                                                cl_22_list(zj, zl),
+                                                coupled=coupled,
+                                                wa=w02, wb=w02).reshape([nell, 2, nell, 2])  # fmt: skip
+            covar_TE_TE = covar_02_02[:, 0, :, 0]
+            covar_TE_TB = covar_02_02[:, 0, :, 1]
+            covar_TB_TE = covar_02_02[:, 1, :, 0]
+            covar_TB_TB = covar_02_02[:, 1, :, 1]
+        else:
+            covar_TE_TE = np.zeros((nell, nell))
+            covar_TE_TB = np.zeros((nell, nell))
+            covar_TB_TE = np.zeros((nell, nell))
+            covar_TB_TB = np.zeros((nell, nell))
 
-        covar_02_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 2, 2, 2,
-                                              cl_02_list(zi, zk),
-                                              cl_02_list(zi, zl),
-                                              cl_22_list(zj, zk),
-                                              cl_22_list(zj, zl),
-                                              coupled=coupled,
-                                              wa=w02, wb=w22).reshape([nell, 2, nell, 4])  # fmt: skip
-        covar_TE_EE = covar_02_22[:, 0, :, 0]
-        _covar_TE_EB = covar_02_22[:, 0, :, 1]
-        _covar_TE_BE = covar_02_22[:, 0, :, 2]
-        _covar_TE_BB = covar_02_22[:, 0, :, 3]
-        _covar_TB_EE = covar_02_22[:, 1, :, 0]
-        _covar_TB_EB = covar_02_22[:, 1, :, 1]
-        _covar_TB_BE = covar_02_22[:, 1, :, 2]
-        _covar_TB_BB = covar_02_22[:, 1, :, 3]
+        if 'GLLL' in unique_probe_combs or 'LLGL' in unique_probe_combs:
+            covar_02_22 = nmt.gaussian_covariance(cw, 
+                                                0, 2, 2, 2,
+                                                cl_02_list(zi, zk),
+                                                cl_02_list(zi, zl),
+                                                cl_22_list(zj, zk),
+                                                cl_22_list(zj, zl),
+                                                coupled=coupled,
+                                                wa=w02, wb=w22).reshape([nell, 2, nell, 4])  # fmt: skip
+            covar_TE_EE = covar_02_22[:, 0, :, 0]
+            covar_TE_EB = covar_02_22[:, 0, :, 1]
+            covar_TE_BE = covar_02_22[:, 0, :, 2]
+            covar_TE_BB = covar_02_22[:, 0, :, 3]
+            covar_TB_EE = covar_02_22[:, 1, :, 0]
+            covar_TB_EB = covar_02_22[:, 1, :, 1]
+            covar_TB_BE = covar_02_22[:, 1, :, 2]
+            covar_TB_BB = covar_02_22[:, 1, :, 3]
+        else:
+            covar_TE_EE = np.zeros((nell, nell))
+            covar_TE_EB = np.zeros((nell, nell))
+            covar_TE_BE = np.zeros((nell, nell))
+            covar_TE_BB = np.zeros((nell, nell))
+            covar_TB_EE = np.zeros((nell, nell))
+            covar_TB_EB = np.zeros((nell, nell))
+            covar_TB_BE = np.zeros((nell, nell))
+            covar_TB_BB = np.zeros((nell, nell))
 
-        covar_22_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              2, 2, 2, 2,
-                                              cl_22_list(zi, zk),
-                                              cl_22_list(zi, zl),
-                                              cl_22_list(zj, zk),
-                                              cl_22_list(zj, zl),
-                                              coupled=coupled,
-                                              wa=w22, wb=w22).reshape([nell, 4, nell, 4])  # fmt: skip
+        if 'LLLL' in unique_probe_combs:
+            covar_22_22 = nmt.gaussian_covariance(cw, 
+                                                2, 2, 2, 2,
+                                                cl_22_list(zi, zk),
+                                                cl_22_list(zi, zl),
+                                                cl_22_list(zj, zk),
+                                                cl_22_list(zj, zl),
+                                                coupled=coupled,
+                                                wa=w22, wb=w22).reshape([nell, 4, nell, 4])  # fmt: skip
 
-        covar_EE_EE = covar_22_22[:, 0, :, 0]
-        _covar_EE_EB = covar_22_22[:, 0, :, 1]
-        _covar_EE_BE = covar_22_22[:, 0, :, 2]
-        _covar_EE_BB = covar_22_22[:, 0, :, 3]
-        _covar_EB_EE = covar_22_22[:, 1, :, 0]
-        _covar_EB_EB = covar_22_22[:, 1, :, 1]
-        _covar_EB_BE = covar_22_22[:, 1, :, 2]
-        _covar_EB_BB = covar_22_22[:, 1, :, 3]
-        _covar_BE_EE = covar_22_22[:, 2, :, 0]
-        _covar_BE_EB = covar_22_22[:, 2, :, 1]
-        _covar_BE_BE = covar_22_22[:, 2, :, 2]
-        _covar_BE_BB = covar_22_22[:, 2, :, 3]
-        _covar_BB_EE = covar_22_22[:, 3, :, 0]
-        _covar_BB_EB = covar_22_22[:, 3, :, 1]
-        _covar_BB_BE = covar_22_22[:, 3, :, 2]
-        _covar_BB_BB = covar_22_22[:, 3, :, 3]
+            covar_EE_EE = covar_22_22[:, 0, :, 0]
+            covar_EE_EB = covar_22_22[:, 0, :, 1]
+            covar_EE_BE = covar_22_22[:, 0, :, 2]
+            covar_EE_BB = covar_22_22[:, 0, :, 3]
+            covar_EB_EE = covar_22_22[:, 1, :, 0]
+            covar_EB_EB = covar_22_22[:, 1, :, 1]
+            covar_EB_BE = covar_22_22[:, 1, :, 2]
+            covar_EB_BB = covar_22_22[:, 1, :, 3]
+            covar_BE_EE = covar_22_22[:, 2, :, 0]
+            covar_BE_EB = covar_22_22[:, 2, :, 1]
+            covar_BE_BE = covar_22_22[:, 2, :, 2]
+            covar_BE_BB = covar_22_22[:, 2, :, 3]
+            covar_BB_EE = covar_22_22[:, 3, :, 0]
+            covar_BB_EB = covar_22_22[:, 3, :, 1]
+            covar_BB_BE = covar_22_22[:, 3, :, 2]
+            covar_BB_BB = covar_22_22[:, 3, :, 3]
+        else:
+            covar_EE_EE = np.zeros((nell, nell))
+            covar_EE_EB = np.zeros((nell, nell))
+            covar_EE_BE = np.zeros((nell, nell))
+            covar_EE_BB = np.zeros((nell, nell))
+            covar_EB_EE = np.zeros((nell, nell))
+            covar_EB_EB = np.zeros((nell, nell))
+            covar_EB_BE = np.zeros((nell, nell))
+            covar_EB_BB = np.zeros((nell, nell))
+            covar_BE_EE = np.zeros((nell, nell))
+            covar_BE_EB = np.zeros((nell, nell))
+            covar_BE_BE = np.zeros((nell, nell))
+            covar_BE_BB = np.zeros((nell, nell))
+            covar_BB_EE = np.zeros((nell, nell))
+            covar_BB_EB = np.zeros((nell, nell))
+            covar_BB_BE = np.zeros((nell, nell))
+            covar_BB_BB = np.zeros((nell, nell))
 
         common_kw = {
             'ells_in': ells_in,
@@ -248,104 +296,98 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,   # f
     return cov_nmt_10d_arr
 
 
-def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
-                           w00, coupled, ells_in, ells_out,
-                             ells_out_edges, which_binning, weights):  # fmt: skip
+def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
+                           w00, unique_probe_combs, coupled, ells_in, ells_out,
+                           ells_out_edges, which_binning, weights):  # fmt: skip
     cl_et = cl_te.transpose(0, 2, 1)
+
+    nell = cl_tt.shape[0] if coupled else nbl
 
     cov_nmt_10d_arr = np.zeros((2, 2, 2, 2, nbl, nbl, zbins, zbins, zbins, zbins))
 
     z_combinations = list(itertools.product(range(zbins), repeat=4))
     for zi, zj, zk, zl in tqdm(z_combinations):
-        covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_tt[:, zi, zk]],  # TT
-                                              [cl_tt[:, zi, zl]],  # TT
-                                              [cl_tt[:, zj, zk]],  # TT
-                                              [cl_tt[:, zj, zl]],  # TT
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_TT_TT = covar_00_00
+        if 'GGGG' in unique_probe_combs:
+            covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
+                                                0, 0, 0, 0, 
+                                                [cl_tt[:, zi, zk]],  # TT
+                                                [cl_tt[:, zi, zl]],  # TT
+                                                [cl_tt[:, zj, zk]],  # TT
+                                                [cl_tt[:, zj, zl]],  # TT
+                                                coupled=coupled,
+                                                wa=w00, wb=w00)  # fmt: skip
+            covar_TT_TT = covar_00_00
+        else:
+            covar_TT_TT = np.zeros((nell, nell))
 
-        covar_00_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_tt[:, zi, zk]],  # TT
-                                              [cl_te[:, zi, zl]],  # TE, TB
-                                              [cl_tt[:, zj, zk]],  # TT
-                                              [cl_te[:, zj, zl]],  # TE, TB
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_TT_TE = covar_00_02
+        # here and below, for the nondiag blocks, I need to include the symmetric
+        # probe combinations (by default, here in nmt, I compute the lower triangle
+        # of the 3x2pt probe combination matrix, rather then the upper one as done in
+        # the rest of the code)
+        if 'GGGL' in unique_probe_combs or 'GLGG' in unique_probe_combs:
+            covar_00_02 = nmt.gaussian_covariance(cw,  # fmt: skip
+                                                0, 0, 0, 0, 
+                                                [cl_tt[:, zi, zk]],  # TT
+                                                [cl_te[:, zi, zl]],  # TE, TB
+                                                [cl_tt[:, zj, zk]],  # TT
+                                                [cl_te[:, zj, zl]],  # TE, TB
+                                                coupled=coupled,
+                                                wa=w00, wb=w00)  # fmt: skip
+            covar_TT_TE = covar_00_02
+        else:
+            covar_TT_TE = np.zeros((nell, nell))
 
-        covar_02_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_tt[:, zi, zk]],  # TT
-                                              [cl_tt[:, zi, zl]],  # TT
-                                              [cl_et[:, zj, zk]],  # TE, TB
-                                              [cl_et[:, zj, zl]],  # TE, TB
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_TE_TT = covar_02_00
+        if 'GLGL' in unique_probe_combs:
+            covar_02_02 = nmt.gaussian_covariance(cw,  # fmt: skip
+                                                0, 0, 0, 0, 
+                                                [cl_tt[:, zi, zk]],  # TT
+                                                [cl_te[:, zi, zl]],  # TE, TB
+                                                [cl_et[:, zj, zk]],  # ET, BT
+                                                [cl_ee[:, zj, zl]],  # EE, EB, BE, BB
+                                                coupled=coupled,
+                                                wa=w00, wb=w00)  # fmt: skip
+            covar_TE_TE = covar_02_02
+        else:
+            covar_TE_TE = np.zeros((nell, nell))
 
-        covar_02_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_tt[:, zi, zk]],  # TT
-                                              [cl_te[:, zi, zl]],  # TE, TB
-                                              [cl_et[:, zj, zk]],  # ET, BT
-                                              [cl_ee[:, zj, zl]],  # EE, EB, BE, BB
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_TE_TE = covar_02_02
+        if 'GGLL' in unique_probe_combs or 'LLGG' in unique_probe_combs:
+            covar_00_22 = nmt.gaussian_covariance(cw,  # fmt: skip
+                                                0, 0, 0, 0, 
+                                                [cl_te[:, zi, zk]],  # TE, TB
+                                                [cl_te[:, zi, zl]],  # TE, TB
+                                                [cl_te[:, zj, zk]],  # TE, TB
+                                                [cl_te[:, zj, zl]],  # TE, TB
+                                                coupled=coupled,
+                                                wa=w00, wb=w00)  # fmt: skip
+            covar_TT_EE = covar_00_22
+        else:
+            covar_TT_EE = np.zeros((nell, nell))
 
-        covar_00_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_te[:, zi, zk]],  # TE, TB
-                                              [cl_te[:, zi, zl]],  # TE, TB
-                                              [cl_te[:, zj, zk]],  # TE, TB
-                                              [cl_te[:, zj, zl]],  # TE, TB
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_TT_EE = covar_00_22
+        if 'GLLL' in unique_probe_combs or 'LLGL' in unique_probe_combs:
+            covar_02_22 = nmt.gaussian_covariance(cw,  # fmt: skip
+                                                0, 0, 0, 0, 
+                                                [cl_te[:, zi, zk]],  # TE, TB
+                                                [cl_te[:, zi, zl]],  # TE, TB
+                                                [cl_ee[:, zj, zk]],
+                                                [cl_ee[:, zj, zl]],
+                                                coupled=coupled,
+                                                wa=w00, wb=w00)  # fmt: skip
+            covar_TE_EE = covar_02_22
+        else:
+            covar_TE_EE = np.zeros((nell, nell))
 
-        covar_02_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_te[:, zi, zk]],  # TE, TB
-                                              [cl_te[:, zi, zl]],  # TE, TB
-                                              [cl_ee[:, zj, zk]],
-                                              [cl_ee[:, zj, zl]],
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_TE_EE = covar_02_22
-
-        covar_22_22 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_ee[:, zi, zk]],
-                                              [cl_ee[:, zi, zl]],
-                                              [cl_ee[:, zj, zk]],
-                                              [cl_ee[:, zj, zl]],
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_EE_EE = covar_22_22
-
-        covar_22_02 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_et[:, zi, zk]],
-                                              [cl_ee[:, zi, zl]],
-                                              [cl_et[:, zj, zk]],
-                                              [cl_ee[:, zj, zl]],
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_EE_TE = covar_22_02
-
-        covar_22_00 = nmt.gaussian_covariance(cw,  # fmt: skip
-                                              0, 0, 0, 0,
-                                              [cl_et[:, zi, zk]],
-                                              [cl_et[:, zi, zl]],
-                                              [cl_et[:, zj, zk]],
-                                              [cl_et[:, zj, zl]],
-                                              coupled=coupled,
-                                              wa=w00, wb=w00)  # fmt: skip
-        covar_EE_TT = covar_22_00
+        if 'LLLL' in unique_probe_combs:
+            covar_22_22 = nmt.gaussian_covariance(cw,  # fmt: skip
+                                                0, 0, 0, 0, 
+                                                [cl_ee[:, zi, zk]],
+                                                [cl_ee[:, zi, zl]],
+                                                [cl_ee[:, zj, zk]],
+                                                [cl_ee[:, zj, zl]],
+                                                coupled=coupled,
+                                                wa=w00, wb=w00)  # fmt: skip
+            covar_EE_EE = covar_22_22
+        else:
+            covar_EE_EE = np.zeros((nell, nell))
 
         common_kw = {
             'ells_in': ells_in,
@@ -360,12 +402,6 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
             cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
                 covar_EE_EE, **common_kw
             )
-            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_TE, **common_kw
-            )
-            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_TT, **common_kw
-            )
             cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
                 covar_TE_EE, **common_kw
             )
@@ -378,23 +414,31 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,   # fmt: skip
             cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
                 covar_TT_TE, **common_kw
             )
-            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_TT, **common_kw
-            )
             cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
                 covar_TT_TT, **common_kw
+            )
+            # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
+            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
+                cov=covar_TE_EE.T, **common_kw
+            )
+            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
+                cov=covar_TT_EE.T, **common_kw
+            )
+            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
+                cov=covar_TT_TE.T, **common_kw
             )
 
         else:
             cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
-            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_EE_TE
-            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zi, zj, zk, zl] = covar_EE_TT
             cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_TE_EE
             cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_TE_TE
             cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = covar_TT_EE
             cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = covar_TT_TE
-            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zi, zj, zk, zl] = covar_TE_TT
             cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = covar_TT_TT
+            # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
+            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = covar_TE_EE.T
+            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_EE.T
+            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_TE.T
 
     return cov_nmt_10d_arr
 
@@ -742,7 +786,7 @@ def build_cl_ring_ordering(cl_3d):
     )
     cl_ring_list = []
 
-    for offset in range(0, zbins):  # offset defines the distance from the main diagonal
+    for offset in range(zbins):  # offset defines the distance from the main diagonal
         for zi in range(zbins - offset):
             zj = zi + offset
             cl_ring_list.append(cl_3d[:, zi, zj])
@@ -767,10 +811,10 @@ def build_cl_tomo_TEB_ring_ord(
     # matrix of combinations
     row_idx = 0
     matrix = []
-    for zi in range(0, zbins):
+    for zi in range(zbins):
         for s1 in spectra_types:
             row = []
-            for zj in range(0, zbins):
+            for zj in range(zbins):
                 for s2 in spectra_types:
                     row.append(f'{s1}-{zi}-{s2}-{zj}')
             matrix.append(row)
@@ -940,12 +984,6 @@ class NmtCov:
         self.coupled_cov = cfg['covariance']['coupled_cov']
         self.output_path = self.cfg['misc']['output_path']
 
-        self.cov_blocks_names_all = (  # fmt: skip
-            'LLLL', 'LLGL', 'LLGG',
-            'GLLL', 'GLGL', 'GLGG',
-            'GGLL', 'GGGL', 'GGGG',
-        )  # fmt: skip
-
         # check on lmax and NSIDE
         for probe in ('WL', 'GC'):
             _lmax = getattr(self.ell_obj, f'ell_max_{probe}')
@@ -963,6 +1001,7 @@ class NmtCov:
         nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
         fsky = self.mask_obj.fsky
         nmt_cfg = self.cfg['namaster']
+        unique_probe_combs = self.pvt_cfg['unique_probe_combs']
 
         ells_eff = self.ell_obj.ells_3x2pt
         nbl_eff = self.ell_obj.nbl_3x2pt
@@ -987,9 +1026,9 @@ class NmtCov:
         # )
         # assert np.all(delta_ells_bpw == ells_per_band), 'delta_ell from bpw does not match ells_per_band'
 
-        cl_gg_4covnmt = np.copy(self.cl_gg_unb_3d)
-        cl_gl_4covnmt = np.copy(self.cl_gl_unb_3d)
-        cl_ll_4covnmt = np.copy(self.cl_ll_unb_3d)
+        cl_gg_4covnmt = self.cl_gg_unb_3d.copy()
+        cl_gl_4covnmt = self.cl_gl_unb_3d.copy()
+        cl_ll_4covnmt = self.cl_ll_unb_3d.copy()
 
         # ! create nmt field from the mask (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
@@ -1087,6 +1126,7 @@ class NmtCov:
                     nbl=nbl_eff,
                     cw=cw,
                     w00=w00,
+                    unique_probe_combs=unique_probe_combs,
                     coupled=self.coupled_cov,
                     ells_in=ells_unb,
                     ells_out=ells_eff,
@@ -1109,6 +1149,7 @@ class NmtCov:
                     w00=w00,
                     w02=w02,
                     w22=w22,
+                    unique_probe_combs=unique_probe_combs,
                     coupled=self.coupled_cov,
                     ells_in=ells_unb,
                     ells_out=ells_eff,

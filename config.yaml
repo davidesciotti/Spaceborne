@@ -67,9 +67,10 @@ C_ell:
   # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the "ell_binning"
   # section of this cfg file.
   use_input_cls: False # Type: bool
-  cl_LL_path: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+
+  cl_LL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -86,8 +87,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -111,8 +112,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -147,7 +148,7 @@ mask:
   aposize: 0.1 # Type: float. Apodization scale in deg
 
 ell_binning:
-  binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+  binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
 
   ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL
@@ -162,6 +163,9 @@ ell_binning:
   ell_min_ref: 10 # Type: int. Minimum ell for reference case
   ell_max_ref: 1500 # Type: int. Maximum ell for reference case
   ell_bins_ref: 32 # Type: int. Number of bins for reference case
+
+  WL_bins_filename: '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/ell_values_3x2pt.txt'
+  GC_bins_filename: '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/ell_values_3x2pt.txt'
 
 BNT:
   cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
@@ -304,5 +308,4 @@ misc:
   cl_triangle_plot: False # Type: bool.
 
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
-  output_path: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
-
+  output_path: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory

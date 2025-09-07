@@ -63,7 +63,7 @@ import spaceborne.constants as const
 def split_probe_name(full_probe_name):
     """Splits a full probe name (e.g., 'gtxim') into two component probes.
 
-    Possible probe names are 'xip', 'xim', 'gg', 'gt'.
+    Possible probe names are 'xip', 'xim', 'gt', 'gg'.
 
     Args:
         full_probe_name (str): A string containing two probe types concatenated.
@@ -75,7 +75,7 @@ def split_probe_name(full_probe_name):
         ValueError: If the input string does not contain exactly two valid probes.
 
     """
-    valid_probes = {'xip', 'xim', 'gg', 'gt'}
+    valid_probes = {'xip', 'xim', 'gt', 'gg'}
 
     # Try splitting at each possible position
     for i in range(2, len(full_probe_name)):

@@ -332,8 +332,13 @@ class EllBinning:
         self.ell_max_ref = cfg['ell_binning']['ell_max_ref']
         self.nbl_ref = cfg['ell_binning']['ell_bins_ref']
 
-        self.wl_bins_filename = cfg['ell_binning']['WL_bins_filename']
-        self.gc_bins_filename = cfg['ell_binning']['GC_bins_filename']
+        # Only load filenames if using 'from_input' binning type
+        if self.binning_type == 'from_input':
+            self.wl_bins_filename = cfg['ell_binning']['WL_bins_filename']
+            self.gc_bins_filename = cfg['ell_binning']['GC_bins_filename']
+        else:
+            self.wl_bins_filename = None
+            self.gc_bins_filename = None
 
         self.use_namaster = cfg['namaster']['use_namaster']
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
@@ -438,14 +443,23 @@ class EllBinning:
             self.ells_WL = wl_bins_in[:, 0]
             self.delta_l_WL = wl_bins_in[:, 1]
             ell_edges_lo_WL = wl_bins_in[:, 2]
-            ell_edges_up_WL = wl_bins_in[:, 3]
-            self.ell_edges_WL = np.unique(np.append(ell_edges_lo_WL, ell_edges_up_WL))
+            ell_edges_hi_WL = wl_bins_in[:, 3]
+            if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
+                raise ValueError("All WL bin lower edges must be less than upper edges")
+            self.ell_edges_WL = np.unique(np.append(ell_edges_lo_WL, ell_edges_hi_WL))
+            if not np.all(np.diff(self.ell_edges_WL) > 0):
+                raise ValueError("WL bin edges must be strictly increasing after combining")
 
             self.ells_GC = gc_bins_in[:, 0]
             self.delta_l_GC = gc_bins_in[:, 1]
             ell_edges_lo_GC = gc_bins_in[:, 2]
-            ell_edges_up_GC = gc_bins_in[:, 3]
-            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_up_GC))
+            ell_edges_hi_GC = gc_bins_in[:, 3]
+            if not np.all(ell_edges_lo_GC < ell_edges_hi_GC):
+                raise ValueError("All GC bin lower edges must be less than upper edges")
+            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
+            if not np.all(np.diff(self.ell_edges_GC) > 0):
+                raise ValueError("WL bin edges must be strictly increasing after combining")
+            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
 
         elif self.binning_type == 'ref_cut':
             # TODO this is only done for backwards-compatibility reasons

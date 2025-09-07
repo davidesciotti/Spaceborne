@@ -20,8 +20,8 @@
 NOTES
 
 1. The code will raise an error if the benchmark files are already present.
-   If you want to dverwrite them, delete the existing ones in e.g.
-  f {ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
+   If you want to overwrite them, delete the existing ones (e.g.):
+   {ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
 """
 
 import gc

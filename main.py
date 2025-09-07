@@ -2046,7 +2046,8 @@ for probe in const.RS_PROBE_NAME_TO_IX_DICT:
     ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
 
     # no need to assign 6d and 4d to dedicated dictionary
-    cov_oc_6d = cov_oc_list_8d[*cov_rs_obj.probe_idx_dict_short_oc[probe], ...]
+    probe_oc = probe.replace('gt', 'gm')
+    cov_oc_6d = cov_oc_list_8d[*cov_rs_obj.probe_idx_dict_short_oc[probe_oc], ...]
 
     # check theta simmetry
     if np.allclose(cov_oc_6d, cov_oc_6d.transpose(1, 0, 2, 3, 4, 5), atol=0, rtol=1e-5):

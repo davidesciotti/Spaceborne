@@ -5,8 +5,8 @@
 # Note: `None` is `null` in YAML
 
 # ROOTS:
-# pleiadi: /u/dsciotti/code
-# local: /home/davide/Documenti/Lavoro/Programmi
+# pleiadi: /_u/dsciotti/code
+# local: /_home/davide/Documenti/Lavoro/Programmi
 
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
@@ -72,9 +72,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_path: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -91,8 +91,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -116,8 +116,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -309,4 +309,4 @@ misc:
   cl_triangle_plot: False # Type: bool.
 
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
-  output_path: /u/dsciotti/code/common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
+  output_path: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory

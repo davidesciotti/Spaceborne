@@ -152,7 +152,7 @@ mask:
   aposize: 0.1 # Type: float. Apodization scale in deg
 
 ell_binning:
-  binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+  binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
 
   ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL
@@ -167,6 +167,9 @@ ell_binning:
   ell_min_ref: 10 # Type: int. Minimum ell for reference case
   ell_max_ref: 1500 # Type: int. Maximum ell for reference case
   ell_bins_ref: 32 # Type: int. Number of bins for reference case
+
+  WL_bins_filename: '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/ell_values_3x2pt.txt'
+  GC_bins_filename: '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/ell_values_3x2pt.txt'
 
 BNT:
   cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls

@@ -152,9 +152,9 @@ mask:
   aposize: 0.1 # Type: float. Apodization scale in deg
 
 ell_binning:
-  binning_type: "from_input" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
+  binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
 
-  ell_min_WL: 50 # Type: int. Minimum ell for WL
+  ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL
   ell_bins_WL: 32 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
 

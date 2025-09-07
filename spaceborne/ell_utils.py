@@ -332,6 +332,9 @@ class EllBinning:
         self.ell_max_ref = cfg['ell_binning']['ell_max_ref']
         self.nbl_ref = cfg['ell_binning']['ell_bins_ref']
 
+        self.wl_bins_filename = cfg['ell_binning']['WL_bins_filename']
+        self.gc_bins_filename = cfg['ell_binning']['GC_bins_filename']
+
         self.use_namaster = cfg['namaster']['use_namaster']
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
@@ -426,6 +429,23 @@ class EllBinning:
                 recipe='lin',
                 output_ell_bin_edges=True,
             )
+
+        elif self.binning_type == 'from_input':
+            # TODO unify with theta bins!!
+            wl_bins_in = np.genfromtxt(self.wl_bins_filename)
+            gc_bins_in = np.genfromtxt(self.gc_bins_filename)
+
+            self.ells_WL = wl_bins_in[:, 0]
+            self.delta_l_WL = wl_bins_in[:, 1]
+            ell_edges_lo_WL = wl_bins_in[:, 2]
+            ell_edges_up_WL = wl_bins_in[:, 3]
+            self.ell_edges_WL = np.unique(np.append(ell_edges_lo_WL, ell_edges_up_WL))
+
+            self.ells_GC = gc_bins_in[:, 0]
+            self.delta_l_GC = gc_bins_in[:, 1]
+            ell_edges_lo_GC = gc_bins_in[:, 2]
+            ell_edges_up_GC = gc_bins_in[:, 3]
+            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_up_GC))
 
         elif self.binning_type == 'ref_cut':
             # TODO this is only done for backwards-compatibility reasons
@@ -523,6 +543,16 @@ class EllBinning:
         )
 
     def _validate_bins(self):
+        for probe in ['GC', 'XC', '3x2pt']:
+            ells_probe = getattr(self, f'ells_{probe}')
+            np.testing.assert_allclose(
+                ells_probe,
+                self.ells_WL,
+                err_msg='for the moment, ell binning should be the same for all probes',
+                atol=0,
+                rtol=1e-5,
+            )
+
         for probe in ['WL', 'GC', 'XC', '3x2pt']:
             ells = getattr(self, f'ells_{probe}')
 

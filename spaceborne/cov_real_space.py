@@ -888,10 +888,12 @@ class CovRealSpace:
         # for validation purposes
         self.probe_idx_dict_short_oc = {}
         for key in const.RS_PROBE_NAME_TO_IX_DICT:
-            probe_a_str, probe_b_str = sl.split_probe_name(key)
-            self.probe_idx_dict_short_oc[probe_a_str + probe_b_str] = (
-                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_a_str],
-                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_b_str],
+            probe_ab_str, probe_cd_str = sl.split_probe_name(key)
+            probe_ab_str_oc = 'gm' if probe_ab_str == 'gt' else probe_ab_str
+            probe_cd_str_oc = 'gm' if probe_cd_str == 'gt' else probe_cd_str
+            self.probe_idx_dict_short_oc[probe_ab_str_oc + probe_cd_str_oc] = (
+                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab_str],
+                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd_str],
             )
 
     def _set_terms_toloop(self):

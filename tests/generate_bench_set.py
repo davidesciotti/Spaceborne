@@ -291,7 +291,7 @@ base_cfg = {
         'apodize': False,
         'aposize': 0.1,
     },
-    'ell_binning': {
+    'binning': {
         'binning_type': 'ref_cut',
         'ell_min_WL': 10,
         'ell_max_WL': 3000,
@@ -311,7 +311,7 @@ base_cfg = {
         'coupled_cov': False,
         'triu_tril': 'triu',
         'row_col_major': 'row-major',
-        'covariance_ordering_2D': 'probe_ell_zpair',
+        'covariance_ordering_2D': 'probe_scale_zpair',
         'save_full_cov': True,
         'split_gaussian_cov': False,
         'sigma_eps_i': [0.26, 0.26, 0.26],
@@ -377,20 +377,20 @@ configs_to_test = [
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'log'},
+        'binning': {'binning_type': 'log'},
     },
     # G nmt spin0, lin ell binning
     # ==============================
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'lin'},
+        'binning': {'binning_type': 'lin'},
     },
     # G nmt spin2, lin ell binning
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': False},
-        'ell_binning': {'binning_type': 'lin'},
+        'binning': {'binning_type': 'lin'},
     },
     # SSC KE
     {'covariance': {'G': True, 'SSC': True, 'cNG': False}},

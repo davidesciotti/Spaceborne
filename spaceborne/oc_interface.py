@@ -192,7 +192,6 @@ class OneCovarianceInterface:
         """
         self.cfg = cfg
         self.oc_cfg = self.cfg['OneCovariance']
-        self.cov_rs_cfg = self.cfg['cov_real_space']
         self.pvt_cfg = pvt_cfg
         self.n_probes = cfg['covariance']['n_probes']
         self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
@@ -206,7 +205,7 @@ class OneCovarianceInterface:
         self.compute_ssc = do_ssc
         self.compute_cng = do_cng
 
-        self.obs_space = self.cfg['covariance']['space']
+        self.obs_space = self.cfg['probe_selection']['space']
 
         # paths and filenems
         self.conda_base_path = self.get_conda_base_path()
@@ -229,7 +228,7 @@ class OneCovarianceInterface:
             print(f'Error occurred: {e}')
             return None
 
-    def build_save_oc_ini(self, ascii_filenames_dict, print_ini=True):
+    def build_save_oc_ini(self, ascii_filenames_dict, h, print_ini=True):
         # this is just to preserve case sensitivity
         class CaseConfigParser(configparser.ConfigParser):
             def optionxform(self, optionstr):
@@ -256,7 +255,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['observables'] = {}
         cfg_oc_ini['output settings'] = {}
         cfg_oc_ini['covELLspace settings'] = {}
-        cfg_oc_ini['covTHETAspace settings'] = {}  # For real_space case
+        cfg_oc_ini['covTHETAspace settings'] = {}  # For real space case
         cfg_oc_ini['survey specs'] = {}
         cfg_oc_ini['redshift'] = {}
         cfg_oc_ini['cosmo'] = {}
@@ -276,16 +275,16 @@ class OneCovarianceInterface:
         cfg_oc_ini['covariance terms']['ssc'] = str(self.compute_ssc)
 
         # ! [observables]
-        if self.obs_space == 'harmonic_space':
+        if self.obs_space == 'harmonic':
             est_shear = 'C_ell'
             est_ggl = 'C_ell'
             est_clust = 'C_ell'
-        elif self.obs_space == 'real_space':
+        elif self.obs_space == 'real':
             est_shear = 'xi_pm'
             est_ggl = 'gamma_t'
             est_clust = 'w'
         else:
-            raise ValueError('self.which_obs must he "harmonic_space" or "real_space"')
+            raise ValueError('self.which_obs must he "harmonic" or "real"')
 
         cfg_oc_ini['observables']['cosmic_shear'] = str(True)
         cfg_oc_ini['observables']['est_shear'] = est_shear
@@ -324,8 +323,8 @@ class OneCovarianceInterface:
         )
         delta_z = np.diff(self.z_grid_trisp_sb)[0]
 
-        ell_binning_type = self.cfg['ell_binning']['binning_type']
-        if self.cfg['ell_binning']['binning_type'] == 'ref_cut':
+        ell_binning_type = self.cfg['binning']['binning_type']
+        if self.cfg['binning']['binning_type'] == 'ref_cut':
             ell_binning_type = 'log'
 
         # settings common to both observables
@@ -343,7 +342,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['ell_type_lensing'] = ell_binning_type
 
         # settings specific to both observables
-        if self.obs_space == 'harmonic_space':
+        if self.obs_space == 'harmonic':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.pvt_cfg['ell_min_3x2pt']
             )
@@ -373,7 +372,7 @@ class OneCovarianceInterface:
                 self.optimal_ellmax
             )
 
-        elif self.obs_space == 'real_space':
+        elif self.obs_space == 'real':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.cfg['precision']['ell_min_rs']
             )
@@ -459,33 +458,33 @@ class OneCovarianceInterface:
         cfg_oc_ini['hod']['modsch_b_sat'] = ', '.join([str(-0.024), str(1.149)])
 
         # ! [covTHETAspace settings]
-        if self.obs_space == 'real_space':
+        if self.obs_space == 'real':
             cfg_oc_ini['covTHETAspace settings']['theta_min_clustering'] = str(
-                self.cov_rs_cfg['theta_min_arcmin']
+                self.cfg['binning']['theta_min_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_max_clustering'] = str(
-                self.cov_rs_cfg['theta_max_arcmin']
+                self.cfg['binning']['theta_max_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_bins_clustering'] = str(
-                self.cfg['cov_real_space']['theta_bins']
+                self.cfg['binning']['theta_bins']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type_clustering'] = 'lin'
             cfg_oc_ini['covTHETAspace settings']['theta_min_lensing'] = str(
-                self.cov_rs_cfg['theta_min_arcmin']
+                self.cfg['binning']['theta_min_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_max_lensing'] = str(
-                self.cov_rs_cfg['theta_max_arcmin']
+                self.cfg['binning']['theta_max_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_bins_lensing'] = str(
-                self.cov_rs_cfg['theta_bins']
+                self.cfg['binning']['theta_bins']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type_lensing'] = 'lin'
 
             cfg_oc_ini['covTHETAspace settings']['theta_min'] = str(
-                self.cov_rs_cfg['theta_min_arcmin']
+                self.cfg['binning']['theta_min_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_max'] = str(
-                self.cov_rs_cfg['theta_max_arcmin']
+                self.cfg['binning']['theta_max_arcmin']
             )
             cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
 
@@ -523,10 +522,10 @@ class OneCovarianceInterface:
             self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
         )
         cfg_oc_ini['powspec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min']
+            self.cfg['covariance']['log10_k_min'] * h 
         )
         cfg_oc_ini['powspec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max']
+            self.cfg['covariance']['log10_k_max'] * h 
         )
         cfg_oc_ini['powspec evaluation']['log10k_bins'] = str(
             self.cfg['covariance']['k_steps']
@@ -534,10 +533,10 @@ class OneCovarianceInterface:
 
         # ! [trispec evaluation]
         cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min']
+            self.cfg['covariance']['log10_k_min'] * h 
         )
         cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max']
+            self.cfg['covariance']['log10_k_max'] * h 
         )
         cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
             self.cfg['covariance']['k_steps']
@@ -834,16 +833,16 @@ class OneCovarianceInterface:
             self.GL_OR_LG,
         )
 
-        cov_list_g_2d = sl.cov_4D_to_2DCLOE_3x2pt(
+        cov_list_g_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
             cov_list_g_4d, self.zbins, block_index='zpair'
         )
-        cov_list_ssc_2d = sl.cov_4D_to_2DCLOE_3x2pt(
+        cov_list_ssc_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
             cov_list_ssc_4d, self.zbins, block_index='zpair'
         )
-        cov_list_cng_2d = sl.cov_4D_to_2DCLOE_3x2pt(
+        cov_list_cng_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
             cov_list_cng_4d, self.zbins, block_index='zpair'
         )
-        cov_list_tot_2d = sl.cov_4D_to_2DCLOE_3x2pt(
+        cov_list_tot_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
             cov_list_tot_4d, self.zbins, block_index='zpair'
         )
 
@@ -1103,6 +1102,7 @@ class OneCovarianceInterface:
                 zbins=self.zbins,
                 ind_dict=ind_dict,
                 probe_ordering=self.cfg['covariance']['probe_ordering'],
+                space=self.obs_space,
                 symmetrize_output_dict=symmetrize_output_dict,
             )
 

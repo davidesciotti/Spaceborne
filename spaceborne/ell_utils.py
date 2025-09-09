@@ -527,14 +527,14 @@ class EllBinning:
 
     def compute_ells_3x2pt_rs(self):
         """Needed for the real-space covariance"""
-        self.ells_3x2pt_for_rs = np.geomspace(
+        self.ells_3x2pt_rs = np.geomspace(
             self.cfg['precision']['ell_min_rs'],
             self.cfg['precision']['ell_max_rs'],
             self.cfg['precision']['ell_bins_rs'],
         )
         # these are probably useless, but just to keep consistency
-        self.nbl_3x2pt_for_rs = len(self.ells_3x2pt_for_rs)
-        self.ell_max_3x2pt_for_rs = self.cfg['precision']['ell_max_rs']  
+        self.nbl_3x2pt_rs = len(self.ells_3x2pt_rs)
+        self.ell_max_3x2pt_rs = self.cfg['precision']['ell_max_rs']  
 
     def _validate_bins(self):
         for probe in ['WL', 'GC', 'XC', '3x2pt']:
@@ -545,12 +545,14 @@ class EllBinning:
 
             if not isinstance(ells, np.ndarray):
                 raise TypeError(
-                    f'ell values for probe {probe} must be a numpy array, got {type(ells)} instead.'
+                    f'ell values for probe {probe} must be a numpy array, '
+                    f'got {type(ells)} instead.'
                 )
 
             if ells.ndim != 1:
                 raise ValueError(
-                    f'ell values for probe {probe} must be a 1D array, got {ells.ndim}D array.'
+                    f'ell values for probe {probe} must be a 1D array, '
+                    f'got {ells.ndim}D array.'
                 )
 
             if not np.all(np.isfinite(ells)):

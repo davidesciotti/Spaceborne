@@ -160,6 +160,7 @@ class PycclClass:
         self.cl_gl_3d: np.ndarray = _UNSET
         self.cl_gg_3d: np.ndarray = _UNSET
         self.cl_3x2pt_5d: np.ndarray = _UNSET
+        self.sigma2_b_tuple: tuple = _UNSET
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], (

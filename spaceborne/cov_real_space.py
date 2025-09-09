@@ -36,6 +36,8 @@ warnings.filterwarnings(
     category=RuntimeWarning,
 )
 
+_UNSET = object()
+
 
 def b_mu(x, mu):
     r"""Implements the piecewise definition of the bracketed term b_mu(x)
@@ -782,10 +784,13 @@ class CovRealSpace:
         self.cov_rs_6d_shape = (
             self.nbt_fine, self.nbt_fine, self.zbins, self.zbins, self.zbins, self.zbins
             )  # fmt: skip
-        
-        
+
+        # attributes set at runtime
+        self.cl_3x2pt_5d = _UNSET
+        self.ells = _UNSET
+        self.nbl = _UNSET
+
     def set_cov_2d_ordering(self, req_probe_combs_2d):
-        
         # settings for 2D covariance ordering
         if self.cov_ordering_2d == 'probe_scale_zpair':
             self.block_index = 'ell'
@@ -881,7 +886,8 @@ class CovRealSpace:
             self.zbins,  self.zbins,  self.zbins,  self.zbins,
             ))  # fmt: skip
 
-        # this is only needed to be able to construct the full Gauss cov from the sum of the
+        # this is only needed to be able to construct the full Gauss cov from the sum 
+        # of the
         # SVA, SN and MIX covs. No particular reason behind the choice of the indices.
         self.split_g_dict = {'sva': 0, 'sn': 1, 'mix': 2}
 
@@ -1212,9 +1218,7 @@ class CovRealSpace:
             ),
         )  # fmt: skip
 
-    def combine_terms_and_probes(
-        self, unique_probe_combs, req_probe_combs_2d
-    ):
+    def combine_terms_and_probes(self, unique_probe_combs, req_probe_combs_2d):
         """For the given term, constructs the 3x2pt (nx2pt, depending on the n required
         probes) 2D cov, taking into account the required probe combinations
         (this is taken care of by cov_4D_to_2DCLOE_3x2pt_rs).

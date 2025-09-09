@@ -77,16 +77,7 @@ def process_cov_from_list_file_rs(
         subtract_one = True
 
     # ! import .list covariance file
-    shape = (
-        n_probes_rs,
-        n_probes_rs,
-        nbt_oc,
-        nbt_oc,
-        zbins,
-        zbins,
-        zbins,
-        zbins,
-    )
+    shape = (n_probes_rs, n_probes_rs, nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
     cov_g_oc_3x2pt_8D = np.zeros(shape)
     cov_sva_oc_3x2pt_8D = np.zeros(shape)
     cov_mix_oc_3x2pt_8D = np.zeros(shape)
@@ -497,7 +488,11 @@ class OneCovarianceInterface:
         if ('Tinker10' not in self.cfg['halo_model']['mass_function']) or (
             'Tinker10' not in self.cfg['halo_model']['halo_bias']
         ):
-            warnings.warn('Only Tinker10 supported by OC at the moment', stacklevel=2)
+            raise ValueError(
+                'Only Tinker10 mass function and halo bias are supported '
+                f'by OneCovariance. Got {self.cfg['halo_model']['mass_function']=}'
+                f'and {self.cfg['halo_model']['halo_bias']=} instead'
+            )
 
         # * PRECISION PARAMETER MODIFIED IN THE PAST (900 -> 1500)
         cfg_oc_ini['halomodel evaluation']['m_bins'] = str(900)
@@ -522,10 +517,10 @@ class OneCovarianceInterface:
             self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
         )
         cfg_oc_ini['powspec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min'] * h 
+            self.cfg['covariance']['log10_k_min'] * h
         )
         cfg_oc_ini['powspec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max'] * h 
+            self.cfg['covariance']['log10_k_max'] * h
         )
         cfg_oc_ini['powspec evaluation']['log10k_bins'] = str(
             self.cfg['covariance']['k_steps']
@@ -533,10 +528,10 @@ class OneCovarianceInterface:
 
         # ! [trispec evaluation]
         cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min'] * h 
+            self.cfg['covariance']['log10_k_min'] * h
         )
         cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max'] * h 
+            self.cfg['covariance']['log10_k_max'] * h
         )
         cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
             self.cfg['covariance']['k_steps']
@@ -969,10 +964,7 @@ class OneCovarianceInterface:
             ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)
         }
 
-        probe_idx_dict = {
-            'm': 0,
-            'g': 1,
-        }
+        probe_idx_dict = {'m': 0, 'g': 1}
 
         # ! import .list covariance file
         shape = (

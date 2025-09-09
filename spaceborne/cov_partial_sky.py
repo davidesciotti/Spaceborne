@@ -2,6 +2,7 @@ import itertools
 import os
 import time
 import warnings
+from typing import TypedDict
 
 import healpy as hp
 import numpy as np
@@ -16,6 +17,16 @@ _UNSET = object()
 
 DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
+
+
+# construct a TypedDcit to allow static type checkers to check packed **kwargs
+class Bin2DArrayKwargs(TypedDict):
+    ells_in: np.ndarray
+    ells_out: np.ndarray
+    ells_out_edges: np.ndarray
+    weights_in: np.ndarray | None
+    which_binning: str
+    interpolate: bool
 
 
 def couple_cov_6d(
@@ -49,11 +60,28 @@ def bin_mcm(mbm_unbinned: np.ndarray, nmt_bin_obj) -> np.ndarray:
     return mcm_binned
 
 
-def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
-                     cw, w00, w02, w22,
-                     unique_probe_combs,
-                     coupled=False, ells_in=None, ells_out=None,
-                     ells_out_edges=None, which_binning=None, weights=None):  # fmt: skip
+def nmt_gaussian_cov(
+    cl_tt: np.ndarray,
+    cl_te: np.ndarray,
+    cl_ee: np.ndarray,
+    cl_tb: np.ndarray,
+    cl_eb: np.ndarray,
+    cl_bb: np.ndarray,
+    zbins: int,
+    nbl: int,
+    cw,
+    w00,
+    w02,
+    w22,
+    unique_probe_combs: list[str],
+    *,
+    coupled: bool = False,
+    ells_in: np.ndarray,
+    ells_out: np.ndarray,
+    ells_out_edges: np.ndarray,
+    which_binning: str,
+    weights: np.ndarray | None,
+):
     """Unified function to compute Gaussian covariance using NaMaster.
 
     # NOTE: the order of the arguments (in particular for the cls) is the following
@@ -241,7 +269,7 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
             covar_BB_BE = np.zeros((nell, nell))
             covar_BB_BB = np.zeros((nell, nell))
 
-        common_kw = {
+        common_kw: Bin2DArrayKwargs = {
             'ells_in': ells_in,
             'ells_out': ells_out,
             'ells_out_edges': ells_out_edges,
@@ -388,7 +416,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
         else:
             covar_EE_EE = np.zeros((nell, nell))
 
-        common_kw = {
+        common_kw: Bin2DArrayKwargs = {
             'ells_in': ells_in,
             'ells_out': ells_out,
             'ells_out_edges': ells_out_edges,
@@ -996,6 +1024,8 @@ class NmtCov:
         self.cl_ll_unb_3d = _UNSET
         self.cl_gl_unb_3d = _UNSET
         self.cl_gg_unb_3d = _UNSET
+        self.ells_3x2pt_unb = _UNSET
+        self.nbl_3x2pt_unb = _UNSET
 
     def build_psky_cov(self):
         # TODO again, here I'm using 3x2pt = GC

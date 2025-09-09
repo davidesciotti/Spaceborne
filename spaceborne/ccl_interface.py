@@ -12,6 +12,8 @@ from spaceborne import constants as const
 from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
 from spaceborne import sb_lib as sl
 
+_UNSET = object()
+
 
 def apply_mult_shear_bias(cl_ll_3d, cl_gl_3d, mult_shear_bias, zbins):
     assert len(mult_shear_bias) == zbins, (
@@ -142,6 +144,22 @@ class PycclClass:
         self.halo_profile_hod = getattr(ccl.halos, halo_model_dict['halo_profile_hod'])(
             mass_def=self.mass_def, concentration=self.c_m_relation
         )
+
+        # declare attributes set at runtime
+        self.p_of_k_a = _UNSET
+        self.zbins: int = _UNSET
+        self.output_path: str = _UNSET
+        self.which_b1g_in_resp: str = _UNSET
+        self.lumin_ratio_2d_arr: np.ndarray | None = _UNSET
+        self.a_grid_tkka_SSC: np.ndarray = _UNSET
+        self.a_grid_tkka_cNG: np.ndarray = _UNSET
+        self.logn_k_grid_tkka_SSC: np.ndarray = _UNSET
+        self.logn_k_grid_tkka_cNG: np.ndarray = _UNSET
+        self.wf_galaxy_arr = _UNSET
+        self.cl_ll_3d: np.ndarray = _UNSET
+        self.cl_gl_3d: np.ndarray = _UNSET
+        self.cl_gg_3d: np.ndarray = _UNSET
+        self.cl_3x2pt_5d: np.ndarray = _UNSET
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], (
@@ -732,7 +750,9 @@ class PycclClass:
         kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
 
         # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
-        symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(unique_probe_combs)
+        symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(
+            unique_probe_combs=unique_probe_combs, space='harmonic'
+        )
 
         # * compute required blocks
         for probe_str in unique_probe_combs:

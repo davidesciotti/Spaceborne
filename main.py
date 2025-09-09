@@ -1042,10 +1042,10 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
         ):
             check_ells_in(ells_in, ells_out)
 
-    # initialize nmt_obj and set a couple useful attributes
+    # initialize nmt_cov_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
 
-    # set unbinned ells in nmt_obj
+    # set unbinned ells in nmt_cov_obj
     nmt_cov_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     nmt_cov_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
@@ -1069,7 +1069,7 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     nmt_cov_obj.cl_gg_unb_3d = cl_3x2pt_5d_unb[1, 1]
 
 else:
-    nmt_obj = None
+    nmt_cov_obj = None
 
 
 # ! =============== Init real space cov object, put here for simplicity for the moment ==============
@@ -1105,7 +1105,7 @@ if cfg['probe_selection']['space'] == 'real':
 
 # !  =============================== Build Gaussian covs ===============================
 cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
-    cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix
+    cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix
 )
 cov_hs_obj.set_ind_and_zpairs(ind, zbins)
 cov_hs_obj.consistency_checks()

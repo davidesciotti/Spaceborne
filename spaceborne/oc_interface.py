@@ -26,7 +26,109 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.optimize import minimize_scalar
 
+from spaceborne import constants as const
 from spaceborne import sb_lib as sl
+
+
+def compare_sb_cov_to_oc_list(
+    cov_rs_obj,
+    cov_oc_dict_6d: dict,
+    probe_sb: str,
+    term: str,
+    ind_auto: np.ndarray,
+    ind_cross: np.ndarray,
+    zpairs_auto: int,
+    zpairs_cross: int,
+    scale_bins: int,
+    title: str | None = None,
+):
+    # gt is gm in OneCov
+    probe_oc = probe_sb.replace('gt', 'gm')
+
+    # get probe names, ind and zpairs for 2D conversion
+    probe_ab, probe_cd = sl.split_probe_name(probe_sb)
+    probe_ab_ix, probe_cd_ix = (
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],
+    )
+    zpairs_ab = zpairs_cross if probe_ab_ix == 1 else zpairs_auto
+    zpairs_cd = zpairs_cross if probe_cd_ix == 1 else zpairs_auto
+    ind_ab = ind_cross if probe_ab_ix == 1 else ind_auto
+    ind_cd = ind_cross if probe_cd_ix == 1 else ind_auto
+
+    # get 6D covs
+    cov_sb_6d = getattr(cov_rs_obj, f'cov_{probe_sb}_{term}_6d')
+
+    # for cov OC, some blocks may be transposed
+    try:
+        cov_oc_6d = cov_oc_dict_6d[f'{probe_oc}_{term}']
+    except KeyError:
+        _probe_sb_inv = probe_cd + probe_ab
+        _probe_oc_inv = _probe_sb_inv.replace('gt', 'gm')
+        cov_oc_6d = cov_oc_dict_6d[f'{_probe_oc_inv}_{term}'].transpose(
+            1, 0, 4, 5, 2, 3
+        )
+
+    # if both covs are null, exit the function
+    if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
+        print(f'OC and SB covs for {term = } {probe_sb = } are both identically 0')
+        return
+
+    # convert to 2D to compare
+    cov_sb_4d = sl.cov_6D_to_4D_blocks(
+        cov_sb_6d, scale_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+    cov_oc_4d = sl.cov_6D_to_4D_blocks(
+        cov_oc_6d, scale_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+
+    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
+    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
+
+    sl.compare_arrays(
+        cov_sb_2d,
+        cov_oc_2d,
+        'SB',
+        'OC',
+        log_array=True,
+        log_diff=True,
+        abs_val=True,
+        plot_diff_threshold=10,
+        title=title,
+    )
+
+    fig, axs = plt.subplots(
+        2,
+        2,
+        figsize=(15, 6),
+        sharex='col',
+        height_ratios=[2, 1],
+        gridspec_kw={'hspace': 0, 'wspace': 0.3},
+    )
+
+    # flatten to (2,2) shape
+    axs = axs.reshape(2, 2)
+
+    sl.compare_funcs(
+        None,
+        {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
+        logscale_y=[True, False],
+        title=title,
+        ylim_diff=[-100, 100],
+        ax=axs[:, 0],
+    )
+
+    sl.compare_funcs(
+        None,
+        {
+            'SB flat': np.abs(cov_sb_2d).flatten(),
+            'OC flat': np.abs(cov_oc_2d).flatten(),
+        },
+        logscale_y=[True, False],
+        title=title,
+        ylim_diff=[-100, 100],
+        ax=axs[:, 1],
+    )
 
 
 def print_cfg_onecov_ini(cfg_onecov_ini):
@@ -40,18 +142,19 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
         print()  # Add a blank line for readability between sections
 
 
-def process_cov_from_list_file_rs(
+def process_cov_from_list_file(
     oc_output_covlist_fname,
     n_probes_rs,
     probe_idx_dict_short_oc,
     zbins,
     df_chunk_size=5_000_000,
 ):
-    import pandas as pd
     import re
 
-    # set df column names
-    with open(f'{oc_output_covlist_fname}') as file:
+    import pandas as pd
+
+    # read df column names
+    with open(oc_output_covlist_fname) as file:
         header = (
             file.readline().strip()
         )  # Read the first line and strip newline characters
@@ -60,94 +163,95 @@ def process_cov_from_list_file_rs(
     )
     column_names = header_list
 
-    data = pd.read_csv(
-        f'{oc_output_covlist_fname}', usecols=['theta1', 'tomoi'], sep='\s+'
-    )
+    usecols = ['#obs', 'tomoi']
+    if 'theta1' in column_names:
+        theta_or_ell = 'theta'
+    elif 'ell1' in column_names:
+        theta_or_ell = 'ell'
+    else:
+        raise ValueError('OneCov column names not recognised')
+    usecols += [f'{theta_or_ell}1']
 
-    thetas_oc_load = data['theta1'].unique()
-    thetas_oc_load_rad = np.deg2rad(thetas_oc_load / 60)
-    cov_theta_indices = {theta_out: idx for idx, theta_out in enumerate(thetas_oc_load)}
-    nbt_oc = len(thetas_oc_load)
+    # partial (much quicker) import of the .list file, to get info about thetas, probes
+    # and to perform checks on the tomo bin idxs
+    data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep='\s+')
 
-    # SB tomographic indices start from 0
+    # check thetas and nbt
+    scales_oc_load = data[f'{theta_or_ell}1'].unique()
+    cov_scale_indices = {scale_out: idx for idx, scale_out in enumerate(scales_oc_load)}
+    nbx_oc = len(scales_oc_load)  # 'nbx' = nbt or nbl
+
+    # check tomo idxs: SB tomographic indices start from 0
     tomoi_oc_load = data['tomoi'].unique()
-    subtract_one = False
+    subtract_one_from_z_ix = False
     if min(tomoi_oc_load) == 1:
-        subtract_one = True
+        subtract_one_from_z_ix = True
 
     # ! import .list covariance file
-    shape = (n_probes_rs, n_probes_rs, nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
-    cov_g_oc_3x2pt_8D = np.zeros(shape)
-    cov_sva_oc_3x2pt_8D = np.zeros(shape)
-    cov_mix_oc_3x2pt_8D = np.zeros(shape)
-    cov_sn_oc_3x2pt_8D = np.zeros(shape)
-    cov_ssc_oc_3x2pt_8D = np.zeros(shape)
-    cov_cng_oc_3x2pt_8D = np.zeros(shape)
-    # cov_tot_oc_3x2pt_8D = np.zeros(shape)
-
     print(f'Loading OneCovariance output from {oc_output_covlist_fname} file...')
+    covs_dict_6d = {}
     for df_chunk in pd.read_csv(
-        f'{oc_output_covlist_fname}',
+        oc_output_covlist_fname,
         sep='\s+',
         names=column_names,
         skiprows=1,
         chunksize=df_chunk_size,
     ):
-        # Vectorize the extraction of probe indices
-        probe_idx = df_chunk['#obs'].str[:].map(probe_idx_dict_short_oc).values
-        probe_idx_arr = np.array(probe_idx.tolist())  # now shape is (N, 4)
+        # now group by probe string
+        for probe, subdf in df_chunk.groupby('#obs'):
+            # Map 'ell' values to their corresponding indices
+            theta1_idx = subdf[f'{theta_or_ell}1'].map(cov_scale_indices).values
+            theta2_idx = subdf[f'{theta_or_ell}2'].map(cov_scale_indices).values
 
-        # Map 'ell' values to their corresponding indices
-        theta1_idx = df_chunk['theta1'].map(cov_theta_indices).values
-        theta2_idx = df_chunk['theta2'].map(cov_theta_indices).values
+            # Compute z indices
+            if subtract_one_from_z_ix:
+                z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
+            else:
+                z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].values
 
-        # Compute z indices
-        if subtract_one:
-            z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
-        else:
-            z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
+            # define index tuple
+            index_tuple = (
+                theta1_idx,
+                theta2_idx,
+                z_ixs[:, 0],
+                z_ixs[:, 1],
+                z_ixs[:, 2],
+                z_ixs[:, 3],
+            )
 
-        # Vectorized assignment to the arrays
-        index_tuple = (  # fmt: skip
-            probe_idx_arr[:, 0], probe_idx_arr[:, 1], theta1_idx, theta2_idx,
-            z_indices[:, 0], z_indices[:, 1], z_indices[:, 2], z_indices[:, 3],
-        )  # fmt: skip
+            # for each covariance term, insert into dict
+            for term, col in {
+                'sva': 'covg sva',
+                'mix': 'covg mix',
+                'sn': 'covg sn',
+                'ssc': 'covssc',
+                'cng': 'covng',
+            }.items():
+                key = f'{probe}_{term}'
 
-        cov_sva_oc_3x2pt_8D[index_tuple] = df_chunk['covg sva'].values
-        cov_mix_oc_3x2pt_8D[index_tuple] = df_chunk['covg mix'].values
-        cov_sn_oc_3x2pt_8D[index_tuple] = df_chunk['covg sn'].values
-        cov_g_oc_3x2pt_8D[index_tuple] = (
-            df_chunk['covg sva'].values
-            + df_chunk['covg mix'].values
-            + df_chunk['covg sn'].values
-        )
-        cov_ssc_oc_3x2pt_8D[index_tuple] = df_chunk['covssc'].values
-        cov_cng_oc_3x2pt_8D[index_tuple] = df_chunk['covng'].values
-        # cov_tot_oc_3x2pt_8D[index_tuple] = df_chunk['cov'].values
+                # allocate shape: (nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
+                if key not in covs_dict_6d:
+                    covs_dict_6d[key] = np.zeros(
+                        (nbx_oc, nbx_oc, zbins, zbins, zbins, zbins)
+                    )
 
-    covs_8d_dict = {
-        'cov_sva_oc_3x2pt_8D': cov_sva_oc_3x2pt_8D,
-        'cov_mix_oc_3x2pt_8D': cov_mix_oc_3x2pt_8D,
-        'cov_sn_oc_3x2pt_8D': cov_sn_oc_3x2pt_8D,
-        'cov_g_oc_3x2pt_8D': cov_g_oc_3x2pt_8D,
-        'cov_ssc_oc_3x2pt_8D': cov_ssc_oc_3x2pt_8D,
-        'cov_cng_oc_3x2pt_8D': cov_cng_oc_3x2pt_8D,
-        # cov_tot_oc_3x2pt_8D
-    }
+                # assign array to the correct key
+                covs_dict_6d[key][index_tuple] = subdf[col].values
 
-    # for cov_8d in covs_8d_dict:
-    #     cov_8d[0, 0, 1, 1] = deepcopy(
-    #         np.transpose(cov_8d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-    #     )
-    #     cov_8d[1, 0, 0, 0] = deepcopy(
-    #         np.transpose(cov_8d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-    #     )
-    #     cov_8d[1, 0, 1, 1] = deepcopy(
-    #         np.transpose(cov_8d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-    #     )
+            # gauss is the sum of sva + mix + sn
+            key = f'{probe}_g'
+            if key not in covs_dict_6d:
+                covs_dict_6d[key] = np.zeros(
+                    (nbx_oc, nbx_oc, zbins, zbins, zbins, zbins)
+                )
+            covs_dict_6d[key][index_tuple] = (
+                subdf['covg sva'].values
+                + subdf['covg mix'].values
+                + subdf['covg sn'].values
+            )
 
     print('...done')
-    return covs_8d_dict
+    return covs_dict_6d
 
 
 class OneCovarianceInterface:

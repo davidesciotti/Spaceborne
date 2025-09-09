@@ -251,10 +251,15 @@ def timer(msg):
         print(f'{msg} done in {stop - start:.2f} s', flush=True)
 
 
-def bin_2d_array(  # fmt: skip
-    cov, ells_in, ells_out, ells_out_edges, weights_in, which_binning='sum',
-    interpolate = True
-):  # fmt: skip
+def bin_2d_array(
+    cov: np.ndarray,
+    ells_in: np.ndarray,
+    ells_out: np.ndarray,
+    ells_out_edges: np.ndarray,
+    weights_in: np.ndarray | None,
+    which_binning: str = 'sum',
+    interpolate: bool = True,
+):
     assert cov.shape[0] == cov.shape[1] == len(ells_in), (
         'ells_in must be the same length as the covariance matrix'
     )
@@ -808,7 +813,7 @@ def cov_3x2pt_dict_8d_to_10d(
     ind_dict: dict,
     unique_probe_combs: list[str],
     space: str,
-    symmetrize_output_dict: bool = const.HS_SYMMETRIZE_OUTPUT_DICT,
+    symmetrize_output_dict: dict = const.HS_SYMMETRIZE_OUTPUT_DICT,
 ) -> dict:
     """Expands a 3x2pt covariance dictionary from 8D to 10D.
 
@@ -836,13 +841,13 @@ def cov_3x2pt_dict_8d_to_10d(
         probe_a, probe_b, probe_c, probe_d = probe_str
         key = (probe_a, probe_b, probe_c, probe_d)
         cov_3x2pt_dict_10D[key] = cov_4D_to_6D_blocks(
-            cov_3x2pt_dict_8D[key],
-            nbl,
-            zbins,
-            ind_dict[probe_a, probe_b],
-            ind_dict[probe_c, probe_d],
-            symmetrize_output_dict[probe_a, probe_b],
-            symmetrize_output_dict[probe_c, probe_d],
+            cov_4D=cov_3x2pt_dict_8D[key],
+            nbl=nbl,
+            zbins=zbins,
+            ind_ab=ind_dict[probe_a, probe_b],
+            ind_cd=ind_dict[probe_c, probe_d],
+            symmetrize_output_ab=symmetrize_output_dict[probe_a, probe_b],
+            symmetrize_output_cd=symmetrize_output_dict[probe_c, probe_d],
         )
 
     # * Second pass: fill symmetric counterparts
@@ -2103,7 +2108,7 @@ def matshow(
     abs_val=False,
     threshold=None,
     only_show_nans=False,
-    matshow_kwargs: dict = None,
+    matshow_kwargs: dict | None = None,
 ):
     """:param array:
     :param title:

@@ -20,7 +20,7 @@
 NOTES
 
 1. The code will raise an error if the benchmark files are already present.
-   If you want to dverwrite them, delete the existing ones in e.g.
+   If you want to overwrite them, delete the existing ones in e.g.
    /u/dsciotti/code/Spaceborne_bench/bench_set_output/config_0005.yaml
 """
 

@@ -12,6 +12,8 @@ from tqdm import tqdm
 from spaceborne import constants
 from spaceborne import sb_lib as sl
 
+_UNSET = object()
+
 DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
 
@@ -25,10 +27,7 @@ def couple_cov_6d(
         raise ValueError('mcm_cd and cov_abcd_6d have incompatible dimensions')
 
     cov_abcd_6d_coupled = np.einsum(
-        'XW, WZijkl, ZY -> XYijkl',
-        mcm_ab,
-        cov_abcd_6d,
-        mcm_cd,
+        'XW, WZijkl, ZY -> XYijkl', mcm_ab, cov_abcd_6d, mcm_cd
     )
 
     return cov_abcd_6d_coupled
@@ -994,6 +993,10 @@ class NmtCov:
                     stacklevel=2,
                 )
 
+        self.cl_ll_unb_3d = _UNSET
+        self.cl_gl_unb_3d = _UNSET
+        self.cl_gg_unb_3d = _UNSET
+
     def build_psky_cov(self):
         # TODO again, here I'm using 3x2pt = GC
         # 1. ell binning
@@ -1075,9 +1078,7 @@ class NmtCov:
         if nmt_cfg['use_INKA']:
             z_combinations = list(itertools.product(range(self.zbins), repeat=2))
             for zi, zj in z_combinations:
-                list_gg = [
-                    self.cl_gg_unb_3d[:, zi, zj],
-                ]
+                list_gg = [self.cl_gg_unb_3d[:, zi, zj]]
                 list_gl = [
                     self.cl_gl_unb_3d[:, zi, zj],
                     np.zeros_like(self.cl_gl_unb_3d[:, zi, zj]),

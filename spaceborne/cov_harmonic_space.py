@@ -16,7 +16,6 @@ class SpaceborneCovariance:
         self.ell_obj = ell_obj
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
-        self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
         # TODO these should probably be defined on a higher level
         self.llll_ixs = (0, 0, 0, 0)
         self.glgl_ixs = (1, 0, 1, 0)
@@ -381,7 +380,7 @@ class SpaceborneCovariance:
             ind_dict=self.ind_dict,
             unique_probe_combs=self.unique_probe_combs,
             space='harmonic',
-            symmetrize_output_dict=self.symmetrize_output_dict
+            symmetrize_output_dict=self.symmetrize_output_dict,
         )
 
         return sl.cov_10D_dict_to_array(
@@ -750,6 +749,9 @@ class SpaceborneCovariance:
         """Kernel to compute the 4D integral optimized using Simpson's rule using
         Julia.
         """
+        import subprocess
+        import shutil
+
         suffix = 0
         folder_name = 'tmp'
         unique_folder_name = folder_name
@@ -776,9 +778,25 @@ class SpaceborneCovariance:
             for p in unique_probe_combs:
                 f.write(f'{p}\n')
 
-        os.system(
-            f'julia --project=. --threads={num_threads} {self.jl_integrator_path} {folder_name} {integration_type}'
+        # os.system(
+        #     command=f'julia --project=. --threads={num_threads} {self.jl_integrator_path} {folder_name} {integration_type}'
+        # )
+
+        result = subprocess.run(
+            args=[
+                'julia',
+                '--project=.',
+                f'--threads={num_threads}',
+                self.jl_integrator_path,
+                folder_name,
+                integration_type,
+            ],
+            check=False,
         )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f'Julia integration failed with exit code {result.returncode}'
+            )
 
         cov_filename = (
             'cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy'
@@ -790,7 +808,7 @@ class SpaceborneCovariance:
             unique_probe_combs=unique_probe_combs,
         )
 
-        os.system(f'rm -rf {folder_name}')
+        shutil.rmtree(folder_name)
 
         self.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_sb_3x2pt_dict_8D
 

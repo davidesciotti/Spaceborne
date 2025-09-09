@@ -1939,14 +1939,16 @@ if cfg['misc']['save_output_as_benchmark']:
         'commit': commit,
     }
 
-    bench_filename = cfg['misc']['bench_filename'].format(
-        g_code=cfg['covariance']['G_code'],
-        ssc_code=cfg['covariance']['SSC_code'] if cfg['covariance']['SSC'] else 'None',
-        cng_code=cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else 'None',
-        use_KE=str(cfg['covariance']['use_KE_approximation']),
-        which_pk_responses=cfg['covariance']['which_pk_responses'],
-        which_b1g_in_resp=cfg['covariance']['which_b1g_in_resp'],
-    )
+    # this is no longer set manually
+    # bench_filename = cfg['misc']['bench_filename'].format(
+    #     g_code=cfg['covariance']['G_code'],
+    #     ssc_code=cfg['covariance']['SSC_code'] if cfg['covariance']['SSC'] else 'None',
+    #     cng_code=cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else 'None',
+    #     use_KE=str(cfg['covariance']['use_KE_approximation']),
+    #     which_pk_responses=cfg['covariance']['which_pk_responses'],
+    #     which_b1g_in_resp=cfg['covariance']['which_b1g_in_resp'],
+    # )
+    bench_filename = cfg['misc']['bench_filename']
 
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError(
@@ -1957,6 +1959,11 @@ if cfg['misc']['save_output_as_benchmark']:
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
+
+    # save every array contained in _cov_obj
+    covs_arrays_dict = {
+        k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
+    }
 
     np.savez_compressed(
         bench_filename,
@@ -1988,7 +1995,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
-        **cov_dict_tosave_2d,
+        **covs_arrays_dict,
         metadata=metadata,
     )
 

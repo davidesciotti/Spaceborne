@@ -2151,7 +2151,7 @@ for probe in unique_probe_combs_rs:
 
     split_g_ix = cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
 
-    twoprobe_ab_str, twoprobe_cd_str = cov_real_space.split_probe_name(probe)
+    twoprobe_ab_str, twoprobe_cd_str = sb_lib.split_probe_name(probe)
     twoprobe_ab_ix, twoprobe_cd_ix = (
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_ab_str],
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_cd_str],

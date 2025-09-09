@@ -119,6 +119,7 @@ bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
 bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
+bench_yaml_names.sort()
 
 # ... or run specific tests
 bench_yaml_names = [

@@ -1999,58 +1999,60 @@ if (
     or cfg['misc']['test_numpy_inversion']
     or cfg['misc']['test_symmetry']
 ):
-    for cov_name, cov in cov_dict_tosave_2d.items():
-        print(f'Testing cov {cov_name}...\n')
+    cov = cov_dict_tosave_2d['TOT']
+    print(f'Testing cov {cov_name}...\n')
 
-        if cfg['misc']['test_condition_number']:
-            cond_number = np.linalg.cond(cov)
-            print(f'Condition number = {cond_number:.4e}')
+    if cfg['misc']['test_condition_number']:
+        cond_number = np.linalg.cond(cov)
+        print(f'Condition number = {cond_number:.4e}')
 
-        if cfg['misc']['test_cholesky_decomposition']:
-            try:
-                np.linalg.cholesky(cov)
-                print('Cholesky decomposition successful')
-            except np.linalg.LinAlgError:
+    if cfg['misc']['test_cholesky_decomposition']:
+        try:
+            np.linalg.cholesky(cov)
+            print('Cholesky decomposition successful')
+        except np.linalg.LinAlgError:
+            print(
+                'Cholesky decomposition failed. Consider checking the condition'
+                ' number or symmetry.'
+            )
+
+    if cfg['misc']['test_numpy_inversion']:
+        try:
+            inv_cov = np.linalg.inv(cov)
+            print('Numpy inversion successful.')
+            # Test correctness of inversion:
+            identity_check = np.allclose(
+                np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
+            )
+            if identity_check:
                 print(
-                    'Cholesky decomposition failed. Consider checking the condition'
-                    ' number or symmetry.'
+                    'Inverse test successfully (M @ M^{-1} is identity). '
+                    'atol=1e-9, rtol=1e-7'
                 )
-
-        if cfg['misc']['test_numpy_inversion']:
-            try:
-                inv_cov = np.linalg.inv(cov)
-                print('Numpy inversion successful.')
-                # Test correctness of inversion:
-                identity_check = np.allclose(
-                    np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
-                )
-                if identity_check:
-                    print(
-                        'Inverse test successfully (M @ M^{-1} is identity). '
-                        'atol=1e-9, rtol=1e-7'
-                    )
-                else:
-                    print(
-                        f'Warning: Inverse test failed (M @ M^{-1} '
-                        'deviates from identity). atol=0, rtol=1e-7'
-                    )
-            except np.linalg.LinAlgError:
-                print('Numpy inversion failed: Matrix is singular or near-singular.')
-
-        if cfg['misc']['test_symmetry']:
-            if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
-                print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
             else:
-                print('Matrix is symmetric. atol=0, rtol=1e-7')
+                print(
+                    f'Warning: Inverse test failed (M @ M^{-1} '
+                    'deviates from identity). atol=0, rtol=1e-7'
+                )
+        except np.linalg.LinAlgError:
+            print('Numpy inversion failed: Matrix is singular or near-singular.')
+
+    if cfg['misc']['test_symmetry']:
+        if not np.allclose(cov, cov.T, atol=0, rtol=1e-7):
+            print('Warning: Matrix is not symmetric. atol=0, rtol=1e-7')
+        else:
+            print('Matrix is symmetric. atol=0, rtol=1e-7')
 
         print('')
 
+# note that this is *not* compatible with %matplotlib inline in the interactive window!
 if cfg['misc']['save_figs']:
     output_dir = f'{output_path}/figs'
     os.makedirs(output_dir, exist_ok=True)
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
+
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
 
@@ -2075,16 +2077,16 @@ term = cov_rs_obj.terms_toloop[0]
 term = 'mix'
 for probe_sb in unique_probe_combs_rs:
     oc_interface.compare_sb_cov_to_oc_list(
-    cov_rs_obj = cov_rs_obj,
-    cov_oc_dict_6d = cov_oc_dict_6d,
-    probe_sb = probe_sb,
-    term = term,
-    ind_auto = ind_auto,
-    ind_cross = ind_cross,
-    zpairs_auto = zpairs_auto,
-    zpairs_cross = zpairs_cross,
-    scale_bins = scale_bins,
-    title = None,
+        cov_rs_obj=cov_rs_obj,
+        cov_oc_dict_6d=cov_oc_dict_6d,
+        probe_sb=probe_sb,
+        term=term,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        scale_bins=scale_bins,
+        title=None,
     )
 
 cov_sva_oc_3x2pt_8D = cov_oc_dict_6d['cov_sva_oc_3x2pt_8D']
@@ -2212,15 +2214,5 @@ cov_oc_2d = cov_real_space.stack_probe_blocks_deprecated(cov_oc_2d_dict)
 
 sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
 
-
-
-
-# note that this is *not* compatible with %matplotlib inline in the interactive window!
-if cfg['misc']['save_figs']:
-    output_dir = f'{output_path}/figs'
-    os.makedirs(output_dir, exist_ok=True)
-    for i, fig_num in enumerate(plt.get_fignums()):
-        fig = plt.figure(fig_num)
-        fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
 
 print('Done')

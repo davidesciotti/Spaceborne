@@ -122,10 +122,14 @@ bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_
 
 # ... or run specific tests
 bench_yaml_names = [
-    'config_0004',
-    'config_0005',
     'config_0006',
     'config_0007',
+    'config_0008',
+    'config_0009',
+    'config_0010',
+    'config_0011',
+    'config_0012',
+    'config_0013',
 ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'
@@ -149,12 +153,7 @@ if os.path.exists(f'{temp_output_filename}.npz'):
         os.remove(f'{temp_output_filename}.npz')
 
 for bench_name in bench_yaml_names:
-    print('\n')
-    print('***************************************************************************')
-    print('***************************************************************************')
-    print('***************************************************************************')
-    print(f'Testing {bench_name}...')
-    print('\n')
+    print(f'\n\n🧪🧪🧪 Testing {bench_name} 🧪🧪🧪...\n')
 
     # ! update the cfg file to avoid overwriting the benchmarks
     # Load the benchmark config

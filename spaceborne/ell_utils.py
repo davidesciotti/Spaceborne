@@ -334,6 +334,14 @@ class EllBinning:
         self.ell_max_ref = cfg['binning']['ell_max_ref']
         self.nbl_ref = cfg['binning']['ell_bins_ref']
 
+        # Only load filenames if using 'from_input' binning type
+        if self.binning_type == 'from_input':
+            self.wl_bins_filename = cfg['ell_binning']['WL_bins_filename']
+            self.gc_bins_filename = cfg['ell_binning']['GC_bins_filename']
+        else:
+            self.wl_bins_filename = None
+            self.gc_bins_filename = None
+
         self.use_namaster = cfg['namaster']['use_namaster']
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
@@ -430,6 +438,32 @@ class EllBinning:
                 output_ell_bin_edges=True,
             )
 
+        elif self.binning_type == 'from_input':
+            # TODO unify with theta bins!!
+            wl_bins_in = np.genfromtxt(self.wl_bins_filename)
+            gc_bins_in = np.genfromtxt(self.gc_bins_filename)
+
+            self.ells_WL = wl_bins_in[:, 0]
+            self.delta_l_WL = wl_bins_in[:, 1]
+            ell_edges_lo_WL = wl_bins_in[:, 2]
+            ell_edges_hi_WL = wl_bins_in[:, 3]
+            if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
+                raise ValueError("All WL bin lower edges must be less than upper edges")
+            self.ell_edges_WL = np.unique(np.append(ell_edges_lo_WL, ell_edges_hi_WL))
+            if not np.all(np.diff(self.ell_edges_WL) > 0):
+                raise ValueError("WL bin edges must be strictly increasing after combining")
+
+            self.ells_GC = gc_bins_in[:, 0]
+            self.delta_l_GC = gc_bins_in[:, 1]
+            ell_edges_lo_GC = gc_bins_in[:, 2]
+            ell_edges_hi_GC = gc_bins_in[:, 3]
+            if not np.all(ell_edges_lo_GC < ell_edges_hi_GC):
+                raise ValueError("All GC bin lower edges must be less than upper edges")
+            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
+            if not np.all(np.diff(self.ell_edges_GC) > 0):
+                raise ValueError("WL bin edges must be strictly increasing after combining")
+            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
+
         elif self.binning_type == 'ref_cut':
             # TODO this is only done for backwards-compatibility reasons
             self.ells_ref, self.delta_l_ref, self.ell_edges_ref = compute_ells(
@@ -440,8 +474,8 @@ class EllBinning:
                 output_ell_bin_edges=True,
             )
 
-            self.ells_WL = np.copy(self.ells_ref[self.ells_ref < self.ell_max_WL])
-            self.ells_GC = np.copy(self.ells_ref[self.ells_ref < self.ell_max_GC])
+            self.ells_WL = self.ells_ref[self.ells_ref < self.ell_max_WL].copy()
+            self.ells_GC = self.ells_ref[self.ells_ref < self.ell_max_GC].copy()
 
             # TODO why not save all edges??
             # store edges *except last one for dimensional consistency* in the ell_dict
@@ -452,11 +486,11 @@ class EllBinning:
                 self.ell_edges_ref, self.ell_max_GC, atol=0, rtol=1e-5
             )
 
-            self.ell_edges_WL = np.copy(self.ell_edges_ref[edge_mask_wl])
-            self.ell_edges_GC = np.copy(self.ell_edges_ref[edge_mask_gc])
+            self.ell_edges_WL = self.ell_edges_ref[edge_mask_wl].copy()
+            self.ell_edges_GC = self.ell_edges_ref[edge_mask_gc].copy()
 
-            self.delta_l_WL = np.copy(self.delta_l_ref[: len(self.ells_WL)])
-            self.delta_l_GC = np.copy(self.delta_l_ref[: len(self.ells_GC)])
+            self.delta_l_WL = self.delta_l_ref[: len(self.ells_WL)].copy()
+            self.delta_l_GC = self.delta_l_ref[: len(self.ells_GC)].copy()
 
         else:
             raise ValueError(f'binning_type {self.binning_type} not recognized.')
@@ -496,19 +530,19 @@ class EllBinning:
             ), 'ell_max from nmt_bin_obj_GC does not match ell_max from get_ell_max'
 
         # XC follows GC
-        self.ells_XC = np.copy(self.ells_GC)
-        self.ell_edges_XC = np.copy(self.ell_edges_GC)
-        self.delta_l_XC = np.copy(self.delta_l_GC)
-        self.ell_min_XC = np.copy(self.ell_min_GC)
-        self.ell_max_XC = np.copy(self.ell_max_GC)
+        self.ells_XC = self.ells_GC.copy()
+        self.ell_edges_XC = self.ell_edges_GC.copy()
+        self.delta_l_XC = self.delta_l_GC.copy()
+        self.ell_min_XC = self.ell_min_GC
+        self.ell_max_XC = self.ell_max_GC
 
         # 3x2pt as well
         # TODO change this to be more general
-        self.ells_3x2pt = np.copy(self.ells_GC)
-        self.ell_edges_3x2pt = np.copy(self.ell_edges_GC)
-        self.delta_l_3x2pt = np.copy(self.delta_l_GC)
-        self.ell_min_3x2pt = np.copy(self.ell_min_GC)
-        self.ell_max_3x2pt = np.copy(self.ell_max_GC)
+        self.ells_3x2pt = self.ells_GC.copy()
+        self.ell_edges_3x2pt = self.ell_edges_GC.copy()
+        self.delta_l_3x2pt = self.delta_l_GC.copy()
+        self.ell_min_3x2pt = self.ell_min_GC
+        self.ell_max_3x2pt = self.ell_max_GC
 
         # set nbl
         self.nbl_WL = len(self.ells_WL)
@@ -537,6 +571,16 @@ class EllBinning:
         self.ell_max_3x2pt_rs = self.cfg['precision']['ell_max_rs']  
 
     def _validate_bins(self):
+        for probe in ['GC', 'XC', '3x2pt']:
+            ells_probe = getattr(self, f'ells_{probe}')
+            np.testing.assert_allclose(
+                ells_probe,
+                self.ells_WL,
+                err_msg='for the moment, ell binning should be the same for all probes',
+                atol=0,
+                rtol=1e-5,
+            )
+
         for probe in ['WL', 'GC', 'XC', '3x2pt']:
             ells = getattr(self, f'ells_{probe}')
 

@@ -1,7 +1,6 @@
 import itertools
 import os
 import time
-from copy import deepcopy
 
 import numpy as np
 
@@ -16,6 +15,7 @@ class SpaceborneCovariance:
         self.ell_dict = {}
         self.ell_obj = ell_obj
         self.bnt_matrix = bnt_matrix
+        self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
         # TODO these should probably be defined on a higher level
         self.llll_ixs = (0, 0, 0, 0)
@@ -91,10 +91,10 @@ class SpaceborneCovariance:
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
             self.zbins
         )
-        self.ind_auto = deepcopy(ind[: self.zpairs_auto, :])
-        self.ind_cross = deepcopy(
-            ind[self.zpairs_auto : self.zpairs_cross + self.zpairs_auto, :]
-        )
+        self.ind_auto = ind[: self.zpairs_auto, :].copy()
+        self.ind_cross = ind[
+            self.zpairs_auto : self.zpairs_cross + self.zpairs_auto, :
+        ].copy()
 
         self.ind_dict = {
             ('L', 'L'): self.ind_auto,
@@ -439,30 +439,30 @@ class SpaceborneCovariance:
         a subset of them
         (e.g. cov_WL_g_6d = cov_3x2pt_g_10d[llll_ixs, :nbl_WL, :nbl_WL, ...])"""
 
-        self.cov_WL_g_6d = deepcopy(self.cov_3x2pt_g_10d[*self.llll_ixs])
-        self.cov_WL_ssc_6d = deepcopy(self.cov_3x2pt_ssc_10d[*self.llll_ixs])
-        self.cov_WL_cng_6d = deepcopy(self.cov_3x2pt_cng_10d[*self.llll_ixs])
+        self.cov_WL_g_6d = self.cov_3x2pt_g_10d[*self.llll_ixs].copy()
+        self.cov_WL_ssc_6d = self.cov_3x2pt_ssc_10d[*self.llll_ixs].copy()
+        self.cov_WL_cng_6d = self.cov_3x2pt_cng_10d[*self.llll_ixs].copy()
 
-        self.cov_GC_g_6d = deepcopy(self.cov_3x2pt_g_10d[*self.gggg_ixs])
-        self.cov_GC_ssc_6d = deepcopy(self.cov_3x2pt_ssc_10d[*self.gggg_ixs])
-        self.cov_GC_cng_6d = deepcopy(self.cov_3x2pt_cng_10d[*self.gggg_ixs])
+        self.cov_GC_g_6d = self.cov_3x2pt_g_10d[*self.gggg_ixs].copy()
+        self.cov_GC_ssc_6d = self.cov_3x2pt_ssc_10d[*self.gggg_ixs].copy()
+        self.cov_GC_cng_6d = self.cov_3x2pt_cng_10d[*self.gggg_ixs].copy()
 
-        self.cov_XC_g_6d = deepcopy(self.cov_3x2pt_g_10d[*self.glgl_ixs])
-        self.cov_XC_ssc_6d = deepcopy(self.cov_3x2pt_ssc_10d[*self.glgl_ixs])
-        self.cov_XC_cng_6d = deepcopy(self.cov_3x2pt_cng_10d[*self.glgl_ixs])
+        self.cov_XC_g_6d = self.cov_3x2pt_g_10d[*self.glgl_ixs].copy()
+        self.cov_XC_ssc_6d = self.cov_3x2pt_ssc_10d[*self.glgl_ixs].copy()
+        self.cov_XC_cng_6d = self.cov_3x2pt_cng_10d[*self.glgl_ixs].copy()
 
         if split_gaussian_cov:
-            self.cov_WL_sva_6d = deepcopy(self.cov_3x2pt_sva_10d[*self.llll_ixs])
-            self.cov_WL_sn_6d = deepcopy(self.cov_3x2pt_sn_10d[*self.llll_ixs])
-            self.cov_WL_mix_6d = deepcopy(self.cov_3x2pt_mix_10d[*self.llll_ixs])
+            self.cov_WL_sva_6d = self.cov_3x2pt_sva_10d[*self.llll_ixs].copy()
+            self.cov_WL_sn_6d = self.cov_3x2pt_sn_10d[*self.llll_ixs].copy()
+            self.cov_WL_mix_6d = self.cov_3x2pt_mix_10d[*self.llll_ixs].copy()
 
-            self.cov_GC_sva_6d = deepcopy(self.cov_3x2pt_sva_10d[*self.gggg_ixs])
-            self.cov_GC_sn_6d = deepcopy(self.cov_3x2pt_sn_10d[*self.gggg_ixs])
-            self.cov_GC_mix_6d = deepcopy(self.cov_3x2pt_mix_10d[*self.gggg_ixs])
+            self.cov_GC_sva_6d = self.cov_3x2pt_sva_10d[*self.gggg_ixs].copy()
+            self.cov_GC_sn_6d = self.cov_3x2pt_sn_10d[*self.gggg_ixs].copy()
+            self.cov_GC_mix_6d = self.cov_3x2pt_mix_10d[*self.gggg_ixs].copy()
 
-            self.cov_XC_sva_6d = deepcopy(self.cov_3x2pt_sva_10d[*self.glgl_ixs])
-            self.cov_XC_sn_6d = deepcopy(self.cov_3x2pt_sn_10d[*self.glgl_ixs])
-            self.cov_XC_mix_6d = deepcopy(self.cov_3x2pt_mix_10d[*self.glgl_ixs])
+            self.cov_XC_sva_6d = self.cov_3x2pt_sva_10d[*self.glgl_ixs].copy()
+            self.cov_XC_sn_6d = self.cov_3x2pt_sn_10d[*self.glgl_ixs].copy()
+            self.cov_XC_mix_6d = self.cov_3x2pt_mix_10d[*self.glgl_ixs].copy()
 
     def _all_covs_10d_or_6d_to_2d(self, split_gaussian_cov):
         """reshapes all covs (g, sva, sn, mix, ssc, cng) for all probes to 2D"""
@@ -613,10 +613,7 @@ class SpaceborneCovariance:
             print('BNT-transforming the covariance matrix...')
             start = time.perf_counter()
             self._bnt_transform_3x2pt_wrapper()
-            print(
-                f'Covariance matrices BNT-transformed in '
-                f'{time.perf_counter() - start:.2f} s'
-            )
+            print(f'...done in {time.perf_counter() - start:.2f} s')
 
         # ! compute coupled NG cov - the "if coupled" is inside the function
         self._couple_cov_ng_3x2pt()

@@ -21,7 +21,6 @@ import os
 import subprocess
 import time
 import warnings
-from copy import deepcopy
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -702,21 +701,21 @@ class OneCovarianceInterface:
         # Update the cov_oc_3x2pt_10D for the given covariance type
         for idx, (a, b, c, d) in enumerate(cov_order):
             if isinstance(cov_tuple_in[idx], np.ndarray):
-                cov_10d_out[a, b, c, d, :, :, :, :, :, :] = deepcopy(
+                cov_10d_out[a, b, c, d, :, :, :, :, :, :] = (
                     cov_tuple_in[idx][:, :, 0, 0, :, :, :, :]
-                )
+                ).copy()
 
         # Transpose to get the remaining blocks
         # ell1 <-> ell2 and zi, zj <-> zk, zl, but ell1 <-> ell2 should have no effect!
-        cov_10d_out[0, 0, 1, 1, :, :, :, :, :, :] = deepcopy(
+        cov_10d_out[0, 0, 1, 1, :, :, :, :, :, :] = (
             np.transpose(cov_10d_out[1, 1, 0, 0, :, :, :, :, :, :], (1, 0, 4, 5, 2, 3))
-        )
-        cov_10d_out[1, 0, 1, 1, :, :, :, :, :, :] = deepcopy(
+        ).copy()
+        cov_10d_out[1, 0, 1, 1, :, :, :, :, :, :] = (
             np.transpose(cov_10d_out[1, 1, 1, 0, :, :, :, :, :, :], (1, 0, 4, 5, 2, 3))
-        )
-        cov_10d_out[1, 0, 0, 0, :, :, :, :, :, :] = deepcopy(
+        ).copy()
+        cov_10d_out[1, 0, 0, 0, :, :, :, :, :, :] = (
             np.transpose(cov_10d_out[0, 0, 1, 0, :, :, :, :, :, :], (1, 0, 4, 5, 2, 3))
-        )
+        ).copy()
 
         # check that the diagonal blocks (only the diagonal!!) are symmetric in
         # ell1, ell2
@@ -1050,15 +1049,15 @@ class OneCovarianceInterface:
         ]
 
         for cov_10d in covs_10d:
-            cov_10d[0, 0, 1, 1] = deepcopy(
+            cov_10d[0, 0, 1, 1] = (
                 np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-            )
-            cov_10d[1, 0, 0, 0] = deepcopy(
+            ).copy()
+            cov_10d[1, 0, 0, 0] = (
                 np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-            )
-            cov_10d[1, 0, 1, 1] = deepcopy(
+            ).copy()
+            cov_10d[1, 0, 1, 1] = (
                 np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-            )
+            ).copy()
 
         print(
             f'OneCovariance output loaded in {time.perf_counter() - start:.2f} seconds'

@@ -60,6 +60,63 @@ import spaceborne.constants as const
 #     return binned_cov
 
 
+def matshow_custom_bins(data_array, bin_edges):
+    """
+    Plots a 2D matrix with a colorbar based on custom bins.
+
+    Args:
+        data_array (np.ndarray): The 2D array to plot (e.g., an array of percentages).
+        bin_edges (list or np.ndarray): A list of the bin boundaries.
+    Example:
+        bin_edges = [1e-2, 1e-1, 1, 5, 10, np.max(perc_diff)]
+        matshow_custom_bins(perc_diff, bin_edges)
+    """
+    from matplotlib.colors import BoundaryNorm
+    
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Validate inputs and prepare edges
+    data_array = np.asarray(data_array)
+    if data_array.ndim != 2:
+        raise ValueError("data_array must be 2D")
+    bin_edges = np.asarray(bin_edges, dtype=float)
+    if bin_edges.ndim != 1 or bin_edges.size < 2:
+        raise ValueError("bin_edges must be a 1D array with at least 2 edges")
+    if np.any(np.diff(bin_edges) <= 0):
+        raise ValueError("bin_edges must be strictly increasing")
+
+    # Create the colormap and the norm for the bins.
+    # The lowest bin edge is a very small number to handle floating-point
+    # issues and prevent overlapping '0' ticks.
+    cmap = plt.cm.viridis
+    norm = BoundaryNorm(bin_edges, ncolors=cmap.N, clip=True)
+
+    # Plot the data using the custom norm
+    im = ax.matshow(data_array, cmap=cmap, norm=norm)
+    
+    # Extend colorbar if data fall outside provided edges
+    extend = 'neither'
+    amin, amax = np.nanmin(data_array), np.nanmax(data_array)
+    if amin < bin_edges[0]:
+        extend = 'min'
+    if amax > bin_edges[-1]:
+        extend = 'both' if extend == 'min' else 'max'
+    cbar = fig.colorbar(
+        im, ax=ax, boundaries=bin_edges, ticks=bin_edges, spacing='proportional', extend=extend
+    )
+    cbar.set_label('Discrepancy (%)')
+    cbar = fig.colorbar(im, ax=ax, ticks=bin_edges)
+    cbar.set_label('Discrepancy (%)')
+
+    # You might want to format the tick labels to avoid scientific notation
+    # and show the '0' clearly.
+    tick_labels = [f'{b:g}' for b in bin_edges]
+    cbar.set_ticklabels(tick_labels)
+
+    ax.set_title('Custom Binned Plot')
+    plt.show()
+
+
 def split_probe_name(full_probe_name):
     """Splits a full probe name (e.g., 'gtxim') into two component probes.
 
@@ -1161,9 +1218,9 @@ def load_cov_from_probe_blocks(path, filename, unique_probe_combs):
             ]['arr_0']
 
         # Lower triangle, set using symmetry
-        cov_ssc_dict_8D[probe_c, probe_d, probe_a, probe_b] = deepcopy(
+        cov_ssc_dict_8D[probe_c, probe_d, probe_a, probe_b] = (
             cov_ssc_dict_8D[probe_a, probe_b, probe_c, probe_d].transpose(1, 0, 3, 2)
-        )
+        ).copy()
 
     for key, cov in cov_ssc_dict_8D.items():
         assert cov.ndim == 4, (
@@ -1979,7 +2036,7 @@ def mask_fisher(
     """Trim the Fisher matrix to remove null rows/columns and/or fix nuisance
     parameters.
     """
-    fm = deepcopy(fm)
+    fm = fm.copy()
     fiducials_dict = deepcopy(fiducials_dict)
 
     assert len(list(fiducials_dict.keys())) == fm.shape[0] == fm.shape[1], (
@@ -2004,7 +2061,7 @@ def mask_fisher(
 
 def fix_params_in_fm(fm, names_params_to_fix, fiducials_dict):
     param_names = list(fiducials_dict.keys())
-    fm = deepcopy(fm)
+    fm = fm.copy()
     fiducials_dict = deepcopy(fiducials_dict)
 
     # check the correctness of the parameters' names
@@ -2026,7 +2083,7 @@ def add_prior_to_fm(fm, fiducials_dict, prior_param_names, prior_param_values):
     """Adds a FM of priors (with elements 1/sigma in the correct positions) to
     the input FM.
     """
-    fm = deepcopy(fm)
+    fm = fm.copy()
     fiducials_dict = deepcopy(fiducials_dict)
 
     assert len(list(fiducials_dict.keys())) == fm.shape[0] == fm.shape[1], (

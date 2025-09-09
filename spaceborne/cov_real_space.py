@@ -881,11 +881,6 @@ class CovRealSpace:
         self.n_probes_rs = 4  # real space
         self.n_probes_hs = 2  # harmonic space
         self.n_split_terms = 3
-        self.cov_rs_8d = np.zeros(
-            (self.n_split_terms, self.n_probes_rs, self.n_probes_rs,
-            self.nbt_coarse, self.nbt_coarse,
-            self.zbins,  self.zbins,  self.zbins,  self.zbins,
-            ))  # fmt: skip
 
         # this is only needed to be able to construct the full Gauss cov from the sum
         # of the

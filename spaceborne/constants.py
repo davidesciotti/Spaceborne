@@ -4,7 +4,7 @@ import numpy as np
 # RS = real space
 
 DEG2_IN_SPHERE = 4 * np.pi * (180 / np.pi) ** 2
-DEG2_TO_SR = (180 / np.pi) ** 2
+DEG2_TO_SR = (np.pi / 180) ** 2  
 SR_TO_ARCMIN2 = (180 / np.pi * 60) ** 2
 
 DR1_DATE = 9191.0

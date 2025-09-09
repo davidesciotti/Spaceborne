@@ -154,7 +154,7 @@ class Mask:
         )
         
         # 4. finally, set survey area in steradians and other useful quantities
-        self.survey_area_sr = self.survey_area_deg2 / constants.DEG2_TO_SR
+        self.survey_area_sr = self.survey_area_deg2 * constants.DEG2_TO_SR
         self.survey_area_deg2 = self.fsky * constants.DEG2_IN_SPHERE
 
         # else:

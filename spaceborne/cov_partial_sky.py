@@ -10,7 +10,7 @@ import pyccl as ccl
 import pymaster as nmt
 from tqdm import tqdm
 
-from spaceborne import constants
+from spaceborne import constants, ell_utils, mask_utils
 from spaceborne import sb_lib as sl
 
 _UNSET = object()
@@ -997,12 +997,15 @@ def produce_correlated_maps(
 
 class NmtCov:
     def __init__(
-        self, cfg: dict, pvt_cfg: dict, ccl_obj: ccl.Cosmology, ell_obj, mask_obj
+        self,
+        cfg: dict,
+        pvt_cfg: dict,
+        ell_obj: ell_utils.EllBinning,
+        mask_obj: mask_utils.Mask,
     ):
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
 
-        self.ccl_obj = ccl_obj
         self.ell_obj = ell_obj
         self.mask_obj = mask_obj
 

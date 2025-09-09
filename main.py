@@ -24,6 +24,7 @@ from spaceborne import (
     cl_utils,
     config_checker,
     cosmo_lib,
+    cov_harmonic_space,
     ell_utils,
     io_handler,
     mask_utils,
@@ -33,7 +34,6 @@ from spaceborne import (
     wf_cl_lib,
 )
 from spaceborne import constants as const
-from spaceborne import covariance as sb_cov
 from spaceborne import plot_lib as sb_plt
 from spaceborne import sb_lib as sl
 
@@ -153,7 +153,7 @@ def plot_cls():
     plt.show()
 
 
-def check_ells_in(ells_in, ells_out):
+def check_ells_in(ells_in: np.ndarray, ells_out: np.ndarray) -> None:
     if len(ells_in) < len(ells_out) // 1.5:  # random fraction
         warnings.warn(
             f'The input cls are computed over {len(ells_in)} ell points in '
@@ -1081,8 +1081,8 @@ if cfg['probe_selection']['space'] == 'real':
     cov_rs_obj.set_cov_2d_ordering(req_probe_combs_2d=req_probe_combs_rs_2d)
     cov_rs_obj.set_ind_and_zpairs(ind, zbins)
     ell_obj.compute_ells_3x2pt_rs()
-    cov_rs_obj.ells = ell_obj.ells_3x2pt_for_rs
-    cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_for_rs)
+    cov_rs_obj.ells = ell_obj.ells_3x2pt_rs
+    cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_rs)
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:
@@ -1104,7 +1104,9 @@ if cfg['probe_selection']['space'] == 'real':
 
 
 # !  =============================== Build Gaussian covs ===============================
-cov_hs_obj = sb_cov.SpaceborneCovariance(cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix)
+cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
+    cfg, pvt_cfg, ell_obj, nmt_obj, bnt_matrix
+)
 cov_hs_obj.set_ind_and_zpairs(ind, zbins)
 cov_hs_obj.consistency_checks()
 cov_hs_obj.set_gauss_cov(

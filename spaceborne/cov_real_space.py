@@ -18,7 +18,8 @@ from functools import partial
 
 import numpy as np
 import pyccl as ccl
-import pylevin as levin
+
+# import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
 from tqdm import tqdm
@@ -886,7 +887,7 @@ class CovRealSpace:
             self.zbins,  self.zbins,  self.zbins,  self.zbins,
             ))  # fmt: skip
 
-        # this is only needed to be able to construct the full Gauss cov from the sum 
+        # this is only needed to be able to construct the full Gauss cov from the sum
         # of the
         # SVA, SN and MIX covs. No particular reason behind the choice of the indices.
         self.split_g_dict = {'sva': 0, 'sn': 1, 'mix': 2}

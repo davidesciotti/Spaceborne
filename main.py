@@ -34,7 +34,6 @@ from spaceborne import (
     wf_cl_lib,
 )
 from spaceborne import constants as const
-from spaceborne import covariance as sb_cov
 from spaceborne import plot_lib as sb_plt
 from spaceborne import sb_lib as sl
 
@@ -42,7 +41,7 @@ with contextlib.suppress(ImportError):
     import pyfiglet
 
     text = 'Spaceborne'
-    ascii_art = pyfiglet.figlet_format(text, font='slant')
+    ascii_art = pyfiglet.figlet_format(text=text, font='slant')
     print(ascii_art)
 
 
@@ -978,8 +977,10 @@ if cfg['BNT']['cl_BNT_transform']:
         'the BNT transform should be applied either to the Cls or to the covariance, '
         'not both'
     )
-    cl_ll_3d = cl_utils.cl_BNT_transform(ccl_obj.cl_ll_3d, bnt_matrix, 'L', 'L')
-    cl_3x2pt_5d = cl_utils.cl_BNT_transform_3x2pt(ccl_obj.cl_3x2pt_5d, bnt_matrix)
+    from spaceborne import bnt
+
+    cl_ll_3d = bnt.cl_bnt_transform(ccl_obj.cl_ll_3d, bnt_matrix, 'L', 'L')
+    cl_3x2pt_5d = bnt.cl_bnt_transform_3x2pt(ccl_obj.cl_3x2pt_5d, bnt_matrix)
     warnings.warn('you should probably BNT-transform the responses too!', stacklevel=2)
     if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         raise NotImplementedError('You should cut also the OC Cls')
@@ -1063,7 +1064,9 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
             check_ells_in(ells_in, ells_out)
 
     # initialize nmt_cov_obj and set a couple useful attributes
-    nmt_cov_obj = cov_partial_sky.NmtCov(cfg, pvt_cfg, ccl_obj, ell_obj, mask_obj)
+    nmt_cov_obj = cov_partial_sky.NmtCov(
+        cfg=cfg, pvt_cfg=pvt_cfg, ell_obj=ell_obj, mask_obj=mask_obj
+    )
 
     # set unbinned ells in nmt_cov_obj
     nmt_cov_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
@@ -1248,7 +1251,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         oc_output_covlist_fname = (
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
         )
-        covs_8d_oc = oc_interface.process_cov_from_list_file_rs(
+        covs_8d_oc = oc_interface.process_cov_from_list_file(
             oc_output_covlist_fname,
             n_probes_rs=4,
             probe_idx_dict_short_oc=cov_rs_obj.probe_idx_dict_short_oc,
@@ -2058,7 +2061,7 @@ oc_path = f'{output_path}/OneCovariance'
 oc_output_covlist_fname = (
     f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
 )
-covs_8d_dict_oc = oc_interface.process_cov_from_list_file_rs(
+cov_oc_dict_6d = oc_interface.process_cov_from_list_file(
     oc_output_covlist_fname,
     n_probes_rs=4,
     probe_idx_dict_short_oc=cov_rs_obj.probe_idx_dict_short_oc,
@@ -2066,9 +2069,27 @@ covs_8d_dict_oc = oc_interface.process_cov_from_list_file_rs(
     df_chunk_size=5_000_000,
 )
 
-cov_sva_oc_3x2pt_8D = covs_8d_dict_oc['cov_sva_oc_3x2pt_8D']
-cov_sn_oc_3x2pt_8D = covs_8d_dict_oc['cov_sn_oc_3x2pt_8D']
-cov_mix_oc_3x2pt_8D = covs_8d_dict_oc['cov_mix_oc_3x2pt_8D']
+# compare individual terms/probes
+term = cov_rs_obj.terms_toloop[0]
+
+term = 'mix'
+for probe_sb in unique_probe_combs_rs:
+    oc_interface.compare_sb_cov_to_oc_list(
+    cov_rs_obj = cov_rs_obj,
+    cov_oc_dict_6d = cov_oc_dict_6d,
+    probe_sb = probe_sb,
+    term = term,
+    ind_auto = ind_auto,
+    ind_cross = ind_cross,
+    zpairs_auto = zpairs_auto,
+    zpairs_cross = zpairs_cross,
+    scale_bins = scale_bins,
+    title = None,
+    )
+
+cov_sva_oc_3x2pt_8D = cov_oc_dict_6d['cov_sva_oc_3x2pt_8D']
+cov_sn_oc_3x2pt_8D = cov_oc_dict_6d['cov_sn_oc_3x2pt_8D']
+cov_mix_oc_3x2pt_8D = cov_oc_dict_6d['cov_mix_oc_3x2pt_8D']
 
 cov_oc_list_8d = cov_sva_oc_3x2pt_8D + cov_sn_oc_3x2pt_8D + cov_mix_oc_3x2pt_8D
 
@@ -2086,16 +2107,16 @@ for probe in const.RS_PROBE_NAME_TO_IX_DICT:
     #     else term
     # )
 
-    twoprobe_ab_str, twoprobe_cd_str = sl.split_probe_name(probe)
-    twoprobe_ab_ix, twoprobe_cd_ix = (
-        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_ab_str],
-        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_cd_str],
+    probe_ab, probe_cd = sl.split_probe_name(probe)
+    probe_ab_ix, probe_cd_ix = (
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],
     )
 
-    zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
-    zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
-    ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
-    ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
+    zpairs_ab = zpairs_cross if probe_ab_ix == 1 else zpairs_auto
+    zpairs_cd = zpairs_cross if probe_cd_ix == 1 else zpairs_auto
+    ind_ab = ind_cross if probe_ab_ix == 1 else ind_auto
+    ind_cd = ind_cross if probe_cd_ix == 1 else ind_auto
 
     # no need to assign 6d and 4d to dedicated dictionary
     probe_oc = probe.replace('gt', 'gm')
@@ -2191,98 +2212,8 @@ cov_oc_2d = cov_real_space.stack_probe_blocks_deprecated(cov_oc_2d_dict)
 
 sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
 
-# compare individual terms/probes
-term = cov_rs_obj.terms_toloop[0]
-for probe in unique_probe_combs_rs:
-    integration = cfg['precision']['cov_rs_int_method']
-    from spaceborne import cov_real_space
 
-    title_here = title + f'\n{probe = }, {term = }'
 
-    split_g_ix = cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
-
-    twoprobe_ab_str, twoprobe_cd_str = sb_lib.split_probe_name(probe)
-    twoprobe_ab_ix, twoprobe_cd_ix = (
-        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_ab_str],
-        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[twoprobe_cd_str],
-    )
-    zpairs_ab = zpairs_cross if twoprobe_ab_ix == 1 else zpairs_auto
-    zpairs_cd = zpairs_cross if twoprobe_cd_ix == 1 else zpairs_auto
-    ind_ab = ind_cross if twoprobe_ab_ix == 1 else ind_auto
-    ind_cd = ind_cross if twoprobe_cd_ix == 1 else ind_auto
-
-    if term == 'sva':
-        cov_oc_3x2pt_8D = cov_sva_oc_3x2pt_8D
-    elif term == 'sn':
-        cov_oc_3x2pt_8D = cov_sn_oc_3x2pt_8D
-    elif term == 'mix':
-        cov_oc_3x2pt_8D = cov_mix_oc_3x2pt_8D
-
-    cov_sb_6d = cov_rs_obj.cov_rs_8d[split_g_ix, twoprobe_ab_ix, twoprobe_cd_ix]
-    cov_oc_6d = cov_oc_3x2pt_8D[twoprobe_ab_ix, twoprobe_cd_ix]
-
-    if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
-        print(f'{term = } {probe = } is identically 0')
-
-    # if probe in ['gtxip', 'gtxim']:
-    #     print('I am manually transposing the OC blocks!!')
-    #     warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
-    #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
-
-    cov_sb_4d = sl.cov_6D_to_4D_blocks(
-        cov_sb_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-    )
-    cov_oc_4d = sl.cov_6D_to_4D_blocks(
-        cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-    )
-
-    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
-    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
-
-    sl.compare_arrays(
-        cov_sb_2d,
-        cov_oc_2d,
-        'SB',
-        'OC',
-        log_array=True,
-        log_diff=True,
-        abs_val=True,
-        plot_diff_threshold=10,
-        title=title,
-    )
-
-    fig, axs = plt.subplots(
-        2,
-        2,
-        figsize=(15, 6),
-        sharex='col',
-        height_ratios=[2, 1],
-        gridspec_kw={'hspace': 0, 'wspace': 0.3},
-    )
-
-    # flatten to (2,2) shape
-    axs = axs.reshape(2, 2)
-
-    sl.compare_funcs(
-        None,
-        {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
-        logscale_y=[True, False],
-        title=title_here,
-        ylim_diff=[-100, 100],
-        ax=axs[:, 0],
-    )
-
-    sl.compare_funcs(
-        None,
-        {
-            'SB flat': np.abs(cov_sb_2d).flatten(),
-            'OC flat': np.abs(cov_oc_2d).flatten(),
-        },
-        logscale_y=[True, False],
-        title=title_here,
-        ylim_diff=[-100, 100],
-        ax=axs[:, 1],
-    )
 
 # note that this is *not* compatible with %matplotlib inline in the interactive window!
 if cfg['misc']['save_figs']:

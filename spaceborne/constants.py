@@ -29,6 +29,8 @@ RS_DIAG_PROBE_COMBS = ['xipxip', 'ximxim', 'gtgt', 'gggg']
 # not used for the moment
 HS_DIAG_PROBES = [ 'LL', 'GL', 'GG']
 RS_DIAG_PROBES = [ 'xip', 'xim', 'gt', 'gg']
+HS_DIAG_PROBES_OC = [ 'mm', 'gm', 'gg']
+RS_DIAG_PROBES_OC = [ 'xip', 'xim', 'gm', 'gg']
 
 HS_PROBE_NAME_TO_IX_DICT = {'L': 0, 'G': 1}
 HS_PROBE_IX_TO_NAME_DICT = {0: 'L', 1: 'G'}

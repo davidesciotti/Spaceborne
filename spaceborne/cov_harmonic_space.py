@@ -6,10 +6,22 @@ import numpy as np
 
 from spaceborne import bnt as bnt_utils
 from spaceborne import sb_lib as sl
+from spaceborne.ccl_interface import CCLInterface
+from spaceborne.cov_partial_sky import NmtCov
+from spaceborne.ell_utils import EllBinning
+from spaceborne.oc_interface import OneCovarianceInterface
+
 
 
 class SpaceborneCovariance:
-    def __init__(self, cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix):
+    def __init__(
+        self,
+        cfg: dict,
+        pvt_cfg: dict,
+        ell_obj: EllBinning,
+        nmt_cov_obj: NmtCov | None,
+        bnt_matrix: np.ndarray | None,
+    ):
         self.cfg = cfg
         self.cov_cfg = cfg['covariance']
         self.ell_dict = {}
@@ -82,7 +94,6 @@ class SpaceborneCovariance:
         else:
             raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
 
-        self.cov_dict = {}
 
     def set_ind_and_zpairs(self, ind, zbins):
         # set indices array
@@ -321,8 +332,6 @@ class SpaceborneCovariance:
         # reshape to 2D
         self._cov_g_3x2pt_10d_to_2d_wrapper(split_gaussian_cov)
 
-        return
-
     def _cov_g_3x2pt_10d_to_2d_wrapper(self, split_gaussian_cov):
         """Reshapes the 3x2pt 10d cov into 2D.
 
@@ -369,8 +378,6 @@ class SpaceborneCovariance:
                 is_3x2pt=True,
             )
 
-        return
-
     def _cov_8d_dict_to_10d_arr(self, cov_dict_8D):
         """Helper function to process a single covariance component"""
         cov_dict_10d = sl.cov_3x2pt_dict_8d_to_10d(
@@ -387,7 +394,7 @@ class SpaceborneCovariance:
             cov_dict_10d, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
         )
 
-    def _add_ssc(self, ccl_obj: object, oc_obj: object):
+    def _add_ssc(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
         """Helper function to get the SSC from the required code and uniform its
         shape"""
         if self.include_ssc:
@@ -402,7 +409,7 @@ class SpaceborneCovariance:
                     ccl_obj.cov_ssc_ccl_3x2pt_dict_8D
                 )
             elif self.ssc_code == 'OneCovariance':
-                self.cov_3x2pt_ssc_10d = oc_obj.cov_ssc_oc_3x2pt_10d
+                self.cov_3x2pt_ssc_10d = oc_obj.cov_3x2pt_ssc_10d
 
             assert not np.allclose(self.cov_3x2pt_ssc_10d, 0, atol=0, rtol=1e-10), (
                 f'{self.ssc_code} SSC covariance matrix is identically zero'
@@ -412,7 +419,7 @@ class SpaceborneCovariance:
             print('SSC not requested, setting it to zero')
             self.cov_3x2pt_ssc_10d = np.zeros_like(self.cov_3x2pt_g_10d)
 
-    def _add_cng(self, ccl_obj: object, oc_obj: object):
+    def _add_cng(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
         """Helper function to get the SSC from the required code and uniform its
         shape"""
         if self.include_cng:
@@ -423,7 +430,8 @@ class SpaceborneCovariance:
                     ccl_obj.cov_cng_ccl_3x2pt_dict_8D
                 )
             elif self.cng_code == 'OneCovariance':
-                self.cov_3x2pt_cng_10d = oc_obj.cov_cng_oc_3x2pt_10d
+                self.cov_3x2pt_cng_10d = oc_obj.cov_3x2pt_cng_10d
+
             assert not np.allclose(self.cov_3x2pt_cng_10d, 0, atol=0, rtol=1e-10), (
                 f'{self.cng_code} cNG covariance matrix is identically zero'
             )
@@ -567,7 +575,12 @@ class SpaceborneCovariance:
                 self.cov_3x2pt_cng_2d, self.ell_dict['idxs_to_delete_dict']['3x2pt']
             )
 
-    def build_covs(self, ccl_obj: object, oc_obj: object, split_gaussian_cov: bool):
+    def build_covs(
+        self,
+        ccl_obj: CCLInterface,
+        oc_obj: OneCovarianceInterface,
+        split_gaussian_cov: bool,
+    ):
         """
         Combines, reshaped and returns the Gaussian (g), non-Gaussian (ng) and
         Gaussian+non-Gaussian (tot) covariance matrices
@@ -594,13 +607,11 @@ class SpaceborneCovariance:
         """
 
         if self.g_code == 'OneCovariance':
-            raise NotImplementedError(
-                'OneCovariance g term not yet implemented: split terms '
-                'and probe-specific ell binning missing'
-            )
-            self.cov_WL_g_6d = oc_obj.cov_g_oc_3x2pt_10d[0, 0, 0, 0]
-            self.cov_GC_g_6d = oc_obj.cov_g_oc_3x2pt_10d[1, 1, 1, 1]
-            self.cov_3x2pt_g_10d = oc_obj.cov_g_oc_3x2pt_10d
+            self.cov_3x2pt_g_10d = oc_obj.cov_3x2pt_g_10d
+            if split_gaussian_cov:
+                self.cov_3x2pt_sva_10d = oc_obj.cov_3x2pt_sva_10d
+                self.cov_3x2pt_sn_10d = oc_obj.cov_3x2pt_sn_10d
+                self.cov_3x2pt_mix_10d = oc_obj.cov_3x2pt_mix_10d
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
         # ! are inside the function
@@ -679,8 +690,6 @@ class SpaceborneCovariance:
             cov_3x2pt_cng_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
 
-        return
-
     def _couple_cov_ng_3x2pt(self):
         if not self.cov_cfg['coupled_cov']:
             return
@@ -749,8 +758,8 @@ class SpaceborneCovariance:
         """Kernel to compute the 4D integral optimized using Simpson's rule using
         Julia.
         """
-        import subprocess
         import shutil
+        import subprocess
 
         suffix = 0
         folder_name = 'tmp'
@@ -777,10 +786,6 @@ class SpaceborneCovariance:
         with open(f'{folder_name}/unique_probe_names.txt', 'w') as f:
             for p in unique_probe_combs:
                 f.write(f'{p}\n')
-
-        # os.system(
-        #     command=f'julia --project=. --threads={num_threads} {self.jl_integrator_path} {folder_name} {integration_type}'
-        # )
 
         result = subprocess.run(
             args=[

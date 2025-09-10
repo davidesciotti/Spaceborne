@@ -1275,7 +1275,9 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         nbx = cov_rs_obj.nbt_coarse
         probe_idx_dict = cov_rs_obj.probe_idx_dict_short_oc
         n_probes_oc = 4
-        full_cov = (ps['xip'] + ps['xim'] + ps['gt'] + ps['w']) == 4 and ps['cross_cov'] is True
+        full_cov = (ps['xip'] + ps['xim'] + ps['gt'] + ps['w']) == 4 and ps[
+            'cross_cov'
+        ] is True
 
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
     oc_obj.cov_dict_6d = oc_interface.symmetrize_probes_dict_6d(
@@ -1283,7 +1285,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     )
 
     # turn to 10d arrays, which are still used in the SpaceborneCovariance class
-    cov_tot = 0
+    cov_tot = np.zeros((n_probes_oc, n_probes_oc, n_probes_oc, n_probes_oc, nbx, nbx, zbins, zbins, zbins, zbins))
     for term in ['sva', 'sn', 'mix', 'g', 'ssc', 'cng']:
         cov = oc_interface.oc_cov_dict_6d_to_array_10d(
             cov_dict_6d=oc_obj.cov_dict_6d,
@@ -1301,7 +1303,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # set also total covariance
     oc_obj.cov_3x2pt_tot_10d = cov_tot
     # free memory
-    # del cov_tot
+    del cov_tot
     gc.collect()
 
     # compare list and mat formats

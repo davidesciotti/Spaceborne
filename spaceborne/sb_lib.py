@@ -156,7 +156,7 @@ def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
             f'abs diag {name_b}': np.diag(np.abs(cov_b)),
         },
         logscale_y=[True, False],
-        title=title,
+        title=title + ' diag',
     )
 
     # compare cov flat
@@ -168,7 +168,7 @@ def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
         },
         logscale_y=[True, False],
         ylim_diff=[-100, 100],
-        title=title,
+        title=title + ' flat',
     )
 
     # compare SB against mat - cov spectrum
@@ -179,7 +179,7 @@ def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
         y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
         logscale_y=[True, False],
         ylim_diff=[-100, 100],
-        title=title,
+        title=title + ' eig',
     )
 
 
@@ -1769,7 +1769,7 @@ def compare_arrays(
         if np.allclose(A, B, rtol=rtol, atol=0):
             print(
                 f'{name_A} and {name_B} are close within relative tolerance '
-                f'of {rtol * 100}%) ✅'
+                f'of {rtol * 100}% ✅'
             )
             return
 

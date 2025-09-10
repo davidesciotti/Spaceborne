@@ -184,6 +184,8 @@ output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
 shift_nz = cfg['nz']['shift_nz']
 
+obs_space = cfg['probe_selection']['space']
+
 # ! check/create paths
 if not os.path.exists(output_path):
     raise FileNotFoundError(
@@ -442,7 +444,7 @@ if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
 
 # ! set HS probes to compute depending on RS ones
 # Set HS probes depending on RS ones
-if cfg['probe_selection']['space'] != 'real':
+if obs_space != 'real':
     pass  # nothing to do
 
 elif cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
@@ -484,7 +486,7 @@ cfg_check_obj = config_checker.SpaceborneConfigChecker(cfg, zbins)
 cfg_check_obj.run_all_checks()
 
 # ! instantiate CCL object
-ccl_obj = ccl_interface.PycclClass(
+ccl_obj = ccl_interface.CCLInterface(
     cfg['cosmology'],
     cfg['extra_parameters'],
     cfg['intrinsic_alignment'],
@@ -1096,7 +1098,7 @@ else:
 
 
 # ! =============== Init real space cov object, put here for simplicity for the moment ==============
-if cfg['probe_selection']['space'] == 'real':
+if obs_space == 'real':
     from spaceborne import cov_real_space
 
     # initialize cov_rs_obj and set a couple useful attributes
@@ -1170,7 +1172,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # oc needs finer ell sampling to avoid issues with ell bin edges
     ells_3x2pt_oc = np.geomspace(
-        cfg['binning']['ell_min'], cfg['binning']['ell_max_3x2pt'], nbl_3x2pt_oc
+        ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )
     cl_ll_3d_oc = ccl_obj.compute_cls(
         ells_3x2pt_oc,
@@ -1246,31 +1248,75 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # compute covs
     oc_obj.call_oc_from_bash()
 
-    if cfg['probe_selection']['space'] == 'real':
-        # TODO double check this
-        oc_output_covlist_fname = (
-            f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
-        )
-        covs_8d_oc = oc_interface.process_cov_from_list_file(
-            oc_output_covlist_fname,
-            n_probes_rs=4,
-            probe_idx_dict_short_oc=cov_rs_obj.probe_idx_dict_short_oc,
+    # load output .list file (maybe the .mat format would be better, actually...)
+    # and store it into a 6d dictionary
+    oc_output_covlist_fname = (
+        f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
+    )
+    oc_obj.cov_dict_6d = oc_interface.process_cov_from_list_file(
+        oc_output_covlist_fname=oc_output_covlist_fname,
+        zbins=zbins,
+        df_chunk_size=5_000_000,
+    )
+
+    # some useful vars to make the cov processing work regardless of the space
+    ps = cfg['probe_selection']
+    full_cov = False  # True if all probes + the cross-covariance are required
+    if obs_space == 'harmonic':
+        _valid_probes_oc = const.HS_DIAG_PROBES_OC
+        _req_probe_combs_2d = req_probe_combs_hs_2d
+        nbx = ell_obj.nbl_3x2pt
+        probe_idx_dict = oc_obj.probe_idx_dict_hs
+        n_probes_oc = 2
+        full_cov = (ps['LL'] + ps['GL'] + ps['GG']) == 3 and ps['cross_cov'] is True
+    elif obs_space == 'real':
+        _valid_probes_oc = const.RS_DIAG_PROBES_OC
+        _req_probe_combs_2d = req_probe_combs_rs_2d
+        nbx = cov_rs_obj.nbt_coarse
+        probe_idx_dict = cov_rs_obj.probe_idx_dict_short_oc
+        n_probes_oc = 4
+        full_cov = (ps['xip'] + ps['xim'] + ps['gt'] + ps['w']) == 4 and ps['cross_cov'] is True
+
+    # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
+    oc_obj.cov_dict_6d = oc_interface.symmetrize_probes_dict_6d(
+        cov_dict_6d=oc_obj.cov_dict_6d, space=obs_space, valid_probes=_valid_probes_oc
+    )
+
+    # turn to 10d arrays, which are still used in the SpaceborneCovariance class
+    cov_tot = 0
+    for term in ['sva', 'sn', 'mix', 'g', 'ssc', 'cng']:
+        cov = oc_interface.oc_cov_dict_6d_to_array_10d(
+            cov_dict_6d=oc_obj.cov_dict_6d,
+            desired_term=term,
+            n_probes=n_probes_oc,
+            nbx=nbx,
             zbins=zbins,
-            df_chunk_size=5_000_000,
+            probe_idx_dict=probe_idx_dict,
         )
-    else:
-        oc_obj.process_cov_from_list_file()
-        oc_obj.output_sanity_check(rtol=1e-4)  # .dat vs .mat
+
+        # finally, store the arrays in the corresponding attributes
+        setattr(oc_obj, f'cov_3x2pt_{term}_10d', cov)
+        cov_tot += cov
+
+    # set also total covariance
+    oc_obj.cov_3x2pt_tot_10d = cov_tot
+    # free memory
+    # del cov_tot
+    gc.collect()
+
+    # compare list and mat formats
+    if full_cov:
+        oc_obj.output_sanity_check(req_probe_combs_2d=_req_probe_combs_2d, rtol=1e-4)
 
     # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks
     if cfg['OneCovariance']['consistency_checks']:
         # store in temp variables for later check
-        check_cov_sva_oc_3x2pt_10D = oc_obj.cov_sva_oc_3x2pt_10D
-        check_cov_mix_oc_3x2pt_10D = oc_obj.cov_mix_oc_3x2pt_10D
-        check_cov_sn_oc_3x2pt_10D = oc_obj.cov_sn_oc_3x2pt_10D
-        check_cov_ssc_oc_3x2pt_10D = oc_obj.cov_ssc_oc_3x2pt_10D
-        check_cov_cng_oc_3x2pt_10D = oc_obj.cov_cng_oc_3x2pt_10D
+        check_cov_sva_oc_3x2pt_10D = oc_obj.cov_3x2pt_sva_10d
+        check_cov_mix_oc_3x2pt_10D = oc_obj.cov_3x2pt_mix_10d
+        check_cov_sn_oc_3x2pt_10D = oc_obj.cov_3x2pt_sn_10d
+        check_cov_ssc_oc_3x2pt_10D = oc_obj.cov_3x2pt_ssc_10d
+        check_cov_cng_oc_3x2pt_10D = oc_obj.cov_3x2pt_cng_10d
 
         oc_obj.call_oc_from_class()
         oc_obj.process_cov_from_class()
@@ -1593,7 +1639,7 @@ cov_hs_obj.build_covs(
 )
 
 
-if cfg['probe_selection']['space'] == 'real':
+if obs_space == 'real':
     print('Computing RS covariance...')
     start_rs = time.perf_counter()
 
@@ -1620,10 +1666,10 @@ if cfg['probe_selection']['space'] == 'real':
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
 
-if cfg['probe_selection']['space'] == 'harmonic':
+if obs_space == 'harmonic':
     _cov_obj = cov_hs_obj
     _probes = unique_probe_combs_hs
-elif cfg['probe_selection']['space'] == 'real':
+elif obs_space == 'real':
     _cov_obj = cov_rs_obj
     _probes = unique_probe_combs_rs
 else:
@@ -1657,7 +1703,7 @@ if cfg['covariance']['save_full_cov']:
     cov_dict_tosave_6d = {}
 
     for _probe in _probes:
-        if cfg['probe_selection']['space'] == 'harmonic':
+        if obs_space == 'harmonic':
             probe_a, probe_b, probe_c, probe_d = tuple(_probe)
             probe_ixs = (
                 const.HS_PROBE_NAME_TO_IX_DICT[probe_a],
@@ -1694,7 +1740,7 @@ if cfg['covariance']['save_full_cov']:
 
         # This case is a bit different, no cov_3x2pt_10d is ever created, but I have
         # individual attributes for the 6d covs for each probe
-        elif cfg['probe_selection']['space'] == 'real':
+        elif obs_space == 'real':
             if cfg['covariance']['G']:
                 cov_dict_tosave_6d[f'{_probe}_Gauss'] = getattr(
                     _cov_obj, f'cov_{_probe}_g_6d'
@@ -1740,12 +1786,12 @@ with np.errstate(invalid='ignore', divide='ignore'):
                 cfg['covariance']['covariance_ordering_2D'].startswith('probe')
                 and cfg['misc']['plot_probe_names']
             ):
-                if cfg['probe_selection']['space'] == 'harmonic':
+                if obs_space == 'harmonic':
                     unique_probe_combs = unique_probe_combs_hs
                     diag_probe_combs = const.HS_DIAG_PROBE_COMBS
                     latex_labels = const.HS_PROBE_NAME_TO_LATEX
                     scale_bins = ell_obj.nbl_3x2pt
-                elif cfg['probe_selection']['space'] == 'real':
+                elif obs_space == 'real':
                     unique_probe_combs = unique_probe_combs_rs
                     diag_probe_combs = const.RS_DIAG_PROBE_COMBS
                     latex_labels = const.RS_PROBE_NAME_TO_LATEX
@@ -1773,9 +1819,9 @@ with np.errstate(invalid='ignore', divide='ignore'):
                 # draw the boundaries
                 start_ab, start_cd = 0, 0
                 for probe_abcd in req_diag_probes[:-1]:
-                    if cfg['probe_selection']['space'] == 'harmonic':
+                    if obs_space == 'harmonic':
                         probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
-                    if cfg['probe_selection']['space'] == 'real':
+                    if obs_space == 'real':
                         probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
 
                     kw = {'color': 'k', 'alpha': 0.7, 'ls': '--'}
@@ -1797,9 +1843,9 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
                 start_ab, start_cd = 0, 0
                 for probe_abcd in req_diag_probes:
-                    if cfg['probe_selection']['space'] == 'harmonic':
+                    if obs_space == 'harmonic':
                         probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
-                    if cfg['probe_selection']['space'] == 'real':
+                    if obs_space == 'real':
                         probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
 
                     # x direction
@@ -2006,7 +2052,8 @@ if (
     or cfg['misc']['test_numpy_inversion']
     or cfg['misc']['test_symmetry']
 ):
-    cov = cov_dict_tosave_2d['TOT']
+    key = list(cov_dict_tosave_2d.keys())[0] if len(cov_dict_tosave_2d) == 1 else 'TOT'
+    cov = cov_dict_tosave_2d[key]
     print(f'Testing cov {cov_name}...\n')
 
     if cfg['misc']['test_condition_number']:

@@ -29,6 +29,72 @@ from scipy.optimize import minimize_scalar
 from spaceborne import constants as const
 from spaceborne import sb_lib as sl
 
+_UNSET = object()
+
+
+def oc_cov_dict_6d_to_array_10d(
+    cov_dict_6d: dict,
+    desired_term: str,
+    n_probes: int,
+    nbx: int,
+    zbins: int,
+    probe_idx_dict: dict,
+):
+    """Turns a dict of 6D arrays with keys {probe}_{term} into a 10D array"""
+
+    cov_10d = np.zeros(
+        (n_probes, n_probes, n_probes, n_probes, nbx, nbx, zbins, zbins, zbins, zbins)
+    )
+    for cov in cov_dict_6d.values():
+        assert cov.shape == (nbx, nbx, zbins, zbins, zbins, zbins), (
+            'cov shape should be '
+            f'({nbx}, {nbx}, {zbins}, {zbins}, {zbins}, {zbins}), got '
+            f'{cov.shape} instead'
+        )
+
+    # for key, cov in cov_dict_6d.items():
+    #     # go from e.g. 'gggg_sva' to ['g', 'g', 'g', 'g']
+    #     probe_abcd, term = key.split('_')
+    #     probe_abcd = list(probe_abcd)
+    #     if term == desired_term:
+    #         probe_ixs = [probe_idx_dict[probe] for probe in probe_abcd]
+    #         cov_10d[*probe_ixs] = cov
+
+    key_found = False
+    for key, cov in cov_dict_6d.items():
+        probe_abcd, term = key.split('_')
+        if term != desired_term:
+            continue
+        probes = list(probe_abcd)
+        probe_ixs = [probe_idx_dict[p] for p in probes]
+        cov_10d[*probe_ixs] = cov
+        key_found = True
+
+    if not key_found:
+        raise KeyError(f"No keys with term '{desired_term}' found in cov_dict_6d.")
+
+    return cov_10d
+
+
+def symmetrize_probes_dict_6d(cov_dict_6d: dict, space: str, valid_probes: list):
+    """Fills the symmetric probe combinations (e.g., given gggt, fills gtgg)"""
+
+    # this is needed to avoid mutating the dict while I loop over it
+    new_entries = {}
+    for key, cov in cov_dict_6d.items():
+        # compute symmetric_key, symmetric_cov
+        probe_abcd, term = key.split('_')
+
+        probe_ab, probe_cd = sl.split_probe_name(
+            full_probe_name=probe_abcd, space=space, valid_probes=valid_probes
+        )
+        probe_cdab = probe_cd + probe_ab
+        new_entries[f'{probe_cdab}_{term}'] = cov.transpose(1, 0, 4, 5, 2, 3)
+
+    cov_dict_6d.update(new_entries)
+
+    return cov_dict_6d
+
 
 def compare_sb_cov_to_oc_list(
     cov_rs_obj,
@@ -142,13 +208,7 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
         print()  # Add a blank line for readability between sections
 
 
-def process_cov_from_list_file(
-    oc_output_covlist_fname,
-    n_probes_rs,
-    probe_idx_dict_short_oc,
-    zbins,
-    df_chunk_size=5_000_000,
-):
+def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_000_000):
     import re
 
     import pandas as pd
@@ -277,7 +337,6 @@ class OneCovarianceInterface:
             covariance (SSC) term.
             compute_cng (bool): Whether to compute the connected non-Gaussian
             covariance (cNG) term.
-            conda_base_path (str): The base path of the OneCovariance Conda environment.
             oc_path (str): The path to the OneCovariance output directory.
             path_to_oc_executable (str): The path to the OneCovariance executable.
             path_to_config_oc_ini (str): The path to the OneCovariance configuration
@@ -302,25 +361,25 @@ class OneCovarianceInterface:
         self.obs_space = self.cfg['probe_selection']['space']
 
         # paths and filenems
-        self.conda_base_path = self.get_conda_base_path()
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
 
-    def get_conda_base_path(self):
-        try:
-            # Run the conda info --base command and capture the output
-            result = subprocess.run(
-                ['conda', 'info', '--base'],
-                stdout=subprocess.PIPE,
-                check=True,
-                text=True,
-            )
-            # Extract and return the base path
-            return result.stdout.strip() + '/bin'
-        except FileNotFoundError:
-            return '/home/cosmo/davide.sciotti/software/anaconda3/bin'
-        except subprocess.CalledProcessError as e:
-            print(f'Error occurred: {e}')
-            return None
+        self.probe_idx_dict_hs = {
+            'm': const.HS_PROBE_NAME_TO_IX_DICT['L'],
+            'g': const.HS_PROBE_NAME_TO_IX_DICT['G'],
+        }
+
+        self.oc_path: str = _UNSET
+        self.z_grid_trisp_sb: np.ndarray = _UNSET
+        self.path_to_config_oc_ini: str = _UNSET
+        self.ells_sb: np.ndarray = _UNSET
+        self.cov_dict_6d: dict = _UNSET
+        self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_sn_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_mix_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_g_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_ssc_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_cng_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_tot_10d: np.ndarray = _UNSET
 
     def build_save_oc_ini(self, ascii_filenames_dict, h, print_ini=True):
         # this is just to preserve case sensitivity
@@ -670,18 +729,12 @@ class OneCovarianceInterface:
         # store in self for good measure
         self.cfg_onecov_ini = cfg_oc_ini
 
-    def call_oc_from_bash(self):
+    def call_oc_from_bash(self) -> None:
         """This function runs OneCovariance"""
-        activate_and_run = f"""
-        source {self.conda_base_path}/activate cov20_env
-        python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
-        source {self.conda_base_path}/deactivate
-        source {self.conda_base_path}/activate spaceborne-dav
-        """
-        # python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
-
-        process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
-        process.communicate()
+        subprocess.run(
+            ['python', self.path_to_oc_executable, self.path_to_config_oc_ini],
+            check=True,  # raise CalledProcessError if it fails
+        )
 
     def call_oc_from_class(self):
         """This interface was originally created by Robert Reischke.
@@ -870,25 +923,29 @@ class OneCovarianceInterface:
         elem_cross = self.zpairs_cross * self.nbl_3x2pt
 
         if self.compute_g:
-            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_gauss.mat')
+            cov_in = np.genfromtxt(
+                f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
+            )
             self.cov_mat_g_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
 
         if self.compute_ssc:
-            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_SSC.mat')
+            cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
             self.cov_mat_ssc_2d = self.cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
         if self.compute_cng:
-            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_nongauss.mat')
+            cov_in = np.genfromtxt(
+                f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
+            )
             self.cov_mat_cng_2d = self.cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
-        cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix.mat')
+        cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
         self.cov_mat_tot_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
 
-    def output_sanity_check(self, rtol=1e-4):
+    def output_sanity_check(self, req_probe_combs_2d: list, rtol: float = 1e-4):
         """
         Checks that the .dat and .mat outputs give consistent results
         """
@@ -899,49 +956,70 @@ class OneCovarianceInterface:
         self.process_cov_from_mat_file()
 
         cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_g_oc_3x2pt_10D,
+            self.cov_3x2pt_g_10d,
             self.probe_ordering,
             self.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
+            req_probe_combs_2d=req_probe_combs_2d,
         )
         cov_list_ssc_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_ssc_oc_3x2pt_10D,
+            self.cov_3x2pt_ssc_10d,
             self.probe_ordering,
             self.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
+            req_probe_combs_2d=req_probe_combs_2d,
         )
         cov_list_cng_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_cng_oc_3x2pt_10D,
+            self.cov_3x2pt_cng_10d,
             self.probe_ordering,
             self.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
+            req_probe_combs_2d=req_probe_combs_2d,
         )
         cov_list_tot_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_tot_oc_3x2pt_10D,
+            self.cov_3x2pt_tot_10d,
             self.probe_ordering,
             self.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
+            req_probe_combs_2d=req_probe_combs_2d,
         )
 
-        cov_list_g_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
-            cov_list_g_4d, self.zbins, block_index='zpair'
+        if self.obs_space == 'harmonic':
+            cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_hs
+        elif self.obs_space == 'real':
+            cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
+
+        cov_list_g_2d = cov_4d_to_2dcloe_func(
+            cov_list_g_4d,
+            zbins=self.zbins,
+            req_probe_combs_2d=req_probe_combs_2d,
+            block_index='zpair',
         )
-        cov_list_ssc_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
-            cov_list_ssc_4d, self.zbins, block_index='zpair'
+        cov_list_ssc_2d = cov_4d_to_2dcloe_func(
+            cov_list_ssc_4d,
+            zbins=self.zbins,
+            req_probe_combs_2d=req_probe_combs_2d,
+            block_index='zpair',
         )
-        cov_list_cng_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
-            cov_list_cng_4d, self.zbins, block_index='zpair'
+        cov_list_cng_2d = cov_4d_to_2dcloe_func(
+            cov_list_cng_4d,
+            zbins=self.zbins,
+            req_probe_combs_2d=req_probe_combs_2d,
+            block_index='zpair',
         )
-        cov_list_tot_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(
-            cov_list_tot_4d, self.zbins, block_index='zpair'
+        cov_list_tot_2d = cov_4d_to_2dcloe_func(
+            cov_list_tot_4d,
+            zbins=self.zbins,
+            req_probe_combs_2d=req_probe_combs_2d,
+            block_index='zpair',
         )
 
         if self.compute_g:
@@ -979,7 +1057,7 @@ class OneCovarianceInterface:
             self.cov_mat_tot_2d,
             atol=0,
             rtol=rtol,
-            err_msg='Gaussian covariance matrix from .mat file is'
+            err_msg='Total covariance matrix from .mat file is'
             ' not consistent with .dat output',
         )
 
@@ -1030,6 +1108,9 @@ class OneCovarianceInterface:
         The function also performs some additional processing,
         such as symmetrizing the output dictionary.
         """
+        raise NotImplementedError(
+            'This function should be deprecated in favour of process_cov_from_list_file_hs'
+        )
         import re
 
         import pandas as pd
@@ -1066,8 +1147,6 @@ class OneCovarianceInterface:
         cov_ell_indices = {
             ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)
         }
-
-        probe_idx_dict = {'m': 0, 'g': 1}
 
         # ! import .list covariance file
         shape = (

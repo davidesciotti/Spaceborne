@@ -7,6 +7,7 @@ import pickle
 import subprocess
 import time
 import warnings
+from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 
@@ -23,42 +24,6 @@ from scipy.special import jv
 
 import spaceborne.constants as const
 
-# # Gaussian covariance binning
-# def bin_cov_gauss(cov, ell_values, theta_edges, fsky):
-#     binned_cov = np.zeros((len(theta_edges) - 1, len(theta_edges) - 1))
-#     for i in range(len(theta_edges) - 1):
-#         for j in range(len(theta_edges) - 1):
-#             ell_min_1, ell_max_1 = theta_edges[i], theta_edges[i + 1]
-#             ell_min_2, ell_max_2 = theta_edges[j], theta_edges[j + 1]
-#             overlapping_ells = np.intersect1d(
-#                 np.arange(ell_min_1, ell_max_1),
-#                 np.arange(ell_min_2, ell_max_2)
-#             )
-#             if len(overlapping_ells) == 0:
-#                 continue
-#             spline = UnivariateSpline(ell_values, np.diag(cov), k=1, s=0)
-#             binned_cov[i, j] = 1 / fsky / np.sum((2 * overlapping_ells + 1) / spline(overlapping_ells))
-#     return binned_cov
-
-# # Non-Gaussian covariance binning
-# def bin_cov_nongauss(cov, ell_values, theta_edges, area):
-#     binned_cov = np.zeros((len(theta_edges) - 1, len(theta_edges) - 1))
-#     spline = RegularGridInterpolator((ell_values, ell_values), np.log(cov), bounds_error=False, fill_value=None)
-#     for i in range(len(theta_edges) - 1):
-#         ell_min_1, ell_max_1 = theta_edges[i], theta_edges[i + 1]
-#         area1 = np.pi * (ell_max_1**2 - ell_min_1**2)
-#         ell_grid_1 = np.geomspace(ell_min_1, ell_max_1, 10)
-#         for j in range(len(theta_edges) - 1):
-#             ell_min_2, ell_max_2 = theta_edges[j], theta_edges[j + 1]
-#             area2 = np.pi * (ell_max_2**2 - ell_min_2**2)
-#             ell_grid_2 = np.geomspace(ell_min_2, ell_max_2, 10)
-#             ell1, ell2 = np.meshgrid(ell_grid_1, ell_grid_2, indexing='ij')
-#             result = simps(simps(np.exp(spline((ell1, ell2)) * ell1 * ell2, ell_grid_2), ell_grid_1))
-#             result /= (area1 * area2)
-#             result *= 4 * np.pi**2 / area
-#             binned_cov[i, j] = result
-#     return binned_cov
-
 
 def matshow_custom_bins(data_array, bin_edges):
     """
@@ -72,18 +37,18 @@ def matshow_custom_bins(data_array, bin_edges):
         matshow_custom_bins(perc_diff, bin_edges)
     """
     from matplotlib.colors import BoundaryNorm
-    
+
     fig, ax = plt.subplots(figsize=(8, 6))
-    
+
     # Validate inputs and prepare edges
     data_array = np.asarray(data_array)
     if data_array.ndim != 2:
-        raise ValueError("data_array must be 2D")
+        raise ValueError('data_array must be 2D')
     bin_edges = np.asarray(bin_edges, dtype=float)
     if bin_edges.ndim != 1 or bin_edges.size < 2:
-        raise ValueError("bin_edges must be a 1D array with at least 2 edges")
+        raise ValueError('bin_edges must be a 1D array with at least 2 edges')
     if np.any(np.diff(bin_edges) <= 0):
-        raise ValueError("bin_edges must be strictly increasing")
+        raise ValueError('bin_edges must be strictly increasing')
 
     # Create the colormap and the norm for the bins.
     # The lowest bin edge is a very small number to handle floating-point
@@ -93,7 +58,7 @@ def matshow_custom_bins(data_array, bin_edges):
 
     # Plot the data using the custom norm
     im = ax.matshow(data_array, cmap=cmap, norm=norm)
-    
+
     # Extend colorbar if data fall outside provided edges
     extend = 'neither'
     amin, amax = np.nanmin(data_array), np.nanmax(data_array)
@@ -102,7 +67,12 @@ def matshow_custom_bins(data_array, bin_edges):
     if amax > bin_edges[-1]:
         extend = 'both' if extend == 'min' else 'max'
     cbar = fig.colorbar(
-        im, ax=ax, boundaries=bin_edges, ticks=bin_edges, spacing='proportional', extend=extend
+        im,
+        ax=ax,
+        boundaries=bin_edges,
+        ticks=bin_edges,
+        spacing='proportional',
+        extend=extend,
     )
     cbar.set_label('Discrepancy (%)')
     cbar = fig.colorbar(im, ax=ax, ticks=bin_edges)
@@ -117,22 +87,23 @@ def matshow_custom_bins(data_array, bin_edges):
     plt.show()
 
 
-def split_probe_name(full_probe_name):
-    """Splits a full probe name (e.g., 'gtxim') into two component probes.
+def split_probe_name(
+    full_probe_name: str, space: str = 'real', valid_probes: Sequence[str] | None = None
+) -> tuple[str, str]:
+    """Splits a full probe name (e.g., 'gtxim') into two component probes."""
 
-    Possible probe names are 'xip', 'xim', 'gt', 'gg'.
-
-    Args:
-        full_probe_name (str): A string containing two probe types concatenated.
-
-    Returns:
-        tuple: A tuple of two strings representing the split probes.
-
-    Raises:
-        ValueError: If the input string does not contain exactly two valid probes.
-
-    """
-    valid_probes = {'xip', 'xim', 'gt', 'gg'}
+    # this is the default: use hardcoded probe names
+    if valid_probes is None:
+        if space == 'harmonic':
+            valid_probes = const.HS_DIAG_PROBES
+        elif space == 'real':
+            valid_probes = const.RS_DIAG_PROBES
+        else:
+            raise ValueError(
+                f'`space` needs to be one of `harmonic` or `real`, got {space}'
+            )
+    else:
+        assert isinstance(valid_probes, (list, tuple)), 'valid_probes must be a list'
 
     # Try splitting at each possible position
     for i in range(2, len(full_probe_name)):

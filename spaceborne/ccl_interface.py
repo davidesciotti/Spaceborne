@@ -88,7 +88,7 @@ def compute_cl_3x2pt_5d(
     return cl_3x2pt_5d
 
 
-class PycclClass:
+class CCLInterface:
     def __init__(
         self,
         cosmology_dict: dict,

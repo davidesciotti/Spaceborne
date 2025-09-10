@@ -55,11 +55,11 @@ halo_model:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real'].
-  space: real # Type: str. 
+  space: harmonic # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
-  GG: False # Type: bool. Whether to compute the photometric clustering ('GG') covariance
+  GG: True # Type: bool. Whether to compute the photometric clustering ('GG') covariance
   
   xip: True # Type: bool. Whether to compute \xi_+
   xim: True # Type: bool. Whether to compute \xi_-
@@ -200,6 +200,7 @@ covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  G_code: OneCovariance # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
@@ -320,7 +321,7 @@ sample_covariance:
 
 
 OneCovariance:
-    path_to_oc_executable: '/home/davide/Documenti/Lavoro/Programmi/common_data/OneCovariance/covariance.py'
+    path_to_oc_executable: '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 
@@ -373,5 +374,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_rs_test # Type: str. Path to the output directory
+  output_path: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/validation_tests # Type: str. Path to the output directory
   save_figs: True

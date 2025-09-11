@@ -1285,7 +1285,20 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     )
 
     # turn to 10d arrays, which are still used in the SpaceborneCovariance class
-    cov_tot = np.zeros((n_probes_oc, n_probes_oc, n_probes_oc, n_probes_oc, nbx, nbx, zbins, zbins, zbins, zbins))
+    cov_tot = np.zeros(
+        (
+            n_probes_oc,
+            n_probes_oc,
+            n_probes_oc,
+            n_probes_oc,
+            nbx,
+            nbx,
+            zbins,
+            zbins,
+            zbins,
+            zbins,
+        )
+    )
     for term in ['sva', 'sn', 'mix', 'g', 'ssc', 'cng']:
         cov = oc_interface.oc_cov_dict_6d_to_array_10d(
             cov_dict_6d=oc_obj.cov_dict_6d,
@@ -2111,6 +2124,7 @@ if cfg['misc']['save_figs']:
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+
 
 # BOOKMARK 2
 # ! read OC files: list

@@ -1,6 +1,7 @@
 import itertools
 import os
 import time
+import warnings
 
 import numpy as np
 
@@ -10,7 +11,6 @@ from spaceborne.ccl_interface import CCLInterface
 from spaceborne.cov_partial_sky import NmtCov
 from spaceborne.ell_utils import EllBinning
 from spaceborne.oc_interface import OneCovarianceInterface
-
 
 
 class SpaceborneCovariance:
@@ -93,7 +93,6 @@ class SpaceborneCovariance:
             }
         else:
             raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
-
 
     def set_ind_and_zpairs(self, ind, zbins):
         # set indices array
@@ -694,6 +693,13 @@ class SpaceborneCovariance:
         if not self.cov_cfg['coupled_cov']:
             return
 
+        if self.cfg['BNT']['cov_BNT_transform']:
+            warnings.warn(
+                'BNT transformation has not been tested for coupled covariance '
+                'matrices.',
+                stacklevel=2,
+            )
+
         print('Coupling the non-Gaussian covariance...')
         from spaceborne import cov_partial_sky
 
@@ -787,7 +793,7 @@ class SpaceborneCovariance:
             for p in unique_probe_combs:
                 f.write(f'{p}\n')
 
-        result = subprocess.run(
+        subprocess.run(
             args=[
                 'julia',
                 '--project=.',
@@ -798,10 +804,6 @@ class SpaceborneCovariance:
             ],
             check=False,
         )
-        if result.returncode != 0:
-            raise RuntimeError(
-                f'Julia integration failed with exit code {result.returncode}'
-            )
 
         cov_filename = (
             'cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy'

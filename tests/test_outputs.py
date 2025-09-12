@@ -115,18 +115,26 @@ def test_main_script(test_cfg_path):
 ROOT = '/u/dsciotti/code'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
+# run this to also save output of this script to a file
+# python test_outputs.py 2>&1 | tee test_outputs_log.txt
+
 # run all tests...
 bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
 bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
+bench_yaml_names.sort()
 
 # ... or run specific tests
-bench_yaml_names = [
-    'config_0004',
-    'config_0005',
-    'config_0006',
-    'config_0007',
-]
+# bench_yaml_names = [
+#     'config_0006',
+#     'config_0007',
+#     'config_0008',
+#     'config_0009',
+#     'config_0010',
+#     'config_0011',
+#     'config_0012',
+#     'config_0013',
+# ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'
@@ -149,12 +157,7 @@ if os.path.exists(f'{temp_output_filename}.npz'):
         os.remove(f'{temp_output_filename}.npz')
 
 for bench_name in bench_yaml_names:
-    print('\n')
-    print('***************************************************************************')
-    print('***************************************************************************')
-    print('***************************************************************************')
-    print(f'Testing {bench_name}...')
-    print('\n')
+    print(f'\n\n🧪🧪🧪 Testing {bench_name} 🧪🧪🧪...\n')
 
     # ! update the cfg file to avoid overwriting the benchmarks
     # Load the benchmark config

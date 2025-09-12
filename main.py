@@ -8,14 +8,16 @@ import warnings
 from functools import partial
 from importlib.util import find_spec
 
+import jax
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
+from jax import jit, vmap
 from matplotlib import cm
 from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline, RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
-
 from spaceborne import (
     bnt,
     ccl_interface,
@@ -42,7 +44,6 @@ with contextlib.suppress(ImportError):
     ascii_art = pyfiglet.figlet_format(text, font='slant')
     print(ascii_art)
 
-
 # Get the current script's directory
 # current_dir = Path(__file__).resolve().parent
 # parent_dir = current_dir.parent
@@ -55,6 +56,111 @@ warnings.filterwarnings(
 
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
+
+
+# Enable 64-bit precision if needed
+jax.config.update('jax_enable_x64', True)
+
+
+@jit
+def ssc_integral_4D_simps_jax_gpu(
+    d2ClAB_dVddeltab,
+    d2ClCD_dVddeltab,
+    cl_integral_prefactor,
+    sigma2,
+    delta_z,
+    simpson_weights,
+):
+    """
+    JAX GPU version of the Simpson's rule 4D integral.
+    Expects d2Cl arrays to be pre-shaped to 3D: (nbl, zpairs, z_steps)
+    """
+
+    # Pre-compute combined weights for efficiency
+    # Shape: (z_steps, z_steps)
+    prefactor_grid = jnp.outer(cl_integral_prefactor, cl_integral_prefactor)
+    weight_grid = jnp.outer(simpson_weights, simpson_weights)
+    combined_weights = prefactor_grid * weight_grid * sigma2
+
+    # Vectorized computation using einsum for maximum efficiency
+    # d2ClAB_dVddeltab: (nbl, zpairs_AB, z_steps)
+    # d2ClCD_dVddeltab: (nbl, zpairs_CD, z_steps)
+    # combined_weights: (z_steps, z_steps)
+
+    # Compute all combinations at once
+    # Result will be (nbl, nbl, zpairs_AB, zpairs_CD)
+    result = jnp.einsum(
+        'aiz,bjw,zw->abij', d2ClAB_dVddeltab, d2ClCD_dVddeltab, combined_weights
+    )
+
+    return result * (delta_z**2)
+
+
+# Alternative implementation with explicit loops (less efficient but more readable)
+@jit
+def ssc_integral_4D_simps_jax_gpu_loops(
+    d2ClAB_dVddeltab,
+    d2ClCD_dVddeltab,
+    cl_integral_prefactor,
+    sigma2,
+    delta_z,
+    simpson_weights,
+):
+    """
+    JAX GPU version using explicit loops (alternative implementation).
+    """
+    print('Using device: JAX GPU/CPU with JIT compilation (loop version)')
+
+    # Get dimensions
+    nbl = d2ClAB_dVddeltab.shape[0]
+    zpairs_AB = d2ClAB_dVddeltab.shape[1]
+    zpairs_CD = d2ClCD_dVddeltab.shape[1]
+
+    # Pre-compute all weights combinations
+    # Shape: (z_steps, z_steps)
+    all_weights = jnp.einsum(
+        'i,j,i,j,ij->ij',
+        cl_integral_prefactor,
+        cl_integral_prefactor,
+        simpson_weights,
+        simpson_weights,
+        sigma2,
+    )
+
+    def compute_element(indices):
+        ell1, ell2, zij, zkl = indices
+        # Compute: sum over z1_idx, z2_idx of
+        # prefactor[z1_idx] * prefactor[z2_idx] *
+        # d2ClAB[ell1, zij, z1_idx] * d2ClCD[ell2, zkl, z2_idx] *
+        # sigma2[z1_idx, z2_idx] * simpson_weights[z1_idx] * simpson_weights[z2_idx]
+
+        clAB_slice = d2ClAB_dVddeltab[ell1, zij, :]  # (z_steps,)
+        clCD_slice = d2ClCD_dVddeltab[ell2, zkl, :]  # (z_steps,)
+
+        # Vectorized computation
+        integrand = jnp.outer(clAB_slice, clCD_slice) * all_weights
+        return jnp.sum(integrand) * (delta_z**2)
+
+    # Generate all index combinations
+    ell1_indices = jnp.arange(nbl)
+    ell2_indices = jnp.arange(nbl)
+    zij_indices = jnp.arange(zpairs_AB)
+    zkl_indices = jnp.arange(zpairs_CD)
+
+    # Create meshgrid of all combinations
+    ell1_mesh, ell2_mesh, zij_mesh, zkl_mesh = jnp.meshgrid(
+        ell1_indices, ell2_indices, zij_indices, zkl_indices, indexing='ij'
+    )
+
+    # Stack indices
+    indices = jnp.stack([ell1_mesh, ell2_mesh, zij_mesh, zkl_mesh], axis=-1)
+    indices_flat = indices.reshape(-1, 4)
+
+    # Vectorize computation
+    results = vmap(compute_element)(indices_flat)
+
+    # Reshape to final result shape
+    return results.reshape(nbl, nbl, zpairs_AB, zpairs_CD)
 
 
 def load_config(_config_path):
@@ -1412,19 +1518,56 @@ if compute_sb_ssc:
         np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
 
     # ! 4. Perform the integration calling the Julia module
-    start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D_gpu_tullio = cov_obj.ssc_integral_julia(
-        d2CLL_dVddeltab=d2CLL_dVddeltab,
-        d2CGL_dVddeltab=d2CGL_dVddeltab,
-        d2CGG_dVddeltab=d2CGG_dVddeltab,
-        cl_integral_prefactor=cl_integral_prefactor,
-        sigma2=sigma2_b,
-        z_grid=z_grid,
-        integration_type='simps_gpu_tullio',
-        unique_probe_combs=unique_probe_combs,
-        num_threads=cfg['misc']['num_threads'],
-    )
-    print(f'SSC computed on the GPU with @tullio in {(time.perf_counter() - start) / 60:.2f} m')
+    delta_z = np.diff(z_grid)[0]
+    z_steps = len(z_grid)
+    simpson_weights = sl.get_simpson_weights(len(z_grid))
+    nbl = ell_obj.nbl_3x2pt
+    d2CLL_dVddeltab_contr = np.zeros((nbl, zpairs_auto, z_steps))
+    d2CGL_dVddeltab_contr = np.zeros((nbl, zpairs_cross, z_steps))
+    d2CGG_dVddeltab_contr = np.zeros((nbl, zpairs_auto, z_steps))
+
+    for zij in range(zpairs_auto):
+        zi, zj = ind_auto[zij, 2], ind_auto[zij, 3]
+        d2CLL_dVddeltab_contr[:, zij, :] = d2CLL_dVddeltab[:, zi, zj, :]
+        d2CGG_dVddeltab_contr[:, zij, :] = d2CGG_dVddeltab[:, zi, zj, :]
+    for zij in range(zpairs_cross):
+        zi, zj = ind_cross[zij, 2], ind_cross[zij, 3]
+        d2CGL_dVddeltab_contr[:, zij, :] = d2CGL_dVddeltab[:, zi, zj, :]
+
+    d2CAB_dVddeltab_contr_dict = {
+        ('L', 'L'): d2CLL_dVddeltab_contr,
+        ('G', 'L'): d2CGL_dVddeltab_contr,
+        ('G', 'G'): d2CGG_dVddeltab_contr,
+    }
+
+    print('Current default JAX device:', jax.devices()[0])
+    cov_ssc_3x2pt_dict_8D_jax = {}
+    for key in [
+        ('L', 'L', 'L', 'L'),
+        ('L', 'L', 'G', 'L'),
+        ('G', 'L', 'L', 'L'),
+        ('L', 'L', 'G', 'G'),
+        ('G', 'G', 'L', 'L'),
+        ('G', 'L', 'G', 'L'),
+        ('G', 'L', 'G', 'G'),
+        ('G', 'G', 'G', 'L'),
+        ('G', 'G', 'G', 'G'),
+    ]:
+        a, b, c, d = key
+        d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(a, b)]
+        d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(c, d)]
+
+        start = time.perf_counter()
+        result = ssc_integral_4D_simps_jax_gpu(
+            jnp.array(d2CABdVddeltab_contr),
+            jnp.array(d2CCDdVddeltab_contr),
+            jnp.array(cl_integral_prefactor),
+            jnp.array(sigma2_b),
+            delta_z,
+            jnp.array(simpson_weights),
+        )
+        cov_ssc_3x2pt_dict_8D_jax[key] = np.array(result)
+        print(f'SSC {key} computed with JAX in {(time.perf_counter() - start):.2f} s')
 
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(
@@ -1438,7 +1581,45 @@ if compute_sb_ssc:
         unique_probe_combs=unique_probe_combs,
         num_threads=cfg['misc']['num_threads'],
     )
-    print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
+    print(f'SSC computed in {(time.perf_counter() - start):.2f} s')
+
+    for key in cov_ssc_3x2pt_dict_8D:
+        print(f'Checking {key}...')
+        np.testing.assert_allclose(
+            cov_ssc_3x2pt_dict_8D_jax[key],
+            cov_ssc_3x2pt_dict_8D[key],
+            rtol=1e-3,
+            atol=0,
+        )
+        cov_2d_jax = sl.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_jax[key], block_index='ell')
+        cov_2d_julia = sl.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D[key], block_index='ell')
+        sl.compare_arrays(
+            cov_2d_jax,
+            cov_2d_julia,
+            abs_val=True,
+            log_diff=True,
+            plot_diff_threshold=1,
+            plot_diff_hist=True,
+        )
+
+    assert False, 'stop here to test jax'
+
+    start = time.perf_counter()
+    cov_ssc_3x2pt_dict_8D_gpu_tullio = cov_obj.ssc_integral_julia(
+        d2CLL_dVddeltab=d2CLL_dVddeltab,
+        d2CGL_dVddeltab=d2CGL_dVddeltab,
+        d2CGG_dVddeltab=d2CGG_dVddeltab,
+        cl_integral_prefactor=cl_integral_prefactor,
+        sigma2=sigma2_b,
+        z_grid=z_grid,
+        integration_type='SSC_integral_4D_simps_unified',
+        unique_probe_combs=unique_probe_combs,
+        num_threads=cfg['misc']['num_threads'],
+    )
+    print(
+        'SSC computed on the GPU with @tullio in '
+        f'{(time.perf_counter() - start) / 60:.2f} m'
+    )
 
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D_gpu = cov_obj.ssc_integral_julia(

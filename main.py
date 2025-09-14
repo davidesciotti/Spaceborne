@@ -1,14 +1,8 @@
 import argparse
-import contextlib
 import os
-import pprint
 import sys
-import time
-import warnings
-from functools import partial
-from importlib.util import find_spec
+
 import yaml
-import multiprocessing
 
 
 def load_config(_config_path):
@@ -35,16 +29,11 @@ def load_config(_config_path):
         args = parser.parse_args()
         config_path = args.config
 
-    # Only switch to Agg if not running interactively and --show-plots is not specified.
-    if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
-        import matplotlib
-
-        matplotlib.use('Agg')
-
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
 
     return cfg
+
 
 cfg = load_config('config.yaml')
 # Set jax platform
@@ -55,16 +44,15 @@ else:
 
 # if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
-os.environ["OMP_NUM_THREADS"] = str(num_threads)
-os.environ["OPENBLAS_NUM_THREADS"] = str(num_threads)
-os.environ["MKL_NUM_THREADS"] = str(num_threads)
-os.environ["VECLIB_MAXIMUM_THREADS"] = str(num_threads)  # for Accelerate on macOS
-os.environ["NUMEXPR_NUM_THREADS"] = str(num_threads)
-os.environ["XLA_FLAGS"] = f"--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}"
+os.environ['OMP_NUM_THREADS'] = str(num_threads)
+os.environ['OPENBLAS_NUM_THREADS'] = str(num_threads)
+os.environ['MKL_NUM_THREADS'] = str(num_threads)
+os.environ['VECLIB_MAXIMUM_THREADS'] = str(num_threads)
+os.environ['NUMEXPR_NUM_THREADS'] = str(num_threads)
+os.environ['XLA_FLAGS'] = (
+    f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
+)
 
-
-    
-    
 # TODO these imports should be isolated
 import jax
 import jax.numpy as jnp
@@ -73,13 +61,25 @@ from jax import jit, vmap
 # Enable 64-bit precision if required
 jax.config.update('jax_enable_x64', cfg['misc']['jax_enable_x64'])
 
+print('JAX devices:', jax.devices())
 
+
+import contextlib
+import pprint
+import time
+import warnings
+from functools import partial
+from importlib.util import find_spec
+
+import matplotlib
 import matplotlib.pyplot as plt
+
 import numpy as np
 from matplotlib import cm
 from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline, RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
+
 from spaceborne import (
     bnt,
     ccl_interface,
@@ -106,6 +106,9 @@ with contextlib.suppress(ImportError):
     ascii_art = pyfiglet.figlet_format(text, font='slant')
     print(ascii_art)
 
+if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
+    matplotlib.use('Agg')
+
 # Get the current script's directory
 # current_dir = Path(__file__).resolve().parent
 # parent_dir = current_dir.parent
@@ -118,12 +121,6 @@ warnings.filterwarnings(
 
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
-
-
-
-
-
-
 
 
 def plot_cls():
@@ -213,13 +210,6 @@ zbins = len(cfg['nz']['ngal_lenses'])
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
 shift_nz = cfg['nz']['shift_nz']
-
-
-# print(f'JAX is using device: {jax.devices()}')
-print("System CPUs available:", multiprocessing.cpu_count())
-print("JAX devices:", jax.devices())
-print("XLA_FLAGS:", os.environ.get("XLA_FLAGS"))
-print("OMP_NUM_THREADS:", os.environ.get("OMP_NUM_THREADS"))
 
 
 @jit
@@ -321,7 +311,6 @@ def ssc_integral_4D_simps_jax_gpu_loops(
 
     # Reshape to final result shape
     return results.reshape(nbl, nbl, zpairs_AB, zpairs_CD)
-
 
 
 # ! check/create paths
@@ -1573,14 +1562,12 @@ if compute_sb_ssc:
     d2CLL_dVddeltab_contr_rand = np.random.random((32, 91, z_steps))
     d2CGL_dVddeltab_contr_rand = np.random.random((32, 169, z_steps))
     d2CGG_dVddeltab_contr_rand = np.random.random((32, 91, z_steps))
-    
+
     d2CAB_dVddeltab_contr_dict = {
         ('L', 'L'): d2CLL_dVddeltab_contr,
         ('G', 'L'): d2CGL_dVddeltab_contr,
         ('G', 'G'): d2CGG_dVddeltab_contr,
     }
-    
-    
 
     # BOOKMARK
     cov_ssc_3x2pt_dict_8D_jax = {}
@@ -1610,7 +1597,7 @@ if compute_sb_ssc:
         )
         cov_ssc_3x2pt_dict_8D_jax[key] = np.array(result)
     print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
-    
+
     assert False
 
     start = time.perf_counter()

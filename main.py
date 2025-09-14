@@ -7,13 +7,75 @@ import time
 import warnings
 from functools import partial
 from importlib.util import find_spec
+import yaml
+import multiprocessing
 
+
+def load_config(_config_path):
+    # Check if we're running in a Jupyter environment (or interactive mode)
+    if 'ipykernel_launcher.py' in sys.argv[0]:
+        # Running interactively, so use default config file
+        config_path = _config_path
+
+    else:
+        parser = argparse.ArgumentParser(description='Spaceborne')
+        parser.add_argument(
+            '--config',
+            type=str,
+            help='Path to the configuration file',
+            required=False,
+            default=_config_path,
+        )
+        parser.add_argument(
+            '--show-plots',
+            action='store_true',
+            help='Show plots if specified',
+            required=False,
+        )
+        args = parser.parse_args()
+        config_path = args.config
+
+    # Only switch to Agg if not running interactively and --show-plots is not specified.
+    if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
+        import matplotlib
+
+        matplotlib.use('Agg')
+
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f)
+
+    return cfg
+
+cfg = load_config('config.yaml')
+# Set jax platform
+if cfg['misc']['jax_platform'] == 'auto':
+    pass
+else:
+    os.environ['JAX_PLATFORMS'] = cfg['misc']['jax_platform']
+
+# if using the CPU, set the number of threads
+num_threads = cfg['misc']['num_threads']
+os.environ["OMP_NUM_THREADS"] = str(num_threads)
+os.environ["OPENBLAS_NUM_THREADS"] = str(num_threads)
+os.environ["MKL_NUM_THREADS"] = str(num_threads)
+os.environ["VECLIB_MAXIMUM_THREADS"] = str(num_threads)  # for Accelerate on macOS
+os.environ["NUMEXPR_NUM_THREADS"] = str(num_threads)
+os.environ["XLA_FLAGS"] = f"--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}"
+
+
+    
+    
+# TODO these imports should be isolated
 import jax
 import jax.numpy as jnp
+from jax import jit, vmap
+
+# Enable 64-bit precision if required
+jax.config.update('jax_enable_x64', cfg['misc']['jax_enable_x64'])
+
+
 import matplotlib.pyplot as plt
 import numpy as np
-import yaml
-from jax import jit, vmap
 from matplotlib import cm
 from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline, RectBivariateSpline
@@ -58,8 +120,106 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 
-# Enable 64-bit precision if needed
-jax.config.update('jax_enable_x64', True)
+
+
+
+
+
+
+def plot_cls():
+    _, ax = plt.subplots(1, 3, figsize=(15, 4))
+    # plt.tight_layout()
+
+    # cls are (for the moment) in the ccl obj, whether they are imported from input
+    # files or not
+    for zi in range(zbins):
+        zj = zi
+        kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
+        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], **kw)
+        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
+        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
+
+    # if input cls are used, then overplot the sb predictions on top
+    if cfg['C_ell']['use_input_cls']:
+        for zi in range(zbins):
+            zj = zi
+            sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
+            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **sb_kw)
+            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **sb_kw)
+            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **sb_kw)
+        # Add style legend only to middle plot
+        style_legend = ax[1].legend(
+            handles=[
+                plt.Line2D([], [], label='input', **kw),
+                plt.Line2D([], [], label='SB', **sb_kw),
+            ],
+            loc='upper right',
+            fontsize=16,
+            frameon=False,
+        )
+        ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
+
+    ax[2].legend(
+        [f'$z_{{{zi}}}$' for zi in range(zbins)],
+        loc='upper right',
+        fontsize=16,
+        frameon=False,
+    )
+
+    ax[0].set_title('LL')
+    ax[1].set_title('GL')
+    ax[2].set_title('GG')
+    ax[0].set_xlabel('$\\ell$')
+    ax[1].set_xlabel('$\\ell$')
+    ax[2].set_xlabel('$\\ell$')
+    ax[0].set_ylabel('$C_{\\ell}$')
+    # increase font size
+    for axi in ax:
+        for item in (
+            [axi.title, axi.xaxis.label, axi.yaxis.label]
+            + axi.get_xticklabels()
+            + axi.get_yticklabels()
+        ):
+            item.set_fontsize(16)
+    plt.show()
+
+
+def check_ells_in(ells_in, ells_out):
+    if len(ells_in) < len(ells_out) // 1.5:  # random fraction
+        warnings.warn(
+            f'The input cls are computed over {len(ells_in)} ell points in '
+            f'[{ells_in[0]}, {ells_in[-1]}], but for the partial-sky covariance'
+            'the unbinned cls are required. Because of this, the input cls will '
+            f'be interpolated over the unbinned ell range [{ells_out[0]}, '
+            f'{ells_out[-1]}]. Please make sure to provide finely sampled cls '
+            'ell binning to make sure the interpolation is accurate.',
+            stacklevel=2,
+        )
+
+
+# ! ====================================================================================
+# ! ================================== PREPARATION =====================================
+# ! ====================================================================================
+
+
+# ! set some convenence variables, just to make things more readable
+h = cfg['cosmology']['h']
+galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
+magnification_bias_fit_fiducials = np.array(
+    cfg['C_ell']['magnification_bias_fit_coeff']
+)
+# this has the same length as ngal_sources, as checked below
+zbins = len(cfg['nz']['ngal_lenses'])
+output_path = cfg['misc']['output_path']
+clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
+shift_nz = cfg['nz']['shift_nz']
+
+
+# print(f'JAX is using device: {jax.devices()}')
+print("System CPUs available:", multiprocessing.cpu_count())
+print("JAX devices:", jax.devices())
+print("XLA_FLAGS:", os.environ.get("XLA_FLAGS"))
+print("OMP_NUM_THREADS:", os.environ.get("OMP_NUM_THREADS"))
 
 
 @jit
@@ -163,130 +323,6 @@ def ssc_integral_4D_simps_jax_gpu_loops(
     return results.reshape(nbl, nbl, zpairs_AB, zpairs_CD)
 
 
-def load_config(_config_path):
-    # Check if we're running in a Jupyter environment (or interactive mode)
-    if 'ipykernel_launcher.py' in sys.argv[0]:
-        # Running interactively, so use default config file
-        config_path = _config_path
-
-    else:
-        parser = argparse.ArgumentParser(description='Spaceborne')
-        parser.add_argument(
-            '--config',
-            type=str,
-            help='Path to the configuration file',
-            required=False,
-            default=_config_path,
-        )
-        parser.add_argument(
-            '--show-plots',
-            action='store_true',
-            help='Show plots if specified',
-            required=False,
-        )
-        args = parser.parse_args()
-        config_path = args.config
-
-    # Only switch to Agg if not running interactively and --show-plots is not specified.
-    if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
-        import matplotlib
-
-        matplotlib.use('Agg')
-
-    with open(config_path) as f:
-        cfg = yaml.safe_load(f)
-
-    return cfg
-
-
-def plot_cls():
-    _, ax = plt.subplots(1, 3, figsize=(15, 4))
-    # plt.tight_layout()
-
-    # cls are (for the moment) in the ccl obj, whether they are imported from input
-    # files or not
-    for zi in range(zbins):
-        zj = zi
-        kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
-        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], **kw)
-        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
-        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
-
-    # if input cls are used, then overplot the sb predictions on top
-    if cfg['C_ell']['use_input_cls']:
-        for zi in range(zbins):
-            zj = zi
-            sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **sb_kw)
-            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **sb_kw)
-            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **sb_kw)
-        # Add style legend only to middle plot
-        style_legend = ax[1].legend(
-            handles=[
-                plt.Line2D([], [], label='input', **kw),
-                plt.Line2D([], [], label='SB', **sb_kw),
-            ],
-            loc='upper right',
-            fontsize=16,
-            frameon=False,
-        )
-        ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
-
-    ax[2].legend(
-        [f'$z_{{{zi}}}$' for zi in range(zbins)],
-        loc='upper right',
-        fontsize=16,
-        frameon=False,
-    )
-
-    ax[0].set_title('LL')
-    ax[1].set_title('GL')
-    ax[2].set_title('GG')
-    ax[0].set_xlabel('$\\ell$')
-    ax[1].set_xlabel('$\\ell$')
-    ax[2].set_xlabel('$\\ell$')
-    ax[0].set_ylabel('$C_{\\ell}$')
-    # increase font size
-    for axi in ax:
-        for item in (
-            [axi.title, axi.xaxis.label, axi.yaxis.label]
-            + axi.get_xticklabels()
-            + axi.get_yticklabels()
-        ):
-            item.set_fontsize(16)
-    plt.show()
-
-
-def check_ells_in(ells_in, ells_out):
-    if len(ells_in) < len(ells_out) // 1.5:  # random fraction
-        warnings.warn(
-            f'The input cls are computed over {len(ells_in)} ell points in '
-            f'[{ells_in[0]}, {ells_in[-1]}], but for the partial-sky covariance'
-            'the unbinned cls are required. Because of this, the input cls will '
-            f'be interpolated over the unbinned ell range [{ells_out[0]}, '
-            f'{ells_out[-1]}]. Please make sure to provide finely sampled cls '
-            'ell binning to make sure the interpolation is accurate.',
-            stacklevel=2,
-        )
-
-
-# ! ====================================================================================
-# ! ================================== PREPARATION =====================================
-# ! ====================================================================================
-
-cfg = load_config('config.yaml')
-
-# ! set some convenence variables, just to make things more readable
-h = cfg['cosmology']['h']
-galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
-magnification_bias_fit_fiducials = np.array(
-    cfg['C_ell']['magnification_bias_fit_coeff']
-)
-# this has the same length as ngal_sources, as checked below
-zbins = len(cfg['nz']['ngal_lenses'])
-output_path = cfg['misc']['output_path']
-clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
-shift_nz = cfg['nz']['shift_nz']
 
 # ! check/create paths
 if not os.path.exists(output_path):
@@ -1534,14 +1570,21 @@ if compute_sb_ssc:
         zi, zj = ind_cross[zij, 2], ind_cross[zij, 3]
         d2CGL_dVddeltab_contr[:, zij, :] = d2CGL_dVddeltab[:, zi, zj, :]
 
+    d2CLL_dVddeltab_contr_rand = np.random.random((32, 91, z_steps))
+    d2CGL_dVddeltab_contr_rand = np.random.random((32, 169, z_steps))
+    d2CGG_dVddeltab_contr_rand = np.random.random((32, 91, z_steps))
+    
     d2CAB_dVddeltab_contr_dict = {
         ('L', 'L'): d2CLL_dVddeltab_contr,
         ('G', 'L'): d2CGL_dVddeltab_contr,
         ('G', 'G'): d2CGG_dVddeltab_contr,
     }
+    
+    
 
-    print('Current default JAX device:', jax.devices()[0])
+    # BOOKMARK
     cov_ssc_3x2pt_dict_8D_jax = {}
+    start = time.perf_counter()
     for key in [
         ('L', 'L', 'L', 'L'),
         ('L', 'L', 'G', 'L'),
@@ -1557,7 +1600,6 @@ if compute_sb_ssc:
         d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(a, b)]
         d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(c, d)]
 
-        start = time.perf_counter()
         result = ssc_integral_4D_simps_jax_gpu(
             jnp.array(d2CABdVddeltab_contr),
             jnp.array(d2CCDdVddeltab_contr),
@@ -1567,7 +1609,9 @@ if compute_sb_ssc:
             jnp.array(simpson_weights),
         )
         cov_ssc_3x2pt_dict_8D_jax[key] = np.array(result)
-        print(f'SSC {key} computed with JAX in {(time.perf_counter() - start):.2f} s')
+    print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
+    
+    assert False
 
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(

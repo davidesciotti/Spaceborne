@@ -213,7 +213,7 @@ shift_nz = cfg['nz']['shift_nz']
 
 
 @jit
-def ssc_integral_4D_simps_jax_gpu(
+def ssc_integral_4D_simps_jax(
     d2ClAB_dVddeltab,
     d2ClCD_dVddeltab,
     cl_integral_prefactor,
@@ -222,17 +222,16 @@ def ssc_integral_4D_simps_jax_gpu(
     simpson_weights,
 ):
     """
-    JAX GPU version of the Simpson's rule 4D integral.
+    JAX version of the Simpson's rule 4D integral.
     Expects d2Cl arrays to be pre-shaped to 3D: (nbl, zpairs, z_steps)
     """
 
     # Pre-compute combined weights for efficiency
-    # Shape: (z_steps, z_steps)
     prefactor_grid = jnp.outer(cl_integral_prefactor, cl_integral_prefactor)
     weight_grid = jnp.outer(simpson_weights, simpson_weights)
     combined_weights = prefactor_grid * weight_grid * sigma2
 
-    # Vectorized computation using einsum for maximum efficiency
+    # Vectorized computation using einsum for maximum efficiency. Shapes:
     # d2ClAB_dVddeltab: (nbl, zpairs_AB, z_steps)
     # d2ClCD_dVddeltab: (nbl, zpairs_CD, z_steps)
     # combined_weights: (z_steps, z_steps)
@@ -247,6 +246,7 @@ def ssc_integral_4D_simps_jax_gpu(
 
 
 # Alternative implementation with explicit loops (less efficient but more readable)
+# TODO delete this
 @jit
 def ssc_integral_4D_simps_jax_gpu_loops(
     d2ClAB_dVddeltab,
@@ -1587,7 +1587,7 @@ if compute_sb_ssc:
         d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(a, b)]
         d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(c, d)]
 
-        result = ssc_integral_4D_simps_jax_gpu(
+        result = ssc_integral_4D_simps_jax(
             jnp.array(d2CABdVddeltab_contr),
             jnp.array(d2CCDdVddeltab_contr),
             jnp.array(cl_integral_prefactor),

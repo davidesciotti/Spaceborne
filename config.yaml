@@ -6,7 +6,7 @@
 
 # ROOTS:
 # pleiadi: /_u/dsciotti/code
-# local: /_home/cosmo/davide.sciotti/data
+# local: /_home/davide/Documenti/Lavoro/Programmi
 # melodie: /_home/cosmo/davide.sciotti/data
 
 cosmology:
@@ -73,9 +73,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_path: /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path: /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path: /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -92,8 +92,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /home/cosmo/davide.sciotti/data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -117,8 +117,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -169,8 +169,8 @@ ell_binning:
   ell_max_ref: 1500 # Type: int. Maximum ell for reference case
   ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
-  WL_bins_filename: '/home/cosmo/davide.sciotti/data/Spaceborne/output/ell_values_3x2pt.txt'
-  GC_bins_filename: '/home/cosmo/davide.sciotti/data/Spaceborne/output/ell_values_3x2pt.txt'
+  WL_bins_filename: '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/ell_values_3x2pt.txt'
+  GC_bins_filename: '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/ell_values_3x2pt.txt'
 
 BNT:
   cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
@@ -300,7 +300,11 @@ precision:
   n_iter_nmt: null # Type: None | int.
 
 misc:
-  num_threads: 40 # Type: int. How many threads to use for the parallel computations
+  # note if you work from an interactive environment (e.g. jupyter notebook), you might 
+  # have to restart the kernel after changing the num_threads, and jax_platform
+  num_threads: 1 # Type: int. How many threads to use for the parallel computations
+  
+  # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'
   jax_enable_x64: true # Type: str. Whether to enable 64-bit precision for computations run on the GPU
 
@@ -315,4 +319,4 @@ misc:
   cl_triangle_plot: False # Type: bool.
 
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
-  output_path: /home/cosmo/davide.sciotti/data/common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
+  output_path: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory

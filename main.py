@@ -355,7 +355,7 @@ if cfg['probe_selection']['xim']:
 if cfg['probe_selection']['gt']:
     unique_probe_names_rs.append('gt')
 if cfg['probe_selection']['w']:
-    unique_probe_names_rs.append('gg')
+    unique_probe_names_rs.append('gg')  # TODO CHANGE TO w!
 
 # add cross terms if requested
 unique_probe_combs_hs = sl.build_probe_list(
@@ -2125,6 +2125,7 @@ if cfg['misc']['save_figs']:
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
 
+# THIS CODE HAS BEEN COMMENTED OUT TO TEST AGAINST THE BENCHMARKS
 """
 # BOOKMARK 2
 # ! read OC files: list
@@ -2286,3 +2287,4 @@ sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold
 """
 
 print('Done')
+"""

@@ -60,6 +60,9 @@ def oc_cov_dict_6d_to_array_10d(
     #         probe_ixs = [probe_idx_dict[probe] for probe in probe_abcd]
     #         cov_10d[*probe_ixs] = cov
 
+    if not cov_dict_6d:
+        raise ValueError("cov_dict_6d is empty")
+
     key_found = False
     for key, cov in cov_dict_6d.items():
         probe_abcd, term = key.split('_')
@@ -72,7 +75,6 @@ def oc_cov_dict_6d_to_array_10d(
 
     if not key_found:
         raise KeyError(f"No keys with term '{desired_term}' found in cov_dict_6d.")
-
     return cov_10d
 
 
@@ -1109,7 +1111,8 @@ class OneCovarianceInterface:
         such as symmetrizing the output dictionary.
         """
         raise NotImplementedError(
-            'This function should be deprecated in favour of process_cov_from_list_file_hs'
+            'This function should be deprecated; use '
+            'process_cov_from_list_file() instead'
         )
         import re
 

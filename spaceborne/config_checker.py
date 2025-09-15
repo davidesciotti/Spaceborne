@@ -78,6 +78,18 @@ class SpaceborneConfigChecker:
             'extra_parameters: camb must be a dictionary'
         )
         camb_params = self.cfg['extra_parameters']['camb']
+
+        # Check required fields exist
+        required_camb_fields = [
+            'halofit_version',
+            'kmax',
+            'HMCode_logT_AGN',
+            'num_massive_neutrinos',
+            'dark_energy_model',
+        ]
+        for field in required_camb_fields:
+            assert field in camb_params, f'extra_parameters: camb: {field} is required'
+
         assert isinstance(camb_params.get('halofit_version'), str), (
             'extra_parameters: camb: halofit_version must be a string'
         )
@@ -93,7 +105,6 @@ class SpaceborneConfigChecker:
         assert isinstance(camb_params.get('dark_energy_model'), str), (
             'extra_parameters: camb: dark_energy_model must be a string'
         )
-
         # IA
         for par, val in self.cfg['intrinsic_alignment'].items():
             if par != 'lumin_ratio_filename':
@@ -457,8 +468,11 @@ class SpaceborneConfigChecker:
         )
 
         # PyCCL
+        # PyCCL
+        assert isinstance(self.cfg.get('PyCCL'), dict), (
+            "Section 'PyCCL' must be a dictionary"
+        )
         pyccl_cfg = self.cfg['PyCCL']
-        assert isinstance(pyccl_cfg, dict), "Section 'PyCCL' must be a dictionary"
         assert isinstance(pyccl_cfg.get('cov_integration_method'), str), (
             'PyCCL: cov_integration_method must be a string'
         )
@@ -489,10 +503,11 @@ class SpaceborneConfigChecker:
         )
 
         # precision
-        precision_cfg = self.cfg['precision']
-        assert isinstance(precision_cfg, dict), (
+        # precision
+        assert isinstance(self.cfg.get('precision'), dict), (
             "Section 'precision' must be a dictionary"
         )
+        precision_cfg = self.cfg['precision']
         assert isinstance(precision_cfg.get('n_iter_nmt'), (int, type(None))), (
             'precision: n_iter_nmt must be an int or None'
         )
@@ -526,8 +541,10 @@ class SpaceborneConfigChecker:
         )
 
         # misc
+        assert isinstance(self.cfg.get('misc'), dict), (
+            "Section 'misc' must be a dictionary"
+        )
         misc_cfg = self.cfg['misc']
-        assert isinstance(misc_cfg, dict), "Section 'misc' must be a dictionary"
         assert isinstance(misc_cfg.get('num_threads'), int), (
             'misc: num_threads must be an int'
         )
@@ -660,17 +677,11 @@ class SpaceborneConfigChecker:
         ), 'Only one of `use_namaster` and `compute_sample_cov` can be True — not both.'
 
     def check_probe_selection(self) -> None:
-        
-        allowed_keys = ['space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gt', 
-                        'w', 'cross_cov']
-        
+        allowed_keys = ['space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gt', 'w', 'cross_cov']
+
         for key in self.cfg['probe_selection']:
-            
-            assert key in allowed_keys, (
-                f'Probe selection key {key} is not valid. '
-            )
-            
-            
+            assert key in allowed_keys, f'Probe selection key {key} is not valid. '
+
         if self.cfg['probe_selection']['space'] == 'real':
             assert (
                 self.cfg['probe_selection']['xip']
@@ -678,8 +689,7 @@ class SpaceborneConfigChecker:
                 + self.cfg['probe_selection']['gt']
                 + self.cfg['probe_selection']['w']
             ) > 0, (
-                'At least one of xip or xim must be selected for '
-                'real space covariance'
+                'At least one of xip or xim must be selected for real space covariance'
             )
             if self.cfg['namaster']['use_namaster']:
                 raise NotImplementedError(

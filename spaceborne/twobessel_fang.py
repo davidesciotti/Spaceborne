@@ -28,12 +28,14 @@ SOFTWARE.
 
 """
 
+import sys
+
 import numpy as np
+from numpy.fft import irfft2, rfft2
 from scipy.special import gamma
-from numpy.fft import rfft2, irfft2
 
 
-class two_sph_bessel(object):
+class TwoSphBessel:
     def __init__(
         self,
         x1,
@@ -65,7 +67,7 @@ class two_sph_bessel(object):
             self.N2 + N_extrap_low + N_extrap_high
         ) % 2 == 1:  # Make sure the array sizes are even
             print('Error: array sizes have to be even!')
-            exit()
+            sys.exit()
 
         # extrapolate x and f(x) linearly in log(x), and log(f(x))
         if N_extrap_low or N_extrap_high:
@@ -204,7 +206,7 @@ class two_sph_bessel(object):
         )
 
 
-class two_Bessel(object):
+class TwoBessel:
     def __init__(
         self,
         x1,
@@ -217,7 +219,7 @@ class two_Bessel(object):
         c_window_width=0.25,
         N_pad=0,
     ):
-        self.two_sph = two_sph_bessel(
+        self.two_sph = TwoSphBessel(
             x1,
             x2,
             (fx1x2.T * np.sqrt(x1)).T * np.sqrt(x2),
@@ -366,6 +368,11 @@ def bilinear_extra_P(fk1k2, N_low, N_high):
     N_low: number of points to extrapolate on the lower sides
     N_high: number of points to extrapolate on the higher sides
     """
+    if np.any(fk1k2 <= 0):
+        raise ValueError(
+            'bilinear_extra_P requires all positive values in fk1k2 '
+            'for log extrapolation'
+        )
     logfk1k2 = np.log(fk1k2)  # This Extrapolation only works in log space
     h_grad_left = logfk1k2[:, 1] - logfk1k2[:, 0]  # horizontal gradient left side
     h_grad_right = logfk1k2[:, -1] - logfk1k2[:, -2]  # horizontal gradient right side

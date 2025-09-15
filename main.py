@@ -226,23 +226,19 @@ def ssc_integral_4D_simps_jax_gpu(
     Expects d2Cl arrays to be pre-shaped to 3D: (nbl, zpairs, z_steps)
     """
 
-    # Pre-compute combined weights for efficiency
+    # Pre-compute combined weights
     # Shape: (z_steps, z_steps)
     prefactor_grid = jnp.outer(cl_integral_prefactor, cl_integral_prefactor)
     weight_grid = jnp.outer(simpson_weights, simpson_weights)
     combined_weights = prefactor_grid * weight_grid * sigma2
 
-    # Vectorized computation using einsum for maximum efficiency
-    # d2ClAB_dVddeltab: (nbl, zpairs_AB, z_steps)
-    # d2ClCD_dVddeltab: (nbl, zpairs_CD, z_steps)
-    # combined_weights: (z_steps, z_steps)
-
-    # Compute all combinations at once
-    # Result will be (nbl, nbl, zpairs_AB, zpairs_CD)
+    # Compute all combinations with einsum
+    # Shape: (nbl, nbl, zpairs_AB, zpairs_CD)
     result = jnp.einsum(
         'aiz,bjw,zw->abij', d2ClAB_dVddeltab, d2ClCD_dVddeltab, combined_weights
     )
 
+    # multiply by step size
     return result * (delta_z**2)
 
 
@@ -1559,10 +1555,6 @@ if compute_sb_ssc:
         zi, zj = ind_cross[zij, 2], ind_cross[zij, 3]
         d2CGL_dVddeltab_contr[:, zij, :] = d2CGL_dVddeltab[:, zi, zj, :]
 
-    d2CLL_dVddeltab_contr_rand = np.random.random((32, 91, z_steps))
-    d2CGL_dVddeltab_contr_rand = np.random.random((32, 169, z_steps))
-    d2CGG_dVddeltab_contr_rand = np.random.random((32, 91, z_steps))
-
     d2CAB_dVddeltab_contr_dict = {
         ('L', 'L'): d2CLL_dVddeltab_contr,
         ('G', 'L'): d2CGL_dVddeltab_contr,
@@ -1598,7 +1590,6 @@ if compute_sb_ssc:
         cov_ssc_3x2pt_dict_8D_jax[key] = np.array(result)
     print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
 
-    assert False
 
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(

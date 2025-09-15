@@ -2287,4 +2287,3 @@ sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold
 """
 
 print('Done')
-"""

@@ -74,8 +74,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename:  /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename:  /u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -115,8 +115,8 @@ binning:
   ell_max_ref: 1500 # Type: int. Maximum ell for reference case
   ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
-  WL_bins_filename: '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/ell_values_3x2pt.txt'
-  GC_bins_filename: '/home/davide/Documenti/Lavoro/Programmi/Spaceborne/output/ell_values_3x2pt.txt'
+  WL_bins_filename: '/u/dsciotti/code/Spaceborne/output/ell_values_3x2pt.txt'
+  GC_bins_filename: '/u/dsciotti/code/Spaceborne/output/ell_values_3x2pt.txt'
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50  # Type: float | int
@@ -140,9 +140,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_path:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path:  /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path:  /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path:  /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path:  /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -159,8 +159,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: /u/dsciotti/code/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -200,7 +200,7 @@ covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
-  G_code: OneCovariance # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  G_code: Spaceborne # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
@@ -321,7 +321,7 @@ sample_covariance:
 
 
 OneCovariance:
-    path_to_oc_executable: '/home/davide/Documenti/Lavoro/Programmi/OneCovariance/covariance.py'
+    path_to_oc_executable: '/u/dsciotti/code/OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 
@@ -374,5 +374,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: /home/davide/Documenti/Lavoro/Programmi/common_data/Spaceborne_jobs/validation_tests # Type: str. Path to the output directory
+  output_path: /u/dsciotti/code/common_data/Spaceborne_jobs/develop # Type: str. Path to the output directory
   save_figs: True

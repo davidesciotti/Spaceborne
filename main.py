@@ -2125,7 +2125,7 @@ if cfg['misc']['save_figs']:
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
 
-
+"""
 # BOOKMARK 2
 # ! read OC files: list
 oc_path = f'{output_path}/OneCovariance'
@@ -2283,6 +2283,6 @@ cov_oc_2d = cov_real_space.stack_probe_blocks_deprecated(cov_oc_2d_dict)
 
 
 sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
-
+"""
 
 print('Done')

@@ -213,7 +213,7 @@ shift_nz = cfg['nz']['shift_nz']
 
 
 @jit
-def ssc_integral_4D_simps_jax_gpu(
+def ssc_integral_4D_simps_jax(
     d2ClAB_dVddeltab,
     d2ClCD_dVddeltab,
     cl_integral_prefactor,
@@ -222,7 +222,7 @@ def ssc_integral_4D_simps_jax_gpu(
     simpson_weights,
 ):
     """
-    JAX GPU version of the Simpson's rule 4D integral.
+    JAX version of the Simpson's rule 4D integral.
     Expects d2Cl arrays to be pre-shaped to 3D: (nbl, zpairs, z_steps)
     """
 
@@ -243,6 +243,7 @@ def ssc_integral_4D_simps_jax_gpu(
 
 
 # Alternative implementation with explicit loops (less efficient but more readable)
+# TODO delete this
 @jit
 def ssc_integral_4D_simps_jax_gpu_loops(
     d2ClAB_dVddeltab,
@@ -1579,7 +1580,7 @@ if compute_sb_ssc:
         d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(a, b)]
         d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(c, d)]
 
-        result = ssc_integral_4D_simps_jax_gpu(
+        result = ssc_integral_4D_simps_jax(
             jnp.array(d2CABdVddeltab_contr),
             jnp.array(d2CCDdVddeltab_contr),
             jnp.array(cl_integral_prefactor),

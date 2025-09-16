@@ -1,6 +1,20 @@
-"""Script to test SB outputs.
+"""
+LAST UPDATE: 2025-09-16
 
-To run them:
+Script to run Spaceborne and compare the output against a specified set of benchmarks 
+More in detail, it performs the following operations:
+
+1. Set a list of benchmark filenames (`bench_yaml_names`) to test the current 
+   branch/version of the code against.
+2. For each benchmark:
+   2a. Run Spaceborne using the corresponding .yaml file as cfg
+   2b. Save the output as benchmark (just for the sake of comparing against the "real" 
+   benchmarks in {ROOT}/Spaceborne_bench/bench_set_output/*.npz)
+   2c. Compare the output (`test`) against the benchmark
+
+
+
+# OLD INSTRUCTIONS
 1.  Decide on a branch/commit/version you wish to use as benchmark.
     Then, set `save_output_as_benchmark` to `True` in the config file and choose a
     unique benchmark filename. *Note that these options are in main.py, as of now*.
@@ -21,11 +35,19 @@ To run them:
     in the `bench_names` list, then run it.
 6.  If some configs are missing, check the benchmark .yaml file and manually paste them
     there, rather than adding hardcoded options in main.py.
+# END OLD INSTRUCTIONS
 
-Note:  if all checks are run, the content of the tmp folder is deleted, preventing you
-       to inspect the output files in more detail. In this case, simply stop the script
-       at the end of test_main_script func, eg with
-       `assert False, 'stop here'
+NOTES
+-  If all checks are run, the content of the tmp folder is deleted, preventing you
+   to inspect the output files in more detail. In this case, simply stop the script
+   at the end of test_main_script func, eg with
+   `assert False, 'stop here'
+-  You will likely have to manually edit the .yaml config files, i.e.
+   {ROOT}/Spaceborne_bench/bench_set_output/*.yaml
+   when you update the structure of the config file in the branch to be tested. 
+   BE CAREFUL NO TO INTRODUCE INCONSISTENCIES WITHT THE CORRESPONDING .npz 
+   (e.g., if config_0000.yaml has `SSC: False` you cannot change it to True, otherwise 
+   the code will prouce a `test` inconsistent with the config_0000.npz)
 """
 
 import glob
@@ -88,6 +110,7 @@ def test_main_script(test_cfg_path):
     for probe in ['WL', 'GC', '3x2pt']:
         for _dict in [bench_data, test_data]:
             try:
+                
                 # Direct comparison (handles empty arrays automatically)
                 np.testing.assert_allclose(
                     _dict[f'cov_{probe}_tot_2D'],
@@ -115,19 +138,26 @@ def test_main_script(test_cfg_path):
 ROOT = '/u/dsciotti/code'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
+# run this to also save output of this script to a file
+# python test_outputs.py 2>&1 | tee test_outputs_log.txt
+
 # run all tests...
 bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
 bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
+bench_yaml_names.sort()
 
 # ... or run specific tests
-bench_yaml_names = [
-    'config_0014',
-    'config_0015',
-    'config_0016',
-    'config_0017',
-    'config_0018',
-]
+# bench_yaml_names = [
+#     'config_0006',
+#     'config_0007',
+#     'config_0008',
+#     'config_0009',
+#     'config_0010',
+#     'config_0011',
+#     'config_0012',
+#     'config_0013',
+# ]
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'

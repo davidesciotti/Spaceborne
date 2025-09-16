@@ -324,7 +324,7 @@ def build_ia_bias_1d_arr(
     -----
     - The IA bias is computed as (notice the negative sign!):
       .. math::
-         \text{IA Bias} = - A_\text{IA} C_\text{IA} \Omega_m \frac{F_\text{IA}(z)}{\text{Growth Factor}}
+         \\text{IA Bias} = - A_\\text{IA} C_\\text{IA} \\Omega_m \\frac{F_\\text{IA}(z)}{\\text{Growth Factor}}
     - The growth factor is evaluated using the `pyccl.growth_factor` function.
 
     """

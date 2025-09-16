@@ -1,27 +1,32 @@
-"""This script performs the following operations.
+"""
+LAST UPDATE: 2025-09-16
 
-1. Imports the cfg yaml file in the Spaceborne root directory (as a baseline cfg)
-2. It changes some settings (for example, to speed up the code), and stores this updated
-   baseline config in base_cfg
-1. Defines combinations of parameters to test with lists of dictionaries,
-   allowing for "zipped" iteration through sets of changes.
-2. Saves the set of cfg dicts to yaml files. in the folder
-    /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_cfg
-3. Runs SB with these yaml files, generating a set of benchmarks to use as
+Script to produce a set of benchmarks to test the Spaceborne code. More in detail, it 
+performs the following operations:
+
+1. Manually define a `base_cfg` dict (this is safer than importing the standard 
+   Spaceborne/config.yaml file) with fast runtime (e.g. setting a low number of points
+   for the z and k grids).
+2. Change some settings to test the different parts of the code (and, to ensure fast 
+   execution), thereby producing a list of cfg dicts to test (`configs_to_test`).
+3. Save the list of cfg dicts to yaml files in the folder
+   {ROOT}/Spaceborne_bench/bench_set_cfg.
+4. Run SB with these yaml files, generating a set of benchmarks (npz archives) to use as
    an exhaustive reference to test the code against. The benchmarks are stored in
-   /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output
-   [NOTE] the code will raise an error if the benchmark files are already
-   present. If this is the case, delete the existing ones or change the filenames for
-   the new bench files
-   [NOTE] the SB output is in
-   /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output/_sb_output,
-   but you don't need to care about this.
+   {ROOT}/Spaceborne_bench/bench_set_output
+   
 
 NOTES
 
-1. The code will raise an error if the benchmark files are already present.
+-  The code will raise an error if a benchmark file already exists.
    If you want to overwrite them, delete the existing ones (e.g.):
    {ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
+   or change the benchmark filename.
+   
+-  The SB output produced at runtime during the production of these benchmarks 
+   is in
+   {ROOT}/Spaceborne_bench/bench_set_output/_sb_output,
+   but you don't need to care about this.
 """
 
 import gc
@@ -291,7 +296,7 @@ base_cfg = {
         'apodize': False,
         'aposize': 0.1,
     },
-    'ell_binning': {
+    'binning': {
         'binning_type': 'ref_cut',
         'ell_min_WL': 10,
         'ell_max_WL': 3000,
@@ -311,7 +316,7 @@ base_cfg = {
         'coupled_cov': False,
         'triu_tril': 'triu',
         'row_col_major': 'row-major',
-        'covariance_ordering_2D': 'probe_ell_zpair',
+        'covariance_ordering_2D': 'probe_scale_zpair',
         'save_full_cov': True,
         'split_gaussian_cov': False,
         'sigma_eps_i': [0.26, 0.26, 0.26],
@@ -374,6 +379,24 @@ configs_to_test = [
     #  G without split
     {'covariance': {'G': True, 'split_gaussian_cov': True}},
     # G nmt spin0, log ell binning
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'binning': {'binning_type': 'log'},
+    },
+    # G nmt spin0, lin ell binning
+    # ==============================
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'binning': {'binning_type': 'lin'},
+    },
+    # G nmt spin2, lin ell binning
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': False},
+        'binning': {'binning_type': 'lin'},
+    },
     # SSC KE
     {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
     # SSC LR

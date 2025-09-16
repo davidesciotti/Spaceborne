@@ -313,19 +313,21 @@ class SpaceborneConfigChecker:
         )
 
         # OneCovariance
-        assert isinstance(self.cfg.get('OneCovariance'), dict), (
-            "Section 'OneCovariance' must be a dictionary"
-        )
-        oc_cfg = self.cfg['OneCovariance']
-        assert isinstance(oc_cfg.get('path_to_oc_executable'), str), (
-            'OneCovariance: path_to_oc_executable must be a string'
-        )
-        assert isinstance(oc_cfg.get('consistency_checks'), bool), (
-            'OneCovariance: consistency_checks must be a boolean'
-        )
-        assert isinstance(oc_cfg.get('oc_output_filename'), str), (
-            'OneCovariance: oc_output_filename must be a string'
-        )
+        if 'OneCovariance' in self.cfg:
+            assert isinstance(self.cfg.get('OneCovariance'), dict), (
+                "Section 'OneCovariance' must be a dictionary"
+            )
+            oc_cfg = self.cfg['OneCovariance']
+            assert isinstance(oc_cfg.get('path_to_oc_executable'), str), (
+                'OneCovariance: path_to_oc_executable must be a string'
+            )
+            assert isinstance(oc_cfg.get('consistency_checks'), bool), (
+                'OneCovariance: consistency_checks must be a boolean'
+            )
+            assert isinstance(oc_cfg.get('oc_output_filename'), str), (
+                'OneCovariance: oc_output_filename must be a string, found '
+                f"{oc_cfg} instead"
+            )
 
         # Ell Binning
         assert isinstance(self.cfg.get('binning'), dict), (

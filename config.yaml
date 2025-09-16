@@ -62,7 +62,7 @@ probe_selection:
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
   
-  cross_cov: True # Type: bool. Whether to compute the cross-terms between the selected probes
+  cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
 
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.

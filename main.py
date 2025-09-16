@@ -2025,6 +2025,19 @@ if cfg['misc']['save_output_as_benchmark']:
     covs_arrays_dict = {
         k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
     }
+    # remove the 'ind' arrays
+    covs_arrays_dict.pop('ind')
+    covs_arrays_dict.pop('ind_auto')
+    covs_arrays_dict.pop('ind_cross')
+    
+    # make the keys consistent with the old benchmark files
+    covs_arrays_dict_renamed = covs_arrays_dict.copy()
+    for key in covs_arrays_dict:
+        
+        # key_new = key.replace('_tot_', '_TOT_')
+        key_new = key.replace('_2d', '_2D')
+        covs_arrays_dict_renamed[key_new] = covs_arrays_dict[key]
+        covs_arrays_dict_renamed.pop(key)
 
     np.savez_compressed(
         bench_filename,
@@ -2056,7 +2069,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
-        **covs_arrays_dict,
+        **covs_arrays_dict_renamed,
         metadata=metadata,
     )
 

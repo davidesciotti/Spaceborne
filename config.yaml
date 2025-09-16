@@ -52,10 +52,18 @@ halo_model:
   halo_profile_dm: HaloProfileNFW # Type: str. 'dm' = 'dark matter'
   halo_profile_hod: HaloProfileHOD # Type: str.
 
+
+OneCovariance:
+    path_to_oc_executable: '/u/dsciotti/code/OneCovariance/covariance.py'
+    consistency_checks: False
+    oc_output_filename: 'cov_rcf_mergetest'
+
+
+
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real'].
-  space: harmonic # Type: str. 
+  space: real # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance

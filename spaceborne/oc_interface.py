@@ -26,7 +26,294 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.optimize import minimize_scalar
 
+from spaceborne import constants as const
 from spaceborne import sb_lib as sl
+
+_UNSET = object()
+
+
+def oc_cov_dict_6d_to_array_10d(
+    cov_dict_6d: dict,
+    desired_term: str,
+    n_probes: int,
+    nbx: int,
+    zbins: int,
+    probe_idx_dict: dict,
+):
+    """Turns a dict of 6D arrays with keys {probe}_{term} into a 10D array"""
+
+    cov_10d = np.zeros(
+        (n_probes, n_probes, n_probes, n_probes, nbx, nbx, zbins, zbins, zbins, zbins)
+    )
+    for cov in cov_dict_6d.values():
+        assert cov.shape == (nbx, nbx, zbins, zbins, zbins, zbins), (
+            'cov shape should be '
+            f'({nbx}, {nbx}, {zbins}, {zbins}, {zbins}, {zbins}), got '
+            f'{cov.shape} instead'
+        )
+
+    # for key, cov in cov_dict_6d.items():
+    #     # go from e.g. 'gggg_sva' to ['g', 'g', 'g', 'g']
+    #     probe_abcd, term = key.split('_')
+    #     probe_abcd = list(probe_abcd)
+    #     if term == desired_term:
+    #         probe_ixs = [probe_idx_dict[probe] for probe in probe_abcd]
+    #         cov_10d[*probe_ixs] = cov
+
+    if not cov_dict_6d:
+        raise ValueError("cov_dict_6d is empty")
+
+    key_found = False
+    for key, cov in cov_dict_6d.items():
+        probe_abcd, term = key.split('_')
+        if term != desired_term:
+            continue
+        probes = list(probe_abcd)
+        probe_ixs = [probe_idx_dict[p] for p in probes]
+        cov_10d[*probe_ixs] = cov
+        key_found = True
+
+    if not key_found:
+        raise KeyError(f"No keys with term '{desired_term}' found in cov_dict_6d.")
+    return cov_10d
+
+
+def symmetrize_probes_dict_6d(cov_dict_6d: dict, space: str, valid_probes: list):
+    """Fills the symmetric probe combinations (e.g., given gggt, fills gtgg)"""
+
+    # this is needed to avoid mutating the dict while I loop over it
+    new_entries = {}
+    for key, cov in cov_dict_6d.items():
+        # compute symmetric_key, symmetric_cov
+        probe_abcd, term = key.split('_')
+
+        probe_ab, probe_cd = sl.split_probe_name(
+            full_probe_name=probe_abcd, space=space, valid_probes=valid_probes
+        )
+        probe_cdab = probe_cd + probe_ab
+        new_entries[f'{probe_cdab}_{term}'] = cov.transpose(1, 0, 4, 5, 2, 3)
+
+    cov_dict_6d.update(new_entries)
+
+    return cov_dict_6d
+
+
+def compare_sb_cov_to_oc_list(
+    cov_rs_obj,
+    cov_oc_dict_6d: dict,
+    probe_sb: str,
+    term: str,
+    ind_auto: np.ndarray,
+    ind_cross: np.ndarray,
+    zpairs_auto: int,
+    zpairs_cross: int,
+    scale_bins: int,
+    title: str | None = None,
+):
+    # gt is gm in OneCov
+    probe_oc = probe_sb.replace('gt', 'gm')
+
+    # get probe names, ind and zpairs for 2D conversion
+    probe_ab, probe_cd = sl.split_probe_name(probe_sb)
+    probe_ab_ix, probe_cd_ix = (
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],
+    )
+    zpairs_ab = zpairs_cross if probe_ab_ix == 1 else zpairs_auto
+    zpairs_cd = zpairs_cross if probe_cd_ix == 1 else zpairs_auto
+    ind_ab = ind_cross if probe_ab_ix == 1 else ind_auto
+    ind_cd = ind_cross if probe_cd_ix == 1 else ind_auto
+
+    # get 6D covs
+    cov_sb_6d = getattr(cov_rs_obj, f'cov_{probe_sb}_{term}_6d')
+
+    # for cov OC, some blocks may be transposed
+    try:
+        cov_oc_6d = cov_oc_dict_6d[f'{probe_oc}_{term}']
+    except KeyError:
+        _probe_sb_inv = probe_cd + probe_ab
+        _probe_oc_inv = _probe_sb_inv.replace('gt', 'gm')
+        cov_oc_6d = cov_oc_dict_6d[f'{_probe_oc_inv}_{term}'].transpose(
+            1, 0, 4, 5, 2, 3
+        )
+
+    # if both covs are null, exit the function
+    if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
+        print(f'OC and SB covs for {term = } {probe_sb = } are both identically 0')
+        return
+
+    # convert to 2D to compare
+    cov_sb_4d = sl.cov_6D_to_4D_blocks(
+        cov_sb_6d, scale_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+    cov_oc_4d = sl.cov_6D_to_4D_blocks(
+        cov_oc_6d, scale_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+
+    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
+    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
+
+    sl.compare_arrays(
+        cov_sb_2d,
+        cov_oc_2d,
+        'SB',
+        'OC',
+        log_array=True,
+        log_diff=True,
+        abs_val=True,
+        plot_diff_threshold=10,
+        title=title,
+    )
+
+    fig, axs = plt.subplots(
+        2,
+        2,
+        figsize=(15, 6),
+        sharex='col',
+        height_ratios=[2, 1],
+        gridspec_kw={'hspace': 0, 'wspace': 0.3},
+    )
+
+    # flatten to (2,2) shape
+    axs = axs.reshape(2, 2)
+
+    sl.compare_funcs(
+        None,
+        {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
+        logscale_y=[True, False],
+        title=title,
+        ylim_diff=[-100, 100],
+        ax=axs[:, 0],
+    )
+
+    sl.compare_funcs(
+        None,
+        {
+            'SB flat': np.abs(cov_sb_2d).flatten(),
+            'OC flat': np.abs(cov_oc_2d).flatten(),
+        },
+        logscale_y=[True, False],
+        title=title,
+        ylim_diff=[-100, 100],
+        ax=axs[:, 1],
+    )
+
+
+def print_cfg_onecov_ini(cfg_onecov_ini):
+    """This is necessary since cfg_onecov_ini is not simply a dict (because I first
+    load) an example .ini file..."""
+
+    for section in cfg_onecov_ini.sections():
+        print(f'[{section}]')
+        for key, value in cfg_onecov_ini.items(section):
+            print(f'{key} = {value}')
+        print()  # Add a blank line for readability between sections
+
+
+def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_000_000):
+    import re
+
+    import pandas as pd
+
+    # read df column names
+    with open(oc_output_covlist_fname) as file:
+        header = (
+            file.readline().strip()
+        )  # Read the first line and strip newline characters
+    header_list = re.split(
+        '\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t')
+    )
+    column_names = header_list
+
+    usecols = ['#obs', 'tomoi']
+    if 'theta1' in column_names:
+        theta_or_ell = 'theta'
+    elif 'ell1' in column_names:
+        theta_or_ell = 'ell'
+    else:
+        raise ValueError('OneCov column names not recognised')
+    usecols += [f'{theta_or_ell}1']
+
+    # partial (much quicker) import of the .list file, to get info about thetas, probes
+    # and to perform checks on the tomo bin idxs
+    data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep='\s+')
+
+    # check thetas and nbt
+    scales_oc_load = data[f'{theta_or_ell}1'].unique()
+    cov_scale_indices = {scale_out: idx for idx, scale_out in enumerate(scales_oc_load)}
+    nbx_oc = len(scales_oc_load)  # 'nbx' = nbt or nbl
+
+    # check tomo idxs: SB tomographic indices start from 0
+    tomoi_oc_load = data['tomoi'].unique()
+    subtract_one_from_z_ix = False
+    if min(tomoi_oc_load) == 1:
+        subtract_one_from_z_ix = True
+
+    # ! import .list covariance file
+    print(f'Loading OneCovariance output from {oc_output_covlist_fname} file...')
+    covs_dict_6d = {}
+    for df_chunk in pd.read_csv(
+        oc_output_covlist_fname,
+        sep='\s+',
+        names=column_names,
+        skiprows=1,
+        chunksize=df_chunk_size,
+    ):
+        # now group by probe string
+        for probe, subdf in df_chunk.groupby('#obs'):
+            # Map 'ell' values to their corresponding indices
+            theta1_idx = subdf[f'{theta_or_ell}1'].map(cov_scale_indices).values
+            theta2_idx = subdf[f'{theta_or_ell}2'].map(cov_scale_indices).values
+
+            # Compute z indices
+            if subtract_one_from_z_ix:
+                z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
+            else:
+                z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].values
+
+            # define index tuple
+            index_tuple = (
+                theta1_idx,
+                theta2_idx,
+                z_ixs[:, 0],
+                z_ixs[:, 1],
+                z_ixs[:, 2],
+                z_ixs[:, 3],
+            )
+
+            # for each covariance term, insert into dict
+            for term, col in {
+                'sva': 'covg sva',
+                'mix': 'covg mix',
+                'sn': 'covg sn',
+                'ssc': 'covssc',
+                'cng': 'covng',
+            }.items():
+                key = f'{probe}_{term}'
+
+                # allocate shape: (nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
+                if key not in covs_dict_6d:
+                    covs_dict_6d[key] = np.zeros(
+                        (nbx_oc, nbx_oc, zbins, zbins, zbins, zbins)
+                    )
+
+                # assign array to the correct key
+                covs_dict_6d[key][index_tuple] = subdf[col].values
+
+            # gauss is the sum of sva + mix + sn
+            key = f'{probe}_g'
+            if key not in covs_dict_6d:
+                covs_dict_6d[key] = np.zeros(
+                    (nbx_oc, nbx_oc, zbins, zbins, zbins, zbins)
+                )
+            covs_dict_6d[key][index_tuple] = (
+                subdf['covg sva'].values
+                + subdf['covg mix'].values
+                + subdf['covg sn'].values
+            )
+
+    print('...done')
+    return covs_dict_6d
 
 
 class OneCovarianceInterface:
@@ -52,7 +339,6 @@ class OneCovarianceInterface:
             covariance (SSC) term.
             compute_cng (bool): Whether to compute the connected non-Gaussian
             covariance (cNG) term.
-            conda_base_path (str): The base path of the OneCovariance Conda environment.
             oc_path (str): The path to the OneCovariance output directory.
             path_to_oc_executable (str): The path to the OneCovariance executable.
             path_to_config_oc_ini (str): The path to the OneCovariance configuration
@@ -70,36 +356,34 @@ class OneCovarianceInterface:
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
 
         # set which cov terms to compute from cfg file
-        self.compute_g = do_g  # TODO pass this from cfg?
+        self.compute_g = do_g
         self.compute_ssc = do_ssc
         self.compute_cng = do_cng
 
+        self.obs_space = self.cfg['probe_selection']['space']
+
         # paths and filenems
-        self.conda_base_path = self.get_conda_base_path()
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
-        self.path_to_oc_ini = cfg['OneCovariance']['path_to_oc_ini']
-        self.cov_filename = (
-            'cov_OC_{which_ng_cov:s}_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}.npz'
-        )
 
-    def get_conda_base_path(self):
-        try:
-            # Run the conda info --base command and capture the output
-            result = subprocess.run(
-                ['conda', 'info', '--base'],
-                stdout=subprocess.PIPE,
-                check=True,
-                text=True,
-            )
-            # Extract and return the base path
-            return result.stdout.strip() + '/bin'
-        except FileNotFoundError:
-            return '/home/cosmo/davide.sciotti/software/anaconda3/bin'
-        except subprocess.CalledProcessError as e:
-            print(f'Error occurred: {e}')
-            return None
+        self.probe_idx_dict_hs = {
+            'm': const.HS_PROBE_NAME_TO_IX_DICT['L'],
+            'g': const.HS_PROBE_NAME_TO_IX_DICT['G'],
+        }
 
-    def build_save_oc_ini(self, ascii_filenames_dict, print_ini=True):
+        self.oc_path: str = _UNSET
+        self.z_grid_trisp_sb: np.ndarray = _UNSET
+        self.path_to_config_oc_ini: str = _UNSET
+        self.ells_sb: np.ndarray = _UNSET
+        self.cov_dict_6d: dict = _UNSET
+        self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_sn_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_mix_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_g_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_ssc_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_cng_10d: np.ndarray = _UNSET
+        self.cov_3x2pt_tot_10d: np.ndarray = _UNSET
+
+    def build_save_oc_ini(self, ascii_filenames_dict, h, print_ini=True):
         # this is just to preserve case sensitivity
         class CaseConfigParser(configparser.ConfigParser):
             def optionxform(self, optionstr):
@@ -112,148 +396,79 @@ class OneCovarianceInterface:
         nz_lns_filename_ascii = ascii_filenames_dict['nz_lns_ascii_filename']
 
         # Read the .ini file selected in cfg
-        cfg_onecov_ini = CaseConfigParser()
-        cfg_onecov_ini.read(self.path_to_oc_ini)
+        cfg_oc_ini = CaseConfigParser()
+        # cfg_oc_ini.read(self.path_to_oc_ini)
 
         # set useful lists
         mult_shear_bias_list = np.array(self.cfg['C_ell']['mult_shear_bias'])
         n_eff_clust_list = self.cfg['nz']['ngal_lenses']
         n_eff_lensing_list = self.cfg['nz']['ngal_sources']
-        ellipticity_dispersion_list = [
-            self.cfg['covariance']['sigma_eps_i']
-        ] * self.zbins
+        ellipticity_dispersion_list = self.cfg['covariance']['sigma_eps_i']
 
-        cfg_onecov_ini['covariance terms']['gauss'] = str(True)
-        cfg_onecov_ini['covariance terms']['split_gauss'] = str(True)
-        cfg_onecov_ini['covariance terms']['nongauss'] = str(self.compute_cng)
-        cfg_onecov_ini['covariance terms']['ssc'] = str(self.compute_ssc)
-        cfg_onecov_ini['output settings']['directory'] = self.oc_path
+        # set headers
+        cfg_oc_ini['covariance terms'] = {}
+        cfg_oc_ini['observables'] = {}
+        cfg_oc_ini['output settings'] = {}
+        cfg_oc_ini['covELLspace settings'] = {}
+        cfg_oc_ini['covTHETAspace settings'] = {}  # For real space case
+        cfg_oc_ini['survey specs'] = {}
+        cfg_oc_ini['redshift'] = {}
+        cfg_oc_ini['cosmo'] = {}
+        cfg_oc_ini['bias'] = {}
+        cfg_oc_ini['IA'] = {}
+        cfg_oc_ini['hod'] = {}
+        cfg_oc_ini['halomodel evaluation'] = {}
+        cfg_oc_ini['powspec evaluation'] = {}
+        cfg_oc_ini['trispec evaluation'] = {}
+        cfg_oc_ini['tabulated inputs files'] = {}
+        cfg_oc_ini['misc'] = {}
 
-        # [observables]
-        cfg_onecov_ini['observables']['cosmic_shear'] = str(True)
-        cfg_onecov_ini['observables']['est_shear'] = 'C_ell'
-        cfg_onecov_ini['observables']['ggl'] = str(True)
-        cfg_onecov_ini['observables']['est_ggl'] = 'C_ell'
-        cfg_onecov_ini['observables']['clustering'] = str(True)
-        cfg_onecov_ini['observables']['est_clust'] = 'C_ell'
-        cfg_onecov_ini['observables']['cstellar_mf'] = str(False)
-        cfg_onecov_ini['observables']['cross_terms'] = str(True)
-        cfg_onecov_ini['observables']['unbiased_clustering'] = str(False)
+        # ! [covariance terms]
+        cfg_oc_ini['covariance terms']['gauss'] = str(True)
+        cfg_oc_ini['covariance terms']['split_gauss'] = str(True)
+        cfg_oc_ini['covariance terms']['nongauss'] = str(self.compute_cng)
+        cfg_oc_ini['covariance terms']['ssc'] = str(self.compute_ssc)
 
-        cfg_onecov_ini['covELLspace settings']['ell_min'] = str(self.pvt_cfg['ell_min'])
-        cfg_onecov_ini['covELLspace settings']['ell_min_lensing'] = str(
-            self.pvt_cfg['ell_min']
-        )
-        cfg_onecov_ini['covELLspace settings']['ell_min_clustering'] = str(
-            self.pvt_cfg['ell_min']
-        )
-        cfg_onecov_ini['covELLspace settings']['ell_bins'] = str(
-            self.pvt_cfg['nbl_3x2pt']
-        )
-        cfg_onecov_ini['covELLspace settings']['ell_bins_lensing'] = str(
-            self.pvt_cfg['nbl_3x2pt']
-        )
-        cfg_onecov_ini['covELLspace settings']['ell_bins_clustering'] = str(
-            self.pvt_cfg['nbl_3x2pt']
-        )
-        cfg_onecov_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
-            map(str, mult_shear_bias_list)
-        )
+        # ! [observables]
+        if self.obs_space == 'harmonic':
+            est_shear = 'C_ell'
+            est_ggl = 'C_ell'
+            est_clust = 'C_ell'
+        elif self.obs_space == 'real':
+            est_shear = 'xi_pm'
+            est_ggl = 'gamma_t'
+            est_clust = 'w'
+        else:
+            raise ValueError('self.which_obs must he "harmonic" or "real"')
 
-        # find best ell_max for OC, since it uses a slightly different recipe
-        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
-        cfg_onecov_ini['covELLspace settings']['ell_max'] = str(self.optimal_ellmax)
-        cfg_onecov_ini['covELLspace settings']['ell_max_lensing'] = str(
-            self.optimal_ellmax
-        )
-        cfg_onecov_ini['covELLspace settings']['ell_max_clustering'] = str(
-            self.optimal_ellmax
-        )
+        cfg_oc_ini['observables']['cosmic_shear'] = str(True)
+        cfg_oc_ini['observables']['est_shear'] = est_shear
+        cfg_oc_ini['observables']['ggl'] = str(True)
+        cfg_oc_ini['observables']['est_ggl'] = est_ggl
+        cfg_oc_ini['observables']['clustering'] = str(True)
+        cfg_oc_ini['observables']['est_clust'] = est_clust
+        cfg_oc_ini['observables']['cstellar_mf'] = str(False)
+        cfg_oc_ini['observables']['cross_terms'] = str(True)
+        cfg_oc_ini['observables']['unbiased_clustering'] = str(False)
 
-        # commented out to avoid loading mask file by accident
-        cfg_onecov_ini['survey specs']['mask_directory'] = str(
-            self.cfg['mask']['mask_path']
-        )  # TODO test this!!
-        cfg_onecov_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
+        # ! [output settings]
+        self.cov_oc_fname = self.cfg['OneCovariance']['oc_output_filename']
+        cfg_oc_ini['output settings']['directory'] = self.oc_path
+        cfg_oc_ini['output settings']['file'] = ', '.join(
+            [f'{self.cov_oc_fname}_list.dat', f'{self.cov_oc_fname}_matrix.mat']
         )
-        cfg_onecov_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
+        cfg_oc_ini['output settings']['style'] = ', '.join(['list', 'matrix'])
+        cfg_oc_ini['output settings']['list_style_spatial_first'] = str(True)
+        cfg_oc_ini['output settings']['corrmatrix_plot'] = (
+            f'{self.cov_oc_fname}_corrplot.pdf'
         )
-        cfg_onecov_ini['survey specs']['survey_area_clust_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
-        cfg_onecov_ini['survey specs']['n_eff_clust'] = ', '.join(
-            map(str, n_eff_clust_list)
-        )
-        cfg_onecov_ini['survey specs']['n_eff_lensing'] = ', '.join(
-            map(str, n_eff_lensing_list)
-        )
-        cfg_onecov_ini['survey specs']['ellipticity_dispersion'] = ', '.join(
-            map(str, ellipticity_dispersion_list)
-        )
+        cfg_oc_ini['output settings']['save_configs'] = 'save_configs.ini'
+        cfg_oc_ini['output settings']['save_Cells'] = str(True)
+        cfg_oc_ini['output settings']['save_trispectra'] = str(False)
+        cfg_oc_ini['output settings']['save_alms'] = str(True)
+        cfg_oc_ini['output settings']['use_tex'] = str(False)
 
-        cfg_onecov_ini['redshift']['z_directory'] = self.oc_path
-        # TODO re-check that the OC documentation is correct
-        cfg_onecov_ini['redshift']['zclust_file'] = nz_lns_filename_ascii
-        cfg_onecov_ini['redshift']['zlens_file'] = nz_src_filename_ascii
-
-        cfg_onecov_ini['cosmo']['h'] = str(self.cfg['cosmology']['h'])
-        cfg_onecov_ini['cosmo']['ns'] = str(self.cfg['cosmology']['ns'])
-        cfg_onecov_ini['cosmo']['omega_m'] = str(self.cfg['cosmology']['Om'])
-        cfg_onecov_ini['cosmo']['omega_b'] = str(self.cfg['cosmology']['Ob'])
-        cfg_onecov_ini['cosmo']['omega_de'] = str(self.cfg['cosmology']['ODE'])
-        cfg_onecov_ini['cosmo']['sigma8'] = str(self.cfg['cosmology']['s8'])
-        cfg_onecov_ini['cosmo']['w0'] = str(self.cfg['cosmology']['wz'])
-        cfg_onecov_ini['cosmo']['wa'] = str(self.cfg['cosmology']['wa'])
-        cfg_onecov_ini['cosmo']['neff'] = str(self.cfg['cosmology']['N_eff'])
-        cfg_onecov_ini['cosmo']['m_nu'] = str(self.cfg['cosmology']['m_nu'])
-
-        if self.cfg['covariance']['which_b1g_in_resp'] == 'from_input':
-            gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
-            cfg_onecov_ini['bias']['bias_files'] = gal_bias_ascii_filename
-
-        cfg_onecov_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['Aia'])
-        cfg_onecov_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['eIA'])
-        cfg_onecov_ini['IA']['z_pivot_IA'] = str(
-            self.cfg['intrinsic_alignment']['z_pivot_IA']
-        )
-
-        cfg_onecov_ini['powspec evaluation']['non_linear_model'] = str(
-            self.cfg['extra_parameters']['camb']['halofit_version']
-        )
-        cfg_onecov_ini['powspec evaluation']['HMCode_logT_AGN'] = str(
-            self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
-        )
-
-        cfg_onecov_ini['tabulated inputs files']['Cell_directory'] = self.oc_path
-        cfg_onecov_ini['tabulated inputs files']['Cmm_file'] = (
-            f'{cl_ll_oc_filename}.ascii'
-        )
-        cfg_onecov_ini['tabulated inputs files']['Cgm_file'] = (
-            f'{cl_gl_oc_filename}.ascii'
-        )
-        cfg_onecov_ini['tabulated inputs files']['Cgg_file'] = (
-            f'{cl_gg_oc_filename}.ascii'
-        )
-
-        cfg_onecov_ini['misc']['num_cores'] = str(self.cfg['misc']['num_threads'])
-        cfg_onecov_ini['trispec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min']
-        )
-        cfg_onecov_ini['trispec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max']
-        )
-        cfg_onecov_ini['powspec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min']
-        )
-        cfg_onecov_ini['powspec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max']
-        )
-        cfg_onecov_ini['trispec evaluation']['log10k_bins'] = str(
-            self.cfg['covariance']['k_steps']
-        )
-
+        # ! [covELLspace settings]
         np.testing.assert_allclose(
             np.diff(self.z_grid_trisp_sb)[0],
             np.diff(self.z_grid_trisp_sb),
@@ -262,69 +477,266 @@ class OneCovarianceInterface:
             err_msg='The redshift grid is not uniform.',
         )
         delta_z = np.diff(self.z_grid_trisp_sb)[0]
-        cfg_onecov_ini['covELLspace settings']['delta_z'] = str(delta_z)
-        cfg_onecov_ini['covELLspace settings']['tri_delta_z'] = str(delta_z)
 
-        # ! precision settings
-        if self.oc_cfg['precision_settings'] == 'high_precision':
-            # TODO integration_steps is similar to len(z_grid), but OC works in
-            # TODO log space
-            # TODO + it would signficantly slow down the code if using SB values
-            # TODO (e.g. 3000)
-            # TODO so I leave it like this for the time being
-            integration_steps = 1000
-            m_bins = 1500  # 900 or 1500
+        ell_binning_type = self.cfg['binning']['binning_type']
+        if self.cfg['binning']['binning_type'] == 'ref_cut':
+            ell_binning_type = 'log'
 
-            # 20-01-2025 I set these dinamically above
-            # log10k_bins = 200  # 150 or 200
-            # tri_delta_z = 0.25
-            # delta_z = 0.04
+        # settings common to both observables
+        cfg_oc_ini['covELLspace settings']['limber'] = str(True)
+        cfg_oc_ini['covELLspace settings']['nglimber'] = str(True)
+        cfg_oc_ini['covELLspace settings']['delta_z'] = str(delta_z)
+        cfg_oc_ini['covELLspace settings']['tri_delta_z'] = str(0.5)
+        # * PRECISION PARAMETER MODIFIED IN THE PAST (500 -> 1000)
+        cfg_oc_ini['covELLspace settings']['integration_steps'] = str(500)
+        cfg_oc_ini['covELLspace settings']['nz_interpolation_polynom_order'] = str(1)
+        cfg_oc_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
+            map(str, mult_shear_bias_list)
+        )
+        cfg_oc_ini['covELLspace settings']['ell_type_clustering'] = ell_binning_type
+        cfg_oc_ini['covELLspace settings']['ell_type_lensing'] = ell_binning_type
 
-        elif (
-            self.oc_cfg['precision_settings'] == 'default'
-        ):  # these are the default values, used by Robert as well
-            # delta_z = 0.08
-            # tri_delta_z = 0.5
-            integration_steps = 500
-            m_bins = 900
-            # log10k_bins = 100
-        else:
-            raise ValueError(
-                f'Unknown precision settings: {self.oc_cfg["precision_settings"]}'
+        # settings specific to both observables
+        if self.obs_space == 'harmonic':
+            cfg_oc_ini['covELLspace settings']['ell_min'] = str(
+                self.pvt_cfg['ell_min_3x2pt']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_min_lensing'] = str(
+                self.pvt_cfg['ell_min_3x2pt']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_min_clustering'] = str(
+                self.pvt_cfg['ell_min_3x2pt']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
+                self.pvt_cfg['nbl_3x2pt']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_bins_lensing'] = str(
+                self.pvt_cfg['nbl_3x2pt']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_bins_clustering'] = str(
+                self.pvt_cfg['nbl_3x2pt']
             )
 
-        cfg_onecov_ini['halomodel evaluation']['m_bins'] = str(m_bins)
-        cfg_onecov_ini['covELLspace settings']['integration_steps'] = str(
-            integration_steps
+            # find best ell_max for OC, since it uses a slightly different recipe
+            self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
+            cfg_oc_ini['covELLspace settings']['ell_max'] = str(self.optimal_ellmax)
+            cfg_oc_ini['covELLspace settings']['ell_max_lensing'] = str(
+                self.optimal_ellmax
+            )
+            cfg_oc_ini['covELLspace settings']['ell_max_clustering'] = str(
+                self.optimal_ellmax
+            )
+
+        elif self.obs_space == 'real':
+            cfg_oc_ini['covELLspace settings']['ell_min'] = str(
+                self.cfg['precision']['ell_min_rs']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_max'] = str(
+                self.cfg['precision']['ell_max_rs']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
+                self.cfg['precision']['ell_bins_rs']
+            )
+            cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
+
+        # ! [survey specs]
+        # commented out to avoid loading mask file by accident
+        cfg_oc_ini['survey specs']['mask_directory'] = str(
+            self.cfg['mask']['mask_path']
+        )  # TODO test this!!
+        cfg_oc_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
+            self.cfg['mask']['survey_area_deg2']
         )
+        cfg_oc_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
+            self.cfg['mask']['survey_area_deg2']
+        )
+        cfg_oc_ini['survey specs']['survey_area_clust_in_deg2'] = str(
+            self.cfg['mask']['survey_area_deg2']
+        )
+        cfg_oc_ini['survey specs']['n_eff_clust'] = ', '.join(
+            map(str, n_eff_clust_list)
+        )
+        cfg_oc_ini['survey specs']['n_eff_lensing'] = ', '.join(
+            map(str, n_eff_lensing_list)
+        )
+        cfg_oc_ini['survey specs']['ellipticity_dispersion'] = ', '.join(
+            map(str, ellipticity_dispersion_list)
+        )
+
+        # ! [redshift]
+        cfg_oc_ini['redshift']['z_directory'] = self.oc_path
+        # TODO re-check that the OC documentation is correct
+        cfg_oc_ini['redshift']['zclust_file'] = nz_lns_filename_ascii
+        cfg_oc_ini['redshift']['zlens_file'] = nz_src_filename_ascii
+        cfg_oc_ini['redshift']['value_loc_in_clustbin'] = 'mid'
+        cfg_oc_ini['redshift']['value_loc_in_lensbin'] = 'mid'
+
+        # ! [cosmo]
+        cfg_oc_ini['cosmo']['h'] = str(self.cfg['cosmology']['h'])
+        cfg_oc_ini['cosmo']['ns'] = str(self.cfg['cosmology']['ns'])
+        cfg_oc_ini['cosmo']['omega_m'] = str(self.cfg['cosmology']['Om'])
+        cfg_oc_ini['cosmo']['omega_b'] = str(self.cfg['cosmology']['Ob'])
+        cfg_oc_ini['cosmo']['omega_de'] = str(self.cfg['cosmology']['ODE'])
+        cfg_oc_ini['cosmo']['sigma8'] = str(self.cfg['cosmology']['s8'])
+        cfg_oc_ini['cosmo']['w0'] = str(self.cfg['cosmology']['wz'])
+        cfg_oc_ini['cosmo']['wa'] = str(self.cfg['cosmology']['wa'])
+        cfg_oc_ini['cosmo']['neff'] = str(self.cfg['cosmology']['N_eff'])
+        cfg_oc_ini['cosmo']['m_nu'] = str(self.cfg['cosmology']['m_nu'])
+        cfg_oc_ini['cosmo']['tcmb0'] = str(2.7255)
+
+        # ! [bias]
+        if self.cfg['covariance']['which_b1g_in_resp'] == 'from_input':
+            gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
+            cfg_oc_ini['bias']['bias_files'] = gal_bias_ascii_filename
+
+        # ! [IA]
+        cfg_oc_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['Aia'])
+        cfg_oc_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['eIA'])
+        cfg_oc_ini['IA']['z_pivot_IA'] = str(
+            self.cfg['intrinsic_alignment']['z_pivot_IA']
+        )
+
+        # ! [hod]
+        cfg_oc_ini['hod']['model_mor_cen'] = 'double_powerlaw'
+        cfg_oc_ini['hod']['model_mor_sat'] = 'double_powerlaw'
+        cfg_oc_ini['hod']['dpow_logm0_cen'] = str(10.51)
+        cfg_oc_ini['hod']['dpow_logm1_cen'] = str(11.38)
+        cfg_oc_ini['hod']['dpow_a_cen'] = str(7.096)
+        cfg_oc_ini['hod']['dpow_b_cen'] = str(0.2)
+        cfg_oc_ini['hod']['dpow_norm_cen'] = str(1.0)
+        cfg_oc_ini['hod']['dpow_norm_sat'] = str(0.56)
+        cfg_oc_ini['hod']['model_scatter_cen'] = 'lognormal'
+        cfg_oc_ini['hod']['model_scatter_sat'] = 'modschechter'
+        cfg_oc_ini['hod']['logn_sigma_c_cen'] = str(0.35)
+        cfg_oc_ini['hod']['modsch_logmref_sat'] = str(13.0)
+        cfg_oc_ini['hod']['modsch_alpha_s_sat'] = str(-0.858)
+        cfg_oc_ini['hod']['modsch_b_sat'] = ', '.join([str(-0.024), str(1.149)])
+
+        # ! [covTHETAspace settings]
+        if self.obs_space == 'real':
+            cfg_oc_ini['covTHETAspace settings']['theta_min_clustering'] = str(
+                self.cfg['binning']['theta_min_arcmin']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_max_clustering'] = str(
+                self.cfg['binning']['theta_max_arcmin']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_bins_clustering'] = str(
+                self.cfg['binning']['theta_bins']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_type_clustering'] = 'lin'
+            cfg_oc_ini['covTHETAspace settings']['theta_min_lensing'] = str(
+                self.cfg['binning']['theta_min_arcmin']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_max_lensing'] = str(
+                self.cfg['binning']['theta_max_arcmin']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_bins_lensing'] = str(
+                self.cfg['binning']['theta_bins']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_type_lensing'] = 'lin'
+
+            cfg_oc_ini['covTHETAspace settings']['theta_min'] = str(
+                self.cfg['binning']['theta_min_arcmin']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_max'] = str(
+                self.cfg['binning']['theta_max_arcmin']
+            )
+            cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
+
+            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(True)
+            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(True)
+            cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
+            cfg_oc_ini['covTHETAspace settings']['integration_intervals'] = str(40)
+
+        # ! [halomodel evaluation]
+        if ('Tinker10' not in self.cfg['halo_model']['mass_function']) or (
+            'Tinker10' not in self.cfg['halo_model']['halo_bias']
+        ):
+            raise ValueError(
+                'Only Tinker10 mass function and halo bias are supported '
+                f'by OneCovariance. Got {self.cfg['halo_model']['mass_function']=}'
+                f'and {self.cfg['halo_model']['halo_bias']=} instead'
+            )
+
+        # * PRECISION PARAMETER MODIFIED IN THE PAST (900 -> 1500)
+        cfg_oc_ini['halomodel evaluation']['m_bins'] = str(900)
+        cfg_oc_ini['halomodel evaluation']['log10m_min'] = str(6)
+        cfg_oc_ini['halomodel evaluation']['log10m_max'] = str(18)
+        cfg_oc_ini['halomodel evaluation']['hmf_model'] = 'Tinker10'
+        cfg_oc_ini['halomodel evaluation']['mdef_model'] = 'SOMean'
+        cfg_oc_ini['halomodel evaluation']['mdef_params'] = ', '.join(
+            ['overdensity', str(200)]
+        )
+
+        cfg_oc_ini['halomodel evaluation']['disable_mass_conversion'] = str(True)
+        cfg_oc_ini['halomodel evaluation']['delta_c'] = str(1.686)
+        cfg_oc_ini['halomodel evaluation']['transfer_model'] = 'CAMB'
+        cfg_oc_ini['halomodel evaluation']['small_k_damping_for1h'] = 'damped'
+
+        # ! [powspec evaluation]
+        cfg_oc_ini['powspec evaluation']['non_linear_model'] = str(
+            self.cfg['extra_parameters']['camb']['halofit_version']
+        )
+        cfg_oc_ini['powspec evaluation']['HMCode_logT_AGN'] = str(
+            self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
+        )
+        cfg_oc_ini['powspec evaluation']['log10k_min'] = str(
+            self.cfg['covariance']['log10_k_min'] * h
+        )
+        cfg_oc_ini['powspec evaluation']['log10k_max'] = str(
+            self.cfg['covariance']['log10_k_max'] * h
+        )
+        cfg_oc_ini['powspec evaluation']['log10k_bins'] = str(
+            self.cfg['covariance']['k_steps']
+        )
+
+        # ! [trispec evaluation]
+        cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
+            self.cfg['covariance']['log10_k_min'] * h
+        )
+        cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
+            self.cfg['covariance']['log10_k_max'] * h
+        )
+        cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
+            self.cfg['covariance']['k_steps']
+        )
+        cfg_oc_ini['trispec evaluation']['matter_klim'] = str(0.001)
+        cfg_oc_ini['trispec evaluation']['matter_mulim'] = str(0.001)
+        cfg_oc_ini['trispec evaluation']['small_k_damping_for1h'] = 'damped'
+        cfg_oc_ini['trispec evaluation']['lower_calc_limit'] = str(1e-200)
+
+        # ! [tabulated inputs files]
+        cfg_oc_ini['tabulated inputs files']['Cell_directory'] = self.oc_path
+        cfg_oc_ini['tabulated inputs files']['Cmm_file'] = f'{cl_ll_oc_filename}.ascii'
+        cfg_oc_ini['tabulated inputs files']['Cgm_file'] = f'{cl_gl_oc_filename}.ascii'
+        cfg_oc_ini['tabulated inputs files']['Cgg_file'] = f'{cl_gg_oc_filename}.ascii'
+
+        # ! [misc]
+        cfg_oc_ini['misc']['num_cores'] = str(self.cfg['misc']['num_threads'])
+
+        # TODO integration_steps is similar to len(z_grid), but OC works in
+        # TODO log space
+        # TODO + it would signficantly slow down the code if using SB values
+        # TODO (e.g. 3000)
+        # TODO so I leave it like this for the time being
 
         # print the updated ini
         if print_ini:
-            for section in cfg_onecov_ini.sections():
-                print(f'[{section}]')
-                for key, value in cfg_onecov_ini[section].items():
-                    print(f'{key} = {value}')
-                print()
+            print_cfg_onecov_ini(cfg_oc_ini)
 
         # Save the updated configuration to a new .ini file
         with open(f'{self.oc_path}/input_configs.ini', 'w') as configfile:
-            cfg_onecov_ini.write(configfile)
+            cfg_oc_ini.write(configfile)
 
         # store in self for good measure
-        self.cfg_onecov_ini = cfg_onecov_ini
+        self.cfg_onecov_ini = cfg_oc_ini
 
-    def call_oc_from_bash(self):
+    def call_oc_from_bash(self) -> None:
         """This function runs OneCovariance"""
-        activate_and_run = f"""
-        source {self.conda_base_path}/activate cov20_env
-        python {self.path_to_oc_executable} {self.path_to_config_oc_ini}
-        source {self.conda_base_path}/deactivate
-        source {self.conda_base_path}/activate spaceborne-dav
-        """
-        # python {self.path_to_oc_executable.replace('covariance.py', 'reshape_cov_list_Cl_callable.py')} {self.path_to_config_oc_ini.replace('input_configs.ini', '')}
-
-        process = subprocess.Popen(activate_and_run, shell=True, executable='/bin/bash')
-        process.communicate()
+        subprocess.run(
+            ['python', self.path_to_oc_executable, self.path_to_config_oc_ini],
+            check=True,  # raise CalledProcessError if it fails
+        )
 
     def call_oc_from_class(self):
         """This interface was originally created by Robert Reischke.
@@ -513,72 +925,103 @@ class OneCovarianceInterface:
         elem_cross = self.zpairs_cross * self.nbl_3x2pt
 
         if self.compute_g:
-            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_gauss.mat')
+            cov_in = np.genfromtxt(
+                f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
+            )
             self.cov_mat_g_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
 
         if self.compute_ssc:
-            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_SSC.mat')
+            cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
             self.cov_mat_ssc_2d = self.cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
         if self.compute_cng:
-            cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix_nongauss.mat')
+            cov_in = np.genfromtxt(
+                f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
+            )
             self.cov_mat_cng_2d = self.cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
-        cov_in = np.genfromtxt(f'{self.oc_path}/covariance_matrix.mat')
+        cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
         self.cov_mat_tot_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
 
-    def output_sanity_check(self, rtol=1e-4):
-        """Checks that the .dat and .mat outputs give consistent results"""
+    def output_sanity_check(self, req_probe_combs_2d: list, rtol: float = 1e-4):
+        """
+        Checks that the .dat and .mat outputs give consistent results
+        """
+
+        # TODO why am I processing the output twice?
+        # TODO this should be generalised to real space
+
         self.process_cov_from_mat_file()
 
         cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_g_oc_3x2pt_10D,
+            self.cov_3x2pt_g_10d,
             self.probe_ordering,
             self.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
+            req_probe_combs_2d=req_probe_combs_2d,
         )
         cov_list_ssc_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_ssc_oc_3x2pt_10D,
+            self.cov_3x2pt_ssc_10d,
             self.probe_ordering,
             self.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
+            req_probe_combs_2d=req_probe_combs_2d,
         )
         cov_list_cng_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_cng_oc_3x2pt_10D,
+            self.cov_3x2pt_cng_10d,
             self.probe_ordering,
             self.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
+            req_probe_combs_2d=req_probe_combs_2d,
         )
         cov_list_tot_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_tot_oc_3x2pt_10D,
+            self.cov_3x2pt_tot_10d,
             self.probe_ordering,
             self.nbl_3x2pt,
             self.zbins,
             self.ind,
             self.GL_OR_LG,
+            req_probe_combs_2d=req_probe_combs_2d,
         )
 
-        cov_list_g_2d = sl.cov_4D_to_2DCLOE_3x2pt(
-            cov_list_g_4d, self.zbins, block_index='zpair'
+        if self.obs_space == 'harmonic':
+            cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_hs
+        elif self.obs_space == 'real':
+            cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
+
+        cov_list_g_2d = cov_4d_to_2dcloe_func(
+            cov_list_g_4d,
+            zbins=self.zbins,
+            req_probe_combs_2d=req_probe_combs_2d,
+            block_index='zpair',
         )
-        cov_list_ssc_2d = sl.cov_4D_to_2DCLOE_3x2pt(
-            cov_list_ssc_4d, self.zbins, block_index='zpair'
+        cov_list_ssc_2d = cov_4d_to_2dcloe_func(
+            cov_list_ssc_4d,
+            zbins=self.zbins,
+            req_probe_combs_2d=req_probe_combs_2d,
+            block_index='zpair',
         )
-        cov_list_cng_2d = sl.cov_4D_to_2DCLOE_3x2pt(
-            cov_list_cng_4d, self.zbins, block_index='zpair'
+        cov_list_cng_2d = cov_4d_to_2dcloe_func(
+            cov_list_cng_4d,
+            zbins=self.zbins,
+            req_probe_combs_2d=req_probe_combs_2d,
+            block_index='zpair',
         )
-        cov_list_tot_2d = sl.cov_4D_to_2DCLOE_3x2pt(
-            cov_list_tot_4d, self.zbins, block_index='zpair'
+        cov_list_tot_2d = cov_4d_to_2dcloe_func(
+            cov_list_tot_4d,
+            zbins=self.zbins,
+            req_probe_combs_2d=req_probe_combs_2d,
+            block_index='zpair',
         )
 
         if self.compute_g:
@@ -616,7 +1059,7 @@ class OneCovarianceInterface:
             self.cov_mat_tot_2d,
             atol=0,
             rtol=rtol,
-            err_msg='Gaussian covariance matrix from .mat file is'
+            err_msg='Total covariance matrix from .mat file is'
             ' not consistent with .dat output',
         )
 
@@ -660,18 +1103,23 @@ class OneCovarianceInterface:
 
         return cov_llglgg_2d
 
-    def process_cov_from_list_file(self, df_chunk_size=5000000):
-        """Import and reshape the output of the OneCovariance (OC) .dat
+    def process_cov_from_list_file_hs(self, df_chunk_size=5_000_000):
+        """
+        Import and reshape the output of the OneCovariance (OC) .dat
         (aka "list") file into a set of 10d arrays.
         The function also performs some additional processing,
         such as symmetrizing the output dictionary.
         """
+        raise NotImplementedError(
+            'This function should be deprecated; use '
+            'process_cov_from_list_file() instead'
+        )
         import re
 
         import pandas as pd
 
         # set df column names
-        with open(f'{self.oc_path}/covariance_list.dat') as file:
+        with open(f'{self.oc_path}/{self.cov_oc_fname}_list.dat') as file:
             header = (
                 file.readline().strip()
             )  # Read the first line and strip newline characters
@@ -685,7 +1133,7 @@ class OneCovarianceInterface:
         # note use delim_whitespace=True instead of sep='\s+' if this gives
         # compatibility issues
         self.ells_oc_load = pd.read_csv(
-            f'{self.oc_path}/covariance_list.dat', usecols=['ell1'], sep='\s+'
+            f'{self.oc_path}/{self.cov_oc_fname}_list.dat', usecols=['ell1'], sep='\s+'
         )['ell1'].unique()
 
         # check if the saved ells are within 1% of the required ones;
@@ -702,8 +1150,6 @@ class OneCovarianceInterface:
         cov_ell_indices = {
             ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)
         }
-
-        probe_idx_dict = {'m': 0, 'g': 1}
 
         # ! import .list covariance file
         shape = (
@@ -833,6 +1279,7 @@ class OneCovarianceInterface:
                 zbins=self.zbins,
                 ind_dict=ind_dict,
                 probe_ordering=self.cfg['covariance']['probe_ordering'],
+                space=self.obs_space,
                 symmetrize_output_dict=symmetrize_output_dict,
             )
 
@@ -869,7 +1316,7 @@ class OneCovarianceInterface:
 
         self.new_ells_oc = self.compute_ells_oc(
             nbl=int(self.pvt_cfg['nbl_3x2pt']),
-            ell_min=float(self.pvt_cfg['ell_min']),
+            ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
             ell_max=self.optimal_ellmax,
         )
 
@@ -900,7 +1347,7 @@ class OneCovarianceInterface:
     def objective_function(self, ell_max):
         ells_oc = self.compute_ells_oc(
             nbl=int(self.pvt_cfg['nbl_3x2pt']),
-            ell_min=float(self.pvt_cfg['ell_min']),
+            ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
             ell_max=ell_max,
         )
         ssd = np.sum((self.ells_sb - ells_oc) ** 2)

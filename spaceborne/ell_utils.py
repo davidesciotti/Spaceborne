@@ -97,7 +97,7 @@ def get_idxs_to_delete(ell_values, ell_cuts, is_auto_spectrum, zbins):
 
 def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_cfg):
     """This function tries to implement the indexing for the
-    flattening ell_probe_zpair
+    flattening scale_probe_zpair
     """
     if (covariance_cfg['triu_tril'], covariance_cfg['row_col_major']) != (
         'triu',
@@ -135,7 +135,7 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_
 def get_idxs_to_delete_3x2pt_v0(
     ell_values_3x2pt, ell_cuts_dict, nbl_3x2pt, zpairs_auto, zpairs_cross
 ):
-    """This implements the indexing for the flattening probe_ell_zpair"""
+    """This implements the indexing for the flattening probe_scale_zpair"""
     raise Exception(
         'Concatenation must be done *before* flattening, this function '
         'is not compatible with the '
@@ -318,19 +318,21 @@ class EllBinning:
             config: The 'ell_binning' section of the main configuration dictionary.
 
         """
-        self.binning_type = cfg['ell_binning']['binning_type']
+        self.cfg = cfg
+        
+        self.binning_type = cfg['binning']['binning_type']
 
-        self.ell_min_WL = cfg['ell_binning']['ell_min_WL']
-        self.ell_max_WL = cfg['ell_binning']['ell_max_WL']
-        self.nbl_WL = cfg['ell_binning']['ell_bins_WL']
+        self.ell_min_WL = cfg['binning']['ell_min_WL']
+        self.ell_max_WL = cfg['binning']['ell_max_WL']
+        self.nbl_WL = cfg['binning']['ell_bins_WL']
 
-        self.ell_min_GC = cfg['ell_binning']['ell_min_GC']
-        self.ell_max_GC = cfg['ell_binning']['ell_max_GC']
-        self.nbl_GC = cfg['ell_binning']['ell_bins_GC']
+        self.ell_min_GC = cfg['binning']['ell_min_GC']
+        self.ell_max_GC = cfg['binning']['ell_max_GC']
+        self.nbl_GC = cfg['binning']['ell_bins_GC']
 
-        self.ell_min_ref = cfg['ell_binning']['ell_min_ref']
-        self.ell_max_ref = cfg['ell_binning']['ell_max_ref']
-        self.nbl_ref = cfg['ell_binning']['ell_bins_ref']
+        self.ell_min_ref = cfg['binning']['ell_min_ref']
+        self.ell_max_ref = cfg['binning']['ell_max_ref']
+        self.nbl_ref = cfg['binning']['ell_bins_ref']
 
         # Only load filenames if using 'from_input' binning type
         if self.binning_type == 'from_input':
@@ -343,6 +345,7 @@ class EllBinning:
         self.use_namaster = cfg['namaster']['use_namaster']
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
+            
     def build_ell_bins(self):
         """Builds ell bins based on the specified configuration."""
         # if self.use_namaster:
@@ -548,13 +551,24 @@ class EllBinning:
         self.nbl_3x2pt = len(self.ells_3x2pt)
 
     def compute_ells_3x2pt_unbinned(self):
-        # recompute Cls ell by ell
+        """Needed for the partial-sky covariance"""
         self.ells_3x2pt_unb = np.arange(self.ell_max_3x2pt + 1)
         self.nbl_3x2pt_unb = len(self.ells_3x2pt_unb)
         self.ell_max_3x2pt_unb = self.ells_3x2pt_unb[-1]
         assert self.nbl_3x2pt_unb == self.ell_max_3x2pt + 1, (
             'nbl_tot does not match ell_max_3x2pt + 1'
         )
+
+    def compute_ells_3x2pt_rs(self):
+        """Needed for the real-space covariance"""
+        self.ells_3x2pt_rs = np.geomspace(
+            self.cfg['precision']['ell_min_rs'],
+            self.cfg['precision']['ell_max_rs'],
+            self.cfg['precision']['ell_bins_rs'],
+        )
+        # these are probably useless, but just to keep consistency
+        self.nbl_3x2pt_rs = len(self.ells_3x2pt_rs)
+        self.ell_max_3x2pt_rs = self.cfg['precision']['ell_max_rs']  
 
     def _validate_bins(self):
         for probe in ['GC', 'XC', '3x2pt']:
@@ -575,12 +589,14 @@ class EllBinning:
 
             if not isinstance(ells, np.ndarray):
                 raise TypeError(
-                    f'ell values for probe {probe} must be a numpy array, got {type(ells)} instead.'
+                    f'ell values for probe {probe} must be a numpy array, '
+                    f'got {type(ells)} instead.'
                 )
 
             if ells.ndim != 1:
                 raise ValueError(
-                    f'ell values for probe {probe} must be a 1D array, got {ells.ndim}D array.'
+                    f'ell values for probe {probe} must be a 1D array, '
+                    f'got {ells.ndim}D array.'
                 )
 
             if not np.all(np.isfinite(ells)):

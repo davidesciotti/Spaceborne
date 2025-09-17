@@ -170,17 +170,7 @@ def plot_cls():
     plt.show()
 
 
-def check_ells_in(ells_in: np.ndarray, ells_out: np.ndarray) -> None:
-    if len(ells_in) < len(ells_out) // 1.5:  # random fraction
-        warnings.warn(
-            f'The input cls are computed over {len(ells_in)} ell points in '
-            f'[{ells_in[0]}, {ells_in[-1]}], but for the partial-sky covariance'
-            'the unbinned cls are required. Because of this, the input cls will '
-            f'be interpolated over the unbinned ell range [{ells_out[0]}, '
-            f'{ells_out[-1]}]. Please make sure to provide finely sampled cls '
-            'ell binning to make sure the interpolation is accurate.',
-            stacklevel=2,
-        )
+
 
 
 # ! ====================================================================================
@@ -1080,7 +1070,7 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
             [ells_WL_in, ells_XC_in, ells_GC_in],
             [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
         ):
-            check_ells_in(ells_in, ells_out)
+            io_obj.check_ells_in(ells_in, ells_out)
 
     # initialize nmt_cov_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(

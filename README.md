@@ -34,15 +34,6 @@ conda env create -f environment.yaml
 # activate the newly created Conda environment
 conda activate spaceborne
 
-# Install juliaup
-curl -fsSL https://install.julialang.org | sh
-
-# Install Julia version 1.10
-juliaup default 1.10
-
-# install required Julia packages
-julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
-
 # Finally, install pip dependencies and Spaceborne itself
 pip install .
 ```
@@ -61,7 +52,16 @@ conda env create -f environment.yaml --solver=libmamba # instead of
 conda env create -f environment.yaml
 ```
 
-🟣 Spaceborne leverages `Julia` for computationally intensive tasks. We recommend installing `Julia` via [`juliaup`](https://github.com/JuliaLang/juliaup) as indicated above
+🟣 Spaceborne leverages `JAX` for computationally intensive tasks. This is included as 
+a `pip` dependency in the `environment.yaml` file. If you want to run the jax-optimised 
+parts of the code on an NVIDIA GPU, after creating and activating the enviromnent do
+
+```bash
+pip install -U "jax[cuda12]"
+```
+
+Please refer to the [official installation instructions](https://docs.jax.dev/en/latest/installation.html#installation) for more accurate, up-to date and platform specific 
+(e.g. Silicon Macs) intructions.
 
 ## Running the Code
 

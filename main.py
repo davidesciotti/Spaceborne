@@ -619,7 +619,6 @@ pvt_cfg = {
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
-    'jl_integrator_path': './spaceborne/julia_integrator.jl',
 }
 
 # instantiate data handler class

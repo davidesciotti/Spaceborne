@@ -761,6 +761,9 @@ class SpaceborneCovariance:
         unique_probe_combs,
         num_threads=16,
     ):
+        raise NotImplementedError(
+            'This function has been deprecated'
+        )
         """Kernel to compute the 4D integral optimized using Simpson's rule using
         Julia.
         """

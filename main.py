@@ -57,16 +57,6 @@ os.environ['XLA_FLAGS'] = (
     f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
 )
 
-# TODO these imports should be isolated
-import jax
-import jax.numpy as jnp
-from jax import jit, vmap
-
-# Enable 64-bit precision if required
-jax.config.update('jax_enable_x64', cfg['misc']['jax_enable_x64'])
-
-print('JAX devices:', jax.devices())
-
 
 import contextlib
 import pprint
@@ -215,132 +205,6 @@ clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
 shift_nz = cfg['nz']['shift_nz']
 
 obs_space = cfg['probe_selection']['space']
-
-
-@jit
-def ssc_integral_4D_simps_jax(
-    d2ClAB_dVddeltab: jnp.ndarray,
-    d2ClCD_dVddeltab: jnp.ndarray,
-    cl_integral_prefactor: jnp.ndarray,
-    sigma2: jnp.ndarray,
-    delta_z: float,
-    simpson_weights: jnp.ndarray,
-):
-    """
-    JAX version of the Simpson's rule 2D integral.
-    Expects d2Cl arrays to be pre-shaped to 3D: (nbl, zpairs, z_steps)
-    """
-
-    # Pre-compute combined weights
-    # Shape: (z_steps, z_steps)
-    prefactor_grid = jnp.outer(cl_integral_prefactor, cl_integral_prefactor)
-    weight_grid = jnp.outer(simpson_weights, simpson_weights)
-    combined_weights = prefactor_grid * weight_grid * sigma2
-
-    # Compute all combinations with einsum
-    # Shape: (nbl, nbl, zpairs_AB, zpairs_CD)
-    result = jnp.einsum(
-        'Liz,Mjw,zw->LMij', d2ClAB_dVddeltab, d2ClCD_dVddeltab, combined_weights
-    )
-
-    # multiply by step size
-    return result * (delta_z**2)
-
-
-@jit
-def ssc_integral_4D_simps_jax_ke_approx(
-    d2ClAB_dVddeltab: jnp.ndarray,
-    d2ClCD_dVddeltab: jnp.ndarray,
-    cl_integral_prefactor: jnp.ndarray,
-    sigma2: jnp.ndarray,
-    delta_z: float,
-    simpson_weights: jnp.ndarray,
-):
-    """
-    JAX version of the Simpson's rule 1D integral.
-    Expects d2Cl arrays to be pre-shaped to 3D: (nbl, zpairs, z_steps)
-    """
-
-    # Pre-compute combined weights
-    # Shape: (z_steps,)
-    combined_weights = cl_integral_prefactor * simpson_weights * sigma2
-
-    # Compute all combinations with einsum
-    # Shape: (nbl, nbl, zpairs_AB, zpairs_CD)
-    result = jnp.einsum(
-        'Liz,Mjz,z->LMij', d2ClAB_dVddeltab, d2ClCD_dVddeltab, combined_weights
-    )
-
-    # multiply by step size
-    return result * delta_z
-
-
-# Alternative implementation with explicit loops (less efficient but more readable)
-# TODO delete this
-@jit
-def ssc_integral_4D_simps_jax_gpu_loops(
-    d2ClAB_dVddeltab,
-    d2ClCD_dVddeltab,
-    cl_integral_prefactor,
-    sigma2,
-    delta_z,
-    simpson_weights,
-):
-    """
-    JAX GPU version using explicit loops (alternative implementation).
-    """
-    print('Using device: JAX GPU/CPU with JIT compilation (loop version)')
-
-    # Get dimensions
-    nbl = d2ClAB_dVddeltab.shape[0]
-    zpairs_AB = d2ClAB_dVddeltab.shape[1]
-    zpairs_CD = d2ClCD_dVddeltab.shape[1]
-
-    # Pre-compute all weights combinations
-    # Shape: (z_steps, z_steps)
-    all_weights = jnp.einsum(
-        'i,j,i,j,ij->ij',
-        cl_integral_prefactor,
-        cl_integral_prefactor,
-        simpson_weights,
-        simpson_weights,
-        sigma2,
-    )
-
-    def compute_element(indices):
-        ell1, ell2, zij, zkl = indices
-        # Compute: sum over z1_idx, z2_idx of
-        # prefactor[z1_idx] * prefactor[z2_idx] *
-        # d2ClAB[ell1, zij, z1_idx] * d2ClCD[ell2, zkl, z2_idx] *
-        # sigma2[z1_idx, z2_idx] * simpson_weights[z1_idx] * simpson_weights[z2_idx]
-
-        clAB_slice = d2ClAB_dVddeltab[ell1, zij, :]  # (z_steps,)
-        clCD_slice = d2ClCD_dVddeltab[ell2, zkl, :]  # (z_steps,)
-
-        # Vectorized computation
-        integrand = jnp.outer(clAB_slice, clCD_slice) * all_weights
-        return jnp.sum(integrand) * (delta_z**2)
-
-    # Generate all index combinations
-    ell1_indices = jnp.arange(nbl)
-    ell2_indices = jnp.arange(nbl)
-    zij_indices = jnp.arange(zpairs_AB)
-    zkl_indices = jnp.arange(zpairs_CD)
-
-    # Create meshgrid of all combinations
-    ell1_mesh, ell2_mesh, zij_mesh, zkl_mesh = jnp.meshgrid(
-        ell1_indices, ell2_indices, zij_indices, zkl_indices, indexing='ij'
-    )
-
-    # Stack indices
-    indices = jnp.stack([ell1_mesh, ell2_mesh, zij_mesh, zkl_mesh], axis=-1)
-    indices_flat = indices.reshape(-1, 4)
-
-    # Vectorize computation
-    results = vmap(compute_element)(indices_flat)
-
-    # Reshape to final result shape
-    return results.reshape(nbl, nbl, zpairs_AB, zpairs_CD)
 
 
 # ! check/create paths
@@ -698,7 +562,7 @@ k_grid = np.logspace(
     cfg['covariance']['k_steps'],
 )
 # in this case we need finer k binning because of the bessel functions
-k_grid_s2b_simps = np.logspace(
+k_grid_s2b = np.logspace(
     cfg['covariance']['log10_k_min'],
     cfg['covariance']['log10_k_max'],
     k_steps_sigma2_simps
@@ -1289,7 +1153,7 @@ if obs_space == 'real':
 cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
     cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix
 )
-cov_hs_obj.set_ind_and_zpairs(ind, zbins)
+cov_hs_obj.set_ind_and_zpairs(ind)
 cov_hs_obj.consistency_checks()
 cov_hs_obj.set_gauss_cov(
     ccl_obj=ccl_obj,
@@ -1674,13 +1538,6 @@ if compute_sb_ssc:
                 ]
             )
 
-    # ! integral prefactor
-    cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(
-        z_grid,
-        cl_integral_convention_ssc,
-        use_h_units=use_h_units,
-        cosmo_ccl=ccl_obj.cosmo_ccl,
-    )
     # ! observable densities
     # z: z_grid index (for the radial projection)
     # i, j: zbin index
@@ -1697,209 +1554,19 @@ if compute_sb_ssc:
         + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
     )
 
-    # ! =================================== sigma^2_b ==================================
-    if cfg['covariance']['load_cached_sigma2_b']:
-        sigma2_b = np.load(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy')
+    from spaceborne import cov_ssc
 
-    else:
-        if cfg['covariance']['use_KE_approximation']:
-            # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-            ccl_obj.set_sigma2_b(
-                z_grid=z_grid, which_sigma2_b=which_sigma2_b, mask_obj=mask_obj
-            )
-            _a, sigma2_b = ccl_obj.sigma2_b_tuple
-            # quick sanity check on the a/z grid
-            sigma2_b = sigma2_b[::-1]
-            _z = cosmo_lib.a_to_z(_a)[::-1]
-            np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
+    ssc_obj = cov_ssc.SpaceborneSSC(cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units)
+    ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
 
-        else:
-            # depending on the modules installed, integrate with levin or simpson
-            # (in the latter case, in parallel or not)
-            s2b_intgr_method = cfg['covariance']['sigma2_b_int_method']
-            parallel = bool(find_spec('pathos'))
-
-            if s2b_intgr_method == 'levin':
-                k_grid_s2b = k_grid
-            elif s2b_intgr_method in ('simps', 'fft'):
-                k_grid_s2b = k_grid_s2b_simps
-            else:
-                raise ValueError(
-                    f'Unknown sigma2_b_integration_method: {s2b_intgr_method}'
-                )
-
-            sigma2_b = sigma2_ssc.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_s2b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
-                n_jobs=cfg['misc']['num_threads'],
-                integration_scheme=s2b_intgr_method,
-                batch_size=cfg['misc']['levin_batch_size'],
-                parallel=parallel,
-            )
-
-        np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
-        np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
-
-    # ! 4. Perform the integration calling the Julia module
-    delta_z = np.diff(z_grid)[0]
-    z_steps = len(z_grid)
-    simpson_weights = sl.get_simpson_weights(len(z_grid))
-    nbl = ell_obj.nbl_3x2pt
-    d2CLL_dVddeltab_contr = np.zeros((nbl, zpairs_auto, z_steps))
-    d2CGL_dVddeltab_contr = np.zeros((nbl, zpairs_cross, z_steps))
-    d2CGG_dVddeltab_contr = np.zeros((nbl, zpairs_auto, z_steps))
-
-    for zij in range(zpairs_auto):
-        zi, zj = ind_auto[zij, 2], ind_auto[zij, 3]
-        d2CLL_dVddeltab_contr[:, zij, :] = d2CLL_dVddeltab[:, zi, zj, :]
-        d2CGG_dVddeltab_contr[:, zij, :] = d2CGG_dVddeltab[:, zi, zj, :]
-    for zij in range(zpairs_cross):
-        zi, zj = ind_cross[zij, 2], ind_cross[zij, 3]
-        d2CGL_dVddeltab_contr[:, zij, :] = d2CGL_dVddeltab[:, zi, zj, :]
-
-    d2CAB_dVddeltab_contr_dict = {
-        ('L', 'L'): d2CLL_dVddeltab_contr,
-        ('G', 'L'): d2CGL_dVddeltab_contr,
-        ('G', 'G'): d2CGG_dVddeltab_contr,
-    }
-
-    # BOOKMARK
-    if cfg['covariance']['use_KE_approximation']:
-        ssc_jax_func = ssc_integral_4D_simps_jax_ke_approx
-    else:
-        ssc_jax_func = ssc_integral_4D_simps_jax
-
-    cov_ssc_3x2pt_dict_8D_jax = {}
-
-    start = time.perf_counter()
-    # * compute required blocks
-    for probe_abcd in unique_probe_combs_hs:
-        probe_a, probe_b, probe_c, probe_d = probe_abcd
-        d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(probe_a, probe_b)]
-        d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(probe_c, probe_d)]
-
-        result = ssc_jax_func(
-            jnp.array(d2CABdVddeltab_contr),
-            jnp.array(d2CCDdVddeltab_contr),
-            jnp.array(cl_integral_prefactor),
-            jnp.array(sigma2_b),
-            delta_z,
-            jnp.array(simpson_weights),
-        )
-
-        cov_ssc_3x2pt_dict_8D_jax[probe_a, probe_b, probe_c, probe_d] = np.array(result)
-
-    # * fill the symmetric counterparts of the required blocks
-    # * (excluding diagonal blocks)
-    for probe_abcd in symm_probe_combs_hs:
-        probe_a, probe_b, probe_c, probe_d = probe_abcd
-        probe_tpl_orig = (probe_a, probe_b, probe_c, probe_d)
-        probe_tpl_symm = (probe_c, probe_d, probe_a, probe_b)
-
-        cov_ssc_3x2pt_dict_8D_jax[probe_tpl_orig] = (
-            cov_ssc_3x2pt_dict_8D_jax[probe_tpl_symm].transpose(1, 0, 3, 2)
-        ).copy()
-
-    # * if block is not required, set it to 0
-    for probe_abcd in nonreq_probe_combs_hs:
-        probe_a, probe_b, probe_c, probe_d = probe_abcd
-        probe_tpl = (probe_a, probe_b, probe_c, probe_d)
-        print('SSC 3x2pt cov: skipping probe combination ', probe_tpl)
-
-        zpairs_ab = ind_dict[probe_a, probe_b].shape[0]
-        zpairs_cd = ind_dict[probe_c, probe_d].shape[0]
-        cov_ssc_3x2pt_dict_8D_jax[probe_tpl] = np.zeros(
-            (nbl, nbl, zpairs_ab, zpairs_cd)
-        )
-        
-    print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
-
-    start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D = cov_hs_obj.ssc_integral_julia(
-        d2CLL_dVddeltab=d2CLL_dVddeltab,
-        d2CGL_dVddeltab=d2CGL_dVddeltab,
-        d2CGG_dVddeltab=d2CGG_dVddeltab,
-        cl_integral_prefactor=cl_integral_prefactor,
-        sigma2=sigma2_b,
-        z_grid=z_grid,
-        integration_type=ssc_integration_type,
-        unique_probe_combs=unique_probe_combs_hs,
-        num_threads=cfg['misc']['num_threads'],
+    cov_ssc_3x2pt_dict_8D = ssc_obj.compute_ssc(
+        d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
+        d2CGL_dVddeltab_4d=d2CGL_dVddeltab,
+        d2CGG_dVddeltab_4d=d2CGG_dVddeltab,
+        unique_probe_combs_hs=unique_probe_combs_hs,
+        symm_probe_combs_hs=symm_probe_combs_hs,
+        nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
-    print(f'SSC computed in {(time.perf_counter() - start):.2f} s')
-
-    for key in cov_ssc_3x2pt_dict_8D:
-        print(f'Checking {key}...')
-        np.testing.assert_allclose(
-            cov_ssc_3x2pt_dict_8D_jax[(key)],
-            cov_ssc_3x2pt_dict_8D[key],
-            rtol=1e-3,
-            atol=0,
-        )
-        cov_2d_jax = sl.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D_jax[key], block_index='ell')
-        cov_2d_julia = sl.cov_4D_to_2D(cov_ssc_3x2pt_dict_8D[key], block_index='ell')
-        sl.compare_arrays(
-            cov_2d_jax,
-            cov_2d_julia,
-            abs_val=True,
-            log_diff=True,
-            plot_diff_threshold=1,
-            plot_diff_hist=True,
-        )
-
-    assert False, 'stop here to test jax'
-
-    start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D_gpu_tullio = cov_obj.ssc_integral_julia(
-        d2CLL_dVddeltab=d2CLL_dVddeltab,
-        d2CGL_dVddeltab=d2CGL_dVddeltab,
-        d2CGG_dVddeltab=d2CGG_dVddeltab,
-        cl_integral_prefactor=cl_integral_prefactor,
-        sigma2=sigma2_b,
-        z_grid=z_grid,
-        integration_type='SSC_integral_4D_simps_unified',
-        unique_probe_combs=unique_probe_combs,
-        num_threads=cfg['misc']['num_threads'],
-    )
-    print(
-        'SSC computed on the GPU with @tullio in '
-        f'{(time.perf_counter() - start) / 60:.2f} m'
-    )
-
-    start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D_gpu = cov_obj.ssc_integral_julia(
-        d2CLL_dVddeltab=d2CLL_dVddeltab,
-        d2CGL_dVddeltab=d2CGL_dVddeltab,
-        d2CGG_dVddeltab=d2CGG_dVddeltab,
-        cl_integral_prefactor=cl_integral_prefactor,
-        sigma2=sigma2_b,
-        z_grid=z_grid,
-        integration_type='simps_gpu',
-        unique_probe_combs=unique_probe_combs,
-        num_threads=cfg['misc']['num_threads'],
-    )
-    print(f'SSC computed on the GPU in {(time.perf_counter() - start) / 60:.2f} m')
-
-    for key in cov_ssc_3x2pt_dict_8D:
-        np.testing.assert_allclose(
-            cov_ssc_3x2pt_dict_8D[key],
-            cov_ssc_3x2pt_dict_8D_gpu[key],
-            rtol=2e-4,
-            atol=0,
-        )
-
-    for key in cov_ssc_3x2pt_dict_8D:
-        np.testing.assert_allclose(
-            cov_ssc_3x2pt_dict_8D[key],
-            cov_ssc_3x2pt_dict_8D_gpu_tullio[key],
-            rtol=2e-4,
-            atol=0,
-        )
-
-    assert False, 'stop here'
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
@@ -2270,6 +1937,9 @@ if cfg['misc']['save_output_as_benchmark']:
         # in this case, the k grid used is the same as the Pk one, I think
         k_grid_s2b = np.array([])
 
+    if compute_sb_ssc:
+        sigma2_b = ssc_obj.sigma2_b
+
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
@@ -2332,10 +2002,10 @@ if cfg['misc']['save_output_as_benchmark']:
 
     # make the keys consistent with the old benchmark files
     covs_arrays_dict_renamed = covs_arrays_dict.copy()
-    for key in covs_arrays_dict:
+    for key, cov in covs_arrays_dict.items():
         # key_new = key.replace('_tot_', '_TOT_')
         key_new = key.replace('_2d', '_2D')
-        covs_arrays_dict_renamed[key_new] = covs_arrays_dict[key]
+        covs_arrays_dict_renamed[key_new] = cov
         covs_arrays_dict_renamed.pop(key)
 
     np.savez_compressed(

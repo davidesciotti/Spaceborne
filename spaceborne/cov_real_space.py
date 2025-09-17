@@ -842,9 +842,20 @@ class CovRealSpace:
 
         # TODO in principle this could be changed
         # Use a loop to set up fine and coarse theta binning
+
+        if self.cfg['binning']['binning_type'] == 'log':
+            _binning_func = np.geomspace
+        elif self.cfg['binning']['binning_type'] == 'lin':
+            _binning_func = np.linspace
+        else:
+            raise ValueError(
+                f'Binning type: {self.cfg["binning"]["binning_type"]} '
+                'not supported for real-space covariance'
+            )
+
         for bin_type in ['fine', 'coarse']:
             nbt = getattr(self, f'nbt_{bin_type}')
-            theta_edges_deg = np.linspace(
+            theta_edges_deg = _binning_func(
                 self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, nbt + 1
             )
             theta_edges = np.deg2rad(theta_edges_deg)  # in radians

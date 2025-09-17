@@ -1,20 +1,14 @@
 import time
 
-
+import jax
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import pyccl as ccl
+from jax import jit
 from scipy.fft import rfft
 from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d
-from scipy.special import spherical_jn
-from tqdm import tqdm
-
-
-import jax
-import jax.numpy as jnp
-from jax import jit, vmap
-
 
 from spaceborne import cosmo_lib
 from spaceborne import sb_lib as sl

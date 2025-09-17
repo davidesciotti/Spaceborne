@@ -58,12 +58,10 @@ os.environ['XLA_FLAGS'] = (
 )
 
 
-import contextlib
 import pprint
 import time
 import warnings
 from functools import partial
-from importlib.util import find_spec
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -76,7 +74,6 @@ from scipy.ndimage import gaussian_filter1d
 from spaceborne import (
     bnt,
     ccl_interface,
-    cl_utils,
     config_checker,
     cosmo_lib,
     cov_harmonic_space,
@@ -85,7 +82,6 @@ from spaceborne import (
     mask_utils,
     oc_interface,
     responses,
-    sigma2_ssc,
     wf_cl_lib,
 )
 from spaceborne import constants as const

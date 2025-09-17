@@ -1,3 +1,4 @@
+# ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import os
 import sys
@@ -73,7 +74,6 @@ from importlib.util import find_spec
 
 import matplotlib
 import matplotlib.pyplot as plt
-
 import numpy as np
 from matplotlib import cm
 from scipy.integrate import simpson as simps
@@ -1580,6 +1580,7 @@ if compute_sb_ssc:
         d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(a, b)]
         d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(c, d)]
 
+        assert False
         result = ssc_integral_4D_simps_jax(
             jnp.array(d2CABdVddeltab_contr),
             jnp.array(d2CCDdVddeltab_contr),
@@ -1590,7 +1591,6 @@ if compute_sb_ssc:
         )
         cov_ssc_3x2pt_dict_8D_jax[key] = np.array(result)
     print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
-
 
     start = time.perf_counter()
     cov_ssc_3x2pt_dict_8D = cov_obj.ssc_integral_julia(

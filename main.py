@@ -219,15 +219,15 @@ obs_space = cfg['probe_selection']['space']
 
 @jit
 def ssc_integral_4D_simps_jax(
-    d2ClAB_dVddeltab,
-    d2ClCD_dVddeltab,
-    cl_integral_prefactor,
-    sigma2,
-    delta_z,
-    simpson_weights,
+    d2ClAB_dVddeltab: jnp.ndarray,
+    d2ClCD_dVddeltab: jnp.ndarray,
+    cl_integral_prefactor: jnp.ndarray,
+    sigma2: jnp.ndarray,
+    delta_z: float,
+    simpson_weights: jnp.ndarray,
 ):
     """
-    JAX version of the Simpson's rule 4D integral.
+    JAX version of the Simpson's rule 2D integral.
     Expects d2Cl arrays to be pre-shaped to 3D: (nbl, zpairs, z_steps)
     """
 
@@ -240,11 +240,39 @@ def ssc_integral_4D_simps_jax(
     # Compute all combinations with einsum
     # Shape: (nbl, nbl, zpairs_AB, zpairs_CD)
     result = jnp.einsum(
-        'aiz,bjw,zw->abij', d2ClAB_dVddeltab, d2ClCD_dVddeltab, combined_weights
+        'Liz,Mjw,zw->LMij', d2ClAB_dVddeltab, d2ClCD_dVddeltab, combined_weights
     )
 
     # multiply by step size
     return result * (delta_z**2)
+
+
+@jit
+def ssc_integral_4D_simps_jax_ke_approx(
+    d2ClAB_dVddeltab: jnp.ndarray,
+    d2ClCD_dVddeltab: jnp.ndarray,
+    cl_integral_prefactor: jnp.ndarray,
+    sigma2: jnp.ndarray,
+    delta_z: float,
+    simpson_weights: jnp.ndarray,
+):
+    """
+    JAX version of the Simpson's rule 1D integral.
+    Expects d2Cl arrays to be pre-shaped to 3D: (nbl, zpairs, z_steps)
+    """
+
+    # Pre-compute combined weights
+    # Shape: (z_steps,)
+    combined_weights = cl_integral_prefactor * simpson_weights * sigma2
+
+    # Compute all combinations with einsum
+    # Shape: (nbl, nbl, zpairs_AB, zpairs_CD)
+    result = jnp.einsum(
+        'Liz,Mjz,z->LMij', d2ClAB_dVddeltab, d2ClCD_dVddeltab, combined_weights
+    )
+
+    # multiply by step size
+    return result * delta_z
 
 
 # Alternative implementation with explicit loops (less efficient but more readable)
@@ -1739,7 +1767,14 @@ if compute_sb_ssc:
     }
 
     # BOOKMARK
+
+    if cfg['covariance']['use_KE_approximation']:
+        ssc_jax_func = ssc_integral_4D_simps_jax_ke_approx
+    else:
+        ssc_jax_func = ssc_integral_4D_simps_jax
+
     cov_ssc_3x2pt_dict_8D_jax = {}
+
     start = time.perf_counter()
     for key in [
         ('L', 'L', 'L', 'L'),
@@ -1756,8 +1791,7 @@ if compute_sb_ssc:
         d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(a, b)]
         d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(c, d)]
 
-        assert False
-        result = ssc_integral_4D_simps_jax(
+        result = ssc_jax_func(
             jnp.array(d2CABdVddeltab_contr),
             jnp.array(d2CCDdVddeltab_contr),
             jnp.array(cl_integral_prefactor),
@@ -2280,11 +2314,10 @@ if cfg['misc']['save_output_as_benchmark']:
     covs_arrays_dict.pop('ind')
     covs_arrays_dict.pop('ind_auto')
     covs_arrays_dict.pop('ind_cross')
-    
+
     # make the keys consistent with the old benchmark files
     covs_arrays_dict_renamed = covs_arrays_dict.copy()
     for key in covs_arrays_dict:
-        
         # key_new = key.replace('_tot_', '_TOT_')
         key_new = key.replace('_2d', '_2D')
         covs_arrays_dict_renamed[key_new] = covs_arrays_dict[key]

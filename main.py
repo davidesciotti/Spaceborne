@@ -1,62 +1,12 @@
+# ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
 import gc
 import itertools
 import os
-import pprint
 import sys
-import time
-import warnings
-from functools import partial
-from importlib.util import find_spec
 
-import matplotlib.pyplot as plt
-import numpy as np
 import yaml
-from matplotlib import cm
-from scipy.integrate import simpson as simps
-from scipy.interpolate import CubicSpline, RectBivariateSpline
-from scipy.ndimage import gaussian_filter1d
-
-from spaceborne import (
-    bnt,
-    ccl_interface,
-    cl_utils,
-    config_checker,
-    cosmo_lib,
-    cov_harmonic_space,
-    ell_utils,
-    io_handler,
-    mask_utils,
-    oc_interface,
-    responses,
-    sigma2_ssc,
-    wf_cl_lib,
-)
-from spaceborne import constants as const
-from spaceborne import plot_lib as sb_plt
-from spaceborne import sb_lib as sl
-
-with contextlib.suppress(ImportError):
-    import pyfiglet
-
-    text = 'Spaceborne'
-    ascii_art = pyfiglet.figlet_format(text=text, font='slant')
-    print(ascii_art)
-
-
-# Get the current script's directory
-# current_dir = Path(__file__).resolve().parent
-# parent_dir = current_dir.parent
-
-warnings.filterwarnings(
-    'ignore',
-    message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
-    category=UserWarning,
-)
-
-pp = pprint.PrettyPrinter(indent=4)
-script_start_time = time.perf_counter()
 
 
 def load_config(_config_path):
@@ -83,16 +33,83 @@ def load_config(_config_path):
         args = parser.parse_args()
         config_path = args.config
 
-    # Only switch to Agg if not running interactively and --show-plots is not specified.
-    if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
-        import matplotlib
-
-        matplotlib.use('Agg')
-
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
 
     return cfg
+
+
+cfg = load_config('config.yaml')
+# Set jax platform
+if cfg['misc']['jax_platform'] == 'auto':
+    pass
+else:
+    os.environ['JAX_PLATFORMS'] = cfg['misc']['jax_platform']
+
+# if using the CPU, set the number of threads
+num_threads = cfg['misc']['num_threads']
+os.environ['OMP_NUM_THREADS'] = str(num_threads)
+os.environ['OPENBLAS_NUM_THREADS'] = str(num_threads)
+os.environ['MKL_NUM_THREADS'] = str(num_threads)
+os.environ['VECLIB_MAXIMUM_THREADS'] = str(num_threads)
+os.environ['NUMEXPR_NUM_THREADS'] = str(num_threads)
+os.environ['XLA_FLAGS'] = (
+    f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
+)
+
+
+import pprint
+import time
+import warnings
+from functools import partial
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import cm
+from scipy.integrate import simpson as simps
+from scipy.interpolate import CubicSpline, RectBivariateSpline
+from scipy.ndimage import gaussian_filter1d
+
+from spaceborne import (
+    bnt,
+    ccl_interface,
+    config_checker,
+    cosmo_lib,
+    cov_harmonic_space,
+    ell_utils,
+    io_handler,
+    mask_utils,
+    oc_interface,
+    responses,
+    wf_cl_lib,
+)
+from spaceborne import constants as const
+from spaceborne import plot_lib as sb_plt
+from spaceborne import sb_lib as sl
+
+with contextlib.suppress(ImportError):
+    import pyfiglet
+
+    text = 'Spaceborne'
+    ascii_art = pyfiglet.figlet_format(text=text, font='slant')
+    print(ascii_art)
+
+if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
+    matplotlib.use('Agg')
+
+# Get the current script's directory
+# current_dir = Path(__file__).resolve().parent
+# parent_dir = current_dir.parent
+
+warnings.filterwarnings(
+    'ignore',
+    message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
+    category=UserWarning,
+)
+
+pp = pprint.PrettyPrinter(indent=4)
+script_start_time = time.perf_counter()
 
 
 def plot_cls():
@@ -153,24 +170,13 @@ def plot_cls():
     plt.show()
 
 
-def check_ells_in(ells_in: np.ndarray, ells_out: np.ndarray) -> None:
-    if len(ells_in) < len(ells_out) // 1.5:  # random fraction
-        warnings.warn(
-            f'The input cls are computed over {len(ells_in)} ell points in '
-            f'[{ells_in[0]}, {ells_in[-1]}], but for the partial-sky covariance'
-            'the unbinned cls are required. Because of this, the input cls will '
-            f'be interpolated over the unbinned ell range [{ells_out[0]}, '
-            f'{ells_out[-1]}]. Please make sure to provide finely sampled cls '
-            'ell binning to make sure the interpolation is accurate.',
-            stacklevel=2,
-        )
+
 
 
 # ! ====================================================================================
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
 
-cfg = load_config('config.yaml')
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
@@ -185,6 +191,7 @@ clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
 shift_nz = cfg['nz']['shift_nz']
 
 obs_space = cfg['probe_selection']['space']
+
 
 # ! check/create paths
 if not os.path.exists(output_path):
@@ -550,7 +557,7 @@ k_grid = np.logspace(
     cfg['covariance']['k_steps'],
 )
 # in this case we need finer k binning because of the bessel functions
-k_grid_s2b_simps = np.logspace(
+k_grid_s2b = np.logspace(
     cfg['covariance']['log10_k_min'],
     cfg['covariance']['log10_k_max'],
     k_steps_sigma2_simps
@@ -621,7 +628,6 @@ pvt_cfg = {
     'symmetrize_output_dict': symmetrize_output_dict,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
-    'jl_integrator_path': './spaceborne/julia_integrator.jl',
 }
 
 # instantiate data handler class
@@ -1072,7 +1078,7 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
             [ells_WL_in, ells_XC_in, ells_GC_in],
             [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
         ):
-            check_ells_in(ells_in, ells_out)
+            io_obj.check_ells_in(ells_in, ells_out)
 
     # initialize nmt_cov_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(
@@ -1141,7 +1147,7 @@ if obs_space == 'real':
 cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
     cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix
 )
-cov_hs_obj.set_ind_and_zpairs(ind, zbins)
+cov_hs_obj.set_ind_and_zpairs(ind)
 cov_hs_obj.consistency_checks()
 cov_hs_obj.set_gauss_cov(
     ccl_obj=ccl_obj,
@@ -1526,13 +1532,6 @@ if compute_sb_ssc:
                 ]
             )
 
-    # ! integral prefactor
-    cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(
-        z_grid,
-        cl_integral_convention_ssc,
-        use_h_units=use_h_units,
-        cosmo_ccl=ccl_obj.cosmo_ccl,
-    )
     # ! observable densities
     # z: z_grid index (for the radial projection)
     # i, j: zbin index
@@ -1549,66 +1548,19 @@ if compute_sb_ssc:
         + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
     )
 
-    # ! =================================== sigma^2_b ==================================
-    if cfg['covariance']['load_cached_sigma2_b']:
-        sigma2_b = np.load(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy')
+    from spaceborne import cov_ssc
 
-    else:
-        if cfg['covariance']['use_KE_approximation']:
-            # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-            ccl_obj.set_sigma2_b(
-                z_grid=z_grid, which_sigma2_b=which_sigma2_b, mask_obj=mask_obj
-            )
-            _a, sigma2_b = ccl_obj.sigma2_b_tuple
-            # quick sanity check on the a/z grid
-            sigma2_b = sigma2_b[::-1]
-            _z = cosmo_lib.a_to_z(_a)[::-1]
-            np.testing.assert_allclose(z_grid, _z, atol=0, rtol=1e-8)
+    ssc_obj = cov_ssc.SpaceborneSSC(cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units)
+    ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
 
-        else:
-            # depending on the modules installed, integrate with levin or simpson
-            # (in the latter case, in parallel or not)
-            s2b_intgr_method = cfg['covariance']['sigma2_b_int_method']
-            parallel = bool(find_spec('pathos'))
-
-            if s2b_intgr_method == 'levin':
-                k_grid_s2b = k_grid
-            elif s2b_intgr_method in ('simps', 'fft'):
-                k_grid_s2b = k_grid_s2b_simps
-            else:
-                raise ValueError(
-                    f'Unknown sigma2_b_integration_method: {s2b_intgr_method}'
-                )
-
-            sigma2_b = sigma2_ssc.sigma2_z1z2_wrap_parallel(
-                z_grid=z_grid,
-                k_grid_sigma2=k_grid_s2b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                mask_obj=mask_obj,
-                n_jobs=cfg['misc']['num_threads'],
-                integration_scheme=s2b_intgr_method,
-                batch_size=cfg['misc']['levin_batch_size'],
-                parallel=parallel,
-            )
-
-        np.save(f'{output_path}/cache/sigma2_b_{zgrid_str}.npy', sigma2_b)
-        np.save(f'{output_path}/cache/zgrid_sigma2_b_{zgrid_str}.npy', z_grid)
-
-    # ! 4. Perform the integration calling the Julia module
-    start = time.perf_counter()
-    cov_ssc_3x2pt_dict_8D = cov_hs_obj.ssc_integral_julia(
-        d2CLL_dVddeltab=d2CLL_dVddeltab,
-        d2CGL_dVddeltab=d2CGL_dVddeltab,
-        d2CGG_dVddeltab=d2CGG_dVddeltab,
-        cl_integral_prefactor=cl_integral_prefactor,
-        sigma2=sigma2_b,
-        z_grid=z_grid,
-        integration_type=ssc_integration_type,
-        unique_probe_combs=unique_probe_combs_hs,
-        num_threads=cfg['misc']['num_threads'],
+    cov_ssc_3x2pt_dict_8D = ssc_obj.compute_ssc(
+        d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
+        d2CGL_dVddeltab_4d=d2CGL_dVddeltab,
+        d2CGG_dVddeltab_4d=d2CGG_dVddeltab,
+        unique_probe_combs_hs=unique_probe_combs_hs,
+        symm_probe_combs_hs=symm_probe_combs_hs,
+        nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
-    print(f'SSC computed in {(time.perf_counter() - start) / 60:.2f} m')
 
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
@@ -1885,11 +1837,11 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     start_ab += lim_dict[probe_ab]
                     start_cd += lim_dict[probe_cd]
 
-                for a in ax:  # apply to both panels
-                    a.set_xticks(xticks)
-                    a.set_xticklabels(xlabels)
-                    a.set_yticks(yticks)
-                    a.set_yticklabels(ylabels)
+                for _a in ax:  # apply to both panels
+                    _a.set_xticks(xticks)
+                    _a.set_xticklabels(xlabels)
+                    _a.set_yticks(yticks)
+                    _a.set_yticklabels(ylabels)
 
             plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
@@ -1979,6 +1931,9 @@ if cfg['misc']['save_output_as_benchmark']:
         # in this case, the k grid used is the same as the Pk one, I think
         k_grid_s2b = np.array([])
 
+    if compute_sb_ssc:
+        sigma2_b = ssc_obj.sigma2_b
+
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
@@ -2041,10 +1996,10 @@ if cfg['misc']['save_output_as_benchmark']:
 
     # make the keys consistent with the old benchmark files
     covs_arrays_dict_renamed = covs_arrays_dict.copy()
-    for key in covs_arrays_dict:
+    for key, cov in covs_arrays_dict.items():
         # key_new = key.replace('_tot_', '_TOT_')
         key_new = key.replace('_2d', '_2D')
-        covs_arrays_dict_renamed[key_new] = covs_arrays_dict[key]
+        covs_arrays_dict_renamed[key_new] = cov
         covs_arrays_dict_renamed.pop(key)
 
     np.savez_compressed(

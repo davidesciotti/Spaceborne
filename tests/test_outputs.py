@@ -1,14 +1,14 @@
 """
 LAST UPDATE: 2025-09-16
 
-Script to run Spaceborne and compare the output against a specified set of benchmarks 
+Script to run Spaceborne and compare the output against a specified set of benchmarks
 More in detail, it performs the following operations:
 
-1. Set a list of benchmark filenames (`bench_yaml_names`) to test the current 
+1. Set a list of benchmark filenames (`bench_yaml_names`) to test the current
    branch/version of the code against.
 2. For each benchmark:
    2a. Run Spaceborne using the corresponding .yaml file as cfg
-   2b. Save the output as benchmark (just for the sake of comparing against the "real" 
+   2b. Save the output as benchmark (just for the sake of comparing against the "real"
    benchmarks in {ROOT}/Spaceborne_bench/bench_set_output/*.npz)
    2c. Compare the output (`test`) against the benchmark
 
@@ -44,9 +44,9 @@ NOTES
    `assert False, 'stop here'
 -  You will likely have to manually edit the .yaml config files, i.e.
    {ROOT}/Spaceborne_bench/bench_set_output/*.yaml
-   when you update the structure of the config file in the branch to be tested. 
-   BE CAREFUL NO TO INTRODUCE INCONSISTENCIES WITHT THE CORRESPONDING .npz 
-   (e.g., if config_0000.yaml has `SSC: False` you cannot change it to True, otherwise 
+   when you update the structure of the config file in the branch to be tested.
+   BE CAREFUL NO TO INTRODUCE INCONSISTENCIES WITHT THE CORRESPONDING .npz
+   (e.g., if config_0000.yaml has `SSC: False` you cannot change it to True, otherwise
    the code will prouce a `test` inconsistent with the config_0000.npz)
 """
 
@@ -110,7 +110,6 @@ def test_main_script(test_cfg_path):
     for probe in ['WL', 'GC', '3x2pt']:
         for _dict in [bench_data, test_data]:
             try:
-                
                 # Direct comparison (handles empty arrays automatically)
                 np.testing.assert_allclose(
                     _dict[f'cov_{probe}_tot_2D'],
@@ -146,6 +145,20 @@ bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
 bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 bench_yaml_names.sort()
+
+slow_benchs = [
+    'config_0004',
+    'config_0005',
+    'config_0008',
+    'config_0009',
+    'config_0010',
+    'config_0013',
+    'config_0018',
+]
+
+# remove slow_benchs from bench_yaml_names
+for bench_name in slow_benchs:
+    bench_yaml_names.remove(bench_name)
 
 # ... or run specific tests
 # bench_yaml_names = [

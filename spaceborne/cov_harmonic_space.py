@@ -40,7 +40,6 @@ class SpaceborneCovariance:
             raise ValueError('the cross-correlation between G and L must be GL, not LG')
 
         self.fsky = pvt_cfg['fsky']
-        self.jl_integrator_path = pvt_cfg['jl_integrator_path']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.unique_probe_combs = pvt_cfg['unique_probe_combs']
         self.probe_ordering = pvt_cfg['probe_ordering']  # TODO delete this??
@@ -94,7 +93,7 @@ class SpaceborneCovariance:
         else:
             raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
 
-    def set_ind_and_zpairs(self, ind, zbins):
+    def set_ind_and_zpairs(self, ind):
         # set indices array
         self.ind = ind
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
@@ -761,6 +760,9 @@ class SpaceborneCovariance:
         unique_probe_combs,
         num_threads=16,
     ):
+        raise NotImplementedError(
+            'This function has been deprecated'
+        )
         """Kernel to compute the 4D integral optimized using Simpson's rule using
         Julia.
         """

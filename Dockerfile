@@ -49,19 +49,6 @@ RUN conda env create -f environment.yaml
 ARG CONDA_ENV_NAME=spaceborne
 RUN bash -c "source $(conda info --base)/etc/profile.d/conda.sh && conda activate ${CONDA_ENV_NAME}"
 
-# Install juliaup, Julia version 1.10, and required Julia packages.
-# Set environment variables to make the installation non-interactive (to avoid errors)
-ENV JULIAUP_ACCEPT_EULA=y
-ENV JULIAUP_UNATTENDED=y
-RUN curl -fsSL https://install.julialang.org | sh -s -- -y && \
-    export PATH="/root/.juliaup/bin:$PATH" && \
-    juliaup add 1.10 && \
-    juliaup default 1.10 && \
-    julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
-
-# Update PATH to include Julia
-ENV PATH="/root/.juliaup/bin:$PATH"
-
 # Copy the entire contents of current local directory (Spaceborne code)
 # into the `/app` directory inside the container.
 COPY . .

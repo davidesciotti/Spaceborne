@@ -319,7 +319,7 @@ class EllBinning:
 
         """
         self.cfg = cfg
-        
+
         self.binning_type = cfg['binning']['binning_type']
 
         self.ell_min_WL = cfg['binning']['ell_min_WL']
@@ -345,7 +345,6 @@ class EllBinning:
         self.use_namaster = cfg['namaster']['use_namaster']
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
-            
     def build_ell_bins(self):
         """Builds ell bins based on the specified configuration."""
         # if self.use_namaster:
@@ -448,20 +447,24 @@ class EllBinning:
             ell_edges_lo_WL = wl_bins_in[:, 2]
             ell_edges_hi_WL = wl_bins_in[:, 3]
             if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
-                raise ValueError("All WL bin lower edges must be less than upper edges")
+                raise ValueError('All WL bin lower edges must be less than upper edges')
             self.ell_edges_WL = np.unique(np.append(ell_edges_lo_WL, ell_edges_hi_WL))
             if not np.all(np.diff(self.ell_edges_WL) > 0):
-                raise ValueError("WL bin edges must be strictly increasing after combining")
+                raise ValueError(
+                    'WL bin edges must be strictly increasing after combining'
+                )
 
             self.ells_GC = gc_bins_in[:, 0]
             self.delta_l_GC = gc_bins_in[:, 1]
             ell_edges_lo_GC = gc_bins_in[:, 2]
             ell_edges_hi_GC = gc_bins_in[:, 3]
             if not np.all(ell_edges_lo_GC < ell_edges_hi_GC):
-                raise ValueError("All GC bin lower edges must be less than upper edges")
+                raise ValueError('All GC bin lower edges must be less than upper edges')
             self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
             if not np.all(np.diff(self.ell_edges_GC) > 0):
-                raise ValueError("WL bin edges must be strictly increasing after combining")
+                raise ValueError(
+                    'WL bin edges must be strictly increasing after combining'
+                )
             self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
 
         elif self.binning_type == 'ref_cut':
@@ -568,7 +571,7 @@ class EllBinning:
         )
         # these are probably useless, but just to keep consistency
         self.nbl_3x2pt_rs = len(self.ells_3x2pt_rs)
-        self.ell_max_3x2pt_rs = self.cfg['precision']['ell_max_rs']  
+        self.ell_max_3x2pt_rs = self.cfg['precision']['ell_max_rs']
 
     def _validate_bins(self):
         for probe in ['GC', 'XC', '3x2pt']:

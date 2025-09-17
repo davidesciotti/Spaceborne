@@ -17,22 +17,6 @@ then run
    $ pip install .
 
 
-``Spaceborne`` leverages the `julia language <https://julialang.org/>`_ for 
-computationally intensive tasks. 
-We recommend installing ``Julia`` via `juliaup <https://github.com/JuliaLang/juliaup>`_:
-
-.. code-block:: bash
-
-   $ curl -fsSL https://install.julialang.org | sh  # Install juliaup
-   $ juliaup default 1.10                           # Install Julia version 1.10
-
-Then, install the required ``Julia`` packages:
-
-..  code-block:: bash
-
-   $ julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
-
-and you are ready to go!
 
 Notes
 _____

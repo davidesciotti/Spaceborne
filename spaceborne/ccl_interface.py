@@ -12,6 +12,8 @@ from spaceborne import constants as const
 from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
 from spaceborne import sb_lib as sl
 
+_UNSET = object()
+
 
 def apply_mult_shear_bias(cl_ll_3d, cl_gl_3d, mult_shear_bias, zbins):
     assert len(mult_shear_bias) == zbins, (
@@ -37,7 +39,56 @@ def apply_mult_shear_bias(cl_ll_3d, cl_gl_3d, mult_shear_bias, zbins):
     return cl_ll_3d, cl_gl_3d
 
 
-class PycclClass:
+def compute_cl_3x2pt_5d(
+    ccl_obj,
+    ells: np.ndarray,
+    zbins: int,
+    mult_shear_bias: np.ndarray,
+    cl_ccl_kwargs: dict,
+    n_probes_hs: int = 2,
+) -> np.ndarray:
+    """Just a wrapper to quickly compute the CCL cls,
+    including the multiplicative shear bias"""
+
+    nbl = len(ells)
+
+    cl_ll_3d = ccl_obj.compute_cls(
+        ells,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_lensing_obj,
+        ccl_obj.wf_lensing_obj,
+        cl_ccl_kwargs,
+    )
+    cl_gl_3d = ccl_obj.compute_cls(
+        ells,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_galaxy_obj,
+        ccl_obj.wf_lensing_obj,
+        cl_ccl_kwargs,
+    )
+    cl_gg_3d = ccl_obj.compute_cls(
+        ells,
+        ccl_obj.p_of_k_a,
+        ccl_obj.wf_galaxy_obj,
+        ccl_obj.wf_galaxy_obj,
+        cl_ccl_kwargs,
+    )
+
+    # don't forget to apply mult shear bias
+    cl_ll_3d, cl_gl_3d = apply_mult_shear_bias(
+        cl_ll_3d, cl_gl_3d, mult_shear_bias, zbins
+    )
+
+    cl_3x2pt_5d = np.zeros((n_probes_hs, n_probes_hs, nbl, zbins, zbins))
+    cl_3x2pt_5d[0, 0] = cl_ll_3d
+    cl_3x2pt_5d[1, 0] = cl_gl_3d
+    cl_3x2pt_5d[0, 1] = cl_gl_3d.transpose(0, 2, 1)
+    cl_3x2pt_5d[1, 1] = cl_gg_3d
+
+    return cl_3x2pt_5d
+
+
+class CCLInterface:
     def __init__(
         self,
         cosmology_dict: dict,
@@ -93,6 +144,23 @@ class PycclClass:
         self.halo_profile_hod = getattr(ccl.halos, halo_model_dict['halo_profile_hod'])(
             mass_def=self.mass_def, concentration=self.c_m_relation
         )
+
+        # declare attributes set at runtime
+        self.p_of_k_a = _UNSET
+        self.zbins: int = _UNSET
+        self.output_path: str = _UNSET
+        self.which_b1g_in_resp: str = _UNSET
+        self.lumin_ratio_2d_arr: np.ndarray | None = _UNSET
+        self.a_grid_tkka_SSC: np.ndarray = _UNSET
+        self.a_grid_tkka_cNG: np.ndarray = _UNSET
+        self.logn_k_grid_tkka_SSC: np.ndarray = _UNSET
+        self.logn_k_grid_tkka_cNG: np.ndarray = _UNSET
+        self.wf_galaxy_arr = _UNSET
+        self.cl_ll_3d: np.ndarray = _UNSET
+        self.cl_gl_3d: np.ndarray = _UNSET
+        self.cl_gg_3d: np.ndarray = _UNSET
+        self.cl_3x2pt_5d: np.ndarray = _UNSET
+        self.sigma2_b_tuple: tuple = _UNSET
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], (
@@ -708,7 +776,9 @@ class PycclClass:
         kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
 
         # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
-        symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(unique_probe_combs)
+        symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(
+            unique_probe_combs=unique_probe_combs, space='harmonic'
+        )
 
         # * compute required blocks
         for probe_str in unique_probe_combs:
@@ -771,7 +841,7 @@ class PycclClass:
         # blocks: the off-diagonal need *not* to be symmetric in ell1, ell2)
         for key in self.cov_ng_3x2pt_dict_8D:
             probe_str = ''.join(key)
-            if probe_str in const.DIAG_PROBE_COMBS:
+            if probe_str in const.HS_DIAG_PROBE_COMBS:
                 try:
                     cov_2d = sl.cov_4D_to_2D(
                         self.cov_ng_3x2pt_dict_8D[key], block_index='ell'
@@ -823,7 +893,7 @@ class PycclClass:
             )['arr_0']
 
             # * fill the symmetric counterparts of the required blocks
-            if probe_str not in const.DIAG_PROBE_COMBS:
-                self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b] = (
-                    self.cov_ng_3x2pt_dict_8D[probe_tuple].transpose(1, 0, 3, 2).copy()
+            if probe_str not in const.HS_DIAG_PROBE_COMBS:
+                self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b] = np.copy(
+                    self.cov_ng_3x2pt_dict_8D[probe_tuple].transpose(1, 0, 3, 2)
                 )

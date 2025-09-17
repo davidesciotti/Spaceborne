@@ -45,13 +45,15 @@ select = [
     "C",    # flake8-comprehensions
     "N",    # pep8-naming
     # "D",    # pydocstyle (docstring conventions)
+    "PERF", # (perflint) – linting for performance anti-patterns
+    "TID",  # (flake8-tidy-imports) – warns about relative imports or certain bad import patterns
 ]
 
 ignore = [
     "Q000",
     "COM812",
     "ERA001",
-    "E501", # Line too long
+    #"E501", # Line too long
     "PLR0913", # too many args in function
     "PLR2004", # Magic value used in comparison
     "PLR0912",  # Too many branches
@@ -67,4 +69,5 @@ ignore = [
     "PLR0915", # Too many statements
     "N816", # Variable in global scope should not be mixedCase
     "PLC0414", # Import alias does not rename original package
+    # "B006", # Do not use mutable data structures for argument defaults
 ]

@@ -2,6 +2,7 @@ import itertools
 import os
 import time
 import warnings
+from typing import TypedDict
 
 import healpy as hp
 import numpy as np
@@ -9,11 +10,23 @@ import pyccl as ccl
 import pymaster as nmt
 from tqdm import tqdm
 
-from spaceborne import constants
+from spaceborne import constants, ell_utils, mask_utils
 from spaceborne import sb_lib as sl
+
+_UNSET = object()
 
 DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
+
+
+# construct a TypedDcit to allow static type checkers to check packed **kwargs
+class Bin2DArrayKwargs(TypedDict):
+    ells_in: np.ndarray
+    ells_out: np.ndarray
+    ells_out_edges: np.ndarray
+    weights_in: np.ndarray | None
+    which_binning: str
+    interpolate: bool
 
 
 def couple_cov_6d(
@@ -25,10 +38,7 @@ def couple_cov_6d(
         raise ValueError('mcm_cd and cov_abcd_6d have incompatible dimensions')
 
     cov_abcd_6d_coupled = np.einsum(
-        'XW, WZijkl, ZY -> XYijkl',
-        mcm_ab,
-        cov_abcd_6d,
-        mcm_cd,
+        'XW, WZijkl, ZY -> XYijkl', mcm_ab, cov_abcd_6d, mcm_cd
     )
 
     return cov_abcd_6d_coupled
@@ -50,11 +60,28 @@ def bin_mcm(mbm_unbinned: np.ndarray, nmt_bin_obj) -> np.ndarray:
     return mcm_binned
 
 
-def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
-                     cw, w00, w02, w22,
-                     unique_probe_combs,
-                     coupled=False, ells_in=None, ells_out=None,
-                     ells_out_edges=None, which_binning=None, weights=None):  # fmt: skip
+def nmt_gaussian_cov(
+    cl_tt: np.ndarray,
+    cl_te: np.ndarray,
+    cl_ee: np.ndarray,
+    cl_tb: np.ndarray,
+    cl_eb: np.ndarray,
+    cl_bb: np.ndarray,
+    zbins: int,
+    nbl: int,
+    cw,
+    w00,
+    w02,
+    w22,
+    unique_probe_combs: list[str],
+    *,
+    coupled: bool = False,
+    ells_in: np.ndarray,
+    ells_out: np.ndarray,
+    ells_out_edges: np.ndarray,
+    which_binning: str,
+    weights: np.ndarray | None,
+):
     """Unified function to compute Gaussian covariance using NaMaster.
 
     # NOTE: the order of the arguments (in particular for the cls) is the following
@@ -242,7 +269,7 @@ def nmt_gaussian_cov(cl_tt, cl_te, cl_ee, cl_tb, cl_eb, cl_bb, zbins, nbl,
             covar_BB_BE = np.zeros((nell, nell))
             covar_BB_BB = np.zeros((nell, nell))
 
-        common_kw = {
+        common_kw: Bin2DArrayKwargs = {
             'ells_in': ells_in,
             'ells_out': ells_out,
             'ells_out_edges': ells_out_edges,
@@ -389,7 +416,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
         else:
             covar_EE_EE = np.zeros((nell, nell))
 
-        common_kw = {
+        common_kw: Bin2DArrayKwargs = {
             'ells_in': ells_in,
             'ells_out': ells_out,
             'ells_out_edges': ells_out_edges,
@@ -970,12 +997,15 @@ def produce_correlated_maps(
 
 class NmtCov:
     def __init__(
-        self, cfg: dict, pvt_cfg: dict, ccl_obj: ccl.Cosmology, ell_obj, mask_obj
+        self,
+        cfg: dict,
+        pvt_cfg: dict,
+        ell_obj: ell_utils.EllBinning,
+        mask_obj: mask_utils.Mask,
     ):
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
 
-        self.ccl_obj = ccl_obj
         self.ell_obj = ell_obj
         self.mask_obj = mask_obj
 
@@ -993,6 +1023,12 @@ class NmtCov:
                     'you should probably increase NSIDE or decrease lmax ',
                     stacklevel=2,
                 )
+
+        self.cl_ll_unb_3d = _UNSET
+        self.cl_gl_unb_3d = _UNSET
+        self.cl_gg_unb_3d = _UNSET
+        self.ells_3x2pt_unb = _UNSET
+        self.nbl_3x2pt_unb = _UNSET
 
     def build_psky_cov(self):
         # TODO again, here I'm using 3x2pt = GC
@@ -1075,9 +1111,7 @@ class NmtCov:
         if nmt_cfg['use_INKA']:
             z_combinations = list(itertools.product(range(self.zbins), repeat=2))
             for zi, zj in z_combinations:
-                list_gg = [
-                    self.cl_gg_unb_3d[:, zi, zj],
-                ]
+                list_gg = [self.cl_gg_unb_3d[:, zi, zj]]
                 list_gl = [
                     self.cl_gl_unb_3d[:, zi, zj],
                     np.zeros_like(self.cl_gl_unb_3d[:, zi, zj]),

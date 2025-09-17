@@ -4,6 +4,7 @@ import healpy as hp
 import numpy as np
 
 from spaceborne import cosmo_lib
+from spaceborne import constants
 
 
 def get_mask_cl(mask: np.ndarray) -> tuple:
@@ -11,54 +12,6 @@ def get_mask_cl(mask: np.ndarray) -> tuple:
     ell_mask = np.arange(len(cl_mask))
     fsky_mask = np.mean(mask**2)  # TODO 2 different masks
     return ell_mask, cl_mask, fsky_mask
-
-
-def find_lmax(ell, cl_mask, var_tol=0.05, debug=False):
-    """Auxiliary routine to search the best lmax for all later sums on multipoles.
-
-    Computes the smallest lmax so that we reach convergence of the variance
-    ..math ::
-        var = \sum_\ell  \\frac{(2\ell + 1)}{4\pi} C_\ell^{mask}
-
-    Parameters
-    ----------
-    ell : array_like
-        Full vector of multipoles. As large as possible of shape (nell,)
-    cl_mask : array_like
-        power spectrum of the mask at the supplied multipoles of shape (nell,).
-    var_tol : float, default 0.05
-         Float that drives the target precision for the sum over angular multipoles.
-         Default is 5%. Lowering it means increasing the number of multipoles
-         thus increasing computational time.
-
-    Returns
-    -------
-    float
-        lmax
-
-    """
-    assert ell.ndim == 1, 'ell must be a 1-dimensional array'
-    assert cl_mask.ndim == 1, 'cl_mask must be a 1-dimensional array'
-    assert len(ell) == len(cl_mask), 'ell and cl_mask must have the same size'
-    lmaxofcl = ell.max()
-    summand = (2 * ell + 1) / (4 * np.pi) * cl_mask
-    var_target = np.sum(summand)
-    # Initialisation
-    lmax = 0
-    var_est = np.sum(summand[: (lmax + 1)])
-    while abs(var_est - var_target) / var_target > var_tol and lmax < lmaxofcl:
-        lmax = lmax + 1
-        var_est = np.sum(summand[: (lmax + 1)])
-        if debug:
-            print(
-                'In lmax search',
-                lmax,
-                abs(var_est - var_target) / var_target,
-                var_target,
-                var_est,
-            )
-    lmax = min(lmax, lmaxofcl)  # make sure we didnt overshoot at the last iteration
-    return lmax
 
 
 def generate_polar_cap_func(area_deg2, nside):
@@ -91,6 +44,7 @@ def generate_polar_cap_func(area_deg2, nside):
 
     return mask
 
+
 def _read_masking_map(path, nside, *, nest=False):
     """
     Read a HEALPix map in "partial" format from *path* and return it at
@@ -102,6 +56,7 @@ def _read_masking_map(path, nside, *, nest=False):
     If *nest* is true, returns the map in NESTED ordering.
     """
     import fitsio
+
     data, header = fitsio.read(path, header=True)
     nside_in = header['NSIDE']
     fact = (nside_in // nside) ** 2
@@ -121,14 +76,12 @@ def _read_masking_map(path, nside, *, nest=False):
     return out
 
 
-
-
 class Mask:
     def __init__(self, mask_cfg):
         self.load_mask = mask_cfg['load_mask']
         self.mask_path = mask_cfg['mask_path']
         self.nside = mask_cfg['nside']
-        self.survey_area_deg2 = mask_cfg['survey_area_deg2']
+        self.desired_survey_area_deg2 = mask_cfg['survey_area_deg2']
         self.apodize = mask_cfg['apodize']
         self.aposize = float(mask_cfg['aposize'])
         self.generate_polar_cap = mask_cfg['generate_polar_cap']
@@ -138,7 +91,7 @@ class Mask:
             raise FileNotFoundError(f'{self.mask_path} does not exist.')
 
         print(f'Loading mask file from {self.mask_path}')
-        
+
         if self.mask_path.endswith('.fits') or self.mask_path.endswith('.fits.gz'):
             try:
                 # function provided by VMPZ team to read very high resolution map
@@ -153,7 +106,7 @@ class Mask:
 
         elif self.mask_path.endswith('.npy'):
             self.mask = np.load(self.mask_path)
-            
+
         else:
             raise ValueError(
                 f'Unsupported file format for mask file: {self.mask_path}'
@@ -173,7 +126,9 @@ class Mask:
             self.nside_mask = hp.get_nside(self.mask)
 
         elif self.generate_polar_cap:
-            self.mask = generate_polar_cap_func(self.survey_area_deg2, self.nside)
+            self.mask = generate_polar_cap_func(
+                self.desired_survey_area_deg2, self.nside
+            )
 
         if self.load_mask and self.nside is not None and self.nside != self.nside_mask:
             print(
@@ -191,14 +146,15 @@ class Mask:
             self.mask = self.mask.astype('float64', copy=False)
             self.mask = nmt.mask_apodization(self.mask, aposize=self.aposize)
 
-        # 3. get mask spectrum and fsky
+        # 3. get mask spectrum and fsky (the latter is from the healpix mask!!)
         self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.mask)
-        # normalization has been checked from
-        # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
-        # and is the same as CSST paper https://zenodo.org/records/7813033
         self.cl_mask_norm = (
             self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
         )
+
+        # 4. finally, set survey area in steradians and other useful quantities
+        self.survey_area_deg2 = self.fsky * constants.DEG2_IN_SPHERE
+        self.survey_area_sr = self.survey_area_deg2 * constants.DEG2_TO_SR
 
         # else:
         #     print(
@@ -210,3 +166,5 @@ class Mask:
         #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
         print(f'fsky = {self.fsky:.4f}')
+        print(f'survey_area_sr = {self.survey_area_sr:.4f}')
+        print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}')

@@ -94,7 +94,7 @@ class SpaceborneCovariance:
         else:
             raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
 
-    def set_ind_and_zpairs(self, ind, zbins):
+    def set_ind_and_zpairs(self, ind):
         # set indices array
         self.ind = ind
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(

@@ -1767,7 +1767,6 @@ if compute_sb_ssc:
     }
 
     # BOOKMARK
-
     if cfg['covariance']['use_KE_approximation']:
         ssc_jax_func = ssc_integral_4D_simps_jax_ke_approx
     else:
@@ -1776,20 +1775,11 @@ if compute_sb_ssc:
     cov_ssc_3x2pt_dict_8D_jax = {}
 
     start = time.perf_counter()
-    for key in [
-        ('L', 'L', 'L', 'L'),
-        ('L', 'L', 'G', 'L'),
-        ('G', 'L', 'L', 'L'),
-        ('L', 'L', 'G', 'G'),
-        ('G', 'G', 'L', 'L'),
-        ('G', 'L', 'G', 'L'),
-        ('G', 'L', 'G', 'G'),
-        ('G', 'G', 'G', 'L'),
-        ('G', 'G', 'G', 'G'),
-    ]:
-        a, b, c, d = key
-        d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(a, b)]
-        d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(c, d)]
+    # * compute required blocks
+    for probe_abcd in unique_probe_combs_hs:
+        probe_a, probe_b, probe_c, probe_d = probe_abcd
+        d2CABdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(probe_a, probe_b)]
+        d2CCDdVddeltab_contr = d2CAB_dVddeltab_contr_dict[(probe_c, probe_d)]
 
         result = ssc_jax_func(
             jnp.array(d2CABdVddeltab_contr),
@@ -1799,7 +1789,32 @@ if compute_sb_ssc:
             delta_z,
             jnp.array(simpson_weights),
         )
-        cov_ssc_3x2pt_dict_8D_jax[key] = np.array(result)
+
+        cov_ssc_3x2pt_dict_8D_jax[probe_a, probe_b, probe_c, probe_d] = np.array(result)
+
+    # * fill the symmetric counterparts of the required blocks
+    # * (excluding diagonal blocks)
+    for probe_abcd in symm_probe_combs_hs:
+        probe_a, probe_b, probe_c, probe_d = probe_abcd
+        probe_tpl_orig = (probe_a, probe_b, probe_c, probe_d)
+        probe_tpl_symm = (probe_c, probe_d, probe_a, probe_b)
+
+        cov_ssc_3x2pt_dict_8D_jax[probe_tpl_orig] = (
+            cov_ssc_3x2pt_dict_8D_jax[probe_tpl_symm].transpose(1, 0, 3, 2)
+        ).copy()
+
+    # * if block is not required, set it to 0
+    for probe_abcd in nonreq_probe_combs_hs:
+        probe_a, probe_b, probe_c, probe_d = probe_abcd
+        probe_tpl = (probe_a, probe_b, probe_c, probe_d)
+        print('SSC 3x2pt cov: skipping probe combination ', probe_tpl)
+
+        zpairs_ab = ind_dict[probe_a, probe_b].shape[0]
+        zpairs_cd = ind_dict[probe_c, probe_d].shape[0]
+        cov_ssc_3x2pt_dict_8D_jax[probe_tpl] = np.zeros(
+            (nbl, nbl, zpairs_ab, zpairs_cd)
+        )
+        
     print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
 
     start = time.perf_counter()
@@ -1819,7 +1834,7 @@ if compute_sb_ssc:
     for key in cov_ssc_3x2pt_dict_8D:
         print(f'Checking {key}...')
         np.testing.assert_allclose(
-            cov_ssc_3x2pt_dict_8D_jax[key],
+            cov_ssc_3x2pt_dict_8D_jax[(key)],
             cov_ssc_3x2pt_dict_8D[key],
             rtol=1e-3,
             atol=0,
@@ -2161,11 +2176,11 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     start_ab += lim_dict[probe_ab]
                     start_cd += lim_dict[probe_cd]
 
-                for a in ax:  # apply to both panels
-                    a.set_xticks(xticks)
-                    a.set_xticklabels(xlabels)
-                    a.set_yticks(yticks)
-                    a.set_yticklabels(ylabels)
+                for probe_a in ax:  # apply to both panels
+                    probe_a.set_xticks(xticks)
+                    probe_a.set_xticklabels(xlabels)
+                    probe_a.set_yticks(yticks)
+                    probe_a.set_yticklabels(ylabels)
 
             plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)

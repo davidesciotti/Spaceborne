@@ -40,7 +40,6 @@ class SpaceborneCovariance:
             raise ValueError('the cross-correlation between G and L must be GL, not LG')
 
         self.fsky = pvt_cfg['fsky']
-        self.jl_integrator_path = pvt_cfg['jl_integrator_path']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.unique_probe_combs = pvt_cfg['unique_probe_combs']
         self.probe_ordering = pvt_cfg['probe_ordering']  # TODO delete this??

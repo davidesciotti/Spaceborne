@@ -6,66 +6,66 @@
 
 # Spaceborne
 
----
 
 [![Documentation Status](https://readthedocs.org/projects/spaceborne/badge/?version=latest)](https://spaceborne.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-## Installation
-
+---
 For detailed instructions on how to install and use Spaceborne, please refer to the official [documentation](https://spaceborne.readthedocs.io/en/latest/).
 
-### TL;DR
+## Installation
+
+To install Spaceborne within a dedicated `conda` environment:
 
 ```bash
-# clone the repository
+# Clone the repository
 git clone https://github.com/davidesciotti/Spaceborne.git
 
-# checkout the latest release (version tag); e.g., git checkout v2025.07.1
+# Checkout the latest release (version tag); e.g., git checkout v2025.07.1
 git checkout <latest_version_tag>
 
-# enter the Spaceborne root directory you just cloned
+# Enter the Spaceborne root directory you just cloned
 cd Spaceborne
 
-# create the conda environment (mainly needed to install PyCCL and NaMaster through conda-forge)
-# This step can be slow; add --solver=libmamba to speed it up (see below for more details)
+# Create the conda environment. This step can be slow; add --solver=libmamba 
+# to speed it up (see below for more details)
 conda env create -f environment.yaml
 
-# activate the newly created Conda environment
+# activate the newly created conda environment
 conda activate spaceborne
 
-# Install juliaup
-curl -fsSL https://install.julialang.org | sh
-
-# Install Julia version 1.10
-juliaup default 1.10
-
-# install required Julia packages
-julia -e 'using Pkg; Pkg.add("LoopVectorization"); Pkg.add("YAML"); Pkg.add("NPZ")'
-
-# Finally, install pip dependencies and Spaceborne itself
+# Finally, install Spaceborne
 pip install .
 ```
 
 ### Some notes
 
-❗ The only stable versions you should consider are the code releases. Please avoid simply cloning and installing the code from the main branch.
+❗ The only stable versions you should consider are the code releases. Please avoid simply cloning and installing the code from the `main` branch.
 **As the code is evolving quite quickly at the moment, please make sure to check for new [releases](https://github.com/davidesciotti/Spaceborne/releases) periodically**
 Moreover, installation is only supported in a dedicated Conda environment, for the time being (installation via PyPI is work in progress).
 
 🐍 To significantly speed up the environment creation, install `mamba` by running `conda install mamba` in your `base` environment., then do
 
 ```bash
-mamba env create -f environment.yaml  # or
-conda env create -f environment.yaml --solver=libmamba # instead of
-conda env create -f environment.yaml
+mamba env create -f environment.yaml 
+# or
+conda env create -f environment.yaml --solver=libmamba 
 ```
 
-🟣 Spaceborne leverages `Julia` for computationally intensive tasks. We recommend installing `Julia` via [`juliaup`](https://github.com/JuliaLang/juliaup) as indicated above
+🔵🟢🟣 Spaceborne leverages `JAX` for computationally intensive tasks. This is included as 
+a `pip` dependency in the `environment.yaml` file. If you want to run the jax-optimised 
+parts of the code on an NVIDIA GPU, after creating and activating the enviromnent do
+
+```bash
+pip install -U "jax[cuda12]"
+```
+
+Please refer to the [official installation instructions](https://docs.jax.dev/en/latest/installation.html#installation) for more accurate, up-to date and platform specific 
+(see Silicon Macs) intructions.
 
 ## Running the Code
 
-All the available options and configurations can be found, along with their explanation, in the `config.yaml` file. To run `Spaceborne` _with the configuration specified in the_ `Spaceborne/config.yaml` _file_, simply execute the following command:
+All the available options and configurations can be found, along with their most up-to-date explanation, in the `config.yaml` file. To run `Spaceborne` _with the configuration specified in the_ `Spaceborne/config.yaml` _file_, simply execute the following command:
 
 ```bash
 python main.py

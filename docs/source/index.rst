@@ -24,7 +24,7 @@ Features
 * Calculation of covariance matrices for various cosmological probes
 * Support for different ordering schemes in the output
 * Flexible configuration through ``YAML`` files
-* Integration with Julia for computational efficiency
+* JAX for computational efficiency
 
 .. toctree::
    :maxdepth: 2

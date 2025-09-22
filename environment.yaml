@@ -21,3 +21,10 @@ dependencies:
   - cfitsio
   - fftw
   - namaster
+
+  - pip:
+    - tqdm
+    - pyfiglet
+    - joblib
+    - pyyaml
+    - jax

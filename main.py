@@ -705,6 +705,7 @@ if cfg['BNT']['cl_BNT_transform'] or cfg['BNT']['cov_BNT_transform']:
     )
     wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
     z_means_ll = wf_cl_lib.get_z_means(z_grid, wf_gamma_ccl_bnt)
+    np.savetxt(f'{output_path}/BNT_matrix.txt', bnt_matrix)
 else:
     bnt_matrix = None
     z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)

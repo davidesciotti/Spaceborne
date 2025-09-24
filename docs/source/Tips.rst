@@ -19,7 +19,7 @@ to avoid running into errors (the file does not exist yet). If you rerun the cod
 **with consistent settings**, you can load this in later runs by simply changing the 
 above flag to ``True``. 
 
-Note: the code will *not* check the consistency of, 
+Note: the code will **not** check the consistency of, 
 say, the cosmological parameters you used to compute the cached quantities.
 
 Note: these and other expensive operations are run in parallel, so the code will 

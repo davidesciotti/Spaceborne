@@ -139,29 +139,58 @@ Covariance
 The main output of ``Spaceborne`` is the covariance matrix for the requested probes
 and statistics. The path to the output folder can be specified in the 
 configuration file; the file format is ``.npz``, for maximum storage
-efficiency. These files can be loaded into ``numpy`` arrays with
+efficiency. These files can be loaded as ``numpy`` arrays with
 
 .. code-block:: python
 
-   cov = np.load('cov_out.npz')['arr_0']
+   covs_2d = np.load(f'{cov_filename}_2D.npz')
 
-In general, harmonic-space covariance matrix can be described by a 10-dimensional array 
-with shape ``cov[A, B, C, D, ell1, ell2, zi, zj, zk, zl]``. In this representation: 
+With ``cov_filename`` specified in
 
-* The first four axes index the probes (:math:`A, B, C, D \in [L, G]`), 
-  where *L* and *G* stand for 
-  "lensing", "galaxy" (or equivalently "shear", "position") respectively.
-* The fourth and fifth  axes index the multipoles :math:`\ell_1` and :math:`\ell_2`.
+.. code-block:: yaml
+
+   covariance:
+      cov_filename: 40
+
+You can then inspect the files in the archive with ``covs_2d.files``. The different 
+entries will correspond to the different terms of the covariance, depending on the ones
+requested in the config file. For example, if we required the Gaussian and super-sample
+covariance terms, we will have
+
+.. code-block:: python
+
+   [in]  covs_2d.files
+   [out] ['Gauss', 'SSC', 'TOT']   
+   
+   [in]  cov_g_2d = covs_2d['Gauss']
+   [in]  cov_g_2d.ndim
+   [out] 2
+
+The probes present in eqch of these 2D arrays will instead depend on the probes 
+selected in the ``probe_selection`` section.
+The order along the diagonal will always follow the one in the config file 
+(i.e.: LLLL, then GLGL, then GGGG for harmonic space; xip, xim, \gamma_t and w for real space).
+In any case, some plots are produced at runtimes with labels to help distinguish the 
+different probe blocks.
+
+To better understand the ordering of the covariance matrix elements in the 2D 
+representation, we note that in general, given a certain probe combination ABCD, 
+the covariance matrix can be described by a 6-dimensional array 
+with axes ``cov_ABCD[s1, s2, zi, zj, zk, zl]``. In this representation: 
+
+* The first and second axes index the angular scales :math:`\ell_1` and :math:`\ell_2`, 
+or :math:`\theta_1`, :math:`\theta_2`.
 * The last four axes index the redshift bins :math:`z_i, z_j, z_k, z_l`.
 
-The redshift indices can then be compressed leveraging the symmetry for the auto-spectra: 
+The redshift indices can then be compressed leveraging the symmetry of the auto-spectra: 
+taking the harmonic space case as an example, 
 :math:`C_{ij}^{AA}(\ell) = C_{ji}^{AA}(\ell)`. This simply means taking the 
 upper or lower triangle of the :math:`C_{ij}(\ell)` matrix (for each :math:`\ell`), 
 in a row-major or column-major fashion. 
 This is the meaning of the ``triu_tril`` and ``row_col_major`` 
 options in the configuration file. Compressing the covariance matrix in this way will
-result in an eight-dimensional array with the shape 
-``cov[A, B, C, D, ell1, ell2, zij, zkl]``, with ``zij`` and ``zkl`` indexing the unique 
+result in an four-dimensional array with axes 
+``cov_ABCD[s1, s2, zij, zkl]``, with ``zij`` and ``zkl`` indexing the unique 
 redshift *pairs*. To create a 2D array, we can simply flatten by looping over the 
 different indices; to do this, we need to choose the order of the loops, which will 
 determine the structure of the 2D covariance matrix. This can be specified with the
@@ -172,12 +201,29 @@ determine the structure of the 2D covariance matrix. This can be specified with 
 * ``probe_scale_zpair``: the probe index will be the outermost one, followed by the
   scale and the redshift pair indices.
 
-Sometimes retrieving specific elements of the covariance matrix can be tricky. To
+
+Even knowing the structure of the 2D covariance in detail, retrieving specific 
+elements can be a bit cumbersome (say we want to have a look at the 
+``zi, zj, zk, zl = 0, 1, 0, 1`` slice of the ``LLLL`` block). To
 make life easier for the user, the code offers the possibility to save the covariance 
-matrix in 6D, with one file for each of the unique probe combinations 
-(``LLLL``, ``LLGL``, ``LLGG``, ``GLGL``, ``GLGG``, ``GGGG``)
-to avoid having to deal with very large individual files. This can be done by setting
-the ``save_full_cov`` key to ``True`` in the configuration file.
+matrix as an ``npz`` archive of 6D arrays This can be done by setting
+the ``save_full_cov`` key to ``True`` in the configuration file. The archive will now
+consist of one entry for each unique block in the covariance matrix:
+
+.. code-block:: python
+
+   [in] covs_6d.files
+   [out] ['LLLL_Gauss', 'LLLL_SSC', 'LLLL_TOT', 
+          'LLGL_Gauss', 'LLGL_SSC', 'LLGL_TOT', 
+          'LLGG_Gauss', 'LLGG_SSC', 'LLGG_TOT',
+          'GLGL_Gauss', 'GLGL_SSC', 'GLGL_TOT',
+          'GLGG_Gauss', 'GLGG_SSC', 'GLGG_TOT',
+          'GGGG_Gauss', 'GGGG_SSC', 'GGGG_TOT']
+
+   [in]  cov_llll_g_6d = covs_6d['LLLL_Gauss']
+   [in]  cov_llll_g_6d.ndim
+   [out] 6
+
 
 .. figure:: images/ell_probe_zpair_slide.png
    :width: 100%
@@ -228,7 +274,7 @@ the ``save_full_cov`` key to ``True`` in the configuration file.
 +++++++++++++++++++
 
 Another output of the code is the multipoles at which the covariance matrix is computed,
-along with the full specifics of the :math:`\ell` binning scheme adopted (bin  width 
+along with the full specifics of the :math:`\ell` binning scheme adopted (bin width 
 and edges). These can be found in the ``ell_values_<probe>.txt`` files.
 
 .. figure:: images/ell_values.png

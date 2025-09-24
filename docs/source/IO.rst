@@ -136,21 +136,23 @@ Outputs
 Covariance
 ++++++++++
 
-The main output of ``Spaceborne`` is the covariance matrix for the requested probes
-and statistics. The path to the output folder can be specified in the 
+The main output of ``Spaceborne`` is the covariance matrix for the requested probes 
+(lensing, photometric galaxy clustering, ggl), terms (Gaussian and its components 
+-- SVA, SN, MIX --, plus the non-Gaussian terms SSC and cNG)
+and statistics (C_ells, 2PCF). The path to the output folder can be specified in the 
 configuration file; the file format is ``.npz``, for maximum storage
-efficiency. These files can be loaded as ``numpy`` arrays with
+efficiency. These files can be loaded arrays with
 
 .. code-block:: python
 
    covs_2d = np.load(f'{cov_filename}_2D.npz')
 
-With ``cov_filename`` specified in
+With ``cov_filename`` specified in the config file:
 
 .. code-block:: yaml
 
    covariance:
-      cov_filename: 40
+      cov_filename: 'my_covs'
 
 You can then inspect the files in the archive with ``covs_2d.files``. The different 
 entries will correspond to the different terms of the covariance, depending on the ones
@@ -166,7 +168,7 @@ covariance terms, we will have
    [in]  cov_g_2d.ndim
    [out] 2
 
-The probes present in eqch of these 2D arrays will instead depend on the probes 
+The probes present in each of these 2D arrays will instead depend on the probes 
 selected in the ``probe_selection`` section.
 The order along the diagonal will always follow the one in the config file 
 (i.e.: LLLL, then GLGL, then GGGG for harmonic space; xip, xim, \gamma_t and w for real space).
@@ -206,9 +208,15 @@ Even knowing the structure of the 2D covariance in detail, retrieving specific
 elements can be a bit cumbersome (say we want to have a look at the 
 ``zi, zj, zk, zl = 0, 1, 0, 1`` slice of the ``LLLL`` block). To
 make life easier for the user, the code offers the possibility to save the covariance 
-matrix as an ``npz`` archive of 6D arrays This can be done by setting
-the ``save_full_cov`` key to ``True`` in the configuration file. The archive will now
-consist of one entry for each unique block in the covariance matrix:
+matrix as an ``npz`` archive of 6D arrays. This can be done by setting
+
+.. code-block:: yaml
+
+   covariance:
+      save_full_cov: true
+
+in the config file. The archive will now consist of one 6D array for each unique 
+probe combination and for each term of the covariance matrix:
 
 .. code-block:: python
 
@@ -224,6 +232,7 @@ consist of one entry for each unique block in the covariance matrix:
    [in]  cov_llll_g_6d.ndim
    [out] 6
 
+Please note that this format will produce larger files.
 
 .. figure:: images/ell_probe_zpair_slide.png
    :width: 100%
@@ -245,7 +254,8 @@ consist of one entry for each unique block in the covariance matrix:
    :align: center
    :alt: scale_probe_zpair
 
-   Example of the 2D covariance matrix for the ``probe_zpair_scale`` ordering scheme.
+   Example of the 2D covariance matrix for the ``probe_zpair_scale`` (in the label,
+   ``probe_zpair_elll``) ordering scheme.
    These plots display the log10 of the absolute value of the covariance matrix elements. 
    In this ordering, the blocks seen in the left panel correspond to the 
    different probe combinations ("probe-blocks", labeled in the figure). 

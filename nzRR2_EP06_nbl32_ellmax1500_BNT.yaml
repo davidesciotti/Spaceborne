@@ -158,19 +158,19 @@ nz:
   - 0.0
   - 0.0
   ngal_lenses:
-  - 2.87799343223134
-  - 2.098809385748583
-  - 1.8471870250265632
-  - 1.3455375854538179
-  - 0.36423337434626685
-  - 0.09234518996285011
+  - 2.3604811
+  - 1.7091029
+  - 1.6091857
+  - 1.1883694
+  - 0.3216123
+  - 0.0785469
   ngal_sources:
-  - 2.1279869461396435
-  - 2.8237964415236063
-  - 2.564394831195362
-  - 1.2930977380060946
-  - 0.4702026378518463
-  - 0.1069525663290778
+  - 2.5202727
+  - 5.1424327
+  - 7.8001622
+  - 8.5047784
+  - 6.6663741
+  - 3.8253194
   nz_lenses_filename: /home/cosmo/davide.sciotti/data/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits
   nz_sources_filename: /home/cosmo/davide.sciotti/data/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits
   shift_nz: false

@@ -842,7 +842,7 @@ class CovRealSpace:
 
 
         # TODO this should probably go in the ell_binning class (which should be 
-        #      renamed)
+        # TODO renamed)
         if self.cfg['binning']['binning_type'] == 'log':
             _binning_func = np.geomspace
         elif self.cfg['binning']['binning_type'] == 'lin':

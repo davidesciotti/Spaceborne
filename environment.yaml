@@ -24,6 +24,7 @@ dependencies:
 
   - pip:
     - jax
+    - euclidlib
     - pyyaml
     - joblib
     - tqdm

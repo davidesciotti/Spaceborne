@@ -45,7 +45,7 @@ def run_benchmarks(yaml_files: list[str], sb_root_path: str) -> None:
     os.chdir(sb_root_path)
     try:
         for path in yaml_files:
-            print(f'\n🛰️ Running: {path}')
+            print(f'\n 🛰️ Running: {path}')
             subprocess.run(['python', 'main.py', '--config', path], check=True)
     finally:
         os.chdir(original_dir)
@@ -65,35 +65,35 @@ neff_lns_rr2 = [2.3604811, 1.7091029, 1.6091857, 1.1883694, 0.3216123, 0.0785469
 # DEFINE PRODUCTION CONFIGURATIONS
 configs_to_run = [
     # ! nzRR2_EP06_nbl32_ellmax1500
-    {
-        'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'ngal_sources': neff_src_rr2,
-            'ngal_lenses': neff_lns_rr2,
-            'smooth_nz': True,
-        },  # fmt: skip
-        'ell_binning': {'ell_max_WL': 1500, 'ell_max_GC': 1500, 'ell_max_ref': 1500},
-        'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
-        'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500'
-        },
-    },
+    # {
+    #     'nz': {
+    #         'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
+    #         'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
+    #         'ngal_sources': neff_src_rr2,
+    #         'ngal_lenses': neff_lns_rr2,
+    #         'smooth_nz': True,
+    #     },  # fmt: skip
+    #     'ell_binning': {'ell_max_WL': 1500, 'ell_max_GC': 1500, 'ell_max_ref': 1500},
+    #     'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
+    #     'misc': {
+    #         'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500'
+    #     },
+    # },
     # ! nzRR2_EP06_nbl32_ellmax5000
-    {
-        'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'ngal_sources': neff_src_rr2,
-            'ngal_lenses': neff_lns_rr2,
-            'smooth_nz': True,
-        },
-        'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
-        'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
-        'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000'
-        },
-    },
+    # {
+    #     'nz': {
+    #         'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
+    #         'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
+    #         'ngal_sources': neff_src_rr2,
+    #         'ngal_lenses': neff_lns_rr2,
+    #         'smooth_nz': True,
+    #     },
+    #     'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
+    #     'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
+    #     'misc': {
+    #         'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000'
+    #     },
+    # },
     # ! nzRR2_EP06_nbl32_ellmax1500_BNT
     {
         'nz': {
@@ -110,20 +110,20 @@ configs_to_run = [
         },
     },
     # ! nzRR2_EP06_nbl32_ellmax5000_BNT
-    {
-        'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'ngal_sources': neff_src_rr2,
-            'ngal_lenses': neff_lns_rr2,
-            'smooth_nz': True,
-        },
-        'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
-        'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
-        'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000_BNT'
-        },
-    },
+    # {
+    #     'nz': {
+    #         'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
+    #         'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
+    #         'ngal_sources': neff_src_rr2,
+    #         'ngal_lenses': neff_lns_rr2,
+    #         'smooth_nz': True,
+    #     },
+    #     'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
+    #     'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
+    #     'misc': {
+    #         'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000_BNT'
+    #     },
+    # },
     # ! nzSPV3_EP06_nbl32_ellmax5000 - "DR1" forecast
     # ! nz from https://drive.google.com/drive/u/2/folders/1oh9tdoE10kE-2CQfPhyIpdylRfpwoarx
     # {

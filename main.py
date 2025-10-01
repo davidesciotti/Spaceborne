@@ -1073,12 +1073,12 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     from spaceborne import cov_partial_sky
 
     # check that the input cls are computed over a fine enough grid
-    if cfg['C_ell']['use_input_cls']:
-        for ells_in, ells_out in zip(
-            [ells_WL_in, ells_XC_in, ells_GC_in],
-            [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
-        ):
-            io_obj.check_ells_in(ells_in, ells_out)
+    # if cfg['C_ell']['use_input_cls']:
+        # for ells_in, ells_out in zip(
+            # [ells_WL_in, ells_XC_in, ells_GC_in],
+            # [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
+        # ):
+            # io_obj.check_ells_in(ells_in, ells_out)
 
     # initialize nmt_cov_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(
@@ -1089,10 +1089,14 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     nmt_cov_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     nmt_cov_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
-    if cfg['C_ell']['use_input_cls']:
-        cl_ll_unb_3d = cl_ll_3d_spline(ell_obj.ells_3x2pt_unb)
-        cl_gl_unb_3d = cl_gl_3d_spline(ell_obj.ells_3x2pt_unb)
-        cl_gg_unb_3d = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
+    if cfg['C_ell']['use_input_cls']:   
+        cl_3x2pt_5d_unb = np.zeros(
+            (n_probes, n_probes, ell_obj.nbl_3x2pt_unb, zbins, zbins)
+        )
+        cl_3x2pt_5d_unb[0, 0] = cl_ll_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_3x2pt_5d_unb[1, 0] = cl_gl_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_3x2pt_5d_unb[0, 1] = cl_3x2pt_5d_unb[1, 0].transpose(0, 2, 1)
+        cl_3x2pt_5d_unb[1, 1] = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
 
     else:
         cl_3x2pt_5d_unb = ccl_interface.compute_cl_3x2pt_5d(

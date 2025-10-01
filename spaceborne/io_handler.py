@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 
 
-def load_nz_el(nz_filename):
+def load_nz_euclidlib(nz_filename):
     """basically, this function turns the nz dict into a np array"""
     import euclidlib as el
 
@@ -113,7 +113,8 @@ def load_cl_euclidlib(filename, key_a, key_b):
 
 
 def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
-    """Selects the spin components, aka homogenises the dimensions to assign data to cl_3d.
+    """Selects the spin components, aka homogenises the dimensions to assign data to 
+    cl_3d.
     Important note: E-modes are hardcoded at the moment;
     index 1 is for B modes, but you would have to change the structure of the cl_5d
     array (at the moment it's:
@@ -342,10 +343,10 @@ class IOHandler:
 
     def _load_nz_el(self):
         """This is just to assign src and lns data to self"""
-        self.zgrid_nz_src, self.nz_src = load_nz_el(
+        self.zgrid_nz_src, self.nz_src = load_nz_euclidlib(
             self.cfg['nz']['nz_sources_filename']
         )
-        self.zgrid_nz_lns, self.nz_lns = load_nz_el(
+        self.zgrid_nz_lns, self.nz_lns = load_nz_euclidlib(
             self.cfg['nz']['nz_lenses_filename']
         )
 

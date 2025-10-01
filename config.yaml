@@ -74,7 +74,6 @@ nz:
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
-  # TODO get actual values
   ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
   ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
 
@@ -94,15 +93,15 @@ nz:
 
 
 binning:
-  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
 
   ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL
-  ell_bins_WL: 32 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+  ell_bins_WL: 32 # Type: int. Number of bins for WL. Not used in the 'unbinned', 'ref_cut' and 'from_input' cases
 
   ell_min_GC: 10 # Type: int. Minimum ell for GC
   ell_max_GC: 1500 # Type: int. Maximum ell for GC
-  ell_bins_GC: 32 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
+  ell_bins_GC: 32 # Type: int. Number of bins for GC. Not used in the 'unbinned', 'ref_cut' and 'from_input' cases
 
   # ell binning for the reference case; only a subset of these bins, depending on the
   # desired ell range of WL and GC, will be used in the 'ref_cut' case.
@@ -175,7 +174,7 @@ C_ell:
 
 mask:
   load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-  mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
+  mask_path: ../input/mask.fits # Type: str. Path to the mask file (.fits, .fits.gz or .npy)
   generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
@@ -231,7 +230,7 @@ covariance:
   # Should be of length 'zbins'
   sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
 
-  # Whether to include the noise power spectra in the computation of the
+  # Whether to exclude the noise power spectra in the computation of the
   # Gaussian covariance matrix.
   no_sampling_noise: False # Type: bool
 
@@ -292,7 +291,7 @@ PyCCL:
     K_MAX_SPLINE: 300 # Type: int
   gsl_params: null # Type: dict | None
 
-
+# tODO turn off spin0
 namaster:
   use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
   spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)

@@ -157,6 +157,22 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     """
 
     from heracles.result import Result
+    
+    def find_first_she_axis_index(probe_str_list: list[str]) -> int:
+        """Finds the index of the first occurrence of 'SHE' in the input list.
+        If 'SHE' is not found, returns -1.
+        """
+        if not isinstance(probe_str_list, list):
+            raise ValueError('Input must be a list of strings.')
+        if not all(isinstance(item, str) for item in probe_str_list):
+            raise ValueError('All items in the list must be strings.')
+        if 'SHE' not in probe_str_list:
+            raise ValueError("'SHE' key not found in the input list.")
+        
+        for index, value in enumerate(probe_str_list):
+            if value == 'SHE':
+                return index
+
 
     # this dictionary maps the SB probe indices to the HC probe names (keys)
     probe_name_dict = {0: 'POS', 1: 'SHE'}
@@ -166,9 +182,8 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     # dimension (not 0!)
     probe_dims_dict = {'POS': 1, 'SHE': 2}
 
-    # just a check
-    print('Translating covariance from Spaceborne to Heracles format...')
 
+    # sanity checks
     assert cov_10d.ndim == 10, 'input covariance is not 10-dimensional'
     assert (
         cov_10d.shape[0] == cov_10d.shape[1] == cov_10d.shape[2] == cov_10d.shape[3]
@@ -180,10 +195,11 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
         cov_10d.shape[6] == cov_10d.shape[7] == cov_10d.shape[8] == cov_10d.shape[9]
     ), "The dimensions of the last 4 axes don't match"
 
+    # prints
+    print('Translating covariance from Spaceborne to Heracles format...')
     n_probes = cov_10d.shape[0]
     zbins = cov_10d.shape[-1]
     nbl = cov_10d.shape[4]
-
     print(f'cov_10d shape = {cov_10d.shape}')
     print(f'{n_probes = }')
     print(f'ell bins = {nbl}')
@@ -195,28 +211,59 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
         range(n_probes), repeat=4
     ):
         for zi, zj, zk, zl in itertools.product(range(zbins), repeat=4):
-            # get probe names and spins
+            # get probe name
             probe_a_str = probe_name_dict[probe_a_ix]
             probe_b_str = probe_name_dict[probe_b_ix]
             probe_c_str = probe_name_dict[probe_c_ix]
             probe_d_str = probe_name_dict[probe_d_ix]
 
+            # get probe dimensions
             probe_a_dims = probe_dims_dict[probe_a_str]
             probe_b_dims = probe_dims_dict[probe_b_str]
             probe_c_dims = probe_dims_dict[probe_c_str]
             probe_d_dims = probe_dims_dict[probe_d_str]
+            
+            probe_str_list = [probe_a_str, probe_b_str, probe_c_str, probe_d_str]
 
+            # instantiate array with the 4 additional axes for the spins
             arr_out = np.zeros(
                 shape=(probe_a_dims, probe_b_dims, probe_c_dims, probe_d_dims, nbl, nbl)
             )
 
+            # since only SHE_B goes in the 1 index, all ell1, ell2 arrays are stored
+            # in the 0 index
             arr_out[0, 0, 0, 0, :, :] = cov_10d[
                 probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                 :, :, zi, zj, zk, zl,
             ]  # fmt: skip
 
             if squeeze:
+                # Remove singleton dimensions if required
                 arr_out = np.squeeze(arr_out)
+                
+                # Now pass the axes of the ell1, ell2 indices to the heracles Result 
+                # class. Since we are removing the singleton dimensions, we need to
+                # find the index of the first "surviving" axis
+                # (i.e., the first axis with dimension > 1, i.e., SHE).
+                # Then, the second one will just be the next index (we never deal
+                # with more complicated cases here)
+                
+                # Jaime's example:
+                # cov_dict = \
+                # {('POS', 'POS', 'POS', 'POS', 1, 1, 1, 1): Result(axis=(0, 1)),
+                # ('POS', 'POS', 'POS', 'SHE', 1, 1, 1, 1): Result(axis=(1, 2)),
+                # ('POS', 'POS', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(2, 3)),
+                # ('POS', 'SHE', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(3, 4)),
+                # ('SHE', 'SHE', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(4, 5))}
+                
+                ax1 = find_first_she_axis_index(probe_str_list)
+                ax2 = ax1 + 1
+            
+            else:
+                # If the singleton dimensions are not removed, the ell1, ell2
+                # axes are always the last two, after the 4 spin axes
+                ax1 = len(probe_str_list)
+                ax2 = 1
 
             # old
             # cov_dict[
@@ -224,13 +271,13 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
             #     probe_c_str, probe_d_str,
             #     zi, zj, zk, zl)
             # ] = arr_out
-
+            
             # new
             cov_dict[
                 (probe_a_str, probe_b_str, 
                  probe_c_str, probe_d_str, 
                  zi, zj, zk, zl)
-            ] = Result(arr_out, axis=(0, 1))
+            ] = Result(arr_out, axis=(ax1, ax2))
 
     print('...done')
 

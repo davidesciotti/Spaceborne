@@ -1674,7 +1674,8 @@ if cfg['covariance']['split_gaussian_cov']:
 if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
     cov_dict_tosave_2d['TOT'] = _cov_obj.cov_3x2pt_tot_2d
 
-np.savez_compressed(f'{output_path}/covs_2D.npz', **cov_dict_tosave_2d)
+cov_filename = cfg['covariance']['cov_filename']
+np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d)
 
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
@@ -1748,7 +1749,7 @@ if cfg['covariance']['save_full_cov']:
                     _cov_obj, f'cov_{_probe}_tot_6d'
                 )
 
-    np.savez_compressed(f'{output_path}/covs_6D.npz', **cov_dict_tosave_6d)
+    np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **cov_dict_tosave_6d)
 
 print(f'Covariance matrices saved in {output_path}\n')
 

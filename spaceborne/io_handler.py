@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 
 
-def load_nz_el(nz_filename):
+def load_nz_euclidlib(nz_filename):
     """basically, this function turns the nz dict into a np array"""
     import euclidlib as el
 
@@ -71,7 +71,8 @@ def load_cl_euclidlib(filename, key_a, key_b):
     is_auto_spectrum = key_a == key_b
 
     # import .fits using el
-    cl_dict = el.photo.angular_power_spectra(filename)
+    # cl_dict = el.photo.angular_power_spectra(filename)
+    cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
 
     # extract ells
     ells = cl_dict[key_a, key_b, 1, 1].ell
@@ -113,7 +114,8 @@ def load_cl_euclidlib(filename, key_a, key_b):
 
 
 def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
-    """Selects the spin components, aka homogenises the dimensions to assign data to cl_3d.
+    """Selects the spin components, aka homogenises the dimensions to assign data to
+    cl_3d.
     Important note: E-modes are hardcoded at the moment;
     index 1 is for B modes, but you would have to change the structure of the cl_5d
     array (at the moment it's:
@@ -153,19 +155,16 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
         'B': 1,
     }
     """
+
+    from heracles.result import Result
+
     # this dictionary maps the SB probe indices to the HC probe names (keys)
-    probe_name_dict = {
-        0: 'POS',
-        1: 'SHE',
-    }
+    probe_name_dict = {0: 'POS', 1: 'SHE'}
 
     # this dictionary specifies the dimension of the corresponding axes in the output
     # arrays. The dimensions correspond to the spin, except POS (spin-0) still needs 1
     # dimension (not 0!)
-    probe_dims_dict = {
-        'POS': 1,
-        'SHE': 2,
-    }
+    probe_dims_dict = {'POS': 1, 'SHE': 2}
 
     # just a check
     print('Translating covariance from Spaceborne to Heracles format...')
@@ -187,7 +186,7 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
 
     print(f'cov_10d shape = {cov_10d.shape}')
     print(f'{n_probes = }')
-    print(f'{nbl = }')
+    print(f'ell bins = {nbl}')
     print(f'{zbins = }')
 
     cov_dict = {}
@@ -208,14 +207,7 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
             probe_d_dims = probe_dims_dict[probe_d_str]
 
             arr_out = np.zeros(
-                shape=(
-                    probe_a_dims,
-                    probe_b_dims,
-                    probe_c_dims,
-                    probe_d_dims,
-                    nbl,
-                    nbl,
-                )
+                shape=(probe_a_dims, probe_b_dims, probe_c_dims, probe_d_dims, nbl, nbl)
             )
 
             arr_out[0, 0, 0, 0, :, :] = cov_10d[
@@ -226,14 +218,21 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
             if squeeze:
                 arr_out = np.squeeze(arr_out)
 
-            # fmt: off
-            cov_dict[
-                (probe_a_str, probe_b_str,
-                probe_c_str, probe_d_str,
-                zi, zj, zk, zl)
-            ] = arr_out
+            # old
+            # cov_dict[
+            #     (probe_a_str, probe_b_str,
+            #     probe_c_str, probe_d_str,
+            #     zi, zj, zk, zl)
+            # ] = arr_out
 
-    print('done')
+            # new
+            cov_dict[
+                (probe_a_str, probe_b_str, 
+                 probe_c_str, probe_d_str, 
+                 zi, zj, zk, zl)
+            ] = Result(arr_out, axis=(0, 1))
+
+    print('...done')
 
     return cov_dict
 
@@ -342,10 +341,10 @@ class IOHandler:
 
     def _load_nz_el(self):
         """This is just to assign src and lns data to self"""
-        self.zgrid_nz_src, self.nz_src = load_nz_el(
+        self.zgrid_nz_src, self.nz_src = load_nz_euclidlib(
             self.cfg['nz']['nz_sources_filename']
         )
-        self.zgrid_nz_lns, self.nz_lns = load_nz_el(
+        self.zgrid_nz_lns, self.nz_lns = load_nz_euclidlib(
             self.cfg['nz']['nz_lenses_filename']
         )
 

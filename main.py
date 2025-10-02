@@ -449,6 +449,16 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
+_condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
+if compute_ccl_cng and _condition:
+    raise ValueError(
+        'There seems to be some issue with the symmetry of the GLGL '
+        'block in the '
+        'CCL cNG covariance, so for the moment it is disabled. '
+        'The LLLL and GGGG blocks are not affected, so you can still '
+        'compute the single-probe cNG covariances.'
+    )
+
 # ! set HS probes to compute depending on RS ones
 # Set HS probes depending on RS ones
 if obs_space != 'real':
@@ -1080,10 +1090,14 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     nmt_cov_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     nmt_cov_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
-    if cfg['C_ell']['use_input_cls']:
-        cl_ll_unb_3d = cl_ll_3d_spline(ell_obj.ells_3x2pt_unb)
-        cl_gl_unb_3d = cl_gl_3d_spline(ell_obj.ells_3x2pt_unb)
-        cl_gg_unb_3d = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
+    if cfg['C_ell']['use_input_cls']:   
+        cl_3x2pt_5d_unb = np.zeros(
+            (n_probes, n_probes, ell_obj.nbl_3x2pt_unb, zbins, zbins)
+        )
+        cl_3x2pt_5d_unb[0, 0] = cl_ll_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_3x2pt_5d_unb[1, 0] = cl_gl_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_3x2pt_5d_unb[0, 1] = cl_3x2pt_5d_unb[1, 0].transpose(0, 2, 1)
+        cl_3x2pt_5d_unb[1, 1] = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
 
     else:
         cl_3x2pt_5d_unb = ccl_interface.compute_cl_3x2pt_5d(
@@ -1661,7 +1675,8 @@ if cfg['covariance']['split_gaussian_cov']:
 if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
     cov_dict_tosave_2d['TOT'] = _cov_obj.cov_3x2pt_tot_2d
 
-np.savez_compressed(f'{output_path}/covs_2D.npz', **cov_dict_tosave_2d)
+cov_filename = cfg['covariance']['cov_filename']
+np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d)
 
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
@@ -1735,7 +1750,7 @@ if cfg['covariance']['save_full_cov']:
                     _cov_obj, f'cov_{_probe}_tot_6d'
                 )
 
-    np.savez_compressed(f'{output_path}/covs_6D.npz', **cov_dict_tosave_6d)
+    np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **cov_dict_tosave_6d)
 
 print(f'Covariance matrices saved in {output_path}\n')
 

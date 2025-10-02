@@ -405,24 +405,24 @@ configs_to_test = [
     {'covariance': {'G': True, 'SSC': False, 'cNG': True}},
     
     # === namaster runs, quite slow ===
-    # {
-    #     'covariance': {'G': True},
-    #     'namaster': {'use_namaster': True, 'spin0': True},
-    #     'ell_binning': {'binning_type': 'log'},
-    # },
-    # # G spin0, lin ell binning
-    # # ==============================
-    # {
-    #     'covariance': {'G': True},
-    #     'namaster': {'use_namaster': True, 'spin0': True},
-    #     'ell_binning': {'binning_type': 'lin'},
-    # },
-    # # G spin2, lin ell binning
-    # {
-    #     'covariance': {'G': True},
-    #     'namaster': {'use_namaster': True, 'spin0': False},
-    #     'ell_binning': {'binning_type': 'lin'},
-    # },
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'ell_binning': {'binning_type': 'log'},
+    },
+    # G spin0, lin ell binning
+    # ==============================
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'ell_binning': {'binning_type': 'lin'},
+    },
+    # G spin2, lin ell binning
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': False},
+        'ell_binning': {'binning_type': 'lin'},
+    },
 ]
 
 

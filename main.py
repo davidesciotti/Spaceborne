@@ -170,9 +170,6 @@ def plot_cls():
     plt.show()
 
 
-
-
-
 # ! ====================================================================================
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
@@ -1090,7 +1087,7 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     nmt_cov_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     nmt_cov_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
-    if cfg['C_ell']['use_input_cls']:   
+    if cfg['C_ell']['use_input_cls']:
         cl_3x2pt_5d_unb = np.zeros(
             (n_probes, n_probes, ell_obj.nbl_3x2pt_unb, zbins, zbins)
         )

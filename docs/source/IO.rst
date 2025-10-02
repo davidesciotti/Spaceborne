@@ -141,7 +141,7 @@ The main output of ``Spaceborne`` is the covariance matrix for the requested pro
 -- SVA, SN, MIX --, plus the non-Gaussian terms SSC and cNG)
 and statistics (C_ells, 2PCF). The path to the output folder can be specified in the 
 configuration file; the file format is ``.npz``, for maximum storage
-efficiency. These files can be loaded arrays with
+efficiency. These files can be loaded as arrays with
 
 .. code-block:: python
 
@@ -171,7 +171,8 @@ covariance terms, we will have
 The probes present in each of these 2D arrays will instead depend on the probes 
 selected in the ``probe_selection`` section.
 The order along the diagonal will always follow the one in the config file 
-(i.e.: LLLL, then GLGL, then GGGG for harmonic space; xip, xim, \gamma_t and w for real space).
+(i.e.: ``LLLL``, then ``GLGL``, then ``GGGG`` for harmonic space; 
+``xip``, ``xim``, ``gt`` and ``w`` for real space).
 In any case, some plots are produced at runtimes with labels to help distinguish the 
 different probe blocks.
 
@@ -181,7 +182,7 @@ the covariance matrix can be described by a 6-dimensional array
 with axes ``cov_ABCD[s1, s2, zi, zj, zk, zl]``. In this representation: 
 
 * The first and second axes index the angular scales :math:`\ell_1` and :math:`\ell_2`, 
-or :math:`\theta_1`, :math:`\theta_2`.
+  or :math:`\theta_1`, :math:`\theta_2`.
 * The last four axes index the redshift bins :math:`z_i, z_j, z_k, z_l`.
 
 The redshift indices can then be compressed leveraging the symmetry of the auto-spectra: 
@@ -241,7 +242,7 @@ Please note that this format will produce larger files.
 
    Example of the 2D covariance matrix for the ``scale_probe_zpair`` ordering scheme.
    These plots display the log10 of the absolute value of the covariance matrix elements. 
-   In this ordering, the blocks seen in the left panel correspond to the 
+   In this ordering, the blocks visible in the left panel correspond to the 
    different :math:`\ell_1-\ell_2` combinations ("ell-blocks"); 
    the off-diagonal blocks are due to the presence of SSC, in this example. 
    Zooming into the first diagonal block (right
@@ -255,9 +256,9 @@ Please note that this format will produce larger files.
    :alt: scale_probe_zpair
 
    Example of the 2D covariance matrix for the ``probe_zpair_scale`` (in the label,
-   ``probe_zpair_elll``) ordering scheme.
+   ``probe_zpair_ell``) ordering scheme.
    These plots display the log10 of the absolute value of the covariance matrix elements. 
-   In this ordering, the blocks seen in the left panel correspond to the 
+   In this ordering, the blocks highlighted in the left panel correspond to the 
    different probe combinations ("probe-blocks", labeled in the figure). 
    Zooming into the first diagonal block (right
    plot), we can discern the sub-blocks corresponding to the different redshift pair

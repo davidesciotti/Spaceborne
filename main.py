@@ -449,7 +449,8 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
-if compute_ccl_cng and 'GLGL' in req_probe_combs_2d:
+_condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
+if compute_ccl_cng and _condition:
     raise ValueError(
         'There seems to be some issue with the symmetry of the GLGL '
         'block in the '
@@ -1676,6 +1677,7 @@ if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
 
 cov_filename = cfg['covariance']['cov_filename']
 np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d)
+np.save(f'{output_path}/{cov_filename}_2D.npy', cov_dict_tosave_2d['Gauss'])
 
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
@@ -2105,3 +2107,15 @@ if cfg['misc']['save_figs']:
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+
+
+# test hc fmt
+import io_handler
+
+cov_hc_dict = io_handler.cov_sb_10d_to_heracles_dict(cov_hs_obj.cov_3x2pt_g_10d, squeeze=True)
+
+print("cov_hc_dict keys:")
+for key, v in cov_hc_dict.items():
+    print(f"  {key}, {v}")
+    
+import heracles

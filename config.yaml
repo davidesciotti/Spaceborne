@@ -5,6 +5,12 @@
 # Note: `None` is `null` in YAML
 # Note: Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
 
+# ROOTS:
+# pleiadi: /_u/dsciotti/code
+# local: /_home/davide/Documenti/Lavoro/Programmi
+# local: /_/Users/davidesciotti/Documents/Work/Code
+# melodie: /_home/cosmo/davide.sciotti/data
+
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
   Ob: 0.05 # Type: float. Baryonic density parameter Omega_b, at z=0
@@ -61,7 +67,7 @@ probe_selection:
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
   
-  cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
+  cross_cov: True # Type: bool. Whether to compute the cross-terms between the selected probes
 
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.
@@ -69,19 +75,19 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename:  ../common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename:  ../common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z_NOTNECESSARY.fits # Type: str
+  nz_lenses_filename:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/nz-brightpos_NOTNECESSARY.fits # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
-  ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
-  ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
+  ngal_sources: [2.470618229397309, 5.131816258105254, 8.02114730065299, 9.288766026621744, 8.14182694562539, 5.444532219720691,] # Type: list[float]
+  ngal_lenses: [0.7503013413985059, 0.7697751327706549, 0.757953841750585, 0.7582761375326091, 0.762607695668406, 0.7621469260704868] # Type: list[float]
 
   # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
   #        modification to the n(z) by setting shift_nz and smooth_nz to False.
   # [NOTE] The cuts defined by clip_zmin/zmax are only applied if shift_nz is True
-  shift_nz: True # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
+  shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
   dzWL: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
   dzGC: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
   normalize_shifted_nz: True # Type: bool. Whether to normalize the shifted n(z) distributions
@@ -93,15 +99,15 @@ nz:
 
 
 binning:
-  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
+  binning_type: 'from_input' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
 
   ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL
-  ell_bins_WL: 32 # Type: int. Number of bins for WL. Not used in the 'unbinned', 'ref_cut' and 'from_input' cases
+  ell_bins_WL: 32 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
 
   ell_min_GC: 10 # Type: int. Minimum ell for GC
   ell_max_GC: 1500 # Type: int. Maximum ell for GC
-  ell_bins_GC: 32 # Type: int. Number of bins for GC. Not used in the 'unbinned', 'ref_cut' and 'from_input' cases
+  ell_bins_GC: 32 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
 
   # ell binning for the reference case; only a subset of these bins, depending on the
   # desired ell range of WL and GC, will be used in the 'ref_cut' case.
@@ -109,8 +115,8 @@ binning:
   ell_max_ref: 1500 # Type: int. Maximum ell for reference case
   ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
-  WL_bins_filename: '../Spaceborne/output/ell_values_3x2pt.txt'
-  GC_bins_filename: '../Spaceborne/output/ell_values_3x2pt.txt'
+  WL_bins_filename: '/Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/ell_values_3x2pt.txt'
+  GC_bins_filename: '/Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/ell_values_3x2pt.txt'
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50  # Type: float | int
@@ -132,11 +138,11 @@ C_ell:
   # as .fits files, following the LE3/Heracles/euclidlib format
   # The Cls are then splined along the \ell axis and interpolated over the \ell values specified in the `binning`
   # section of this cfg file.
-  use_input_cls: False # Type: bool
+  use_input_cls: True # Type: bool
 
-  cl_LL_path:  ../common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path:  ../common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path:  ../common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/theory-spectra-pre-mixed.fits # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/theory-spectra-pre-mixed.fits # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/theory-spectra-pre-mixed.fits # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -153,12 +159,12 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: ../common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: ../common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../common_data/Spaceborne_jobs/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../common_data/Spaceborne_jobs/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
-  mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
+  mult_shear_bias: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # Type: list[float]
 
   # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
   has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
@@ -173,13 +179,13 @@ C_ell:
     non_limber_integration_method: FKEM # Type: str
 
 mask:
-  load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-  mask_path: ../input/mask.fits # Type: str. Path to the mask file (.fits, .fits.gz or .npy)
-  generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
+  load_mask: True # Type: bool. Whether to load the mask from a fits or npy file
+  mask_path: /Users/davidesciotti/Documents/Work/Code/common_data/RR2/Davide/EUC_LE3_COVERAGE_RR2-R1-NOBADAOCS_20250714T134732.590089Z_00.00.fits.gz # Type: str. Path to the mask file (.FITS or .npy)
+  generate_polar_cap: False # Type: bool. Whether to generate a polar cap mask on the fly.
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
   # If null (None), the nside of the input mask will be used, without up/downgrading.
-  nside: 1024 # Type: int | None.
+  nside: 2048 # Type: int | None.
 
   survey_area_deg2: 13245 # Type: int
   apodize: False # Type: bool
@@ -192,7 +198,7 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
@@ -212,7 +218,7 @@ covariance:
   # Examples:
   # - scale_probe_zpair: Ordered by scale index (ell or theta), then probe type, then redshift pair.
   # - probe_scale_zpair: Ordered by probe type, then multipole (ell), then redshift pair. This is the ordering used by CLOE
-  covariance_ordering_2D: probe_zpair_scale # Type: str.
+  covariance_ordering_2D: probe_scale_zpair # Type: str.
 
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
   # The output will be a npz file for each term, containing arrays of shape
@@ -228,9 +234,9 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
+  sigma_eps_i: [0.26527045, 0.27442397, 0.28203554, 0.2900488, 0.29184538, 0.29810946] # Type: list[float]
 
-  # Whether to exclude the noise power spectra in the computation of the
+  # Whether to include the noise power spectra in the computation of the
   # Gaussian covariance matrix.
   no_sampling_noise: False # Type: bool
 
@@ -251,17 +257,17 @@ covariance:
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
   log10_k_max: 2.0 # Type: float. Units: 1/Mpc
-  k_steps: 150 # Type: int. Around 150 should be enough
+  k_steps: 150 # Type: int. Around 100 should be enough
 
   z_min: 0.02 # Type: float
   z_max: 3.0 # Type: float
-  z_steps: 7000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 7000
-  z_steps_trisp: 50 # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
+  z_steps: 10000 # Type: int. Number of z steps used for the NG covariance projection. Should be quite high, e.g. 10000
+  z_steps_trisp: 10 # Type: int. Number of z steps used to compute the trispectrum - around 50 should be enough
 
   use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
   # Name of the output covariance file. The extension can be `npz`, `npy`, `txt` or `dat`
-  cov_filename: cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz # Type: str.
+  cov_filename: cov_fsky # Type: str.
 
 
 PyCCL:
@@ -282,7 +288,7 @@ PyCCL:
 
   # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
   # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
-  n_samples_wf: 1000 # Type: int
+  n_samples_wf: 1000 # Type: int  # TODO move to precision settings!
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
@@ -291,7 +297,7 @@ PyCCL:
     K_MAX_SPLINE: 300 # Type: int
   gsl_params: null # Type: dict | None
 
-# tODO turn off spin0
+
 namaster:
   use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
   spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
@@ -343,7 +349,7 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might 
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 40 # Type: int. How many threads to use for the parallel computations
+  num_threads: 60 # Type: int. How many threads to use for the parallel computations
   
   # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'
@@ -364,5 +370,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: ../common_data/Spaceborne_jobs/develop # Type: str. Path to the output directory
+  output_path: /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/output # Type: str. Path to the output directory
   save_figs: True  # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

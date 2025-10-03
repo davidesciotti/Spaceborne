@@ -4,6 +4,8 @@ import itertools
 
 import numpy as np
 
+from spaceborne import constants as const
+
 
 def load_nz_euclidlib(nz_filename):
     """basically, this function turns the nz dict into a np array"""
@@ -157,31 +159,6 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     """
 
     from heracles.result import Result
-    
-    def find_first_she_axis_index(probe_str_list: list[str]) -> int:
-        """Finds the index of the first occurrence of 'SHE' in the input list.
-        If 'SHE' is not found, returns -1.
-        """
-        if not isinstance(probe_str_list, list):
-            raise ValueError('Input must be a list of strings.')
-        if not all(isinstance(item, str) for item in probe_str_list):
-            raise ValueError('All items in the list must be strings.')
-        if 'SHE' not in probe_str_list:
-            raise ValueError("'SHE' key not found in the input list.")
-        
-        for index, value in enumerate(probe_str_list):
-            if value == 'SHE':
-                return index
-
-
-    # this dictionary maps the SB probe indices to the HC probe names (keys)
-    probe_name_dict = {0: 'POS', 1: 'SHE'}
-
-    # this dictionary specifies the dimension of the corresponding axes in the output
-    # arrays. The dimensions correspond to the spin, except POS (spin-0) still needs 1
-    # dimension (not 0!)
-    probe_dims_dict = {'POS': 1, 'SHE': 2}
-
 
     # sanity checks
     assert cov_10d.ndim == 10, 'input covariance is not 10-dimensional'
@@ -200,10 +177,6 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     n_probes = cov_10d.shape[0]
     zbins = cov_10d.shape[-1]
     nbl = cov_10d.shape[4]
-    print(f'cov_10d shape = {cov_10d.shape}')
-    print(f'{n_probes = }')
-    print(f'ell bins = {nbl}')
-    print(f'{zbins = }')
 
     cov_dict = {}
 
@@ -212,17 +185,17 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     ):
         for zi, zj, zk, zl in itertools.product(range(zbins), repeat=4):
             # get probe name
-            probe_a_str = probe_name_dict[probe_a_ix]
-            probe_b_str = probe_name_dict[probe_b_ix]
-            probe_c_str = probe_name_dict[probe_c_ix]
-            probe_d_str = probe_name_dict[probe_d_ix]
+            probe_a_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_a_ix]
+            probe_b_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_b_ix]
+            probe_c_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_c_ix]
+            probe_d_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_d_ix]
 
             # get probe dimensions
-            probe_a_dims = probe_dims_dict[probe_a_str]
-            probe_b_dims = probe_dims_dict[probe_b_str]
-            probe_c_dims = probe_dims_dict[probe_c_str]
-            probe_d_dims = probe_dims_dict[probe_d_str]
-            
+            probe_a_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_a_str]
+            probe_b_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_b_str]
+            probe_c_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_c_str]
+            probe_d_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_d_str]
+
             probe_str_list = [probe_a_str, probe_b_str, probe_c_str, probe_d_str]
 
             # instantiate array with the 4 additional axes for the spins
@@ -240,14 +213,14 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
             if squeeze:
                 # Remove singleton dimensions if required
                 arr_out = np.squeeze(arr_out)
-                
-                # Now pass the axes of the ell1, ell2 indices to the heracles Result 
+
+                # Now pass the axes of the ell1, ell2 indices to the heracles Result
                 # class. Since we are removing the singleton dimensions, we need to
                 # find the index of the first "surviving" axis
                 # (i.e., the first axis with dimension > 1, i.e., SHE).
                 # Then, the second one will just be the next index (we never deal
                 # with more complicated cases here)
-                
+
                 # Jaime's example:
                 # cov_dict = \
                 # {('POS', 'POS', 'POS', 'POS', 1, 1, 1, 1): Result(axis=(0, 1)),
@@ -255,10 +228,10 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
                 # ('POS', 'POS', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(2, 3)),
                 # ('POS', 'SHE', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(3, 4)),
                 # ('SHE', 'SHE', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(4, 5))}
-                
-                ax1 = find_first_she_axis_index(probe_str_list)
+
+                ax1 = probe_str_list.count('SHE')
                 ax2 = ax1 + 1
-            
+
             else:
                 # If the singleton dimensions are not removed, the ell1, ell2
                 # axes are always the last two, after the 4 spin axes
@@ -271,17 +244,53 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
             #     probe_c_str, probe_d_str,
             #     zi, zj, zk, zl)
             # ] = arr_out
-            
+
             # new
             cov_dict[
                 (probe_a_str, probe_b_str, 
-                 probe_c_str, probe_d_str, 
-                 zi, zj, zk, zl)
-            ] = Result(arr_out, axis=(ax1, ax2))
+                probe_c_str, probe_d_str, 
+                zi, zj, zk, zl)
+            ] = Result(arr_out, axis=(ax1, ax2))  # fmt: skip
 
     print('...done')
-
     return cov_dict
+
+
+def first_element_of_leading_axes(arr: np.ndarray) -> np.ndarray:
+    """Helper function to return arr[0, 0, ..., :, :] for any
+    array with ≥2 dimensions."""
+    if arr.ndim < 2:
+        raise ValueError('Array must have at least two dimensions')
+    return arr[(0,) * (arr.ndim - 2) + (slice(None), slice(None))]
+
+
+def cov_heracles_dict_to_sb_10d(
+    cov_hc_dict: dict, zbins: int, ell_bins: int, n_probes: int = 2
+) -> np.ndarray:
+    """The inverse of cov_sb_10d_to_heracles_dict. Loads a heracles-format
+    dictionary of 2D arrays and constructs the good old 3x2pt 10D array"""
+
+    cov_10d = np.zeros((
+            n_probes, n_probes, n_probes, n_probes, ell_bins, ell_bins,
+            zbins, zbins, zbins, zbins
+        ))  # fmt: skip
+
+    for k, v in cov_hc_dict.items():
+        # Extract the relevant indices from the key
+        probe_a_str, probe_b_str, probe_c_str, probe_d_str, zi, zj, zk, zl = k
+
+        # get probe name
+        probe_a_ix = const.HS_PROBE_NAME_TO_IX_DICT_HERACLES[probe_a_str]
+        probe_b_ix = const.HS_PROBE_NAME_TO_IX_DICT_HERACLES[probe_b_str]
+        probe_c_ix = const.HS_PROBE_NAME_TO_IX_DICT_HERACLES[probe_c_str]
+        probe_d_ix = const.HS_PROBE_NAME_TO_IX_DICT_HERACLES[probe_d_str]
+
+        # fill with the last 2 axes of v
+        cov_10d[
+            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, :, :, zi, zj, zk, zl
+        ] = first_element_of_leading_axes(v)
+
+    return cov_10d
 
 
 class IOHandler:

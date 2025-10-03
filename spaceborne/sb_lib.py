@@ -2849,7 +2849,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
                     '("L", "L") or ("G", "L") or ("G", "G") '
                 )
         # concatenate the lists to make rows
-        # o(nly concatenate and include rows that have content)
+        # (only concatenate and include rows that have content)
         if row_ll_list:
             row_ll = np.concatenate(row_ll_list, axis=3)
             final_rows.append(row_ll)

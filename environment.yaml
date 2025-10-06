@@ -24,6 +24,10 @@ dependencies:
 
   - pip:
     - jax
+    - euclidlib>=2025.2 # optional dependency, only used to read the n(z) and C(l) 
+                        # in the official Euclid LE3 format
+    - heracles>=25.1  # optional dependency, only used to save the covariance
+                      # in the official Euclid LE3 format
     - pyyaml
     - joblib
     - tqdm

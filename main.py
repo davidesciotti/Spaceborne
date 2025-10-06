@@ -170,9 +170,6 @@ def plot_cls():
     plt.show()
 
 
-
-
-
 # ! ====================================================================================
 # ! ================================== PREPARATION =====================================
 # ! ====================================================================================
@@ -449,7 +446,8 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
-if compute_ccl_cng and 'GLGL' in req_probe_combs_2d:
+_condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
+if compute_ccl_cng and _condition:
     raise ValueError(
         'There seems to be some issue with the symmetry of the GLGL '
         'block in the '
@@ -1090,9 +1088,13 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     nmt_cov_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
     if cfg['C_ell']['use_input_cls']:
-        cl_ll_unb_3d = cl_ll_3d_spline(ell_obj.ells_3x2pt_unb)
-        cl_gl_unb_3d = cl_gl_3d_spline(ell_obj.ells_3x2pt_unb)
-        cl_gg_unb_3d = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_3x2pt_5d_unb = np.zeros(
+            (n_probes, n_probes, ell_obj.nbl_3x2pt_unb, zbins, zbins)
+        )
+        cl_3x2pt_5d_unb[0, 0] = cl_ll_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_3x2pt_5d_unb[1, 0] = cl_gl_3d_spline(ell_obj.ells_3x2pt_unb)
+        cl_3x2pt_5d_unb[0, 1] = cl_3x2pt_5d_unb[1, 0].transpose(0, 2, 1)
+        cl_3x2pt_5d_unb[1, 1] = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
 
     else:
         cl_3x2pt_5d_unb = ccl_interface.compute_cl_3x2pt_5d(
@@ -1670,7 +1672,8 @@ if cfg['covariance']['split_gaussian_cov']:
 if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
     cov_dict_tosave_2d['TOT'] = _cov_obj.cov_3x2pt_tot_2d
 
-np.savez_compressed(f'{output_path}/covs_2D.npz', **cov_dict_tosave_2d)
+cov_filename = cfg['covariance']['cov_filename']
+np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d)
 
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
@@ -1744,7 +1747,11 @@ if cfg['covariance']['save_full_cov']:
                     _cov_obj, f'cov_{_probe}_tot_6d'
                 )
 
-    np.savez_compressed(f'{output_path}/covs_6D.npz', **cov_dict_tosave_6d)
+    np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **cov_dict_tosave_6d)
+
+if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
+    io_obj.save_cov_euclidlib(cov_hs_obj=_cov_obj)
+
 
 print(f'Covariance matrices saved in {output_path}\n')
 
@@ -2090,6 +2097,7 @@ if (
 
         print('')
 
+
 # note that this is *not* compatible with %matplotlib inline in the interactive window!
 if cfg['misc']['save_figs']:
     output_dir = f'{output_path}/figs'
@@ -2100,3 +2108,164 @@ if cfg['misc']['save_figs']:
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+
+# THIS CODE HAS BEEN COMMENTED OUT TO TEST AGAINST THE BENCHMARKS
+"""
+# BOOKMARK 2
+# ! read OC files: list
+oc_path = f'{output_path}/OneCovariance'
+
+oc_output_covlist_fname = (
+    f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
+)
+cov_oc_dict_6d = oc_interface.process_cov_from_list_file(
+    oc_output_covlist_fname,
+    zbins=zbins,
+    df_chunk_size=5_000_000,
+)
+
+# compare individual terms/probes
+term = cov_rs_obj.terms_toloop[0]
+
+term = 'mix'
+for probe_sb in unique_probe_combs_rs:
+    oc_interface.compare_sb_cov_to_oc_list(
+        cov_rs_obj=cov_rs_obj,
+        cov_oc_dict_6d=cov_oc_dict_6d,
+        probe_sb=probe_sb,
+        term=term,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        scale_bins=scale_bins,
+        title=None,
+    )
+
+cov_sva_oc_3x2pt_8D = cov_oc_dict_6d['cov_sva_oc_3x2pt_8D']
+cov_sn_oc_3x2pt_8D = cov_oc_dict_6d['cov_sn_oc_3x2pt_8D']
+cov_mix_oc_3x2pt_8D = cov_oc_dict_6d['cov_mix_oc_3x2pt_8D']
+
+cov_oc_list_8d = cov_sva_oc_3x2pt_8D + cov_sn_oc_3x2pt_8D + cov_mix_oc_3x2pt_8D
+
+# TODO SB and OC MUST have same fmt so I can combine probes and terms with the same function!!!
+cov_oc_dict_2d = {}
+nbt = cfg['binning']['theta_bins']
+for probe in const.RS_PROBE_NAME_TO_IX_DICT:
+    # split_g_ix = (
+    # cov_rs_obj.split_g_dict[term] if term in ['sva', 'sn', 'mix'] else 0
+    # )
+
+    # term_oc = (
+    #     'gauss'
+    #     if (len(cov_rs_obj.terms_toloop) > 1 or term == 'gauss_ell')
+    #     else term
+    # )
+
+    probe_ab, probe_cd = sl.split_probe_name(probe)
+    probe_ab_ix, probe_cd_ix = (
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
+        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],
+    )
+
+    zpairs_ab = zpairs_cross if probe_ab_ix == 1 else zpairs_auto
+    zpairs_cd = zpairs_cross if probe_cd_ix == 1 else zpairs_auto
+    ind_ab = ind_cross if probe_ab_ix == 1 else ind_auto
+    ind_cd = ind_cross if probe_cd_ix == 1 else ind_auto
+
+    # no need to assign 6d and 4d to dedicated dictionary
+    probe_oc = probe.replace('gt', 'gm')
+    cov_oc_6d = cov_oc_list_8d[*cov_rs_obj.probe_idx_dict_short_oc[probe_oc], ...]
+
+    # check theta simmetry
+    if np.allclose(cov_oc_6d, cov_oc_6d.transpose(1, 0, 2, 3, 4, 5), atol=0, rtol=1e-5):
+        print(f'probe {probe} is symmetric in theta_1, theta_2')
+
+    # if probe in ['gtxip', 'gtxim']:
+    #     print('I am manually transposing the OC blocks!!')
+    #     warnings.warn('I am manually transposing the OC blocks!!', stacklevel=2)
+    #     cov_oc_6d = cov_oc_6d.transpose(1, 0, 3, 2, 5, 4)
+
+    cov_oc_4d = sl.cov_6D_to_4D_blocks(
+        cov_oc_6d, nbt, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+
+    cov_oc_dict_2d[probe] = sl.cov_4D_to_2D(
+        cov_oc_4d, block_index='zpair', optimize=True
+    )
+
+
+cov_oc_list_2d = cov_real_space.stack_probe_blocks_deprecated(cov_oc_dict_2d)
+
+# ! read OC files: mat
+cov_oc_mat_2d = np.genfromtxt(
+    oc_output_covlist_fname.replace('list.dat', 'matrix_gauss.mat')
+)
+cov_oc_mat_2d_2 = np.genfromtxt(
+    oc_output_covlist_fname.replace('list.dat', 'matrix.mat')
+)
+np.testing.assert_allclose(cov_oc_mat_2d, cov_oc_mat_2d_2, atol=0, rtol=1e-5)
+
+del cov_oc_mat_2d_2
+gc.collect()
+
+# compare OC list against mat - transposition issue is still present!
+# sl.compare_2d_covs(
+#     cov_oc_list_2d, cov_oc_mat_2d, 'list', 'mat', title=title, diff_threshold=1
+# )
+
+# ! compare full 2d SB against mat fmt
+# I will compare SB against the mat fmt
+cov_sb_2d = cov_rs_obj.cov_3x2pt_g_2d
+cov_oc_2d = cov_oc_mat_2d
+
+title = (
+    f'integration {cfg["precision"]["cov_rs_int_method"]} - '
+    f'ell_bins_rs {cfg["precision"]["ell_bins_rs"]} - '
+    f'ell_max_rs {cfg["precision"]["ell_max_rs"]} - '
+    f'theta bins fine {cfg["precision"]["theta_bins_fine"]}\n'
+    f'n_sub {cfg["precision"]["n_sub"]} - '
+    f'n_bisec_max {cfg["precision"]["n_bisec_max"]} - '
+    f'rel_acc {cfg["precision"]["rel_acc"]}'
+)
+
+
+# # rearrange in OC 2D SB fmt
+elem_auto = nbt * zpairs_auto
+elem_cross = nbt * zpairs_cross
+# these are the end indices
+lim_1 = elem_auto
+lim_2 = lim_1 + elem_cross
+lim_3 = lim_2 + elem_auto
+lim_4 = lim_3 + elem_auto
+
+assert lim_4 == cov_oc_2d.shape[0]
+assert lim_4 == cov_oc_2d.shape[1]
+
+cov_oc_2d_dict = {
+    # first OC row is gg
+    'gggg': cov_oc_2d[:lim_1, :lim_1],
+    'gggt': cov_oc_2d[:lim_1, lim_1:lim_2],
+    'ggxip': cov_oc_2d[:lim_1, lim_2:lim_3],
+    'ggxim': cov_oc_2d[:lim_1, lim_3:lim_4],
+    'gtgg': cov_oc_2d[lim_1:lim_2, :lim_1],
+    'gtgt': cov_oc_2d[lim_1:lim_2, lim_1:lim_2],
+    'gtxip': cov_oc_2d[lim_1:lim_2, lim_2:lim_3],
+    'gtxim': cov_oc_2d[lim_1:lim_2, lim_3:lim_4],
+    'xipgg': cov_oc_2d[lim_2:lim_3, :lim_1],
+    'xipgt': cov_oc_2d[lim_2:lim_3, lim_1:lim_2],
+    'xipxip': cov_oc_2d[lim_2:lim_3, lim_2:lim_3],
+    'xipxim': cov_oc_2d[lim_2:lim_3, lim_3:lim_4],
+    'ximgg': cov_oc_2d[lim_3:lim_4, :lim_1],
+    'ximgt': cov_oc_2d[lim_3:lim_4, lim_1:lim_2],
+    'ximxip': cov_oc_2d[lim_3:lim_4, lim_2:lim_3],
+    'ximxim': cov_oc_2d[lim_3:lim_4, lim_3:lim_4],
+}
+
+cov_oc_2d = cov_real_space.stack_probe_blocks_deprecated(cov_oc_2d_dict)
+
+
+sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
+
+"""
+print('Done')

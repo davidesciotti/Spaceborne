@@ -388,7 +388,7 @@ class SpaceborneCovariance:
             symmetrize_output_dict=self.symmetrize_output_dict,
         )
 
-        return sl.cov_10D_dict_to_array(
+        return sl.cov_10d_dict_to_array(
             cov_dict_10d, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
         )
 
@@ -651,13 +651,13 @@ class SpaceborneCovariance:
 
     def _bnt_transform_3x2pt_wrapper(self):
         # turn 3x2pt 10d array to dict for the BNT function
-        cov_3x2pt_g_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_g_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_g_10d, self.probe_ordering
         )
-        cov_3x2pt_ssc_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_ssc_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_ssc_10d, self.probe_ordering
         )
-        cov_3x2pt_cng_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_cng_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_cng_10d, self.probe_ordering
         )
 
@@ -678,13 +678,13 @@ class SpaceborneCovariance:
         # cov_3x2pt_10d_to_4D accepts both a dictionary and
         # an array as input, but it's done to keep the variable names consistent
         # ! BNT IS LINEAR, SO BNT(COV_TOT) = \SUM_i BNT(COV_i), but should check
-        self.cov_3x2pt_g_10d = sl.cov_10D_dict_to_array(
+        self.cov_3x2pt_g_10d = sl.cov_10d_dict_to_array(
             cov_3x2pt_g_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
-        self.cov_3x2pt_ssc_10d = sl.cov_10D_dict_to_array(
+        self.cov_3x2pt_ssc_10d = sl.cov_10d_dict_to_array(
             cov_3x2pt_ssc_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
-        self.cov_3x2pt_cng_10d = sl.cov_10D_dict_to_array(
+        self.cov_3x2pt_cng_10d = sl.cov_10d_dict_to_array(
             cov_3x2pt_cng_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
 

@@ -503,7 +503,6 @@ def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
     np.savetxt(filename, array_2d, header=header, fmt=fmt, delimiter='')
 
 
-
 def compare_funcs(
     x,
     y: dict,
@@ -2669,26 +2668,27 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     return cov_10D_array
 
 
-def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
-    """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
-    zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
+def cov_10d_array_to_dict(cov_10d_array: np.ndarray, probe_ordering) -> dict:
+    """Transforms a dictionary of "shape"
+    {(A, B, C, D): [nbl, nbl, zbins, zbins, zbins, zbins]}
+    (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
     n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
     """
-    cov_10D_dict = {}
-    for A_str, B_str in probe_ordering:
-        for C_str, D_str in probe_ordering:
-            A_idx, B_idx, C_idx, D_idx = (
-                const.HS_PROBE_NAME_TO_IX_DICT[A_str],
-                const.HS_PROBE_NAME_TO_IX_DICT[B_str],
-                const.HS_PROBE_NAME_TO_IX_DICT[C_str],
-                const.HS_PROBE_NAME_TO_IX_DICT[D_str],
+    cov_10d_dict = {}
+    for probe_a_str, probe_b_str in probe_ordering:
+        for probe_c_str, probe_d_str in probe_ordering:
+            probe_a_idx, probe_b_idx, probe_c_idx, probe_d_idx = (
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_a_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_b_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_c_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_d_str],
             )
-            cov_10D_dict[A_str, B_str, C_str, D_str] = cov_10D_array[
-                A_idx, B_idx, C_idx, D_idx, ...
-            ]
+            cov_10d_dict[probe_a_str, probe_b_str, probe_c_str, probe_d_str] = (
+                cov_10d_array[probe_a_idx, probe_b_idx, probe_c_idx, probe_d_idx, ...]
+            )
 
-    return cov_10D_dict
+    return cov_10d_dict
 
 
 # @njit
@@ -2741,7 +2741,7 @@ def cov_3x2pt_10D_to_4D(
     """
     # if it's an array, convert to dictionary for the function to work
     if isinstance(cov_3x2pt_10D, np.ndarray):
-        cov_3x2pt_dict_10D = cov_10D_array_to_dict(cov_3x2pt_10D, probe_ordering)
+        cov_3x2pt_dict_10D = cov_10d_array_to_dict(cov_3x2pt_10D, probe_ordering)
     elif isinstance(cov_3x2pt_10D, dict):
         cov_3x2pt_dict_10D = cov_3x2pt_10D
     else:

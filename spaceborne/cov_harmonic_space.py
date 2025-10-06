@@ -651,13 +651,13 @@ class SpaceborneCovariance:
 
     def _bnt_transform_3x2pt_wrapper(self):
         # turn 3x2pt 10d array to dict for the BNT function
-        cov_3x2pt_g_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_g_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_g_10d, self.probe_ordering
         )
-        cov_3x2pt_ssc_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_ssc_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_ssc_10d, self.probe_ordering
         )
-        cov_3x2pt_cng_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_cng_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_cng_10d, self.probe_ordering
         )
 

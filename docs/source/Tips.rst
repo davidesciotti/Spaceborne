@@ -15,12 +15,15 @@ operation -- the computation of the cNG connected trispectrum
    PyCCL:
       load_cached_tkka: False 
 
-to avoid running into errors (the file does not exist yet). If you rerun the code 
+To avoid running into errors (since the file does not exist yet). If you rerun the code 
 **with consistent settings**, you can load this in later runs by simply changing the 
 above flag to ``True``. 
 
-Note: the code will **not** check the consistency of, 
-say, the cosmological parameters you used to compute the cached quantities.
+.. warning:: 
+   The code will **not** check the consistency of the configuration used to generate 
+   the cached files when loading them for subsequent runs. If, for example, 
+   run 2 loads the cached trispectrum from round 1 but has a different halo model,
+   the code will produce inconsistent results.
 
 Note: these and other expensive operations are run in parallel, so the code will 
 run faster simply by increasing the number of threads used:

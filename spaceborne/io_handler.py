@@ -230,13 +230,13 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
                 # ('SHE', 'SHE', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(4, 5))}
 
                 ax1 = probe_str_list.count('SHE')
-                ax2 = ax1 + 1
 
             else:
                 # If the singleton dimensions are not removed, the ell1, ell2
                 # axes are always the last two, after the 4 spin axes
                 ax1 = len(probe_str_list)
-                ax2 = 1
+
+            ax2 = ax1 + 1
 
             # old
             # cov_dict[
@@ -269,6 +269,10 @@ def cov_heracles_dict_to_sb_10d(
 ) -> np.ndarray:
     """The inverse of cov_sb_10d_to_heracles_dict. Loads a heracles-format
     dictionary of 2D arrays and constructs the good old 3x2pt 10D array"""
+
+    # Validate input
+    if not cov_hc_dict:
+        raise ValueError('Input dictionary cannot be empty')
 
     cov_10d = np.zeros((
             n_probes, n_probes, n_probes, n_probes, ell_bins, ell_bins,
@@ -454,6 +458,13 @@ class IOHandler:
         .fits format. Works only for the harmonic-space covariance for the moment.
         """
 
+        def save_term(cov_10d, term_name):
+            """Helper to make the code more readable"""
+            cov_hc_dict = cov_sb_10d_to_heracles_dict(cov_10d, squeeze=True)
+            heracles.io.write(
+                f'{self.output_path}/{self.cov_filename}_{term_name}.fits', cov_hc_dict
+            )
+
         # sanity checks
         assert self.cfg['covariance']['save_cov_fits'], (
             'cfg["covariance"]["save_cov_fits"] should be True to '
@@ -467,55 +478,18 @@ class IOHandler:
         import heracles
 
         if self.cfg['covariance']['G']:
-            cov_hc_dict = cov_sb_10d_to_heracles_dict(
-                cov_hs_obj.cov_3x2pt_g_10d, squeeze=True
-            )
-            heracles.io.write(
-                f'{self.output_path}/{self.cov_filename}_Gauss.fits', cov_hc_dict
-            )
+            save_term(cov_hs_obj.cov_3x2pt_g_10d, 'Gauss')
 
         if self.cfg['covariance']['SSC']:
-            cov_hc_dict = cov_sb_10d_to_heracles_dict(
-                cov_hs_obj.cov_3x2pt_ssc_10d, squeeze=True
-            )
-            heracles.io.write(
-                f'{self.output_path}/{self.cov_filename}_SSC.fits', cov_hc_dict
-            )
+            save_term(cov_hs_obj.cov_3x2pt_ssc_10d, 'SSC')
 
         if self.cfg['covariance']['cNG']:
-            cov_hc_dict = cov_sb_10d_to_heracles_dict(
-                cov_hs_obj.cov_3x2pt_cng_10d, squeeze=True
-            )
-            heracles.io.write(
-                f'{self.output_path}/{self.cov_filename}_cNG.fits', cov_hc_dict
-            )
+            save_term(cov_hs_obj.cov_3x2pt_cng_10d, 'cNG')
 
         if self.cfg['covariance']['split_gaussian_cov']:
-            cov_hc_dict = cov_sb_10d_to_heracles_dict(
-                cov_hs_obj.cov_3x2pt_sva_10d, squeeze=True
-            )
-            heracles.io.write(
-                f'{self.output_path}/{self.cov_filename}_SVA.fits', cov_hc_dict
-            )
-
-            cov_hc_dict = cov_sb_10d_to_heracles_dict(
-                cov_hs_obj.cov_3x2pt_sn_10d, squeeze=True
-            )
-            heracles.io.write(
-                f'{self.output_path}/{self.cov_filename}_SN.fits', cov_hc_dict
-            )
-
-            cov_hc_dict = cov_sb_10d_to_heracles_dict(
-                cov_hs_obj.cov_3x2pt_mix_10d, squeeze=True
-            )
-            heracles.io.write(
-                f'{self.output_path}/{self.cov_filename}_MIX.fits', cov_hc_dict
-            )
+            save_term(cov_hs_obj.cov_3x2pt_sva_10d, 'SVA')
+            save_term(cov_hs_obj.cov_3x2pt_sn_10d, 'SN')
+            save_term(cov_hs_obj.cov_3x2pt_mix_10d, 'MIX')
 
         if self.cfg['covariance']['cNG'] or self.cfg['covariance']['SSC']:
-            cov_hc_dict = cov_sb_10d_to_heracles_dict(
-                cov_hs_obj.cov_3x2pt_tot_10d, squeeze=True
-            )
-            heracles.io.write(
-                f'{self.output_path}/{self.cov_filename}_TOT.fits', cov_hc_dict
-            )
+            save_term(cov_hs_obj.cov_3x2pt_tot_10d, 'TOT')

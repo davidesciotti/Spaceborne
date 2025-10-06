@@ -2643,7 +2643,7 @@ def covariance_einsum(
     return cov_sva, cov_sn, cov_mix
 
 
-def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
+def cov_10d_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
     zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
@@ -2669,12 +2669,18 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
 
 
 def cov_10d_array_to_dict(cov_10d_array: np.ndarray, probe_ordering) -> dict:
-    """Transforms a dictionary of "shape"
+    """Transforms an array of shape
+    (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
+    to a dictionary of "shape"
     {(A, B, C, D): [nbl, nbl, zbins, zbins, zbins, zbins]}
     (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
     n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
     """
+
+    assert cov_10d_array.ndim == 10, 'cov_10d_array must be 10-dimensional'
+    assert len(probe_ordering) > 0, 'probe_ordering must not be empty'
+
     cov_10d_dict = {}
     for probe_a_str, probe_b_str in probe_ordering:
         for probe_c_str, probe_d_str in probe_ordering:

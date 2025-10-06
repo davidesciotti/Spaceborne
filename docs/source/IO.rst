@@ -221,6 +221,7 @@ probe combination and for each term of the covariance matrix:
 
 .. code-block:: python
 
+   [in] covs_6d = np.load(f'{cov_filename}_6D.npz')
    [in] covs_6d.files
    [out] ['LLLL_Gauss', 'LLLL_SSC', 'LLLL_TOT', 
           'LLGL_Gauss', 'LLGL_SSC', 'LLGL_TOT', 

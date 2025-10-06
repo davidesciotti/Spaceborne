@@ -1,7 +1,10 @@
 import numpy as np
 
+# Acronyms:
 # HS = harmonic space
 # RS = real space
+# SB = Spaceborne
+# HC = Heracles
 
 DEG2_IN_SPHERE = 4 * np.pi * (180 / np.pi) ** 2
 DEG2_TO_SR = (np.pi / 180) ** 2  
@@ -92,7 +95,7 @@ RS_PROBE_NAME_TO_IX_DICT = {
 #     'gggg':   (1, 1, 1, 1),
 # }  # fmt: skip
 
-# this dictionary maps the SB probe indices to the HC probe names (keys)
+# Heracles-specific probe mappings: POS (position, spin-0), SHE (shear, spin-2)
 HS_PROBE_IX_TO_NAME_DICT_HERACLES = {0: 'POS', 1: 'SHE'}
 HS_PROBE_NAME_TO_IX_DICT_HERACLES = {'POS': 0, 'SHE': 1}
 

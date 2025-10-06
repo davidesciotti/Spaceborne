@@ -7,7 +7,9 @@ RS_DIAG_PROBES = ['xip', 'xim', 'gt', 'gg']
 
 
 def cov_10d_array_to_dict(cov_10d_array: np.ndarray) -> dict:
-    """Transforms a dictionary of "shape"
+    """Transforms a array of shape 
+    (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
+    to a dictionary of "shape"
     {(A, B, C, D): [nbl, nbl, zbins, zbins, zbins, zbins]}
     (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
@@ -47,12 +49,12 @@ def cov_3x2pt_10d_to_4d(
     ind_cross = np.array([(i, j) for i in range(zbins) for j in range(zbins)])
     ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
 
-    # these are only needed for a sanity check
+    # these are only needed for a sanity check  
     zpairs_auto = (zbins * (zbins + 1)) // 2
     zpairs_cross = zbins**2
-    assert ind_auto.shape[0] == zpairs_auto, 'ind_auto should have {zpair_auto} rows'
+    assert ind_auto.shape[0] == zpairs_auto, f'ind_auto should have {zpairs_auto} rows'
     assert ind_cross.shape[0] == zpairs_cross, (
-        'ind_cross should have {zpair_cross} rows'
+        f'ind_cross should have {zpairs_cross} rows'
     )
 
     # initialize the 4d dictionary and list of probe combinations
@@ -196,13 +198,13 @@ def cov_3x2pt_8d_dict_to_4d(cov_3x2pt_8d_dict, req_probe_combs_2d, space='harmon
         row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
         for probe in req_probe_combs_2d:
             probe_ab, probe_cd = split_probe_name(probe)
-            if (probe_ab) == 'xip':
+            if probe_ab == 'xip':
                 row_xip_list.append(cov_3x2pt_8d_dict[probe_ab, probe_cd])
-            elif (probe_ab) == ('xim'):
+            elif probe_ab == 'xim':
                 row_xim_list.append(cov_3x2pt_8d_dict[probe_ab, probe_cd])
-            elif (probe_ab) == ('gt'):
+            elif probe_ab == 'gt':
                 row_gt_list.append(cov_3x2pt_8d_dict[probe_ab, probe_cd])
-            elif (probe_ab) == ('gg'):
+            elif probe_ab == 'gg':
                 row_gg_list.append(cov_3x2pt_8d_dict[probe_ab, probe_cd])
             else:
                 raise ValueError(
@@ -210,7 +212,7 @@ def cov_3x2pt_8d_dict_to_4d(cov_3x2pt_8d_dict, req_probe_combs_2d, space='harmon
                     '("xip") or ("xim") or ("gt") or ("gg") '
                 )
         # concatenate the lists to make rows
-        # o(nly concatenate and include rows that have content)
+        # only concatenate and include rows that have content
         if row_xip_list:
             row_xip = np.concatenate(row_xip_list, axis=3)
             final_rows.append(row_xip)
@@ -225,7 +227,7 @@ def cov_3x2pt_8d_dict_to_4d(cov_3x2pt_8d_dict, req_probe_combs_2d, space='harmon
             final_rows.append(row_gg)
 
     else:
-        raise ValueError(f'space must me "harmonic" or "real", not: {space}')
+        raise ValueError(f'space must be "harmonic" or "real", not: {space}')
 
     # concatenate the rows to construct the final matrix
     if final_rows:

@@ -92,6 +92,14 @@ RS_PROBE_NAME_TO_IX_DICT = {
 #     'gggg':   (1, 1, 1, 1),
 # }  # fmt: skip
 
+# this dictionary maps the SB probe indices to the HC probe names (keys)
+HS_PROBE_IX_TO_NAME_DICT_HERACLES = {0: 'POS', 1: 'SHE'}
+HS_PROBE_NAME_TO_IX_DICT_HERACLES = {'POS': 0, 'SHE': 1}
+
+# this dictionary specifies the dimension of the corresponding axes in the output
+# arrays. The dimensions correspond to the spin, except POS (spin-0) still needs 1
+# dimension (not 0!)
+HS_PROBE_DIMS_DICT_HERACLES = {'POS': 1, 'SHE': 2}
 
 RS_PROBE_NAME_TO_IX_DICT_SHORT = {
     'gg': 0,  # w

@@ -193,7 +193,7 @@ mask:
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
   # If null (None), the nside of the input mask will be used, without up/downgrading.
-  nside: 2048 # Type: int | None.
+  nside: 1024 # Type: int | None.
 
   survey_area_deg2: 13245 # Type: int
   apodize: False # Type: bool

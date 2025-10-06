@@ -7,6 +7,7 @@ import pickle
 import subprocess
 import time
 import warnings
+from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
 
@@ -24,41 +25,162 @@ from scipy.special import jv
 import spaceborne.constants as const
 
 
-# # Gaussian covariance binning
-# def bin_cov_gauss(cov, ell_values, theta_edges, fsky):
-#     binned_cov = np.zeros((len(theta_edges) - 1, len(theta_edges) - 1))
-#     for i in range(len(theta_edges) - 1):
-#         for j in range(len(theta_edges) - 1):
-#             ell_min_1, ell_max_1 = theta_edges[i], theta_edges[i + 1]
-#             ell_min_2, ell_max_2 = theta_edges[j], theta_edges[j + 1]
-#             overlapping_ells = np.intersect1d(
-#                 np.arange(ell_min_1, ell_max_1),
-#                 np.arange(ell_min_2, ell_max_2)
-#             )
-#             if len(overlapping_ells) == 0:
-#                 continue
-#             spline = UnivariateSpline(ell_values, np.diag(cov), k=1, s=0)
-#             binned_cov[i, j] = 1 / fsky / np.sum((2 * overlapping_ells + 1) / spline(overlapping_ells))
-#     return binned_cov
+def matshow_custom_bins(data_array, bin_edges):
+    """
+    Plots a 2D matrix with a colorbar based on custom bins.
 
-# # Non-Gaussian covariance binning
-# def bin_cov_nongauss(cov, ell_values, theta_edges, area):
-#     binned_cov = np.zeros((len(theta_edges) - 1, len(theta_edges) - 1))
-#     spline = RegularGridInterpolator((ell_values, ell_values), np.log(cov), bounds_error=False, fill_value=None)
-#     for i in range(len(theta_edges) - 1):
-#         ell_min_1, ell_max_1 = theta_edges[i], theta_edges[i + 1]
-#         area1 = np.pi * (ell_max_1**2 - ell_min_1**2)
-#         ell_grid_1 = np.geomspace(ell_min_1, ell_max_1, 10)
-#         for j in range(len(theta_edges) - 1):
-#             ell_min_2, ell_max_2 = theta_edges[j], theta_edges[j + 1]
-#             area2 = np.pi * (ell_max_2**2 - ell_min_2**2)
-#             ell_grid_2 = np.geomspace(ell_min_2, ell_max_2, 10)
-#             ell1, ell2 = np.meshgrid(ell_grid_1, ell_grid_2, indexing='ij')
-#             result = simps(simps(np.exp(spline((ell1, ell2)) * ell1 * ell2, ell_grid_2), ell_grid_1))
-#             result /= (area1 * area2)
-#             result *= 4 * np.pi**2 / area
-#             binned_cov[i, j] = result
-#     return binned_cov
+    Args:
+        data_array (np.ndarray): The 2D array to plot (e.g., an array of percentages).
+        bin_edges (list or np.ndarray): A list of the bin boundaries.
+    Example:
+        bin_edges = [1e-2, 1e-1, 1, 5, 10, np.max(perc_diff)]
+        matshow_custom_bins(perc_diff, bin_edges)
+    """
+    from matplotlib.colors import BoundaryNorm
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Validate inputs and prepare edges
+    data_array = np.asarray(data_array)
+    if data_array.ndim != 2:
+        raise ValueError('data_array must be 2D')
+    bin_edges = np.asarray(bin_edges, dtype=float)
+    if bin_edges.ndim != 1 or bin_edges.size < 2:
+        raise ValueError('bin_edges must be a 1D array with at least 2 edges')
+    if np.any(np.diff(bin_edges) <= 0):
+        raise ValueError('bin_edges must be strictly increasing')
+
+    # Create the colormap and the norm for the bins.
+    # The lowest bin edge is a very small number to handle floating-point
+    # issues and prevent overlapping '0' ticks.
+    cmap = plt.cm.viridis
+    norm = BoundaryNorm(bin_edges, ncolors=cmap.N, clip=True)
+
+    # Plot the data using the custom norm
+    im = ax.matshow(data_array, cmap=cmap, norm=norm)
+
+    # Extend colorbar if data fall outside provided edges
+    extend = 'neither'
+    amin, amax = np.nanmin(data_array), np.nanmax(data_array)
+    if amin < bin_edges[0]:
+        extend = 'min'
+    if amax > bin_edges[-1]:
+        extend = 'both' if extend == 'min' else 'max'
+    cbar = fig.colorbar(
+        im,
+        ax=ax,
+        boundaries=bin_edges,
+        ticks=bin_edges,
+        spacing='proportional',
+        extend=extend,
+    )
+    cbar.set_label('Discrepancy (%)')
+    cbar = fig.colorbar(im, ax=ax, ticks=bin_edges)
+    cbar.set_label('Discrepancy (%)')
+
+    # You might want to format the tick labels to avoid scientific notation
+    # and show the '0' clearly.
+    tick_labels = [f'{b:g}' for b in bin_edges]
+    cbar.set_ticklabels(tick_labels)
+
+    ax.set_title('Custom Binned Plot')
+    plt.show()
+
+
+def split_probe_name(
+    full_probe_name: str, space: str = 'real', valid_probes: Sequence[str] | None = None
+) -> tuple[str, str]:
+    """Splits a full probe name (e.g., 'gtxim') into two component probes."""
+
+    # this is the default: use hardcoded probe names
+    if valid_probes is None:
+        if space == 'harmonic':
+            valid_probes = const.HS_DIAG_PROBES
+        elif space == 'real':
+            valid_probes = const.RS_DIAG_PROBES
+        else:
+            raise ValueError(
+                f'`space` needs to be one of `harmonic` or `real`, got {space}'
+            )
+    else:
+        assert isinstance(valid_probes, (list, tuple)), 'valid_probes must be a list'
+
+    # Try splitting at each possible position
+    for i in range(2, len(full_probe_name)):
+        first, second = full_probe_name[:i], full_probe_name[i:]
+        if first in valid_probes and second in valid_probes:
+            return first, second
+
+    raise ValueError(
+        f'Invalid probe name: {full_probe_name}. '
+        f'Expected two of {valid_probes} concatenated.'
+    )
+
+
+def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
+    # compare covariance
+    compare_arrays(
+        cov_a,
+        cov_b,
+        name_a,
+        name_b,
+        log_array=True,
+        log_diff=False,
+        abs_val=True,
+        plot_diff_threshold=diff_threshold,
+        title=title,
+    )
+
+    # compare correlation
+    corr_a = cov2corr(cov_a)
+    corr_b = cov2corr(cov_b)
+    matshow_arr_kw = {'cmap': 'RdBu_r', 'vmin': -1, 'vmax': 1}
+    compare_arrays(
+        corr_a,
+        corr_b,
+        name_a,
+        name_b,
+        log_array=False,
+        log_diff=False,
+        matshow_arr_kw=matshow_arr_kw,
+        plot_diff_hist=False,
+        plot_diff_threshold=diff_threshold,
+        title=title,
+    )
+
+    # compare cov diag
+    compare_funcs(
+        x=None,
+        y={
+            f'abs diag {name_a}': np.diag(np.abs(cov_a)),
+            f'abs diag {name_b}': np.diag(np.abs(cov_b)),
+        },
+        logscale_y=[True, False],
+        title=title + ' diag',
+    )
+
+    # compare cov flat
+    compare_funcs(
+        x=None,
+        y={
+            f'abs flat {name_a}': np.abs(cov_a).flatten(),
+            f'abs flat {name_b}': np.abs(cov_b).flatten(),
+        },
+        logscale_y=[True, False],
+        ylim_diff=[-100, 100],
+        title=title + ' flat',
+    )
+
+    # compare SB against mat - cov spectrum
+    eig_a = np.linalg.eigvals(cov_a)
+    eig_b = np.linalg.eigvals(cov_b)
+    compare_funcs(
+        x=None,
+        y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
+        logscale_y=[True, False],
+        ylim_diff=[-100, 100],
+        title=title + ' eig',
+    )
 
 
 def build_probe_list(probes, include_cross_terms=False):
@@ -85,28 +207,43 @@ def build_probe_list(probes, include_cross_terms=False):
     return [p1 + p2 for p1, p2 in itertools.combinations_with_replacement(probes, 2)]
 
 
-def get_probe_combs(unique_probe_combs):
+def get_probe_combs(unique_probe_combs, space):
     """Given the desired probe combinations, builds a list the ones to be filled by
     symmetry and the ones fo be skipped"""
 
+    assert space in ['harmonic', 'real'], 'Invalid space specified'
+
+    if space == 'harmonic':
+        ALL_PROBE_COMBS = const.HS_ALL_PROBE_COMBS
+        DIAG_PROBE_COMBS = const.HS_DIAG_PROBE_COMBS
+    elif space == 'real':
+        ALL_PROBE_COMBS = const.RS_ALL_PROBE_COMBS
+        DIAG_PROBE_COMBS = const.RS_DIAG_PROBE_COMBS
+
     # sanity checks
     for probe in unique_probe_combs:
-        if probe not in const.ALL_PROBE_COMBS:
-            raise ValueError(f'Probe {probe} not found in {const.ALL_PROBE_COMBS}')
-        if len(probe) != 4:
+        if probe not in ALL_PROBE_COMBS:
+            raise ValueError(f'Probe {probe} not found in {ALL_PROBE_COMBS}')
+        # real space probes have variable length
+        if len(probe) != 4 and space == 'harmonic':
             raise ValueError(f'Probe {probe} must have length 4')
 
     # take the requested probes which are not diagonal
-    _symm_probe_combs = set(unique_probe_combs) - set(const.DIAG_PROBE_COMBS)
+    _symm_probe_combs = set(unique_probe_combs) - set(DIAG_PROBE_COMBS)
 
     # invert probe_a, probe_b <-> probe_c, probe_d
     symm_probe_combs = []
     for probe in _symm_probe_combs:
-        symm_probe_combs.append(probe[2:] + probe[:2])
+        if space == 'harmonic':
+            probe_ab, probe_cd = probe[:2], probe[2:]
+        elif space == 'real':
+            probe_ab, probe_cd = split_probe_name(probe)
+
+        symm_probe_combs.append(probe_cd + probe_ab)
 
     # lastly, find the remaining (non required) probe combinations
     nonreq_probe_combs = (
-        set(const.ALL_PROBE_COMBS) - set(unique_probe_combs) - set(symm_probe_combs)
+        set(ALL_PROBE_COMBS) - set(unique_probe_combs) - set(symm_probe_combs)
     )
 
     return symm_probe_combs, nonreq_probe_combs
@@ -139,13 +276,18 @@ def timer(msg):
         yield
     finally:
         stop = time.perf_counter()
-        print(msg % (stop - start), flush=True)
+        print(f'{msg} done in {stop - start:.2f} s', flush=True)
 
 
-def bin_2d_array(  # fmt: skip
-    cov, ells_in, ells_out, ells_out_edges, weights_in, which_binning='sum',
-    interpolate = True
-):  # fmt: skip
+def bin_2d_array(
+    cov: np.ndarray,
+    ells_in: np.ndarray,
+    ells_out: np.ndarray,
+    ells_out_edges: np.ndarray,
+    weights_in: np.ndarray | None,
+    which_binning: str = 'sum',
+    interpolate: bool = True,
+):
     assert cov.shape[0] == cov.shape[1] == len(ells_in), (
         'ells_in must be the same length as the covariance matrix'
     )
@@ -361,30 +503,6 @@ def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
     np.savetxt(filename, array_2d, header=header, fmt=fmt, delimiter='')
 
 
-def nz_fits_to_txt(fits_filename):
-    """Converts the official SGS-like fits file to the usual (z, nz) format.
-
-    Parameters
-    ----------
-    fits_filename : str
-        The full path and filename of the fits file to be converted.
-
-    """
-    import euclidlib as el
-
-    z, nz = el.photo.redshift_distributions(fits_filename)
-
-    nz_arr = np.zeros((len(z), len(nz) + 1))
-    nz_arr[:, 0] = z
-
-    plt.figure()
-    for bin in nz:
-        plt.plot(z, nz[bin])
-        nz_arr[:, bin] = nz[bin]
-
-    return nz_arr
-
-
 def compare_funcs(
     x,
     y: dict,
@@ -393,6 +511,7 @@ def compare_funcs(
     title=None,
     ylim_diff=None,
     plt_kw=None,
+    ax=None,
 ):
     plt_kw = {} if plt_kw is None else plt_kw
 
@@ -403,8 +522,11 @@ def compare_funcs(
     if x is None:
         x = np.arange(len(y_tuple[0]))
 
-    fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1])
-    fig.subplots_adjust(hspace=0)
+    if ax is None:
+        fig, ax = plt.subplots(2, 1, sharex=True, height_ratios=[2, 1])
+        fig.subplots_adjust(hspace=0)
+    else:
+        fig = ax[0].figure
 
     for i, _y in enumerate(y_tuple):
         ls = '--' if i > 0 else '-'
@@ -694,7 +816,8 @@ def cov_3x2pt_dict_8d_to_10d(
     zbins: int,
     ind_dict: dict,
     unique_probe_combs: list[str],
-    symmetrize_output_dict: bool = const.SYMMETRIZE_OUTPUT_DICT,
+    space: str,
+    symmetrize_output_dict: dict = const.HS_SYMMETRIZE_OUTPUT_DICT,
 ) -> dict:
     """Expands a 3x2pt covariance dictionary from 8D to 10D.
 
@@ -706,7 +829,7 @@ def cov_3x2pt_dict_8d_to_10d(
         assert len(_probe_str) == 4, '_probe_str must have length 4'
 
     # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
-    symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs)
+    symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs, space)
 
     cov_3x2pt_dict_10D = {}
 
@@ -722,13 +845,13 @@ def cov_3x2pt_dict_8d_to_10d(
         probe_a, probe_b, probe_c, probe_d = probe_str
         key = (probe_a, probe_b, probe_c, probe_d)
         cov_3x2pt_dict_10D[key] = cov_4D_to_6D_blocks(
-            cov_3x2pt_dict_8D[key],
-            nbl,
-            zbins,
-            ind_dict[probe_a, probe_b],
-            ind_dict[probe_c, probe_d],
-            symmetrize_output_dict[probe_a, probe_b],
-            symmetrize_output_dict[probe_c, probe_d],
+            cov_4D=cov_3x2pt_dict_8D[key],
+            nbl=nbl,
+            zbins=zbins,
+            ind_ab=ind_dict[probe_a, probe_b],
+            ind_cd=ind_dict[probe_c, probe_d],
+            symmetrize_output_ab=symmetrize_output_dict[probe_a, probe_b],
+            symmetrize_output_cd=symmetrize_output_dict[probe_c, probe_d],
         )
 
     # * Second pass: fill symmetric counterparts
@@ -1606,9 +1729,14 @@ def compare_arrays(
     plot_diff_perc_threshold=None,
     white_where_zero=True,
     plot_diff_hist=False,
+    matshow_arr_kw=None,
+    title='',
     early_return=True,
 ):
     fontsize = 25
+
+    if matshow_arr_kw is None:
+        matshow_arr_kw = {}
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
@@ -1619,7 +1747,7 @@ def compare_arrays(
         if np.allclose(A, B, rtol=rtol, atol=0):
             print(
                 f'{name_A} and {name_B} are close within relative tolerance '
-                f'of {rtol * 100}%) ✅'
+                f'of {rtol * 100}% ✅'
             )
             if early_return:
                 return
@@ -1666,11 +1794,11 @@ def compare_arrays(
         if log_array:
             A_toplot, B_toplot = np.log10(A_toplot), np.log10(B_toplot)
 
-        im = ax[0, 0].matshow(A_toplot)
+        im = ax[0, 0].matshow(A_toplot, **matshow_arr_kw)
         ax[0, 0].set_title(f'{name_A}', fontsize=fontsize)
         fig.colorbar(im, ax=ax[0, 0])
 
-        im = ax[0, 1].matshow(B_toplot)
+        im = ax[0, 1].matshow(B_toplot, **matshow_arr_kw)
         ax[0, 1].set_title(f'{name_B}', fontsize=fontsize)
         fig.colorbar(im, ax=ax[0, 1])
 
@@ -1700,7 +1828,7 @@ def compare_arrays(
 
     fig.suptitle(
         f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}\n'
-        f'plot_diff_threshold={plot_diff_perc_threshold}%',
+        f'plot_diff_threshold={plot_diff_perc_threshold}%\n{title}',
         fontsize=fontsize,
     )
     plt.show()
@@ -1987,7 +2115,7 @@ def matshow(
     abs_val=False,
     threshold=None,
     only_show_nans=False,
-    matshow_kwargs: dict = None,
+    matshow_kwargs: dict | None = None,
 ):
     """:param array:
     :param title:
@@ -2518,7 +2646,7 @@ def covariance_einsum(
     return cov_sva, cov_sn, cov_mix
 
 
-def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
+def cov_10d_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
     zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
@@ -2533,36 +2661,43 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     )
     for A, B, C, D in cov_10D_dict:
         cov_10D_array[
-            const.PROBE_DICT[A],
-            const.PROBE_DICT[B],
-            const.PROBE_DICT[C],
-            const.PROBE_DICT[D],
+            const.HS_PROBE_NAME_TO_IX_DICT[A],
+            const.HS_PROBE_NAME_TO_IX_DICT[B],
+            const.HS_PROBE_NAME_TO_IX_DICT[C],
+            const.HS_PROBE_NAME_TO_IX_DICT[D],
             ...,
         ] = cov_10D_dict[A, B, C, D]
 
     return cov_10D_array
 
 
-def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
-    """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
-    zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
+def cov_10d_array_to_dict(cov_10d_array: np.ndarray, probe_ordering) -> dict:
+    """Transforms an array of shape
+    (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
+    to a dictionary of "shape"
+    {(A, B, C, D): [nbl, nbl, zbins, zbins, zbins, zbins]}
+    (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
     n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
     """
-    cov_10D_dict = {}
-    for A_str, B_str in probe_ordering:
-        for C_str, D_str in probe_ordering:
-            A_idx, B_idx, C_idx, D_idx = (
-                const.PROBE_DICT[A_str],
-                const.PROBE_DICT[B_str],
-                const.PROBE_DICT[C_str],
-                const.PROBE_DICT[D_str],
-            )
-            cov_10D_dict[A_str, B_str, C_str, D_str] = cov_10D_array[
-                A_idx, B_idx, C_idx, D_idx, ...
-            ]
 
-    return cov_10D_dict
+    assert cov_10d_array.ndim == 10, 'cov_10d_array must be 10-dimensional'
+    assert len(probe_ordering) > 0, 'probe_ordering must not be empty'
+
+    cov_10d_dict = {}
+    for probe_a_str, probe_b_str in probe_ordering:
+        for probe_c_str, probe_d_str in probe_ordering:
+            probe_a_idx, probe_b_idx, probe_c_idx, probe_d_idx = (
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_a_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_b_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_c_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_d_str],
+            )
+            cov_10d_dict[probe_a_str, probe_b_str, probe_c_str, probe_d_str] = (
+                cov_10d_array[probe_a_idx, probe_b_idx, probe_c_idx, probe_d_idx, ...]
+            )
+
+    return cov_10d_dict
 
 
 # @njit
@@ -2615,7 +2750,7 @@ def cov_3x2pt_10D_to_4D(
     """
     # if it's an array, convert to dictionary for the function to work
     if isinstance(cov_3x2pt_10D, np.ndarray):
-        cov_3x2pt_dict_10D = cov_10D_array_to_dict(cov_3x2pt_10D, probe_ordering)
+        cov_3x2pt_dict_10D = cov_10d_array_to_dict(cov_3x2pt_10D, probe_ordering)
     elif isinstance(cov_3x2pt_10D, dict):
         cov_3x2pt_dict_10D = cov_3x2pt_10D
     else:
@@ -2678,7 +2813,7 @@ def cov_3x2pt_10D_to_4D(
     return cov_3x2pt_4D
 
 
-def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d):
+def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmonic'):
     """Convert a dictionary of 4D blocks into a single 4D array.
 
     This is the same code as
@@ -2696,40 +2831,78 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d):
         )
 
     # check that the req_probe_combs_2d  are correct
-    for a, b, c, d in req_probe_combs_2d:
-        assert (a, b, c, d) in cov_3x2pt_8D_dict.keys(), (
-            f'Probe combination {a, b, c, d} not found in the input dictionary'
+    for probe in req_probe_combs_2d:
+        if space == 'harmonic':
+            probe_tpl = tuple(probe)
+        elif space == 'real':
+            probe_tpl = split_probe_name(probe)
+
+        assert probe_tpl in cov_3x2pt_8D_dict, (
+            f'Probe combination {probe_tpl} not found in the input dictionary'
         )
 
-    row_ll_list, row_gl_list, row_gg_list = [], [], []
-    for a, b, c, d in req_probe_combs_2d:
-        if (a, b) == ('L', 'L'):
-            row_ll_list.append(cov_3x2pt_8D_dict[a, b, c, d])
-        elif (a, b) == ('G', 'L'):
-            row_gl_list.append(cov_3x2pt_8D_dict[a, b, c, d])
-        elif (a, b) == ('G', 'G'):
-            row_gg_list.append(cov_3x2pt_8D_dict[a, b, c, d])
-        else:
-            raise ValueError(
-                f'Probe combination {a, b, c, d} does not start with '
-                '("L", "L") or ("G", "L") or ("G", "G") '
-            )
-
-    # concatenate the lists to make rows
-    # o(nly concatenate and include rows that have content)
     final_rows = []
 
-    if row_ll_list:
-        row_ll = np.concatenate(row_ll_list, axis=3)
-        final_rows.append(row_ll)
+    if space == 'harmonic':
+        row_ll_list, row_gl_list, row_gg_list = [], [], []
+        for a, b, c, d in req_probe_combs_2d:
+            if (a, b) == ('L', 'L'):
+                row_ll_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+            elif (a, b) == ('G', 'L'):
+                row_gl_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+            elif (a, b) == ('G', 'G'):
+                row_gg_list.append(cov_3x2pt_8D_dict[a, b, c, d])
+            else:
+                raise ValueError(
+                    f'Probe combination {a, b, c, d} does not start with '
+                    '("L", "L") or ("G", "L") or ("G", "G") '
+                )
+        # concatenate the lists to make rows
+        # (only concatenate and include rows that have content)
+        if row_ll_list:
+            row_ll = np.concatenate(row_ll_list, axis=3)
+            final_rows.append(row_ll)
+        if row_gl_list:
+            row_gl = np.concatenate(row_gl_list, axis=3)
+            final_rows.append(row_gl)
+        if row_gg_list:
+            row_gg = np.concatenate(row_gg_list, axis=3)
+            final_rows.append(row_gg)
 
-    if row_gl_list:
-        row_gl = np.concatenate(row_gl_list, axis=3)
-        final_rows.append(row_gl)
+    elif space == 'real':
+        row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
+        for probe in req_probe_combs_2d:
+            probe_ab, probe_cd = split_probe_name(probe)
+            if (probe_ab) == 'xip':
+                row_xip_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            elif (probe_ab) == ('xim'):
+                row_xim_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            elif (probe_ab) == ('gt'):
+                row_gt_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            elif (probe_ab) == ('gg'):
+                row_gg_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
+            else:
+                raise ValueError(
+                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    '("xip") or ("xim") or ("gt") or ("gg") '
+                )
+        # concatenate the lists to make rows
+        # o(nly concatenate and include rows that have content)
+        if row_xip_list:
+            row_xip = np.concatenate(row_xip_list, axis=3)
+            final_rows.append(row_xip)
+        if row_xim_list:
+            row_xim = np.concatenate(row_xim_list, axis=3)
+            final_rows.append(row_xim)
+        if row_gt_list:
+            row_gt = np.concatenate(row_gt_list, axis=3)
+            final_rows.append(row_gt)
+        if row_gg_list:
+            row_gg = np.concatenate(row_gg_list, axis=3)
+            final_rows.append(row_gg)
 
-    if row_gg_list:
-        row_gg = np.concatenate(row_gg_list, axis=3)
-        final_rows.append(row_gg)
+    else:
+        raise ValueError(f'space must me "harmonic" or "real", not: {space}')
 
     # concatenate the rows to construct the final matrix
     if final_rows:
@@ -2802,8 +2975,8 @@ def cov_3x2pt_4d_to_10d_dict(
             zbins,
             ind_dict[key[0], key[1]],
             ind_dict[key[2], key[3]],
-            const.SYMMETRIZE_OUTPUT_DICT[key[0], key[1]],
-            const.SYMMETRIZE_OUTPUT_DICT[key[2], key[3]],
+            const.HS_SYMMETRIZE_OUTPUT_DICT[key[0], key[1]],
+            const.HS_SYMMETRIZE_OUTPUT_DICT[key[2], key[3]],
         )
 
     return cov_3x2pt_10d_dict
@@ -3106,7 +3279,7 @@ def check_symmetric(array_2d, exact, rtol=1e-05):
         return np.allclose(array_2d, array_2d.T, rtol=rtol, atol=0)
 
 
-def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe):
+def slice_cov_3x2pt_2D_scale_probe_zpair(cov_2D_scale_probe_zpair, nbl, zbins, probe):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
     matrix in ell, probe and zpair (unpacked in this order)
     """
@@ -3122,19 +3295,23 @@ def slice_cov_3x2pt_2D_ell_probe_zpair(cov_2D_ell_probe_zpair, nbl, zbins, probe
     else:
         raise ValueError('probe must be WL or GC')
 
-    cov_1D_ell_probe_zpair = [0] * nbl
+    cov_1D_scale_probe_zpair = [0] * nbl
     for ell_bin in range(nbl):
         # block_index * block_size + probe_starting index in each block
         start = ell_bin * ell_block_size + probe_start
         stop = start + probe_stop
-        cov_1D_ell_probe_zpair[ell_bin] = cov_2D_ell_probe_zpair[start:stop, start:stop]
+        cov_1D_scale_probe_zpair[ell_bin] = cov_2D_scale_probe_zpair[
+            start:stop, start:stop
+        ]
 
-    cov_2D_ell_probe_zpair_sliced = scipy.linalg.block_diag(*cov_1D_ell_probe_zpair)
+    cov_2D_scale_probe_zpair_sliced = scipy.linalg.block_diag(*cov_1D_scale_probe_zpair)
 
-    return cov_2D_ell_probe_zpair_sliced
+    return cov_2D_scale_probe_zpair_sliced
 
 
-def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, probe):
+def slice_cl_3x2pt_1D_scale_probe_zpair(
+    cl_3x2pt_1D_scale_probe_zpair, nbl, zbins, probe
+):
     """Slices the 2-dimensional 3x2pt covariance ordered as a block-diagonal
     matrix in ell, probe and zpair (unpacked in this order)
     """
@@ -3150,16 +3327,20 @@ def slice_cl_3x2pt_1D_ell_probe_zpair(cl_3x2pt_1D_ell_probe_zpair, nbl, zbins, p
     else:
         raise ValueError('probe must be WL or GC')
 
-    cl_1D_ell_probe_zpair_list = [0] * nbl
+    cl_1D_scale_probe_zpair_list = [0] * nbl
     for ell_bin in range(nbl):
         # block_index * block_size + probe_starting index in each block
         start = ell_bin * ell_block_size + probe_start
         stop = start + probe_stop
-        cl_1D_ell_probe_zpair_list[ell_bin] = cl_3x2pt_1D_ell_probe_zpair[start:stop]
+        cl_1D_scale_probe_zpair_list[ell_bin] = cl_3x2pt_1D_scale_probe_zpair[
+            start:stop
+        ]
 
-    cl_1D_ell_probe_zpair = np.array(list(itertools.chain(*cl_1D_ell_probe_zpair_list)))
+    cl_1D_scale_probe_zpair = np.array(
+        list(itertools.chain(*cl_1D_scale_probe_zpair_list))
+    )
 
-    return cl_1D_ell_probe_zpair
+    return cl_1D_scale_probe_zpair
 
 
 # @njit
@@ -3228,7 +3409,9 @@ def cov_2D_to_4D(cov_2D, nbl, block_index, optimize=True, symmetrize=False):
 
 
 # @njit
-def cov_4D_to_2D(cov_4D, block_index, optimize=True):
+def cov_4D_to_2D(
+    cov_4D: np.ndarray, block_index: str, optimize: bool = True
+) -> np.ndarray:
     """Reshapes the covariance from 4D to 2D. Also works for 3x2pt. The order
     of the for loops does not affect the result!
 
@@ -3252,6 +3435,10 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     the missing elements in the
     higher-dimensional array are needed.
     """
+    assert type(cov_4D) is np.ndarray, 'cov_4D must be numpy array'
+    assert type(block_index) is str, 'block_index must be a string'
+    assert type(optimize) is bool, 'optimize must be a boolean'
+
     assert block_index in ['ell', 'C-style'] + ['zpair', 'F-style'], (
         'block_index must be "ell", "C-style" or "zpair", "F-style"'
     )
@@ -3306,7 +3493,123 @@ def cov_4D_to_2D(cov_4D, block_index, optimize=True):
     return cov_2D
 
 
-def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
+def _cov_4D_to_2D_assembler(cov_4D, zbins, probe_order, probe_sizes, block_index='ell'):
+    """
+    Reshapes and assembles a 2D covariance matrix from a 4D covariance matrix
+    containing blocks for different probes.
+
+    Parameters
+    ----------
+    cov_4D : np.ndarray
+        The 4D covariance matrix (n_scales, n_scales, n_pairs_total, n_pairs_total).
+    zbins : int
+        Number of redshift bins.
+    probe_order : list of str
+        Ordered list of probe names (e.g., ['LL', 'GL', 'GG']).
+    probe_sizes : dict
+        Dictionary mapping probe name to its number of pairs (e.g., {'LL': 55, 'GL': 100, 'GG': 55}).
+    block_index : str, optional
+        Indexing for reshaping ('ell' or 'zpair'), by default 'ell'.
+
+    Returns
+    -------
+    np.ndarray
+        The assembled 2D covariance matrix.
+    """
+    kw = {'block_index': block_index, 'optimize': True}
+
+    # Calculate offsets for each probe block
+    offsets = {}
+    current_offset = 0
+    for probe in probe_order:
+        offsets[probe] = current_offset
+        current_offset += probe_sizes[probe]
+
+    # Slice cov_4D into a dictionary of 4D blocks and convert to 2D
+    cov_dict_2d = {}
+    for p1 in probe_order:
+        for p2 in probe_order:
+            start1, stop1 = offsets[p1], offsets[p1] + probe_sizes[p1]
+            start2, stop2 = offsets[p2], offsets[p2] + probe_sizes[p2]
+            cov_block_4D = cov_4D[:, :, start1:stop1, start2:stop2]
+            cov_dict_2d[(p1, p2)] = cov_4D_to_2D(cov_block_4D, **kw)
+
+    # Assemble the final 2D matrix
+    rows = []
+    for p1 in probe_order:
+        row_blocks = [cov_dict_2d[(p1, p2)] for p2 in probe_order]
+        rows.append(np.hstack(row_blocks))
+
+    if not rows:
+        raise ValueError('No valid probe combinations found!')
+
+    return np.vstack(rows)
+
+
+def cov_4D_to_2DCLOE_3x2pt_hs(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
+    """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
+    ordering for harmonic space 3x2pt probes.
+    """
+    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
+
+    probe_sizes = {'LL': zpairs_auto, 'GL': zpairs_cross, 'GG': zpairs_auto}
+
+    # Determine the order of probes present in the covariance matrix
+    probe_order = []
+    if any('LL' in p for p in req_probe_combs_2d):
+        probe_order.append('LL')
+    if any('GL' in p for p in req_probe_combs_2d):
+        probe_order.append('GL')
+    if any('GG' in p for p in req_probe_combs_2d):
+        probe_order.append('GG')
+
+    if not probe_order:
+        raise ValueError(
+            'No valid 3x2pt probe combinations found in req_probe_combs_2d'
+        )
+
+    return _cov_4D_to_2D_assembler(cov_4D, zbins, probe_order, probe_sizes, block_index)
+
+
+def cov_4D_to_2DCLOE_3x2pt_rs(
+    cov_3x2pt_4d, zbins, req_probe_combs_2d, block_index='ell'
+):
+    """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
+    ordering for real space 3x2pt probes.
+    """
+    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
+
+    probe_sizes = {
+        'xip': zpairs_auto,
+        'xim': zpairs_auto,
+        'gt': zpairs_cross,
+        'gg': zpairs_auto,
+    }
+
+    # Determine the order of probes present in the covariance matrix
+    probe_order = []
+    # The order matters and should correspond to how cov_4D is constructed.
+    # Assuming a standard order for real space probes.
+    if any('xip' in p for p in req_probe_combs_2d):
+        probe_order.append('xip')
+    if any('xim' in p for p in req_probe_combs_2d):
+        probe_order.append('xim')
+    if any('gt' in p for p in req_probe_combs_2d):
+        probe_order.append('gt')
+    if any('gg' in p for p in req_probe_combs_2d):
+        probe_order.append('gg')
+
+    if not probe_order:
+        raise ValueError(
+            'No valid real space probe combinations found in req_probe_combs_2d'
+        )
+
+    return _cov_4D_to_2D_assembler(
+        cov_3x2pt_4d, zbins, probe_order, probe_sizes, block_index
+    )
+
+
+def cov_4D_to_2DCLOE_3x2pt_old(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
     """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
     ordering.
 
@@ -3314,9 +3617,9 @@ def cov_4D_to_2DCLOE_3x2pt(cov_4D, zbins, req_probe_combs_2d, block_index='ell')
     ordering (LL, LG/GL, GG) is hardcoded, this function won't work with
     other combinations (but it TODO will work both for LG and GL) !
     Important note: block_index = 'ell' means that the overall ordering
-    will ! be probe_ell_zpair. ! Setting it to 'zpair' will give you the
-    ordering probe_zpair_ell. ! Bottom line: the probe is the outermost
-    loop in any case. ! The ordering used by CLOE v2 is probe_ell_zpair,
+    will ! be probe_scale_zpair. ! Setting it to 'zpair' will give you the
+    ordering probe_scale_zpair. ! Bottom line: the probe is the outermost
+    loop in any case. ! The ordering used by CLOE v2 is probe_scale_zpair,
     so block_index = 'ell' is ! the correct choice in this case.
     """
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(zbins)
@@ -3535,12 +3838,12 @@ def cov_2d_dav_to_cloe(cov_2d_dav, nbl, zbins, block_index_in, block_index_out):
     convention, that is, from the probe being unraveled in the first for loop
     to the probe being unraveled in the second for loop.
 
-    example: from ell_probe_zpair (my convention) to probe_ell_zpair (CLOE).
+    example: from scale_probe_zpair (my convention) to probe_scale_zpair (CLOE).
     The zpairs <-> ell ordering is decided by 'block_idex' (setting the first,
     or outermost, of the two)
     """
     cov_4D = cov_2D_to_4D(cov_2d_dav, nbl, block_index=block_index_in, optimize=True)
-    cov_2d_cloe = cov_4D_to_2DCLOE_3x2pt(
+    cov_2d_cloe = cov_4D_to_2DCLOE_3x2pt_hs(
         cov_4D, zbins=zbins, block_index=block_index_out
     )
     return cov_2d_cloe
@@ -3551,7 +3854,7 @@ def cov_2d_cloe_to_dav(cov_2d_cloe, nbl, zbins, block_index_in, block_index_out)
     convention, that is, from the probe being unraveled in the second for loop
     to the probe being unraveled in the first for loop.
 
-    example: from probe_ell_zpair (CLOE) to ell_probe_zpair (my convention).
+    example: from probe_scale_zpair (CLOE) to scale_probe_zpair (my convention).
     The zpairs <-> ell ordering is decided by 'block_idex' (setting the first,
     or outermost, of the two)
     """
@@ -3567,13 +3870,9 @@ def cov2corr(covariance):
 
     with np.errstate(divide='ignore', invalid='ignore'):
         correlation = np.divide(covariance, outer_v)
-        correlation[covariance == 0] = (
-            0  # Ensure zero covariance entries are explicitly zero
-        )
-        correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
-
-    # Ensure diagonal elements are exactly 1
-    # np.fill_diagonal(correlation, 1)
+        # Ensure zero covariance entries are explicitly zero
+        correlation[covariance == 0] = 0
+        # correlation[~np.isfinite(correlation)] = 0  # Set any NaN or inf values to 0
 
     return correlation
 

@@ -1,27 +1,32 @@
-"""This script performs the following operations.
+"""
+LAST UPDATE: 2025-09-16
 
-1. Imports the cfg yaml file in the Spaceborne root directory (as a baseline cfg)
-2. It changes some settings (for example, to speed up the code), and stores this updated
-   baseline config in base_cfg
-1. Defines combinations of parameters to test with lists of dictionaries,
-   allowing for "zipped" iteration through sets of changes.
-2. Saves the set of cfg dicts to yaml files. in the folder
-    /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_cfg
-3. Runs SB with these yaml files, generating a set of benchmarks to use as
+Script to produce a set of benchmarks to test the Spaceborne code. More in detail, it 
+performs the following operations:
+
+1. Manually define a `base_cfg` dict (this is safer than importing the standard 
+   Spaceborne/config.yaml file) with fast runtime (e.g. setting a low number of points
+   for the z and k grids).
+2. Change some settings to test the different parts of the code (and, to ensure fast 
+   execution), thereby producing a list of cfg dicts to test (`configs_to_test`).
+3. Save the list of cfg dicts to yaml files in the folder
+   {ROOT}/Spaceborne_bench/bench_set_cfg.
+4. Run SB with these yaml files, generating a set of benchmarks (npz archives) to use as
    an exhaustive reference to test the code against. The benchmarks are stored in
-   /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output
-   [NOTE] the code will raise an error if the benchmark files are already
-   present. If this is the case, delete the existing ones or change the filenames for
-   the new bench files
-   [NOTE] the SB output is in
-   /home/davide/Documenti/Lavoro/Programmi/Spaceborne_bench/bench_set_output/_sb_output,
-   but you don't need to care about this.
+   {ROOT}/Spaceborne_bench/bench_set_output
+   
 
 NOTES
 
-1. The code will raise an error if the benchmark files are already present.
-   If you want to dverwrite them, delete the existing ones in e.g.
-   /u/dsciotti/code/Spaceborne_bench/bench_set_output/config_0005.yaml
+-  The code will raise an error if a benchmark file already exists.
+   If you want to overwrite them, delete the existing ones (e.g.):
+   {ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
+   or change the benchmark filename.
+   
+-  The SB output produced at runtime during the production of these benchmarks 
+   is in
+   {ROOT}/Spaceborne_bench/bench_set_output/_sb_output,
+   but you don't need to care about this.
 """
 
 import gc
@@ -199,7 +204,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
 
 
 # Example usage
-ROOT = '/u/dsciotti/code'
+ROOT = '/home/davide/Documenti/Lavoro/Programmi'
 bench_set_path = f'{ROOT}/Spaceborne_bench'
 bench_set_path_cfg = f'{bench_set_path}/bench_set_cfg'
 bench_set_path_results = f'{bench_set_path}/bench_set_output'
@@ -249,15 +254,15 @@ base_cfg = {
     'probe_selection': {'LL': True, 'GL': True, 'GG': True, 'cross_cov': True},
     'C_ell': {
         'use_input_cls': False,
-        'cl_LL_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_ll.txt',
-        'cl_GL_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gl.txt',
-        'cl_GG_path': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/cl_gg.txt',
+        'cl_LL_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt',
+        'cl_GL_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt',
+        'cl_GG_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt',
         'which_gal_bias': 'FS2_polynomial_fit',
         'which_mag_bias': 'FS2_polynomial_fit',
         'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
         'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
-        'gal_bias_table_filename': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/gal_bias.txt',
-        'mag_bias_table_filename': '/u/dsciotti/code/Spaceborne_jobs/RR2_cov/input/mag_bias.txt',
+        'gal_bias_table_filename': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt',
+        'mag_bias_table_filename': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt',
         'mult_shear_bias': [0.0, 0.0, 0.0],
         'has_rsd': False,
         'has_IA': False,
@@ -269,8 +274,8 @@ base_cfg = {
         },
     },
     'nz': {
-        'nz_sources_filename': '/u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
-        'nz_lenses_filename': '/u/dsciotti/code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_sources_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_lenses_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
         'ngal_sources': [8.09216, 8.09215, 8.09215],
         'ngal_lenses': [8.09216, 8.09215, 8.09215],
         'shift_nz': False,
@@ -291,7 +296,7 @@ base_cfg = {
         'apodize': False,
         'aposize': 0.1,
     },
-    'ell_binning': {
+    'binning': {
         'binning_type': 'ref_cut',
         'ell_min_WL': 10,
         'ell_max_WL': 3000,
@@ -311,7 +316,7 @@ base_cfg = {
         'coupled_cov': False,
         'triu_tril': 'triu',
         'row_col_major': 'row-major',
-        'covariance_ordering_2D': 'probe_ell_zpair',
+        'covariance_ordering_2D': 'probe_scale_zpair',
         'save_full_cov': True,
         'split_gaussian_cov': False,
         'sigma_eps_i': [0.26, 0.26, 0.26],
@@ -377,20 +382,20 @@ configs_to_test = [
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'log'},
+        'binning': {'binning_type': 'log'},
     },
     # G nmt spin0, lin ell binning
     # ==============================
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'lin'},
+        'binning': {'binning_type': 'lin'},
     },
     # G nmt spin2, lin ell binning
     {
         'covariance': {'G': True},
         'namaster': {'use_namaster': True, 'spin0': False},
-        'ell_binning': {'binning_type': 'lin'},
+        'binning': {'binning_type': 'lin'},
     },
     # SSC KE
     {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
@@ -398,6 +403,26 @@ configs_to_test = [
     {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
     # cNG
     {'covariance': {'G': True, 'SSC': False, 'cNG': True}},
+    
+    # === namaster runs, quite slow ===
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'ell_binning': {'binning_type': 'log'},
+    },
+    # G spin0, lin ell binning
+    # ==============================
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': True},
+        'ell_binning': {'binning_type': 'lin'},
+    },
+    # G spin2, lin ell binning
+    {
+        'covariance': {'G': True},
+        'namaster': {'use_namaster': True, 'spin0': False},
+        'ell_binning': {'binning_type': 'lin'},
+    },
 ]
 
 
@@ -406,7 +431,7 @@ configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_path_cfg)
 print(f'Generated {len(configs)} configurations')
 
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=6)
+yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=14)
 
 # Run benchmarks
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)

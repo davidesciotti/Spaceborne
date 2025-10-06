@@ -27,4 +27,3 @@ _config.yaml
 .env
 node_modules
 dist/*
-output_*

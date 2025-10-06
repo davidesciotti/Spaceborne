@@ -2101,6 +2101,37 @@ if cfg['misc']['save_figs']:
         fig = plt.figure(fig_num)
         fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
 
+import heracles
+
+cov_hc_dict = io_handler.cov_sb_10d_to_heracles_dict(
+    cov_hs_obj.cov_3x2pt_g_10d, squeeze=True
+)
+
+heracles.io.write('./stop_looking_at_your_laptops_eyes_on_me.fits', cov_hc_dict)
+
+cov_hc_dict = heracles.io.read('./stop_looking_at_your_laptops_eyes_on_me.fits')
+cov_10d = io_handler.cov_heracles_dict_to_sb_10d(
+    cov_hc_dict, zbins, ell_obj.nbl_3x2pt, 2
+)
+cov_4d = sl.cov_3x2pt_10D_to_4D(
+    cov_3x2pt_10D=cov_10d,
+    probe_ordering=probe_ordering,
+    nbl=ell_obj.nbl_3x2pt,
+    zbins=zbins,
+    ind_copy=ind.copy(),
+    GL_OR_LG=GL_OR_LG,
+    req_probe_combs_2d=req_probe_combs_hs_2d,
+)
+cov_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(cov_4d, zbins, req_probe_combs_hs_2d, 'ell')
+
+# ! SIMPLIFIED VERSION OF THE RESHAPING ROUTINES TO PASS TO GUADA
+
+req_probe_combs_2d = req_probe_combs_hs_2d
+from spaceborne import cov_transform as ct
+
+cov_4d = ct.cov_3x2pt_10d_to_4d()
+
+
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
 
@@ -2263,4 +2294,3 @@ cov_oc_2d = cov_real_space.stack_probe_blocks_deprecated(cov_oc_2d_dict)
 sl.compare_2d_covs(cov_sb_2d, cov_oc_2d, 'SB', 'OC', title=title, diff_threshold=5)
 
 """
-print('Done')

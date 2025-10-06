@@ -1749,6 +1749,10 @@ if cfg['covariance']['save_full_cov']:
 
     np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **cov_dict_tosave_6d)
 
+if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
+    io_obj.save_cov_euclidlib(cov_hs_obj=_cov_obj)
+
+
 print(f'Covariance matrices saved in {output_path}\n')
 
 # ! ============================ plot & tests ==========================================

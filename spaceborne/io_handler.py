@@ -309,6 +309,8 @@ class IOHandler:
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
         self.cl_cfg = cfg['C_ell']
+        self.output_path = cfg['misc']['output_path']
+        self.cov_filename = cfg['covariance']['cov_filename']
 
     def print_cl_path(self):
         """Print the path of the input Cl files"""
@@ -446,3 +448,74 @@ class IOHandler:
         ]:  # fmt: skip
             assert np.all(np.diff(_ells) > 0), 'ells are not sorted'
             assert len(np.unique(_ells)) == len(_ells), 'ells are not unique'
+
+    def save_cov_euclidlib(self, cov_hs_obj):
+        """Helper function to save the covariance in the heracles/cloelikeeuclidlib
+        .fits format. Works only for the harmonic-space covariance for the moment.
+        """
+
+        # sanity checks
+        assert self.cfg['covariance']['save_cov_fits'], (
+            'cfg["covariance"]["save_cov_fits"] should be True to '
+            'save covariance in .fits format'
+        )
+        assert self.cfg['probe_selection']['space'] == 'harmonic', (
+            'cfg["probe_selection"]["space"] should be "harmonic" to '
+            'save covariance in .fits format'
+        )
+
+        import heracles
+
+        if self.cfg['covariance']['G']:
+            cov_hc_dict = cov_sb_10d_to_heracles_dict(
+                cov_hs_obj.cov_3x2pt_g_10d, squeeze=True
+            )
+            heracles.io.write(
+                f'{self.output_path}/{self.cov_filename}_Gauss.fits', cov_hc_dict
+            )
+
+        if self.cfg['covariance']['SSC']:
+            cov_hc_dict = cov_sb_10d_to_heracles_dict(
+                cov_hs_obj.cov_3x2pt_ssc_10d, squeeze=True
+            )
+            heracles.io.write(
+                f'{self.output_path}/{self.cov_filename}_SSC.fits', cov_hc_dict
+            )
+
+        if self.cfg['covariance']['cNG']:
+            cov_hc_dict = cov_sb_10d_to_heracles_dict(
+                cov_hs_obj.cov_3x2pt_cng_10d, squeeze=True
+            )
+            heracles.io.write(
+                f'{self.output_path}/{self.cov_filename}_cNG.fits', cov_hc_dict
+            )
+
+        if self.cfg['covariance']['split_gaussian_cov']:
+            cov_hc_dict = cov_sb_10d_to_heracles_dict(
+                cov_hs_obj.cov_3x2pt_sva_10d, squeeze=True
+            )
+            heracles.io.write(
+                f'{self.output_path}/{self.cov_filename}_SVA.fits', cov_hc_dict
+            )
+
+            cov_hc_dict = cov_sb_10d_to_heracles_dict(
+                cov_hs_obj.cov_3x2pt_sn_10d, squeeze=True
+            )
+            heracles.io.write(
+                f'{self.output_path}/{self.cov_filename}_SN.fits', cov_hc_dict
+            )
+
+            cov_hc_dict = cov_sb_10d_to_heracles_dict(
+                cov_hs_obj.cov_3x2pt_mix_10d, squeeze=True
+            )
+            heracles.io.write(
+                f'{self.output_path}/{self.cov_filename}_MIX.fits', cov_hc_dict
+            )
+
+        if self.cfg['covariance']['cNG'] or self.cfg['covariance']['SSC']:
+            cov_hc_dict = cov_sb_10d_to_heracles_dict(
+                cov_hs_obj.cov_3x2pt_tot_10d, squeeze=True
+            )
+            heracles.io.write(
+                f'{self.output_path}/{self.cov_filename}_TOT.fits', cov_hc_dict
+            )

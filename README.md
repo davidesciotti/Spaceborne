@@ -4,11 +4,16 @@
 
 <!-- ![sb_logo](https://github.com/user-attachments/assets/6c5d9280-70b2-4f66-8bfb-c513317aea06) -->
 
-# Spaceborne
+<div style="text-align: center;" align="center">
+
+# Spaceborne: fast and accurate analytical covariance matrices for precision cosmology
 
 
 [![Documentation Status](https://readthedocs.org/projects/spaceborne/badge/?version=latest)](https://spaceborne.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Linter](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
+</div>
 
 ---
 For detailed instructions on how to install and use Spaceborne, please refer to the official [documentation](https://spaceborne.readthedocs.io/en/latest/).

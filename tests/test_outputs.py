@@ -134,7 +134,7 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/u/dsciotti/code'
+ROOT = '/Users/davidesciotti/Documents/Work/Code'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file
@@ -158,7 +158,8 @@ slow_benchs = [
 
 # remove slow_benchs from bench_yaml_names
 for bench_name in slow_benchs:
-    bench_yaml_names.remove(bench_name)
+    if bench_name in bench_yaml_names:
+        bench_yaml_names.remove(bench_name)
 
 # ... or run specific tests
 # bench_yaml_names = [

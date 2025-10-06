@@ -2097,6 +2097,7 @@ if (
 
         print('')
 
+
 # note that this is *not* compatible with %matplotlib inline in the interactive window!
 if cfg['misc']['save_figs']:
     output_dir = f'{output_path}/figs'

@@ -173,7 +173,6 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     ), "The dimensions of the last 4 axes don't match"
 
     # prints
-    print('Translating covariance from Spaceborne to Heracles format...')
     n_probes = cov_10d.shape[0]
     zbins = cov_10d.shape[-1]
     nbl = cov_10d.shape[4]
@@ -252,7 +251,6 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
                 zi, zj, zk, zl)
             ] = Result(arr_out, axis=(ax1, ax2))  # fmt: skip
 
-    print('...done')
     return cov_dict
 
 

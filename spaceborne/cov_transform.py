@@ -7,7 +7,7 @@ RS_DIAG_PROBES = ['xip', 'xim', 'gt', 'gg']
 
 
 def cov_10d_array_to_dict(cov_10d_array: np.ndarray) -> dict:
-    """Transforms a array of shape 
+    """Transforms a array of shape
     (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
     to a dictionary of "shape"
     {(A, B, C, D): [nbl, nbl, zbins, zbins, zbins, zbins]}
@@ -49,7 +49,7 @@ def cov_3x2pt_10d_to_4d(
     ind_cross = np.array([(i, j) for i in range(zbins) for j in range(zbins)])
     ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
 
-    # these are only needed for a sanity check  
+    # these are only needed for a sanity check
     zpairs_auto = (zbins * (zbins + 1)) // 2
     zpairs_cross = zbins**2
     assert ind_auto.shape[0] == zpairs_auto, f'ind_auto should have {zpairs_auto} rows'
@@ -237,3 +237,29 @@ def cov_3x2pt_8d_dict_to_4d(cov_3x2pt_8d_dict, req_probe_combs_2d, space='harmon
         raise ValueError('No valid probe combinations found!')
 
     return cov_3x2pt_4D
+
+
+# def test():
+#     """Put this at the end of your main.py to run a quick consistency check of the
+#     cov_transofrm module"""
+#     cov_hc_dict = heracles.io.read('./stop_looking_at_your_laptops_eyes_on_me.fits')
+#     cov_10d = io_handler.cov_heracles_dict_to_sb_10d(
+#         cov_hc_dict, zbins, ell_obj.nbl_3x2pt, 2
+#     )
+#     cov_4d = sl.cov_3x2pt_10D_to_4D(
+#         cov_3x2pt_10D=cov_10d,
+#         probe_ordering=probe_ordering,
+#         nbl=ell_obj.nbl_3x2pt,
+#         zbins=zbins,
+#         ind_copy=ind.copy(),
+#         GL_OR_LG=GL_OR_LG,
+#         req_probe_combs_2d=req_probe_combs_hs_2d,
+#     )
+#     cov_2d = sl.cov_4D_to_2DCLOE_3x2pt_hs(cov_4d, zbins, req_probe_combs_hs_2d, 'ell')
+
+#     # ! SIMPLIFIED VERSION OF THE RESHAPING ROUTINES TO PASS TO GUADA
+
+#     req_probe_combs_2d = req_probe_combs_hs_2d
+#     from spaceborne import cov_transform as ct
+
+#     cov_4d = ct.cov_3x2pt_10d_to_4d()

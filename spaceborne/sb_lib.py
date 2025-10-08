@@ -503,30 +503,6 @@ def savetxt_aligned(filename, array_2d, header_list, col_width=25, decimals=8):
     np.savetxt(filename, array_2d, header=header, fmt=fmt, delimiter='')
 
 
-def nz_fits_to_txt(fits_filename):
-    """Converts the official SGS-like fits file to the usual (z, nz) format.
-
-    Parameters
-    ----------
-    fits_filename : str
-        The full path and filename of the fits file to be converted.
-
-    """
-    import euclidlib as el
-
-    z, nz = el.photo.redshift_distributions(fits_filename)
-
-    nz_arr = np.zeros((len(z), len(nz) + 1))
-    nz_arr[:, 0] = z
-
-    plt.figure()
-    for bin in nz:
-        plt.plot(z, nz[bin])
-        nz_arr[:, bin] = nz[bin]
-
-    return nz_arr
-
-
 def compare_funcs(
     x,
     y: dict,
@@ -2667,7 +2643,7 @@ def covariance_einsum(
     return cov_sva, cov_sn, cov_mix
 
 
-def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
+def cov_10d_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
     zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
@@ -2692,26 +2668,33 @@ def cov_10D_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):
     return cov_10D_array
 
 
-def cov_10D_array_to_dict(cov_10D_array, probe_ordering):
-    """Transforms a dictionary of "shape" [(A, B, C, D)][ nbl, nbl, zbins,
-    zbins, zbins, zbins] (where A, B, C, D is a tuple of strings, each one
+def cov_10d_array_to_dict(cov_10d_array: np.ndarray, probe_ordering) -> dict:
+    """Transforms an array of shape
+    (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
+    to a dictionary of "shape"
+    {(A, B, C, D): [nbl, nbl, zbins, zbins, zbins, zbins]}
+    (where A, B, C, D is a tuple of strings, each one
     being either 'L' or 'G') to a numpy array of shape (n_probes, n_probes,
     n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
     """
-    cov_10D_dict = {}
-    for A_str, B_str in probe_ordering:
-        for C_str, D_str in probe_ordering:
-            A_idx, B_idx, C_idx, D_idx = (
-                const.HS_PROBE_NAME_TO_IX_DICT[A_str],
-                const.HS_PROBE_NAME_TO_IX_DICT[B_str],
-                const.HS_PROBE_NAME_TO_IX_DICT[C_str],
-                const.HS_PROBE_NAME_TO_IX_DICT[D_str],
-            )
-            cov_10D_dict[A_str, B_str, C_str, D_str] = cov_10D_array[
-                A_idx, B_idx, C_idx, D_idx, ...
-            ]
 
-    return cov_10D_dict
+    assert cov_10d_array.ndim == 10, 'cov_10d_array must be 10-dimensional'
+    assert len(probe_ordering) > 0, 'probe_ordering must not be empty'
+
+    cov_10d_dict = {}
+    for probe_a_str, probe_b_str in probe_ordering:
+        for probe_c_str, probe_d_str in probe_ordering:
+            probe_a_idx, probe_b_idx, probe_c_idx, probe_d_idx = (
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_a_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_b_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_c_str],
+                const.HS_PROBE_NAME_TO_IX_DICT[probe_d_str],
+            )
+            cov_10d_dict[probe_a_str, probe_b_str, probe_c_str, probe_d_str] = (
+                cov_10d_array[probe_a_idx, probe_b_idx, probe_c_idx, probe_d_idx, ...]
+            )
+
+    return cov_10d_dict
 
 
 # @njit
@@ -2764,7 +2747,7 @@ def cov_3x2pt_10D_to_4D(
     """
     # if it's an array, convert to dictionary for the function to work
     if isinstance(cov_3x2pt_10D, np.ndarray):
-        cov_3x2pt_dict_10D = cov_10D_array_to_dict(cov_3x2pt_10D, probe_ordering)
+        cov_3x2pt_dict_10D = cov_10d_array_to_dict(cov_3x2pt_10D, probe_ordering)
     elif isinstance(cov_3x2pt_10D, dict):
         cov_3x2pt_dict_10D = cov_3x2pt_10D
     else:
@@ -2872,7 +2855,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
                     '("L", "L") or ("G", "L") or ("G", "G") '
                 )
         # concatenate the lists to make rows
-        # o(nly concatenate and include rows that have content)
+        # (only concatenate and include rows that have content)
         if row_ll_list:
             row_ll = np.concatenate(row_ll_list, axis=3)
             final_rows.append(row_ll)

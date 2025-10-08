@@ -1287,7 +1287,7 @@ class OneCovarianceInterface:
                 return cov_ng_oc_3x2pt_dict_10D
 
             elif output_type == '10D_array':
-                return sl.cov_10D_dict_to_array(
+                return sl.cov_10d_dict_to_array(
                     cov_ng_oc_3x2pt_dict_10D,
                     nbl=self.pvt_cfg['nbl_3x2pt'],
                     zbins=self.zbins,

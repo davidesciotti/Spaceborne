@@ -388,7 +388,7 @@ class SpaceborneCovariance:
             symmetrize_output_dict=self.symmetrize_output_dict,
         )
 
-        return sl.cov_10D_dict_to_array(
+        return sl.cov_10d_dict_to_array(
             cov_dict_10d, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
         )
 
@@ -651,13 +651,13 @@ class SpaceborneCovariance:
 
     def _bnt_transform_3x2pt_wrapper(self):
         # turn 3x2pt 10d array to dict for the BNT function
-        cov_3x2pt_g_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_g_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_g_10d, self.probe_ordering
         )
-        cov_3x2pt_ssc_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_ssc_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_ssc_10d, self.probe_ordering
         )
-        cov_3x2pt_cng_10d_dict = sl.cov_10D_array_to_dict(
+        cov_3x2pt_cng_10d_dict = sl.cov_10d_array_to_dict(
             self.cov_3x2pt_cng_10d, self.probe_ordering
         )
 
@@ -678,13 +678,13 @@ class SpaceborneCovariance:
         # cov_3x2pt_10d_to_4D accepts both a dictionary and
         # an array as input, but it's done to keep the variable names consistent
         # ! BNT IS LINEAR, SO BNT(COV_TOT) = \SUM_i BNT(COV_i), but should check
-        self.cov_3x2pt_g_10d = sl.cov_10D_dict_to_array(
+        self.cov_3x2pt_g_10d = sl.cov_10d_dict_to_array(
             cov_3x2pt_g_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
-        self.cov_3x2pt_ssc_10d = sl.cov_10D_dict_to_array(
+        self.cov_3x2pt_ssc_10d = sl.cov_10d_dict_to_array(
             cov_3x2pt_ssc_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
-        self.cov_3x2pt_cng_10d = sl.cov_10D_dict_to_array(
+        self.cov_3x2pt_cng_10d = sl.cov_10d_dict_to_array(
             cov_3x2pt_cng_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
         )
 
@@ -748,80 +748,6 @@ class SpaceborneCovariance:
             )
         print('...done')
 
-    def ssc_integral_julia(
-        self,
-        d2CLL_dVddeltab,
-        d2CGL_dVddeltab,
-        d2CGG_dVddeltab,
-        cl_integral_prefactor,
-        sigma2,
-        z_grid,
-        integration_type,
-        unique_probe_combs,
-        num_threads=16,
-    ):
-        raise NotImplementedError(
-            'This function has been deprecated'
-        )
-        """Kernel to compute the 4D integral optimized using Simpson's rule using
-        Julia.
-        """
-        import shutil
-        import subprocess
-
-        suffix = 0
-        folder_name = 'tmp'
-        unique_folder_name = folder_name
-
-        # Loop until we find a folder name that does not exist
-        while os.path.exists(unique_folder_name):
-            suffix += 1
-            unique_folder_name = f'{folder_name}{suffix}'
-        os.makedirs(unique_folder_name)
-        folder_name = unique_folder_name
-
-        # save arrays and other ingredients needed for the integration
-        np.save(f'{folder_name}/d2CLL_dVddeltab', d2CLL_dVddeltab)
-        np.save(f'{folder_name}/d2CGL_dVddeltab', d2CGL_dVddeltab)
-        np.save(f'{folder_name}/d2CGG_dVddeltab', d2CGG_dVddeltab)
-        np.save(f'{folder_name}/ind_auto', self.ind_auto)
-        np.save(f'{folder_name}/ind_cross', self.ind_cross)
-        np.save(f'{folder_name}/cl_integral_prefactor', cl_integral_prefactor)
-        np.save(f'{folder_name}/sigma2', sigma2)
-        np.save(f'{folder_name}/z_grid', z_grid)
-
-        # save unique probe combination list as text file
-        with open(f'{folder_name}/unique_probe_names.txt', 'w') as f:
-            for p in unique_probe_combs:
-                f.write(f'{p}\n')
-
-        subprocess.run(
-            args=[
-                'julia',
-                '--project=.',
-                f'--threads={num_threads}',
-                self.jl_integrator_path,
-                folder_name,
-                integration_type,
-            ],
-            check=False,
-        )
-
-        cov_filename = (
-            'cov_SSC_spaceborne_{probe_a:s}{probe_b:s}{probe_c:s}{probe_d:s}_4D.npy'
-        )
-
-        cov_ssc_sb_3x2pt_dict_8D = sl.load_cov_from_probe_blocks(
-            path=f'{folder_name}',
-            filename=cov_filename,
-            unique_probe_combs=unique_probe_combs,
-        )
-
-        shutil.rmtree(folder_name)
-
-        self.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_sb_3x2pt_dict_8D
-
-        return self.cov_ssc_sb_3x2pt_dict_8D
 
     def get_ellmax_nbl(self, probe, covariance_cfg):
         if probe == 'LL':

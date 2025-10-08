@@ -336,8 +336,8 @@ class EllBinning:
 
         # Only load filenames if using 'from_input' binning type
         if self.binning_type == 'from_input':
-            self.wl_bins_filename = cfg['ell_binning']['WL_bins_filename']
-            self.gc_bins_filename = cfg['ell_binning']['GC_bins_filename']
+            self.wl_bins_filename = cfg['binning']['WL_bins_filename']
+            self.gc_bins_filename = cfg['binning']['GC_bins_filename']
         else:
             self.wl_bins_filename = None
             self.gc_bins_filename = None

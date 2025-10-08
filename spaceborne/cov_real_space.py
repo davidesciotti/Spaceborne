@@ -840,9 +840,9 @@ class CovRealSpace:
         self.nbt_coarse = self.cfg['binning']['theta_bins']
         self.nbt_fine = self.nbt_coarse
 
-        # TODO in principle this could be changed
-        # Use a loop to set up fine and coarse theta binning
 
+        # TODO this should probably go in the ell_binning class (which should be 
+        # TODO renamed)
         if self.cfg['binning']['binning_type'] == 'log':
             _binning_func = np.geomspace
         elif self.cfg['binning']['binning_type'] == 'lin':
@@ -853,6 +853,7 @@ class CovRealSpace:
                 'not supported for real-space covariance'
             )
 
+        # Use a loop to set up fine and coarse theta binning
         for bin_type in ['fine', 'coarse']:
             nbt = getattr(self, f'nbt_{bin_type}')
             theta_edges_deg = _binning_func(

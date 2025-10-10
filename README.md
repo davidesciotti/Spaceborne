@@ -16,6 +16,18 @@
 </div>
 
 ---
+Spaceborne is a code for the fast and accurate computation of the analytical photometric probes (weak lensing, photometric galaxy clustering and galaxy-galaxy lensing) covariance matrix for modern cosmological analyses.
+Some of its features include:
+
+* Easy to use: all settings are detailed (along with type hints) in the `yaml` example config file, with further explanations in the [readthecods](https://spaceborne.readthedocs.io/en/latest/?badge=latest) page.
+* Extensively validated against simulations and other public codes.
+* Interfaced with CCL and cloelib (soon), two of the most modern and extensive cosmological libraries.
+* Different statistics available: $C(\ell)$ and 2PCF
+* Python native: written entirely in pure Python, with no low-level interfaces (e.g., C/C++ wrappers). This makes the code highly accessible, transparent, and easy to modify.
+* JAX-accelerated: the most intensive computations are optimised using JAX, seamlessly providing multi-device (CPU, GPU, TPU) support.
+* ... and much more!
+
+
 For detailed instructions on how to install and use Spaceborne, please refer to the official [documentation](https://spaceborne.readthedocs.io/en/latest/).
 
 ## Installation

@@ -24,7 +24,7 @@ intrinsic_alignment:
   bIA: 0.0 # Type: float. \beta_{IA}
   CIA: 0.0134 # Type: float.
   z_pivot_IA: 0.0 # Type: float.
-  lumin_ratio_filename: null # Type: str | None. null if not used, otherwise path to the file (e.g. ./input/scaledmeanlum-E2Sa.dat)
+  lumin_ratio_filename: null # Type: str | None. null if not used, otherwise path to the file
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
 # (see https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology

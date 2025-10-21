@@ -447,14 +447,14 @@ if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
 
 _condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
-if compute_ccl_cng and _condition:
-    raise ValueError(
-        'There seems to be some issue with the symmetry of the GLGL '
-        'block in the '
-        'CCL cNG covariance, so for the moment it is disabled. '
-        'The LLLL and GGGG blocks are not affected, so you can still '
-        'compute the single-probe cNG covariances.'
-    )
+# if compute_ccl_cng and _condition:
+#     raise ValueError(
+#         'There seems to be some issue with the symmetry of the GLGL '
+#         'block in the '
+#         'CCL cNG covariance, so for the moment it is disabled. '
+#         'The LLLL and GGGG blocks are not affected, so you can still '
+#         'compute the single-probe cNG covariances.'
+#     )
 
 # ! set HS probes to compute depending on RS ones
 # Set HS probes depending on RS ones
@@ -599,6 +599,8 @@ if cfg['PyCCL']['use_default_k_a_grids']:
     ccl_obj.a_grid_tkka_cNG = a_default_grid_ccl
     ccl_obj.logn_k_grid_tkka_SSC = lk_default_grid_ccl
     ccl_obj.logn_k_grid_tkka_cNG = lk_default_grid_ccl
+    
+assert False, 'stop here'
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -2074,17 +2076,17 @@ if (
             print('Numpy inversion successful.')
             # Test correctness of inversion:
             identity_check = np.allclose(
-                np.dot(cov, inv_cov), np.eye(cov.shape[0]), atol=1e-9, rtol=1e-7
+                cov @ inv_cov, np.eye(cov.shape[0]), atol=1e-12, rtol=1e-8
             )
             if identity_check:
                 print(
-                    'Inverse test successfully (M @ M^{-1} is identity). '
-                    'atol=1e-9, rtol=1e-7'
+                    'Inverse test successful (M @ M^{-1} is identity). '
+                    'atol=1e-12, rtol=1e-8'
                 )
             else:
                 print(
-                    f'Warning: Inverse test failed (M @ M^{-1} '
-                    'deviates from identity). atol=0, rtol=1e-7'
+                    'Warning: Inverse test failed (M @ M^{-1} '
+                    'deviates from identity). atol=1e-12, rtol=1e-8'
                 )
         except np.linalg.LinAlgError:
             print('Numpy inversion failed: Matrix is singular or near-singular.')
@@ -2108,6 +2110,88 @@ if cfg['misc']['save_figs']:
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+
+
+# ! START cNG CHECK
+
+gl_start = zpairs_auto * ell_obj.nbl_3x2pt
+gl_stop = (zpairs_auto + zpairs_cross) * ell_obj.nbl_3x2pt
+
+# cov = cov_obj.cov_3x2pt_cng_2d[gl_start:gl_stop, gl_start:gl_stop]
+cov = cov_hs_obj.cov_3x2pt_cng_2d
+perc_diff = sl.percent_diff(cov, cov.T)
+sl.matshow(perc_diff, log=True, abs_val=True, title='\n cov/cov.T-1 [%]')
+sl.matshow(np.where(np.abs(perc_diff) > 0.01, np.abs(perc_diff), np.nan), log=False)
+
+
+# load trisp
+ROOT = '/u/dsciotti/code/common_data/Spaceborne_jobs/develop/cache/trispectrum/cNG'
+trisp_glgl = np.load(
+    f'{ROOT}/trisp_GLGL_amin0.25_amax0.98_asteps30_lnkmin-11.51_lnkmax4.61_ksteps50.npy'
+)
+trisp_llll = np.load(
+    f'{ROOT}/trisp_LLLL_amin0.25_amax0.98_asteps30_lnkmin-11.51_lnkmax4.61_ksteps50.npy'
+)
+a_trisp_glgl = np.load(
+    f'{ROOT}/a_arr_amin0.25_amax0.98_asteps30_lnkmin-11.51_lnkmax4.61_ksteps50.npy'
+)
+lnk1_trisp_glgl = np.load(
+    f'{ROOT}/lnk1_arr_amin0.25_amax0.98_asteps30_lnkmin-11.51_lnkmax4.61_ksteps50.npy'
+)
+lnk2_trisp_glgl = np.load(
+    f'{ROOT}/lnk2_arr_amin0.25_amax0.98_asteps30_lnkmin-11.51_lnkmax4.61_ksteps50.npy'
+)
+
+trisp = trisp_glgl
+trisp = tkk
+nblocks, n, _ = trisp.shape
+
+
+M = np.zeros((nblocks * n, nblocks * n), dtype=trisp.dtype)
+rows = np.arange(n)
+for i in range(nblocks):
+    M[i * n : (i + 1) * n, i * n : (i + 1) * n] = trisp[i]
+
+np.testing.assert_allclose(M, M.T, atol=0, rtol=1e-5)
+
+# Reshape the array to have shape (30, 50*50)
+# Use block_diag to construct the block diagonal matrix
+sl.matshow(M.T, log=True)
+# sl.matshow(M / M.T - 1, log=True)
+plt.show()
+plt.savefig('./trisp.png')
+
+
+cov_hiprec = np.load(f'{output_path}/cov_cNG_3x2pt_2D_hiprec.npz')['arr_0']
+# perc_diff = cov/cov.T-1
+sl.matshow(np.where(np.abs(perc_diff) == 0, np.nan, np.abs(perc_diff)), log=True)
+
+sl.compare_arrays(
+    cov,
+    cov.T,
+    'cov',
+    'cov.T',
+    early_return=False,
+    plot_diff_hist=True,
+    log_diff=True,
+    plot_diff_perc_threshold=None,
+    abs_val=True,
+)
+sl.compare_arrays(
+    cov,
+    cov_hiprec,
+    'cov',
+    'cov_hiprec',
+    early_return=False,
+    plot_diff_hist=True,
+    log_diff=False,
+    plot_diff_perc_threshold=10,
+    abs_val=True,
+)
+
+
+# ! END cNG CHECK
+
 
 # THIS CODE HAS BEEN COMMENTED OUT TO TEST AGAINST THE BENCHMARKS
 """

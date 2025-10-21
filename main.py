@@ -685,7 +685,7 @@ if shift_nz:
         fill_value=0,
         clip_min=cfg['nz']['clip_zmin'],
         clip_max=cfg['nz']['clip_zmax'],
-        plt_title='$n_i(z)$ sources shifts ',
+        plt_title='$n_i(z)$ sources shifts',
     )
     nz_lns = wf_cl_lib.shift_nz(
         zgrid_nz_lns,
@@ -698,7 +698,7 @@ if shift_nz:
         fill_value=0,
         clip_min=cfg['nz']['clip_zmin'],
         clip_max=cfg['nz']['clip_zmax'],
-        plt_title='$n_i(z)$ lenses shifts ',
+        plt_title='$n_i(z)$ lenses shifts',
     )
 
 if cfg['nz']['smooth_nz']:
@@ -877,8 +877,8 @@ wf_ccl_list = [
     ccl_obj.wf_galaxy_arr,
 ]
 
-plt.figure()
 for wf_idx in range(len(wf_ccl_list)):
+    plt.figure()
     for zi in range(zbins):
         plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
     plt.xlabel('$z$')
@@ -2104,7 +2104,12 @@ if cfg['misc']['save_figs']:
     os.makedirs(output_dir, exist_ok=True)
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
-        fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
+        fig.savefig(
+            os.path.join(output_dir, f'fig_{i:03d}.pdf'),
+            bbox_inches='tight',
+            pad_inches=0.1,
+        )
+    print(f'Figures saved in {output_dir}\n')
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')

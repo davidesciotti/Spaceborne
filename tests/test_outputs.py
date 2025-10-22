@@ -174,6 +174,22 @@ for bench_name in slow_benchs:
 #     'config_0013',
 # ]
 
+# ! known "failures" (slow benchs only):
+# 🧪🧪🧪 Testing config_0000 🧪🧪🧪...
+# 🧪🧪🧪 Testing config_0001 🧪🧪🧪...
+# k_grid_sigma2_b doesn't match the benchmark ❌
+# (shapes (20000,), (0,) mismatch)
+# nz_lns doesn't match the benchmark ❌
+# Mismatched elements: 2473 / 3000 (82.4%)
+# Max absolute difference: 5.05007653e-05
+# Max relative difference: 1.67780656e-05
+
+# 🧪🧪🧪 Testing config_0002 🧪🧪🧪...
+# k_grid_sigma2_b doesn't match the benchmark ❌
+# (shapes (20000,), (0,) mismatch)
+
+
+
 main_script_path = f'{ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'
 temp_output_folder = os.path.dirname(temp_output_filename)

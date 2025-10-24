@@ -299,6 +299,12 @@ def cov_heracles_dict_to_sb_10d(
     return cov_10d
 
 
+def check_ells_for_spline(ells):
+    """Make sure ells are sorted and unique for spline interpolation"""
+    assert np.all(np.diff(ells) > 0), 'ells are not sorted'
+    assert len(np.unique(ells)) == len(ells), 'ells are not unique'
+
+
 class IOHandler:
     """Handles loading of input data (n(z) and Cls) from various file formats.
 
@@ -447,13 +453,12 @@ class IOHandler:
 
     def check_ells_in(self, ell_obj):
         """Make sure ells are sorted and unique for spline interpolation"""
-        for _ells in [  # fmt: skip
+        for _ells in [
             self.ells_WL_in, ell_obj.ells_WL,
             self.ells_XC_in, ell_obj.ells_XC,
             self.ells_GC_in, ell_obj.ells_GC,
         ]:  # fmt: skip
-            assert np.all(np.diff(_ells) > 0), 'ells are not sorted'
-            assert len(np.unique(_ells)) == len(_ells), 'ells are not unique'
+            check_ells_for_spline(_ells)
 
     def save_cov_euclidlib(self, cov_hs_obj):
         """Helper function to save the covariance in the heracles/cloelikeeuclidlib

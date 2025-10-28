@@ -98,9 +98,6 @@ with contextlib.suppress(ImportError):
 if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
     matplotlib.use('Agg')
 
-# Get the current script's directory
-# current_dir = Path(__file__).resolve().parent
-# parent_dir = current_dir.parent
 
 warnings.filterwarnings(
     'ignore',
@@ -1074,13 +1071,11 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     if cfg['C_ell']['use_input_cls']:
         for ells_in, ells_out in zip(
             [ells_WL_in, ells_XC_in, ells_GC_in],
-            [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb], 
+            [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
             strict=True,
         ):
             io_handler.check_ells_for_spline(ells_in)
             io_handler.check_ells_for_spline(ells_out)
-
-
 
     # initialize nmt_cov_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(

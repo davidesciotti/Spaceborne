@@ -229,15 +229,16 @@ class SpaceborneConfigChecker:
             'nz: shift_nz must be a boolean'
         )
 
-        assert isinstance(nz_cfg.get('dzWL'), list), 'nz: dzWL must be a list'
-        assert all(isinstance(x, float) for x in nz_cfg['dzWL']), (
-            'nz: All elements in dzWL must be floats'
-        )
+        if nz_cfg['shift_nz']:
+            assert isinstance(nz_cfg.get('dzWL'), list), 'nz: dzWL must be a list'
+            assert all(isinstance(x, float) for x in nz_cfg['dzWL']), (
+                'nz: All elements in dzWL must be floats'
+            )
 
-        assert isinstance(nz_cfg.get('dzGC'), list), 'nz: dzGC must be a list'
-        assert all(isinstance(x, float) for x in nz_cfg['dzGC']), (
-            'nz: All elements in dzGC must be floats'
-        )
+            assert isinstance(nz_cfg.get('dzGC'), list), 'nz: dzGC must be a list'
+            assert all(isinstance(x, float) for x in nz_cfg['dzGC']), (
+                'nz: All elements in dzGC must be floats'
+            )
 
         assert isinstance(nz_cfg.get('normalize_shifted_nz'), bool), (
             'nz: normalize_shifted_nz must be a boolean'
@@ -599,12 +600,12 @@ class SpaceborneConfigChecker:
         assert np.all(np.array(self.cfg['nz']['ngal_lenses']) > 0), (
             'ngal_lenses values must be positive'
         )
-        assert np.all(self.cfg['nz']['dzWL'] == self.cfg['nz']['dzGC']), (
-            'dzWL and dzGC shifts do not match'
-        )
         assert len(self.cfg['nz']['ngal_sources']) == len(self.cfg['nz']['ngal_lenses'])
 
         if self.cfg['nz']['shift_nz']:
+            assert np.all(self.cfg['nz']['dzWL'] == self.cfg['nz']['dzGC']), (
+                'dzWL and dzGC shifts do not match'
+            )
             assert len(self.cfg['nz']['dzWL']) == len(self.cfg['nz']['ngal_sources'])
             assert len(self.cfg['nz']['dzWL']) == len(self.cfg['nz']['ngal_lenses'])
 

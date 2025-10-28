@@ -72,9 +72,13 @@ def load_cl_euclidlib(filename, key_a, key_b):
 
     is_auto_spectrum = key_a == key_b
 
-    # import .fits using el
-    # cl_dict = el.photo.angular_power_spectra(filename)
-    cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
+    # import .fits using euclidlib
+    # TODO the bare `except` is horrible but I'm not yet sure what's the definitive
+    #      structure of the euclidlib import
+    try:
+        cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
+    except:
+        cl_dict = el.photo.angular_power_spectra(filename)
 
     # extract ells
     ells = cl_dict[key_a, key_b, 1, 1].ell
@@ -91,7 +95,7 @@ def load_cl_euclidlib(filename, key_a, key_b):
     triu_ix = np.triu_indices(zbins)
 
     idxs = (
-        zip(*triu_ix)
+        zip(*triu_ix, strict=True)
         if is_auto_spectrum
         else itertools.product(range(zbins), range(zbins))
     )
@@ -295,6 +299,12 @@ def cov_heracles_dict_to_sb_10d(
     return cov_10d
 
 
+def check_ells_for_spline(ells):
+    """Make sure ells are sorted and unique for spline interpolation"""
+    assert np.all(np.diff(ells) > 0), 'ells are not sorted'
+    assert len(np.unique(ells)) == len(ells), 'ells are not unique'
+
+
 class IOHandler:
     """Handles loading of input data (n(z) and Cls) from various file formats.
 
@@ -443,13 +453,12 @@ class IOHandler:
 
     def check_ells_in(self, ell_obj):
         """Make sure ells are sorted and unique for spline interpolation"""
-        for _ells in [  # fmt: skip
+        for _ells in [
             self.ells_WL_in, ell_obj.ells_WL,
             self.ells_XC_in, ell_obj.ells_XC,
             self.ells_GC_in, ell_obj.ells_GC,
         ]:  # fmt: skip
-            assert np.all(np.diff(_ells) > 0), 'ells are not sorted'
-            assert len(np.unique(_ells)) == len(_ells), 'ells are not unique'
+            check_ells_for_spline(_ells)
 
     def save_cov_euclidlib(self, cov_hs_obj):
         """Helper function to save the covariance in the heracles/cloelikeeuclidlib

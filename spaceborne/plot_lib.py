@@ -173,11 +173,7 @@ def plot_ell_cuts(
 
     # Add a shared colorbar on the right
     cbar = fig.colorbar(cax0, cax=cbar_ax)
-    cbar.set_label(
-        '$\\ell^{\\rm max}_{ij}$',
-        fontsize=15,
-        loc='center',
-    )
+    cbar.set_label('$\\ell^{\\rm max}_{ij}$', fontsize=15, loc='center')
     cbar.ax.tick_params(labelsize=15)
 
     plt.tight_layout()

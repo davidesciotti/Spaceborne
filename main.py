@@ -98,9 +98,6 @@ with contextlib.suppress(ImportError):
 if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
     matplotlib.use('Agg')
 
-# Get the current script's directory
-# current_dir = Path(__file__).resolve().parent
-# parent_dir = current_dir.parent
 
 warnings.filterwarnings(
     'ignore',
@@ -685,7 +682,7 @@ if shift_nz:
         fill_value=0,
         clip_min=cfg['nz']['clip_zmin'],
         clip_max=cfg['nz']['clip_zmax'],
-        plt_title='$n_i(z)$ sources shifts ',
+        plt_title='$n_i(z)$ sources shifts',
     )
     nz_lns = wf_cl_lib.shift_nz(
         zgrid_nz_lns,
@@ -698,7 +695,7 @@ if shift_nz:
         fill_value=0,
         clip_min=cfg['nz']['clip_zmin'],
         clip_max=cfg['nz']['clip_zmax'],
-        plt_title='$n_i(z)$ lenses shifts ',
+        plt_title='$n_i(z)$ lenses shifts',
     )
 
 if cfg['nz']['smooth_nz']:
@@ -877,8 +874,8 @@ wf_ccl_list = [
     ccl_obj.wf_galaxy_arr,
 ]
 
-plt.figure()
 for wf_idx in range(len(wf_ccl_list)):
+    plt.figure()
     for zi in range(zbins):
         plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
     plt.xlabel('$z$')
@@ -1075,8 +1072,10 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
         for ells_in, ells_out in zip(
             [ells_WL_in, ells_XC_in, ells_GC_in],
             [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
+            strict=True,
         ):
-            io_obj.check_ells_in(ells_in, ells_out)
+            io_handler.check_ells_for_spline(ells_in)
+            io_handler.check_ells_for_spline(ells_out)
 
     # initialize nmt_cov_obj and set a couple useful attributes
     nmt_cov_obj = cov_partial_sky.NmtCov(
@@ -2104,7 +2103,12 @@ if cfg['misc']['save_figs']:
     os.makedirs(output_dir, exist_ok=True)
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
-        fig.savefig(os.path.join(output_dir, f'fig_{i:03d}.png'))
+        fig.savefig(
+            os.path.join(output_dir, f'fig_{i:03d}.pdf'),
+            bbox_inches='tight',
+            pad_inches=0.1,
+        )
+    print(f'Figures saved in {output_dir}\n')
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')

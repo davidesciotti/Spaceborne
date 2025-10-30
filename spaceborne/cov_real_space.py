@@ -13,14 +13,13 @@ mix = mixed term
 # TODO unpractical to compute it in 1000 ell values
 
 import itertools
-from collections.abc import Callable
 import warnings
+from collections.abc import Callable
 from functools import partial
 
 import numpy as np
 import pyccl as ccl
-
-# import pylevin as levin
+import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
 from tqdm import tqdm
@@ -649,7 +648,7 @@ def levin_integrate_bessel_double_wrapper(
     # number of integrals to perform
     N = integrand.shape[-1]
     # number of arguments at which the integrals are evaluated
-    # tODO this might change in the future?
+    # TODO this might change in the future?
     M = len(bessel_args) ** 2
 
     # Constructor of the class
@@ -1513,6 +1512,7 @@ class CovRealSpace:
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
                     func=partial(cov_mix_simps_general, self=self)
                 )  # fmt: skip
+                assert np.allclose(cov_out_6d, cov_out_6d_test, atol=0, rtol=1e-6)
 
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_mix_levin(
@@ -1638,7 +1638,7 @@ class CovRealSpace:
 
             cov_ng_hs_10d = getattr(cov_hs_obj, f'cov_3x2pt_{term}_10d')
 
-            # project hs nf cov to real space using pylevin
+            # project hs non-gaussian cov to real space using pylevin
             cov_ng_hs_6d = cov_ng_hs_10d[
                 probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
             ]
@@ -1688,7 +1688,7 @@ class CovRealSpace:
                 )
                 for zi, zj, zk, zl in zijkl_comb
             )
-            for (zi, zj, zk, zl), cov in zip(zijkl_comb, results):
+            for (zi, zj, zk, zl), cov in zip(zijkl_comb, results, strict=True):
                 cov_rs_6d_binned[:, :, zi, zj, zk, zl] = cov
 
             cov_out_6d = cov_rs_6d_binned

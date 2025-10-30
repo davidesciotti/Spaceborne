@@ -269,13 +269,6 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
 # - flat_sky: use the flat-sky expression (valid for PyCCL only)
 #   has to be rescaled by fsky
 cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
-# Integration scheme used for the SSC survey covariance (sigma2_b) computation. Options:
-# - 'simps': uses simpson integration. This is faster but less accurate
-# - 'levin': uses levin integration. This is slower but more accurate
-cfg['covariance']['sigma2_b_int_method'] = 'fft'  # Type: str.
-# Whether to load the previously computed sigma2_b.
-# No need anymore since it's quite fast
-cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
 
 # How many integrals to compute at once for the  numerical integration of
 # the sigma^2_b(z_1, z_2) function with pylevin.
@@ -304,7 +297,7 @@ cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
 # Integration method for the covariance projection to real space. Options:
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
-cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
+cfg['precision']['cov_rs_int_method'] = 'levin'  # Type: str.
 # setting this to False makes the code resort to the less accurate bin averaging method
 # mentioned above
 cfg['precision']['levin_bin_avg'] = True  # Type: bool.
@@ -1121,6 +1114,7 @@ if obs_space == 'real':
     ell_obj.compute_ells_3x2pt_rs()
     cov_rs_obj.ells = ell_obj.ells_3x2pt_rs
     cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_rs)
+    cov_rs_obj.space = 'real'  # TODO delete this
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:

@@ -414,7 +414,7 @@ class SpaceborneCovariance:
             )
 
         else:
-            print('SSC not requested, setting it to zero')
+            print('Skipping SSC computation')
             self.cov_3x2pt_ssc_10d = np.zeros_like(self.cov_3x2pt_g_10d)
 
     def _add_cng(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
@@ -435,7 +435,7 @@ class SpaceborneCovariance:
             )
 
         else:
-            print('cNG term not requested, setting it to zero')
+            print('Skipping cNG computation')
             self.cov_3x2pt_cng_10d = np.zeros_like(self.cov_3x2pt_g_10d)
 
     def _slice_3x2pt_cov(self, split_gaussian_cov: bool) -> None:

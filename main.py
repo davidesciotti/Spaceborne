@@ -199,10 +199,7 @@ for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
-ell_max_max = max(cfg['binning']['ell_max_WL'], cfg['binning']['ell_max_GC'])
-ell_min_unb_oc = 2
-ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
-nbl_3x2pt_oc = 500
+
 # for the Gaussian covariance computation
 k_steps_sigma2_simps = 20_000
 k_steps_sigma2_levin = 300
@@ -1187,6 +1184,11 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
     # oc needs finer ell sampling to avoid issues with ell bin edges
+    ell_max_max = max(cfg['binning']['ell_max_WL'], cfg['binning']['ell_max_GC'])
+    ell_min_unb_oc = 2
+    ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
+    nbl_3x2pt_oc = 500
+    
     ells_3x2pt_oc = np.geomspace(
         ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )
@@ -1750,7 +1752,6 @@ if cfg['covariance']['save_full_cov']:
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
     io_obj.save_cov_euclidlib(cov_hs_obj=_cov_obj)
-
 
 print(f'Covariance matrices saved in {output_path}\n')
 

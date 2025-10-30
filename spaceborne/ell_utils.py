@@ -442,30 +442,35 @@ class EllBinning:
             wl_bins_in = np.genfromtxt(self.wl_bins_filename)
             gc_bins_in = np.genfromtxt(self.gc_bins_filename)
 
+            # import ells and edges
             self.ells_WL = wl_bins_in[:, 0]
+            self.ells_GC = gc_bins_in[:, 0]
             self.delta_l_WL = wl_bins_in[:, 1]
+            self.delta_l_GC = gc_bins_in[:, 1]
             ell_edges_lo_WL = wl_bins_in[:, 2]
+            ell_edges_lo_GC = gc_bins_in[:, 2]
             ell_edges_hi_WL = wl_bins_in[:, 3]
+            ell_edges_hi_GC = gc_bins_in[:, 3]
+
+            # sanity check
             if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
                 raise ValueError('All WL bin lower edges must be less than upper edges')
+            if not np.all(ell_edges_lo_GC < ell_edges_hi_GC):
+                raise ValueError('All GC bin lower edges must be less than upper edges')
+
+            # combine upper and lower bin edges
             self.ell_edges_WL = np.unique(np.append(ell_edges_lo_WL, ell_edges_hi_WL))
+            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
+
+            # sanity check
             if not np.all(np.diff(self.ell_edges_WL) > 0):
                 raise ValueError(
                     'WL bin edges must be strictly increasing after combining'
                 )
-
-            self.ells_GC = gc_bins_in[:, 0]
-            self.delta_l_GC = gc_bins_in[:, 1]
-            ell_edges_lo_GC = gc_bins_in[:, 2]
-            ell_edges_hi_GC = gc_bins_in[:, 3]
-            if not np.all(ell_edges_lo_GC < ell_edges_hi_GC):
-                raise ValueError('All GC bin lower edges must be less than upper edges')
-            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
             if not np.all(np.diff(self.ell_edges_GC) > 0):
                 raise ValueError(
                     'WL bin edges must be strictly increasing after combining'
                 )
-            self.ell_edges_GC = np.unique(np.append(ell_edges_lo_GC, ell_edges_hi_GC))
 
         elif self.binning_type == 'ref_cut':
             # TODO this is only done for backwards-compatibility reasons
@@ -520,8 +525,8 @@ class EllBinning:
             self.delta_l_GC = np.diff(self.ell_edges_GC)
 
             self.ell_min_WL = self.nmt_bin_obj_WL.get_ell_min(0)
-            self.ell_max_WL = self.nmt_bin_obj_WL.lmax
             self.ell_min_GC = self.nmt_bin_obj_GC.get_ell_min(0)
+            self.ell_max_WL = self.nmt_bin_obj_WL.lmax
             self.ell_max_GC = self.nmt_bin_obj_GC.lmax
 
             # test that ell_max retrieved with the two methods coincide

@@ -107,9 +107,9 @@ def split_probe_name(
 
     # Try splitting at each possible position
     for i in range(2, len(full_probe_name)):
-        first, second = full_probe_name[:i], full_probe_name[i:]
-        if first in valid_probes and second in valid_probes:
-            return first, second
+        probe_ab, probe_cd = full_probe_name[:i], full_probe_name[i:]
+        if probe_ab in valid_probes and probe_cd in valid_probes:
+            return probe_ab, probe_cd
 
     raise ValueError(
         f'Invalid probe name: {full_probe_name}. '

@@ -338,33 +338,16 @@ class SpaceborneConfigChecker:
         assert isinstance(binning_cfg.get('binning_type'), str), (
             'binning: binning_type must be a string'
         )
-        assert isinstance(binning_cfg.get('ell_min_WL'), int), (
-            'binning: ell_min_WL must be an int'
-        )
-        assert isinstance(binning_cfg.get('ell_max_WL'), int), (
-            'binning: ell_max_WL must be an int'
-        )
-        assert isinstance(binning_cfg.get('ell_bins_WL'), int), (
-            'binning: ell_bins_WL must be an int'
-        )
-        assert isinstance(binning_cfg.get('ell_min_GC'), int), (
-            'binning: ell_min_GC must be an int'
-        )
-        assert isinstance(binning_cfg.get('ell_max_GC'), int), (
-            'binning: ell_max_GC must be an int'
-        )
-        assert isinstance(binning_cfg.get('ell_bins_GC'), int), (
-            'binning: ell_bins_GC must be an int'
-        )
-        assert isinstance(binning_cfg.get('ell_min_ref'), int), (
-            'binning: ell_min_ref must be an int'
-        )
-        assert isinstance(binning_cfg.get('ell_max_ref'), int), (
-            'binning: ell_max_ref must be an int'
-        )
-        assert isinstance(binning_cfg.get('ell_bins_ref'), int), (
-            'binning: ell_bins_ref must be an int'
-        )
+        for case in ['WL', 'GC', 'ref']:
+            assert isinstance(binning_cfg.get(f'ell_min_{case}'), int), (
+                f'binning: ell_min_{case} must be an int'
+            )
+            assert isinstance(binning_cfg.get(f'ell_max_{case}'), int), (
+                f'binning: ell_max_{case} must be an int'
+            )
+            assert isinstance(binning_cfg.get(f'ell_bins_{case}'), int), (
+                f'binning: ell_bins_{case} must be an int'
+            )
         assert isinstance(binning_cfg.get('theta_min_arcmin'), (float, int)), (
             'binning: theta_min_arcmin must be a float or an int'
         )

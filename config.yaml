@@ -109,8 +109,8 @@ binning:
   ell_max_ref: 1500 # Type: int. Maximum ell for reference case
   ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
-  WL_bins_filename: '../Spaceborne/output/ell_values_3x2pt.txt'
-  GC_bins_filename: '../Spaceborne/output/ell_values_3x2pt.txt'
+  WL_bins_filename: '...'
+  GC_bins_filename: '...'
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50  # Type: float | int

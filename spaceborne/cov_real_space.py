@@ -131,6 +131,10 @@ def __project_ellspace_cov_vec_2d(
 ):  # fmt: skip
     """This version is fully vectorized"""
 
+    warnings.warn(
+        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
+    )
+
     def integrand_func(ell1, ell2, cov_ell):
         kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
         knu = k_mu(ell2, theta_2_l, theta_2_u, nu)
@@ -163,6 +167,10 @@ def __project_ellspace_cov_vec_1d(
 ):  # fmt: skip
     """This version is vectorized anly along ell1"""
 
+    warnings.warn(
+        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
+    )
+
     def integrand_func(ell1, ell2, cov_ell_diag):
         # Vectorized computation of k_mu and k_nu
         kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
@@ -188,6 +196,9 @@ def __project_hs_cov_simps(
     zi, zj, zk, zl,
     Amax, ell1_values, ell2_values, cov_ell,
 ):  # fmt: skip
+    warnings.warn(
+        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
+    )
     # def integrand_func(ell1, ell2, cov_ell):
     #     kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
     #     knu = k_mu(ell2, theta_2_l, theta_2_u, nu)
@@ -233,6 +244,10 @@ def __project_ellspace_cov_helper(    # fmt: skip
 ):  # fmt: skip
     # TODO unify helper funcs
 
+    warnings.warn(
+        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
+    )
+
     theta_1_l = self.theta_edges_fine[theta_1_ix]
     theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
     theta_2_l = self.theta_edges_fine[theta_2_ix]
@@ -254,6 +269,9 @@ def __project_ellspace_cov_helper(    # fmt: skip
 def __project_ellspace_cov_vec_helper(
     self, theta_1_ix, theta_2_ix, mu, nu, Amax, ell1_values, ell2_values, cov_ell
 ):
+    warnings.warn(
+        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
+    )
     theta_1_l = self.theta_edges_fine[theta_1_ix]
     theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
     theta_2_l = self.theta_edges_fine[theta_2_ix]
@@ -774,7 +792,6 @@ class CovRealSpace:
 
         # other miscellaneous settings
         self.n_jobs = self.cfg['misc']['num_threads']
-        self.tpcf_ingr_method = 'fftlog'
         self.integration_method = self.cfg['precision']['cov_rs_int_method']
         self.levin_bin_avg = self.cfg['precision']['levin_bin_avg']
 
@@ -832,6 +849,7 @@ class CovRealSpace:
         self.fsky = self.mask_obj.fsky
         self.srtoarcmin2 = const.SR_TO_ARCMIN2
         # maximum survey area in sr
+        # TODO generalise to multiple survey areas
         self.amax = max((self.survey_area_sr, self.survey_area_sr))
 
     def _set_theta_binning(self):
@@ -840,8 +858,7 @@ class CovRealSpace:
         self.nbt_coarse = self.cfg['binning']['theta_bins']
         self.nbt_fine = self.nbt_coarse
 
-
-        # TODO this should probably go in the ell_binning class (which should be 
+        # TODO this should probably go in the ell_binning class (which should be
         # TODO renamed)
         if self.cfg['binning']['binning_type'] == 'log':
             _binning_func = np.geomspace
@@ -1289,7 +1306,6 @@ class CovRealSpace:
         and probes specfied
         """
 
-        # TODO check I'm not messing up anything here...
         probe_ab, probe_cd = sl.split_probe_name(probe)
 
         mu, nu = const.MU_DICT[probe_ab], const.MU_DICT[probe_cd]

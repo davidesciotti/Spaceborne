@@ -396,8 +396,6 @@ class SpaceborneCovariance:
         """Helper function to get the SSC from the required code and uniform its
         shape"""
         if self.include_ssc:
-            print('Including SSC in total covariance')
-
             if self.ssc_code == 'Spaceborne':
                 self.cov_3x2pt_ssc_10d = self._cov_8d_dict_to_10d_arr(
                     self.cov_ssc_sb_3x2pt_dict_8D
@@ -414,15 +412,13 @@ class SpaceborneCovariance:
             )
 
         else:
-            print('SSC not requested, setting it to zero')
+            print('Skipping SSC computation')
             self.cov_3x2pt_ssc_10d = np.zeros_like(self.cov_3x2pt_g_10d)
 
     def _add_cng(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
         """Helper function to get the SSC from the required code and uniform its
         shape"""
         if self.include_cng:
-            print('Including cNG in total covariance')
-
             if self.cng_code == 'PyCCL':
                 self.cov_3x2pt_cng_10d = self._cov_8d_dict_to_10d_arr(
                     ccl_obj.cov_cng_ccl_3x2pt_dict_8D
@@ -435,7 +431,7 @@ class SpaceborneCovariance:
             )
 
         else:
-            print('cNG term not requested, setting it to zero')
+            print('Skipping cNG computation')
             self.cov_3x2pt_cng_10d = np.zeros_like(self.cov_3x2pt_g_10d)
 
     def _slice_3x2pt_cov(self, split_gaussian_cov: bool) -> None:

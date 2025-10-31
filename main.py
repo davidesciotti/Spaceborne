@@ -46,7 +46,7 @@ if cfg['misc']['jax_platform'] == 'auto':
 else:
     os.environ['JAX_PLATFORMS'] = cfg['misc']['jax_platform']
 
-# if using the CPU, set the number of threads
+# Set the number of threads
 num_threads = cfg['misc']['num_threads']
 os.environ['OMP_NUM_THREADS'] = str(num_threads)
 os.environ['OPENBLAS_NUM_THREADS'] = str(num_threads)
@@ -202,7 +202,6 @@ use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
 # for the Gaussian covariance computation
 k_steps_sigma2_simps = 20_000
-k_steps_sigma2_levin = 300
 shift_nz_interpolation_kind = 'linear'
 
 # whether or not to symmetrize the covariance probe blocks when
@@ -1327,6 +1326,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # set also total covariance
     oc_obj.cov_3x2pt_tot_10d = cov_tot
+    
     # free memory
     del cov_tot
     gc.collect()
@@ -1604,13 +1604,54 @@ if compute_ccl_ssc or compute_ccl_cng:
             ind_dict=ind_dict,
         )
 
-# ! ========================== Combine covariance terms ================================
+# ! ========================== Combine HS covariance terms =============================
 cov_hs_obj.build_covs(
     ccl_obj=ccl_obj,
     oc_obj=oc_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
 
+    
+for key, cov_6d in oc_obj.cov_dict_6d.items():
+    
+    updated_key = key.replace("gm", "gt")
+    setattr(cov_rs_obj, f'cov_{updated_key}_6d', cov_6d)
+    
+    probe_abcd = updated_key.split('_')[0]
+
+
+    # TODO check I'm not messing up anything here...
+    probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+
+    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
+        probe_abcd
+    ]
+
+    ind_ab = (
+        ind_auto[:, 2:] if probe_a_ix == probe_b_ix
+        else ind_cross[:, 2:]
+    )  # fmt: skip
+    ind_cd = (
+        ind_auto[:, 2:] if probe_c_ix == probe_d_ix
+        else ind_cross[:, 2:]
+    )  # fmt: skip
+
+    zpairs_ab = zpairs_auto if probe_a_ix == probe_b_ix else zpairs_cross
+    zpairs_cd = zpairs_auto if probe_c_ix == probe_d_ix else zpairs_cross
+
+    # jsut a sanity check
+    assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
+    assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
+
+    cov_4d = sl.cov_6D_to_4D_blocks(
+        cov_6d, cov_rs_obj.nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+    )
+    setattr(cov_rs_obj, f'cov_{updated_key}_4d', cov_4d)
+    
+    cov_2d = sl.cov_4D_to_2D(
+        cov_4d, block_index=cov_rs_obj.block_index
+    )
+    setattr(cov_rs_obj, f'cov_{updated_key}_2d', cov_2d)
 
 if obs_space == 'real':
     print('Computing RS covariance...')

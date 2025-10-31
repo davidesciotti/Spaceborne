@@ -198,10 +198,6 @@ class EllBinning:
         self.ell_max_GC = cfg['binning']['ell_max_GC']
         self.nbl_GC = cfg['binning']['ell_bins_GC']
 
-        self.ell_min_ref = cfg['binning']['ell_min_ref']
-        self.ell_max_ref = cfg['binning']['ell_max_ref']
-        self.nbl_ref = cfg['binning']['ell_bins_ref']
-
     def build_ell_bins(self):
         """Builds ell bins based on the specified configuration."""
 
@@ -265,6 +261,15 @@ class EllBinning:
             ell_edges_hi_WL = wl_bins_in[:, 3]
             ell_edges_hi_GC = gc_bins_in[:, 3]
 
+            # assign nbl, ell_min and ell_max
+            self.nbl_WL = len(self.ells_WL)
+            self.nbl_GC = len(self.ells_GC)
+            self.ell_min_WL = ell_edges_lo_WL[0]
+            self.ell_min_GC = ell_edges_lo_GC[0]
+            self.ell_max_WL = ell_edges_hi_WL[-1]
+            self.ell_max_GC = ell_edges_hi_GC[-1]
+            
+            
             # sanity check
             if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
                 raise ValueError('All WL bin lower edges must be less than upper edges')
@@ -287,10 +292,16 @@ class EllBinning:
 
         elif self.binning_type == 'ref_cut':
             # TODO this is only done for backwards-compatibility reasons
+            
+
+            ell_min_ref = self.cfg['binning']['ell_min_ref']
+            ell_max_ref = self.cfg['binning']['ell_max_ref']
+            nbl_ref = self.cfg['binning']['ell_bins_ref']
+            
             self.ells_ref, self.delta_l_ref, self.ell_edges_ref = compute_ells(
-                nbl=self.nbl_ref,
-                ell_min=self.ell_min_ref,
-                ell_max=self.ell_max_ref,
+                nbl=nbl_ref,
+                ell_min=ell_min_ref,
+                ell_max=ell_max_ref,
                 recipe='ISTF',
                 output_ell_bin_edges=True,
             )

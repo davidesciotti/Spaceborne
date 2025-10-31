@@ -68,8 +68,12 @@ def oc_cov_dict_6d_to_array_10d(
         probe_abcd, term = key.split('_')
         if term != desired_term:
             continue
-        probes = list(probe_abcd)
-        probe_ixs = [probe_idx_dict[p] for p in probes]
+        # probes = list(probe_abcd)
+        # probe_ixs = [probe_idx_dict[p] for p in probes]
+        
+        # probes = sl.split_probe_name(probe_abcd)
+        probe_ixs = probe_idx_dict[probe_abcd]
+        
         cov_10d[*probe_ixs] = cov
         key_found = True
 
@@ -955,7 +959,7 @@ class OneCovarianceInterface:
         # TODO why am I processing the output twice?
         # TODO this should be generalised to real space
 
-        self.process_cov_from_mat_file()
+        self.process_cov_from_mat_file()        
 
         cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
             self.cov_3x2pt_g_10d,

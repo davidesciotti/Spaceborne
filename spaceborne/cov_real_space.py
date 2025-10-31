@@ -19,7 +19,7 @@ from functools import partial
 
 import numpy as np
 import pyccl as ccl
-import pylevin as levin
+# import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
 from tqdm import tqdm
@@ -1305,7 +1305,6 @@ class CovRealSpace:
                 for term in product_expansion:
                     const_coeff, n1, theta1, n2, theta2 = term
 
-                    # Apply the constant coefficient from the kernel expansion
                     # Apply the constant coefficient from the kernel expansion
                     term_integrand_for_bessel = integrand_2d * const_coeff[:, None]
 

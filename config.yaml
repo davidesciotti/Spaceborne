@@ -208,6 +208,7 @@ covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  G_code: OneCovariance
 
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
@@ -277,7 +278,7 @@ covariance:
   use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
   # Name of the output covariance file.
-  cov_filename: cov_fsky # Type: str.
+  cov_filename: cov_oc # Type: str.
   save_cov_fits: True # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module. 
 
 
@@ -342,7 +343,7 @@ precision:
   # Precision settings for pylevin. See the official documentation for more details:
   # https://levin-bessel.readthedocs.io/en/latest/index.html
   # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-  n_sub: 20  # number of collocation points in each bisection  # default: 8
+  n_sub: 50  # number of collocation points in each bisection  # default: 8
   n_bisec_max: 500  # maximum number of bisections used  # default: 32
   rel_acc: 1.e-7  # relative accuracy target  # default: 1.e-4
   boost_bessel: True  # Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
@@ -360,7 +361,7 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might 
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 40 # Type: int. How many threads to use for the parallel computations
+  num_threads: 50 # Type: int. How many threads to use for the parallel computations
   
   # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'

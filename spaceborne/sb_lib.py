@@ -2810,6 +2810,58 @@ def cov_3x2pt_10D_to_4D(
     return cov_3x2pt_4D
 
 
+def cov_3x2pt_dict_6d_to_arr_4d(
+    cov_3x2pt_dict_6d: dict,
+    nbx: int,
+    zbins: int,
+    ind: np.ndarray,
+    req_probe_combs_2d: list,
+    space: str,
+):
+    """Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block
+    separately in 4D, then stacks the blocks in the right order to output
+    cov_3x2pt_4D (which is not a dictionary but a numpy array)
+
+    probe_ordering: e.g. ['L', 'L'], ['G', 'L'], ['G', 'G']]
+    """
+
+    # get ind and zpairs
+    ind = ind.copy()  # just to ensure the input ind file is not changed
+    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
+
+    # construct the ind dict
+    ind_dict = {}
+    ind_dict['LL'] = ind[:zpairs_auto, :]
+    ind_dict['GG'] = ind[(zpairs_auto + zpairs_cross) :, :]
+    ind_dict['GL'] = ind[zpairs_auto : (zpairs_auto + zpairs_cross), :]
+
+    # construct the npairs dict
+    zpairs_dict = {}
+    zpairs_dict['LL'] = zpairs_auto
+    zpairs_dict['GL'] = zpairs_cross
+    zpairs_dict['GG'] = zpairs_auto
+
+    # initialize the 4D dictionary and list of probe combinations
+    cov_3x2pt_dict_4D = {}
+
+    # make each block 4D and store it with the right 'A', 'B', 'C, 'D' key
+    for probe_abcd in req_probe_combs_2d:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space)
+        cov_3x2pt_dict_4D[probe_ab, probe_cd] = cov_6D_to_4D_blocks(
+            cov_3x2pt_dict_6d[probe_ab, probe_cd],
+            nbx,
+            zpairs_dict[probe_ab],
+            zpairs_dict[probe_cd],
+            ind_dict[probe_ab],
+            ind_dict[probe_cd],
+        )
+
+    # concatenate the rows to construct the final matrix
+    cov_3x2pt_4D = cov_3x2pt_8D_dict_to_4D(cov_3x2pt_dict_4D, req_probe_combs_2d)
+
+    return cov_3x2pt_4D
+
+
 def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmonic'):
     """Convert a dictionary of 4D blocks into a single 4D array.
 

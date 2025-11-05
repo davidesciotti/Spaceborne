@@ -1156,7 +1156,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     start_time = time.perf_counter()
 
     # * 1. save ingredients in ascii format
-    # TODO this should me moved to io_handler.py
+    # TODO this should be moved to io_handler.py
     oc_path = f'{output_path}/OneCovariance'
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
@@ -1276,6 +1276,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if obs_space == 'harmonic':
         _valid_probes_oc = const.HS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_hs_2d
+        _unique_probe_combs = unique_probe_combs_hs
         nbx = ell_obj.nbl_3x2pt
         probe_idx_dict = oc_obj.probe_idx_dict_hs
         n_probes_oc = 2
@@ -1283,6 +1284,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     elif obs_space == 'real':
         _valid_probes_oc = const.RS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_rs_2d
+        _unique_probe_combs = unique_probe_combs_rs
         nbx = cov_rs_obj.nbt_coarse
         probe_idx_dict = cov_rs_obj.probe_idx_dict_short_oc
         n_probes_oc = 4
@@ -1321,6 +1323,47 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # free memory
     del cov_tot
     gc.collect()
+
+    # ! Change "gm" to "gt"
+    original_dict = oc_obj.cov_dict_6d
+    # Create a new dict and overwrite the old one
+    new_cov_dict_6d = {k.replace('gm', 'gt'): v for k, v in original_dict.items()}
+    oc_obj.cov_dict_6d = new_cov_dict_6d
+
+    # ! reshape to 4d, and set cov arrays as attributes of oc_obj (both for 4d and 6d)
+    for probe_abcd_plus_term, cov_6d in oc_obj.cov_dict_6d.items():
+        probe_abcd = probe_abcd_plus_term.split('_')[0]
+
+        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
+            probe_abcd
+        ]
+
+        ind_ab = (
+            ind_auto[:, 2:] if probe_a_ix == probe_b_ix
+            else ind_cross[:, 2:]
+        )  # fmt: skip
+        ind_cd = (
+            ind_auto[:, 2:] if probe_c_ix == probe_d_ix
+            else ind_cross[:, 2:]
+        )  # fmt: skip
+
+        zpairs_ab = zpairs_auto if probe_a_ix == probe_b_ix else zpairs_cross
+        zpairs_cd = zpairs_auto if probe_c_ix == probe_d_ix else zpairs_cross
+
+        # jsut a sanity check
+        assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
+        assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
+
+        cov_4d = sl.cov_6D_to_4D_blocks(
+            cov_6d, nbx, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+        )
+
+        setattr(oc_obj, f'cov_{probe_abcd_plus_term}_6d', cov_6d)
+        setattr(oc_obj, f'cov_{probe_abcd_plus_term}_4d', cov_4d)
+
+    cov_real_space.combine_terms_and_probes(
+        oc_obj, _unique_probe_combs, _req_probe_combs_2d, cov_rs_obj
+    )
 
     # compare list and mat formats
     if full_cov:
@@ -1596,9 +1639,14 @@ if compute_ccl_ssc or compute_ccl_cng:
         )
 
 # ! ========================== Combine HS covariance terms =============================
+if obs_space == 'real':
+    cov_hs_obj.g_code = 'Spaceborne'
+    cov_hs_obj.ssc_code = 'Spaceborne'
+    cov_hs_obj.cng_code = 'Spaceborne'
+
 cov_hs_obj.build_covs(
     ccl_obj=ccl_obj,
-    oc_obj=oc_obj,
+    oc_obj=oc_obj if obs_space == 'harmonic' else None,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
 
@@ -1648,10 +1696,25 @@ if obs_space == 'real':
     for _probe, _term in itertools.product(
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
-        print(f'\n***** working on probe {_probe} - term {_term} *****')
-        cov_rs_obj.compute_realspace_cov(
-            cov_hs_obj=cov_hs_obj, probe=_probe, term=_term
-        )
+        assert _term in ['sva', 'sn', 'mix', 'ssc', 'cng'], f'unknown term: {_term}'
+
+        if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+            for dim in ['2d', '4d', '6d']:
+                attr_name = f'cov_{_probe}_{_term}_{dim}'
+                if attr_name in dir(oc_obj):
+                    print(f'copying {attr_name} from oc_obj...')
+                    setattr(
+                        cov_rs_obj,
+                        f'{attr_name}',
+                        getattr(oc_obj, f'{attr_name}'),
+                    )
+
+        if compute_sb_ssc or compute_sb_cng:
+        
+            print(f'\n***** working on probe {_probe} - term {_term} *****')
+            cov_rs_obj.compute_realspace_cov(
+                cov_hs_obj=cov_hs_obj, probe=_probe, term=_term
+            )
 
     for term in cov_rs_obj.terms_toloop:
         cov_rs_obj.fill_remaining_probe_blocks(
@@ -1659,9 +1722,10 @@ if obs_space == 'real':
         )
 
     # put everything together
-    cov_rs_obj.combine_terms_and_probes(
+    cov_real_space.combine_terms_and_probes(
         unique_probe_combs=unique_probe_combs_rs,
         req_probe_combs_2d=req_probe_combs_rs_2d,
+        terms_toloop=cov_rs_obj.terms_toloop,
     )
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')

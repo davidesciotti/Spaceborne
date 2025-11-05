@@ -19,6 +19,7 @@ from functools import partial
 
 import numpy as np
 import pyccl as ccl
+
 # import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
@@ -836,6 +837,83 @@ def integrate_single_bessel_pair(
     return result_levin[0]
 
 
+def build_cov_3x2pt_8d_dict(cov_obj, req_probe_combs_2d, term):
+    """Store the 4D blocks in a dictionary"""
+    cov_3x2pt_dict_4d = {}
+
+    # make each block 4D and store it with the right key
+    for probe in req_probe_combs_2d:
+        probe_ab, probe_cd = sl.split_probe_name(probe)
+        cov_3x2pt_dict_4d[probe_ab, probe_cd] = getattr(
+            cov_obj, f'cov_{probe}_{term}_4d'
+        )
+
+    return cov_3x2pt_dict_4d
+
+
+def combine_terms_and_probes(
+    cov_obj: object,
+    unique_probe_combs: list,
+    req_probe_combs_2d: list,
+    cov_rs_obj: list,
+):
+    """For the given term, constructs the 3x2pt (nx2pt, depending on the n required
+    probes) 2D cov, taking into account the required probe combinations
+    (this is taken care of by cov_4D_to_2DCLOE_3x2pt_rs).
+    sack (join) probes into a single 2D cov (for each term) and store it in the
+    object"""
+
+    # ! construct 3x2pt 2D cov for each term and store them in the object
+    for term in cov_rs_obj.terms_toloop:
+        # first construct the dict
+        cov_3x2pt_term_dict_4d = build_cov_3x2pt_8d_dict(
+            cov_obj, req_probe_combs_2d, term
+        )
+        # then turn to 4D array
+        cov_3x2pt_term_4d = sl.cov_3x2pt_8D_dict_to_4D(
+            cov_3x2pt_term_dict_4d, req_probe_combs_2d, space='real'
+        )
+        # then to 2D
+        cov_3x2pt_term_2d = cov_rs_obj.cov_4D_to_2D_3x2pt_func(
+            cov_3x2pt_term_4d, **cov_rs_obj.cov_4D_to_2D_3x2pt_func_kw
+        )
+        # set attribute
+        setattr(cov_obj, f'cov_3x2pt_{term}_2d', cov_3x2pt_term_2d)
+
+    # ! sum terms to get G and TOT 2D 3x2pt covs and store them in the object
+    cov_obj.cov_3x2pt_g_2d = sum(
+        getattr(cov_obj, f'cov_3x2pt_{term}_2d') for term in ['sva', 'sn', 'mix']
+    )
+    cov_obj.cov_3x2pt_tot_2d = sum(
+        getattr(cov_obj, f'cov_3x2pt_{term}_2d') for term in cov_rs_obj.terms_toloop
+    )
+
+    for probe in unique_probe_combs:
+        # ! sum to get G and TOT 2D probe-specific covs and store them in the object
+        # ! (not needed in this new "approach" to the files I wish to save)
+        # cov_probe_g_2d = sum(
+        #     getattr(self, f'cov_{probe}_{term}_2d') for term in ['sva', 'sn', 'mix']
+        # )
+        # cov_probe_tot_2d = sum(
+        #     getattr(self, f'cov_{probe}_{term}_2d') for term in self.terms_toloop
+        # )
+        # setattr(self, f'cov_{probe}_g_2d', cov_probe_g_2d)
+        # setattr(self, f'cov_{probe}_tot_2d', cov_probe_tot_2d)
+
+        # ! sum terms to get, G, TOT 6D probe-specific covs
+        # ! and store them in the object (required if save_full_cov is True).
+        # ! note that the 6D covs are already computed and stored in the object
+        # ! in the compute_realspace_cov function
+        cov_probe_g_6d = sum(
+            getattr(cov_obj, f'cov_{probe}_{term}_6d') for term in ['sva', 'sn', 'mix']
+        )
+        cov_probe_tot_6d = sum(
+            getattr(cov_obj, f'cov_{probe}_{term}_6d') for term in cov_rs_obj.terms_toloop
+        )
+        setattr(cov_obj, f'cov_{probe}_g_6d', cov_probe_g_6d)
+        setattr(cov_obj, f'cov_{probe}_tot_6d', cov_probe_tot_6d)
+
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -1386,63 +1464,6 @@ class CovRealSpace:
             ),
         )  # fmt: skip
 
-    def combine_terms_and_probes(self, unique_probe_combs, req_probe_combs_2d):
-        """For the given term, constructs the 3x2pt (nx2pt, depending on the n required
-        probes) 2D cov, taking into account the required probe combinations
-        (this is taken care of by cov_4D_to_2DCLOE_3x2pt_rs).
-        sack (join) probes into a single 2D cov (for each term) and store it in the
-        object"""
-
-        # ! construct 3x2pt 2D cov for each term and store them in the object
-        for term in self.terms_toloop:
-            # first construct the dict
-            cov_3x2pt_term_dict_4d = self.build_cov_3x2pt_8d_dict(
-                req_probe_combs_2d, term
-            )
-            # then turn to 4D array
-            cov_3x2pt_term_4d = sl.cov_3x2pt_8D_dict_to_4D(
-                cov_3x2pt_term_dict_4d, req_probe_combs_2d, space='real'
-            )
-            # then to 2D
-            cov_3x2pt_term_2d = self.cov_4D_to_2D_3x2pt_func(
-                cov_3x2pt_term_4d, **self.cov_4D_to_2D_3x2pt_func_kw
-            )
-            # set attribute
-            setattr(self, f'cov_3x2pt_{term}_2d', cov_3x2pt_term_2d)
-
-        # ! sum terms to get G and TOT 2D 3x2pt covs and store them in the object
-        self.cov_3x2pt_g_2d = sum(
-            getattr(self, f'cov_3x2pt_{term}_2d') for term in ['sva', 'sn', 'mix']
-        )
-        self.cov_3x2pt_tot_2d = sum(
-            getattr(self, f'cov_3x2pt_{term}_2d') for term in self.terms_toloop
-        )
-
-        for probe in unique_probe_combs:
-            # ! sum to get G and TOT 2D probe-specific covs and store them in the object
-            # ! (not needed in this new "approach" to the files I wish to save)
-            # cov_probe_g_2d = sum(
-            #     getattr(self, f'cov_{probe}_{term}_2d') for term in ['sva', 'sn', 'mix']
-            # )
-            # cov_probe_tot_2d = sum(
-            #     getattr(self, f'cov_{probe}_{term}_2d') for term in self.terms_toloop
-            # )
-            # setattr(self, f'cov_{probe}_g_2d', cov_probe_g_2d)
-            # setattr(self, f'cov_{probe}_tot_2d', cov_probe_tot_2d)
-
-            # ! sum terms to get, G, TOT 6D probe-specific covs
-            # ! and store them in the object (required if save_full_cov is True).
-            # ! note that the 6D covs are already computed and stored in the object
-            # ! in the compute_realspace_cov function
-            cov_probe_g_6d = sum(
-                getattr(self, f'cov_{probe}_{term}_6d') for term in ['sva', 'sn', 'mix']
-            )
-            cov_probe_tot_6d = sum(
-                getattr(self, f'cov_{probe}_{term}_6d') for term in self.terms_toloop
-            )
-            setattr(self, f'cov_{probe}_g_6d', cov_probe_g_6d)
-            setattr(self, f'cov_{probe}_tot_6d', cov_probe_tot_6d)
-
     def compute_realspace_cov(self, cov_hs_obj, probe, term):
         """
         Computes the real space covariance matrix for the terms (sva, mix, sn, ssc, cng)
@@ -1735,16 +1756,3 @@ class CovRealSpace:
             )
             cov = np.zeros((self.nbt_coarse, self.nbt_coarse, zpairs_ab, zpairs_cd))
             setattr(self, f'cov_{probe_abcd}_{term}_4d', cov)
-
-    def build_cov_3x2pt_8d_dict(self, req_probe_combs_2d, term):
-        """Store the 4D blocks in a dictionary"""
-        cov_3x2pt_dict_4d = {}
-
-        # make each block 4D and store it with the right key
-        for probe in req_probe_combs_2d:
-            probe_ab, probe_cd = sl.split_probe_name(probe)
-            cov_3x2pt_dict_4d[probe_ab, probe_cd] = getattr(
-                self, f'cov_{probe}_{term}_4d'
-            )
-
-        return cov_3x2pt_dict_4d

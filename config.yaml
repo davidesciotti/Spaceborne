@@ -55,10 +55,11 @@ halo_model:
 
 
 OneCovariance:
-    path_to_oc_executable: '../OneCovariance/covariance.py'
+    path_to_oc_root: '/home/cosmo/davide.sciotti/data/OneCovariance'
+    path_to_oc_env_python: '/home/cosmo/davide.sciotti/software/anaconda3/envs/cov20_env/bin/python'
+    path_to_oc_executable: '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
-
 
 
 probe_selection:

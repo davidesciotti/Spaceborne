@@ -1181,7 +1181,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     ell_min_unb_oc = 2
     ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
     nbl_3x2pt_oc = 500
-    
+
     ells_3x2pt_oc = np.geomspace(
         ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )
@@ -1296,20 +1296,11 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     )
 
     # turn to 10d arrays, which are still used in the SpaceborneCovariance class
-    cov_tot = np.zeros(
-        (
-            n_probes_oc,
-            n_probes_oc,
-            n_probes_oc,
-            n_probes_oc,
-            nbx,
-            nbx,
-            zbins,
-            zbins,
-            zbins,
-            zbins,
-        )
-    )
+    cov_tot = np.zeros((
+            n_probes_oc, n_probes_oc, n_probes_oc, n_probes_oc,
+            nbx, nbx, zbins, zbins, zbins, zbins
+        ))  # fmt: skip
+
     for term in ['sva', 'sn', 'mix', 'g', 'ssc', 'cng']:
         cov = oc_interface.oc_cov_dict_6d_to_array_10d(
             cov_dict_6d=oc_obj.cov_dict_6d,
@@ -1326,7 +1317,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # set also total covariance
     oc_obj.cov_3x2pt_tot_10d = cov_tot
-    
+
     # free memory
     del cov_tot
     gc.collect()
@@ -1611,14 +1602,12 @@ cov_hs_obj.build_covs(
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
 
-    
-for key, cov_6d in oc_obj.cov_dict_6d.items():
-    
-    updated_key = key.replace("gm", "gt")
-    setattr(cov_rs_obj, f'cov_{updated_key}_6d', cov_6d)
-    
-    probe_abcd = updated_key.split('_')[0]
 
+for key, cov_6d in oc_obj.cov_dict_6d.items():
+    updated_key = key.replace('gm', 'gt')
+    setattr(cov_rs_obj, f'cov_{updated_key}_6d', cov_6d)
+
+    probe_abcd = updated_key.split('_')[0]
 
     # TODO check I'm not messing up anything here...
     probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
@@ -1647,10 +1636,8 @@ for key, cov_6d in oc_obj.cov_dict_6d.items():
         cov_6d, cov_rs_obj.nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
     )
     setattr(cov_rs_obj, f'cov_{updated_key}_4d', cov_4d)
-    
-    cov_2d = sl.cov_4D_to_2D(
-        cov_4d, block_index=cov_rs_obj.block_index
-    )
+
+    cov_2d = sl.cov_4D_to_2D(cov_4d, block_index=cov_rs_obj.block_index)
     setattr(cov_rs_obj, f'cov_{updated_key}_2d', cov_2d)
 
 if obs_space == 'real':

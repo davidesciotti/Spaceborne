@@ -61,7 +61,7 @@ def oc_cov_dict_6d_to_array_10d(
     #         cov_10d[*probe_ixs] = cov
 
     if not cov_dict_6d:
-        raise ValueError("cov_dict_6d is empty")
+        raise ValueError('cov_dict_6d is empty')
 
     key_found = False
     for key, cov in cov_dict_6d.items():
@@ -70,10 +70,10 @@ def oc_cov_dict_6d_to_array_10d(
             continue
         # probes = list(probe_abcd)
         # probe_ixs = [probe_idx_dict[p] for p in probes]
-        
+
         # probes = sl.split_probe_name(probe_abcd)
         probe_ixs = probe_idx_dict[probe_abcd]
-        
+
         cov_10d[*probe_ixs] = cov
         key_found = True
 
@@ -367,6 +367,8 @@ class OneCovarianceInterface:
         self.obs_space = self.cfg['probe_selection']['space']
 
         # paths and filenems
+        self.path_to_oc = cfg['OneCovariance']['path_to_oc_root']
+        self.path_to_oc_env_python = cfg['OneCovariance']['path_to_oc_env_python']
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
 
         self.probe_idx_dict_hs = {
@@ -737,9 +739,17 @@ class OneCovarianceInterface:
 
     def call_oc_from_bash(self) -> None:
         """This function runs OneCovariance"""
+        env = os.environ.copy()
+        env.pop('MPLBACKEND', None)
         subprocess.run(
-            ['python', self.path_to_oc_executable, self.path_to_config_oc_ini],
-            check=True,  # raise CalledProcessError if it fails
+            [
+                self.path_to_oc_env_python,  # used to be "python"
+                self.path_to_oc_executable,
+                self.path_to_config_oc_ini,
+            ],
+            check=True,
+            cwd=self.path_to_oc,
+            env=env,
         )
 
     def call_oc_from_class(self):
@@ -959,7 +969,7 @@ class OneCovarianceInterface:
         # TODO why am I processing the output twice?
         # TODO this should be generalised to real space
 
-        self.process_cov_from_mat_file()        
+        self.process_cov_from_mat_file()
 
         cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
             self.cov_3x2pt_g_10d,

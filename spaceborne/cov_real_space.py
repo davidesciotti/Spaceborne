@@ -919,7 +919,7 @@ class CovRealSpace:
         # for validation purposes
         self.probe_idx_dict_short_oc = {}
         for key in const.RS_PROBE_NAME_TO_IX_DICT:
-            probe_ab_str, probe_cd_str = sl.split_probe_name(key)
+            probe_ab_str, probe_cd_str = sl.split_probe_name(key, 'real')
             probe_ab_str_oc = 'gm' if probe_ab_str == 'gt' else probe_ab_str
             probe_cd_str_oc = 'gm' if probe_cd_str == 'gt' else probe_cd_str
             self.probe_idx_dict_short_oc[probe_ab_str_oc + probe_cd_str_oc] = (
@@ -1306,7 +1306,7 @@ class CovRealSpace:
         and probes specfied
         """
 
-        probe_ab, probe_cd = sl.split_probe_name(probe)
+        probe_ab, probe_cd = sl.split_probe_name(probe, 'real')
 
         mu, nu = const.MU_DICT[probe_ab], const.MU_DICT[probe_cd]
         probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
@@ -1555,7 +1555,7 @@ class CovRealSpace:
         for probe_abcd in symm_probe_combs:
             print(f'RS cov: filling probe combination {probe_abcd} by symmetry')
 
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
             probe_cdab = probe_cd + probe_ab
 
             cov_cdab = getattr(self, f'cov_{probe_cdab}_{term}_4d')
@@ -1564,7 +1564,7 @@ class CovRealSpace:
 
         # * if block is not required, set it to 0
         for probe_abcd in nonreq_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = (
                 const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd]
             )
@@ -1583,7 +1583,7 @@ class CovRealSpace:
 
         # make each block 4D and store it with the right key
         for probe in req_probe_combs_2d:
-            probe_ab, probe_cd = sl.split_probe_name(probe)
+            probe_ab, probe_cd = sl.split_probe_name(probe, 'real')
             cov_3x2pt_dict_4d[probe_ab, probe_cd] = getattr(
                 self, f'cov_{probe}_{term}_4d'
             )

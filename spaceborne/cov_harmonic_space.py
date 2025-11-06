@@ -29,6 +29,7 @@ class SpaceborneCovariance:
         self.ell_obj = ell_obj
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
+        self.all_terms = ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
         # TODO these should probably be defined on a higher level
         self.llll_ixs = (0, 0, 0, 0)
         self.glgl_ixs = (1, 0, 1, 0)
@@ -341,9 +342,9 @@ class SpaceborneCovariance:
         print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
 
         # reshape to 2D
-        self._cov_g_3x2pt_10d_to_2d_wrapper(split_gaussian_cov)
+        self._cov_6d_and_3x2pt_to_4d_and_2d()
 
-    def _cov_g_3x2pt_10d_to_2d_wrapper(self, split_gaussian_cov):
+    def _cov_6d_and_3x2pt_to_4d_and_2d(self):
         """Reshapes the 3x2pt 10d cov into 2D.
 
         Parameters
@@ -351,48 +352,35 @@ class SpaceborneCovariance:
         split_gaussian_cov : bool
             Whether to split (hence to reshape) the SVA/SN/MIX parts of the G cov
         """
-        self.cov_3x2pt_g_2d = self.reshape_cov(
-            cov_in=self.cov_3x2pt_g_10d,
-            ndim_in=10,
-            ndim_out=2,
-            nbl=self.ell_obj.nbl_3x2pt,
-            zpairs=None,
-            ind_probe=self.ind,
-            is_3x2pt=True,
+
+        # populate the dict with 4d and 2d probe-specific arrays (from the 6d ones)
+        self.cov_dict = sl.cov_dict_6d_to_4d_and_2d(
+            cov_dict=self.cov_dict,
+            space='harmonic',
+            nbx=self.ell_obj.nbl_3x2pt,
+            ind_auto=self.ind_auto,
+            ind_cross=self.ind_cross,
+            zpairs_auto=self.zpairs_auto,
+            zpairs_cross=self.zpairs_cross,
+            block_index=self.block_index,
         )
-        if split_gaussian_cov:
-            self.cov_3x2pt_sva_2d = self.reshape_cov(
-                cov_in=self.cov_3x2pt_sva_10d,
-                ndim_in=10,
-                ndim_out=2,
-                nbl=self.ell_obj.nbl_3x2pt,
-                zpairs=None,
-                ind_probe=self.ind,
-                is_3x2pt=True,
+        
+
+        # now create 3x2pt 4d and 2d (there is no 3x2pt 6d or 10d!!!)
+        for term in self.all_terms:
+            if not self.cov_dict[term]:
+                continue
+            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_to_3x2pt_4d(
+                self.cov_dict[term], self.req_probe_combs_2d, space='harmonic'
             )
-            self.cov_3x2pt_sn_2d = self.reshape_cov(
-                cov_in=self.cov_3x2pt_sn_10d,
-                ndim_in=10,
-                ndim_out=2,
-                nbl=self.ell_obj.nbl_3x2pt,
-                zpairs=None,
-                ind_probe=self.ind,
-                is_3x2pt=True,
-            )
-            self.cov_3x2pt_mix_2d = self.reshape_cov(
-                cov_in=self.cov_3x2pt_mix_10d,
-                ndim_in=10,
-                ndim_out=2,
-                nbl=self.ell_obj.nbl_3x2pt,
-                zpairs=None,
-                ind_probe=self.ind,
-                is_3x2pt=True,
+            self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
+                self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
             )
 
-    def _cov_8d_dict_to_10d_arr(self, cov_dict_8D):
+    def _cov_8d_dict_to_10d_arr(self, cov_dict_8d):
         """Helper function to process a single covariance component"""
         cov_dict_10d = sl.cov_3x2pt_dict_8d_to_10d(
-            cov_3x2pt_dict_8D=cov_dict_8D,
+            cov_3x2pt_dict_8D=cov_dict_8d,
             nbl=self.ell_obj.nbl_3x2pt,
             zbins=self.zbins,
             ind_dict=self.ind_dict,

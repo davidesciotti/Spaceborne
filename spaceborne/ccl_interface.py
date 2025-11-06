@@ -880,7 +880,6 @@ class CCLInterface:
         self.cov_ng_3x2pt_dict_8D = {}
 
         for probe_tuple in unique_probe_combs:
-            print(probe_tuple)
             probe_a, probe_b, probe_c, probe_d = probe_tuple
             probe_str = probe_a + probe_b + probe_c + probe_d
 

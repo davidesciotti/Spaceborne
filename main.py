@@ -1110,7 +1110,7 @@ else:
     nmt_cov_obj = None
 
 
-# ! =============== Init real space cov object, put here for simplicity for the moment ==============
+# ! ============================== Init real space cov object ==========================
 if obs_space == 'real':
     from spaceborne import cov_real_space
 
@@ -1149,10 +1149,13 @@ cov_hs_obj.set_ind_and_zpairs(ind)
 cov_hs_obj.consistency_checks()
 cov_hs_obj.set_gauss_cov(
     ccl_obj=ccl_obj,
-    split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
-    nonreq_probe_combs_ix=nonreq_probe_combs_ix_hs,
+    split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
 )
 
+sl.matshow(cov_hs_obj.cov_dict['cng']['3x2pt']['2d'])
+
+
+assert False, 'stop here'
 # ! =================================== OneCovariance ================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
@@ -1805,7 +1808,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     if obs_space == 'harmonic':
                         probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
                     if obs_space == 'real':
-                        probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+                        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
 
                     kw = {'color': 'k', 'alpha': 0.7, 'ls': '--'}
                     ax[0].axvline(start_ab + lim_dict[probe_ab], **kw)
@@ -1829,7 +1832,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     if obs_space == 'harmonic':
                         probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
                     if obs_space == 'real':
-                        probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+                        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
 
                     # x direction
                     center_ab = start_ab + lim_dict[probe_ab] / 2
@@ -2167,7 +2170,7 @@ for probe in const.RS_PROBE_NAME_TO_IX_DICT:
     #     else term
     # )
 
-    probe_ab, probe_cd = sl.split_probe_name(probe)
+    probe_ab, probe_cd = sl.split_probe_name(probe, 'real')
     probe_ab_ix, probe_cd_ix = (
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],

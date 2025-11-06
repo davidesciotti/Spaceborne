@@ -354,7 +354,7 @@ class SpaceborneCovariance:
         """
 
         # populate the dict with 4d and 2d probe-specific arrays (from the 6d ones)
-        self.cov_dict = sl.cov_dict_6d_to_4d_and_2d(
+        self.cov_dict = sl.add_4d_and_2d_to_cov_dict_6d(
             cov_dict=self.cov_dict,
             space='harmonic',
             nbx=self.ell_obj.nbl_3x2pt,
@@ -370,7 +370,7 @@ class SpaceborneCovariance:
         for term in self.all_terms:
             if not self.cov_dict[term]:
                 continue
-            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_to_3x2pt_4d(
+            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_to_3x2pt_4d_arr(
                 self.cov_dict[term], self.req_probe_combs_2d, space='harmonic'
             )
             self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(

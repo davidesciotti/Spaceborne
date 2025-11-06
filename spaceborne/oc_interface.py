@@ -114,7 +114,7 @@ def compare_sb_cov_to_oc_list(
     probe_oc = probe_sb.replace('gt', 'gm')
 
     # get probe names, ind and zpairs for 2D conversion
-    probe_ab, probe_cd = sl.split_probe_name(probe_sb)
+    probe_ab, probe_cd = sl.split_probe_name(probe_sb)  # TODO space?
     probe_ab_ix, probe_cd_ix = (
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],

@@ -36,7 +36,7 @@ def validate_cov_dict_structure(cov_dict: dict, space: str):
 
     Args:
         cov_dict: Dictionary to validate
-        space: 'harmonic' or 'real
+'        space: 'harmonic' or 'real'
         expected_probes: Optional list of expected probe tuples
         expected_dims: Optional list of expected dimensions (e.g., ['6d', '8d'])
     """
@@ -85,7 +85,7 @@ def validate_cov_dict_structure(cov_dict: dict, space: str):
             if not isinstance(dim_dict, dict):
                 raise ValueError(
                     f"Probe {probe_2tpl} in term '{term}' must contain "
-                    'a dictionary, got {type(dim_dict)}'
+                    f'a dictionary, got {type(dim_dict)}'
                 )
 
             for dim, value in dim_dict.items():

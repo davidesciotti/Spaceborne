@@ -364,12 +364,14 @@ class SpaceborneCovariance:
             zpairs_cross=self.zpairs_cross,
             block_index=self.block_index,
         )
-        
 
         # now create 3x2pt 4d and 2d (there is no 3x2pt 6d or 10d!!!)
+
+        # check that the key is present and dict is not empty
         for term in self.all_terms:
-            if not self.cov_dict[term]:
+            if term not in self.cov_dict or not self.cov_dict[term]:
                 continue
+
             self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_to_3x2pt_4d_arr(
                 self.cov_dict[term], self.req_probe_combs_2d, space='harmonic'
             )

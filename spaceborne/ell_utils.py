@@ -16,7 +16,28 @@ def nmt_linear_binning(lmin, lmax, bw, w=None):
     return b
 
 
-def nmt_log_binning(lmin, lmax, nbl, w=None):
+def log_binning(lmax, lmin, nbl, w=None):
+    """
+    Define a logarithmic ell binning scheme with optional weights.
+    Function written by Sylvain Gouyou Beauchamps.
+
+    Parameters
+    ----------
+    lmax : int
+        Maximum ell value for the binning.
+    lmin : int
+        Minimum ell value for the binning.
+    nbl : int
+        Number of bins.
+    w : array-like, optional
+        Weights for the ell values.
+
+    Returns
+    -------
+    b : nmt.NmtBin
+        NaMaster binning object with logarithmic bins.
+    """
+
     import pymaster as nmt
 
     op = np.log10
@@ -27,8 +48,9 @@ def nmt_log_binning(lmin, lmax, nbl, w=None):
     bins = inv(np.linspace(op(lmin), op(lmax + 1), nbl + 1))
     ell = np.arange(lmin, lmax + 1)
     i = np.digitize(ell, bins) - 1
+    if w is None:
+        w = np.ones(ell.size)
     b = nmt.NmtBin(bpws=i, ells=ell, weights=w, lmax=lmax)
-
     return b
 
 
@@ -268,8 +290,7 @@ class EllBinning:
             self.ell_min_GC = ell_edges_lo_GC[0]
             self.ell_max_WL = ell_edges_hi_WL[-1]
             self.ell_max_GC = ell_edges_hi_GC[-1]
-            
-            
+
             # sanity check
             if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
                 raise ValueError('All WL bin lower edges must be less than upper edges')
@@ -292,12 +313,11 @@ class EllBinning:
 
         elif self.binning_type == 'ref_cut':
             # TODO this is only done for backwards-compatibility reasons
-            
 
             ell_min_ref = self.cfg['binning']['ell_min_ref']
             ell_max_ref = self.cfg['binning']['ell_max_ref']
             nbl_ref = self.cfg['binning']['ell_bins_ref']
-            
+
             self.ells_ref, self.delta_l_ref, self.ell_edges_ref = compute_ells(
                 nbl=nbl_ref,
                 ell_min=ell_min_ref,

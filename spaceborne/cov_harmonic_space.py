@@ -1,11 +1,12 @@
 import itertools
-import os
 import time
 import warnings
+from collections import defaultdict
 
 import numpy as np
 
 from spaceborne import bnt as bnt_utils
+from spaceborne import constants as const
 from spaceborne import sb_lib as sl
 from spaceborne.ccl_interface import CCLInterface
 from spaceborne.cov_partial_sky import NmtCov
@@ -34,7 +35,6 @@ class SpaceborneCovariance:
         self.gggg_ixs = (1, 1, 1, 1)
 
         self.zbins = pvt_cfg['zbins']
-        self.cov_terms_list = pvt_cfg['cov_terms_list']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
         if self.GL_OR_LG == 'LG':  # on-the-fly check
             raise ValueError('the cross-correlation between G and L must be GL, not LG')
@@ -59,6 +59,10 @@ class SpaceborneCovariance:
         self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
         # other useful objects
         self.nmt_cov_obj = nmt_cov_obj
+
+        # Instantiate the nested cov dict of structure
+        # [TERM][PROBE_AB, PROBE_CD][DIM]: np.ndarray
+        self.cov_dict = defaultdict(lambda: defaultdict(dict))
 
         if self.cov_ordering_2d == 'probe_scale_zpair':
             self.block_index = 'ell'
@@ -148,16 +152,6 @@ class SpaceborneCovariance:
         assert np.array_equiv(
             self.ind[: self.zpairs_auto, 2:], self.ind[-self.zpairs_auto :, 2:]
         )
-
-        assert (
-            self.cov_terms_list
-            in (
-                ['G', 'SSC', 'cNG'],
-                ['G', 'SSC'],
-                ['G', 'cNG'],
-                ['G'],
-            )  # TODO finish testing this?
-        ), 'cov_terms_list not recognised'
 
         assert self.ssc_code in ['Spaceborne', 'PyCCL', 'OneCovariance'], (
             "covariance_cfg['SSC_code'] not recognised"
@@ -250,7 +244,7 @@ class SpaceborneCovariance:
 
         return cov_out
 
-    def set_gauss_cov(self, ccl_obj, split_gaussian_cov, nonreq_probe_combs_ix):
+    def set_gauss_cov(self, ccl_obj, split_gaussian_cov):
         start = time.perf_counter()
 
         # signal
@@ -292,28 +286,25 @@ class SpaceborneCovariance:
             return_only_diagonal_ells=False,
         )
 
-        # ! set to 0 all the probe blocks which are not required;
-        # keep in mind that the einsum function returns all the possible
-        # combinations of probes which is why I use(d) itertools.product
-
-        # Zero out non-requested probe blocks
-        for a, b, c, d in nonreq_probe_combs_ix:
-            cov_3x2pt_sva_10d[a, b, c, d] = 0
-            cov_3x2pt_sn_10d[a, b, c, d] = 0
-            cov_3x2pt_mix_10d[a, b, c, d] = 0
-
-        # total cov is the sum of SVA SN and MIX
-        self.cov_3x2pt_g_10d = cov_3x2pt_sva_10d + cov_3x2pt_sn_10d + cov_3x2pt_mix_10d
-        if split_gaussian_cov:
-            # in this case, store SVA, SN and MIX in self
-            self.cov_3x2pt_sva_10d = cov_3x2pt_sva_10d
-            self.cov_3x2pt_sn_10d = cov_3x2pt_sn_10d
-            self.cov_3x2pt_mix_10d = cov_3x2pt_mix_10d
+        # the Gaussian HS cov is computed for all probes at once, still
+        for probe_abcd in self.req_probe_combs_2d:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            probe_2tpl = (probe_ab, probe_cd)
+            probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
+            self.cov_dict['sva'][probe_2tpl]['6d'] = cov_3x2pt_sva_10d[*probe_ixs]
+            self.cov_dict['sn'][probe_2tpl]['6d'] = cov_3x2pt_sn_10d[*probe_ixs]
+            self.cov_dict['mix'][probe_2tpl]['6d'] = cov_3x2pt_mix_10d[*probe_ixs]
+            # sum to get G
+            self.cov_dict['g'][probe_2tpl]['6d'] = (
+                self.cov_dict['sva'][probe_2tpl]['6d']
+                + self.cov_dict['sn'][probe_2tpl]['6d']
+                + self.cov_dict['mix'][probe_2tpl]['6d']
+            )
 
         # ! Partial sky with nmt
         # ! this case overwrites self.cov_3x2pt_g_10d only, but the cfg checker will
-        # ! raise an error if you require to split the G cov and use_nmt or do_sample_cov
-        # ! # are True
+        # ! raise an error if you require to split the G cov and use_nmt or
+        # ! do_sample_cov are True
         if self.use_nmt or self.do_sample_cov:
             # noise vector doesn't have to be recomputed, but repeated a larger number
             # of times (ell by ell)
@@ -323,7 +314,29 @@ class SpaceborneCovariance:
                 axis=2,
             )
             self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
-            self.cov_3x2pt_g_10d = self.nmt_cov_obj.build_psky_cov()
+            cov_3x2pt_gnmt_10d = self.nmt_cov_obj.build_psky_cov()
+
+            self.cov_dict['g'].update(
+                sl.cov_10d_arr_to_dict(
+                    cov_3x2pt_gnmt_10d,
+                    dim='6d',
+                    req_probe_combs_2d=self.req_probe_combs_2d,
+                    space='harmonic',
+                )
+            )
+
+            # delete the SVA, SN and MIX terms to avoid confusion, only the g one
+            # remains in the partial sky case
+            for term in ['sva', 'sn', 'mix']:
+                self.cov_dict[term].update(
+                    sl.cov_10d_arr_to_dict(
+                        None,
+                        dim='6d',
+                        req_probe_combs_2d=self.req_probe_combs_2d,
+                        space='harmonic',
+                        empty=True,
+                    )
+                )
 
         print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
 
@@ -395,44 +408,62 @@ class SpaceborneCovariance:
     def _add_ssc(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
         """Helper function to get the SSC from the required code and uniform its
         shape"""
-        if self.include_ssc:
-            if self.ssc_code == 'Spaceborne':
-                self.cov_3x2pt_ssc_10d = self._cov_8d_dict_to_10d_arr(
-                    self.cov_ssc_sb_3x2pt_dict_8D
-                )
-            elif self.ssc_code == 'PyCCL':
-                self.cov_3x2pt_ssc_10d = self._cov_8d_dict_to_10d_arr(
-                    ccl_obj.cov_ssc_ccl_3x2pt_dict_8D
-                )
-            elif self.ssc_code == 'OneCovariance':
-                self.cov_3x2pt_ssc_10d = oc_obj.cov_3x2pt_ssc_10d
-
-            assert not np.allclose(self.cov_3x2pt_ssc_10d, 0, atol=0, rtol=1e-10), (
-                f'{self.ssc_code} SSC covariance matrix is identically zero'
-            )
-
-        else:
+        if not self.include_ssc:
             print('Skipping SSC computation')
-            self.cov_3x2pt_ssc_10d = np.zeros_like(self.cov_3x2pt_g_10d)
+            return
+
+        if self.ssc_code == 'Spaceborne':
+            cov_3x2pt_ssc_10d = self._cov_8d_dict_to_10d_arr(
+                self.cov_ssc_sb_3x2pt_dict_8D
+            )
+        elif self.ssc_code == 'PyCCL':
+            cov_3x2pt_ssc_10d = self._cov_8d_dict_to_10d_arr(
+                ccl_obj.cov_ssc_ccl_3x2pt_dict_8D
+            )
+        elif self.ssc_code == 'OneCovariance':
+            cov_3x2pt_ssc_10d = oc_obj.cov_3x2pt_ssc_10d
+
+        assert not np.allclose(cov_3x2pt_ssc_10d, 0, atol=0, rtol=1e-10), (
+            f'{self.ssc_code} SSC covariance matrix is identically zero'
+        )
+
+        # assign to dictionary
+        self.cov_dict['ssc'].update(
+            sl.cov_10d_arr_to_dict(
+                cov_3x2pt_ssc_10d,
+                dim='6d',
+                req_probe_combs_2d=self.req_probe_combs_2d,
+                space='harmonic',
+            )
+        )
 
     def _add_cng(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
-        """Helper function to get the SSC from the required code and uniform its
+        """Helper function to get the cNG from the required code and uniform its
         shape"""
-        if self.include_cng:
-            if self.cng_code == 'PyCCL':
-                self.cov_3x2pt_cng_10d = self._cov_8d_dict_to_10d_arr(
-                    ccl_obj.cov_cng_ccl_3x2pt_dict_8D
-                )
-            elif self.cng_code == 'OneCovariance':
-                self.cov_3x2pt_cng_10d = oc_obj.cov_3x2pt_cng_10d
-
-            assert not np.allclose(self.cov_3x2pt_cng_10d, 0, atol=0, rtol=1e-10), (
-                f'{self.cng_code} cNG covariance matrix is identically zero'
-            )
-
-        else:
+        if not self.include_cng:
             print('Skipping cNG computation')
-            self.cov_3x2pt_cng_10d = np.zeros_like(self.cov_3x2pt_g_10d)
+            return
+
+        if self.cng_code == 'PyCCL':
+            cov_3x2pt_cng_10d = self._cov_8d_dict_to_10d_arr(
+                ccl_obj.cov_cng_ccl_3x2pt_dict_8D
+            )
+        elif self.cng_code == 'OneCovariance':
+            cov_3x2pt_cng_10d = oc_obj.cov_3x2pt_cng_10d
+
+        assert not np.allclose(cov_3x2pt_cng_10d, 0, atol=0, rtol=1e-10), (
+            f'{self.cng_code} cNG covariance matrix is identically zero'
+        )
+
+        # assign to dictionary
+        self.cov_dict['cng'].update(
+            sl.cov_10d_arr_to_dict(
+                cov_3x2pt_cng_10d,
+                dim='6d',
+                req_probe_combs_2d=self.req_probe_combs_2d,
+                space='harmonic',
+            )
+        )
 
     def _slice_3x2pt_cov(self, split_gaussian_cov: bool) -> None:
         """Helper function to slice the 3x2pt covariance into WL, GC and XC.
@@ -743,7 +774,6 @@ class SpaceborneCovariance:
                 mcm_3x2pt_arr[c, d].T,
             )
         print('...done')
-
 
     def get_ellmax_nbl(self, probe, covariance_cfg):
         if probe == 'LL':

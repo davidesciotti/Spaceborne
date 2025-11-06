@@ -25,6 +25,82 @@ from scipy.special import jv
 import spaceborne.constants as const
 
 
+def validate_cov_dict_structure(cov_dict: dict, space: str):
+    """
+    Validates that cov_dict follows the structure:
+    cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
+    "Notation":
+    - cov_dict[term] = probe_dict
+    - probe_dict[probe_ab, probe_cd] = dim_dict
+    - dim_dict[dim] = cov
+
+    Args:
+        cov_dict: Dictionary to validate
+        space: 'harmonic' or 'real
+        expected_probes: Optional list of expected probe tuples
+        expected_dims: Optional list of expected dimensions (e.g., ['6d', '8d'])
+    """
+    import numpy as np
+
+    expected_terms = ['sva', 'sn', 'mix', 'g', 'ssc', 'tot']
+    expected_dims = ['2d', '4d', '6d']
+    if space == 'harmonic':
+        expected_probes_ab = const.HS_DIAG_PROBES
+    elif space == 'real':
+        expected_probes_ab = const.RS_DIAG_PROBES
+    else:
+        raise ValueError('`space` must be in ["harmonic", "real"]')
+
+    if not isinstance(cov_dict, dict):
+        raise ValueError('cov_dict must be a dictionary')
+
+    for term, probe_dict in cov_dict.items():
+        if term not in expected_terms:
+            raise ValueError(
+                f'Unexpected term: {term}, expected one of {expected_terms}'
+            )
+        if not isinstance(probe_dict, dict):
+            raise ValueError(
+                f"Term '{term}' must contain a dictionary, got {type(probe_dict)}"
+            )
+
+        for probe_2tpl, dim_dict in probe_dict.items():
+            # check the probe names
+            if probe_2tpl[0] not in expected_probes_ab:
+                raise ValueError(
+                    f'Unexpected probe_ab: {probe_2tpl[0]}, expected one of '
+                    f'{expected_probes_ab}'
+                )
+            if probe_2tpl[1] not in expected_probes_ab:
+                raise ValueError(
+                    f'Unexpected probe_ab: {probe_2tpl[1]}, expected one of '
+                    f'{expected_probes_ab}'
+                )
+            # Validate probe key is a tuple of 2 elements
+            if not isinstance(probe_2tpl, tuple) or len(probe_2tpl) != 2:
+                raise ValueError(
+                    f"Probe key {probe_2tpl} in term '{term}' must be "
+                    'a tuple of 2 elements'
+                )
+            if not isinstance(dim_dict, dict):
+                raise ValueError(
+                    f"Probe {probe_2tpl} in term '{term}' must contain "
+                    'a dictionary, got {type(dim_dict)}'
+                )
+
+            for dim, value in dim_dict.items():
+                if dim not in expected_dims:
+                    raise ValueError(
+                        f"Unexpected dimension '{dim}' for probe {probe_2tpl} in term "
+                        f"'{term}', expected one of {expected_dims}"
+                    )
+                if not isinstance(value, np.ndarray):
+                    raise ValueError(
+                        f"Value for dim '{dim}' of probe {probe_2tpl} in term "
+                        f"'{term}' must be a numpy array, got {type(value)}"
+                    )
+
+
 def cov_10d_arr_to_dict(
     cov_10d: np.ndarray,
     dim: str,
@@ -34,7 +110,7 @@ def cov_10d_arr_to_dict(
 ):
     """Assigns a 10d array to a dictionary with the new structure, i.e.,
     cov_dict[TERM][PROBE_AB, PROBE_CD][DIM]: np.ndarray
-    
+
     Parameters:
     cov_10d (np.ndarray): The 10d array to be assigned.
     dim (str): The dimension key to assign the array to
@@ -134,7 +210,7 @@ def matshow_custom_bins(data_array, bin_edges):
 
 
 def split_probe_name(
-    full_probe_name: str, space: str = 'real', valid_probes: Sequence[str] | None = None
+    full_probe_name: str, space: str, valid_probes: Sequence[str] | None = None
 ) -> tuple[str, str]:
     """Splits a full probe name (e.g., 'gtxim') into two component probes."""
 
@@ -283,7 +359,7 @@ def get_probe_combs(unique_probe_combs, space):
         if space == 'harmonic':
             probe_ab, probe_cd = probe[:2], probe[2:]
         elif space == 'real':
-            probe_ab, probe_cd = split_probe_name(probe)
+            probe_ab, probe_cd = split_probe_name(probe, 'real')
 
         symm_probe_combs.append(probe_cd + probe_ab)
 
@@ -2856,6 +2932,58 @@ def cov_3x2pt_10D_to_4D(
     return cov_3x2pt_4D
 
 
+def add_4d_and_2d_to_cov_dict_6d(
+    cov_dict: dict,
+    space: str,
+    nbx: int,
+    ind_auto: np.ndarray,
+    ind_cross: np.ndarray,
+    zpairs_auto: int,
+    zpairs_cross: int,
+    block_index: str,
+):
+    """
+    Takes the cov dictionary and reshapes each A, B, C, D block separately to 4d and 2d.
+    This is the updated version of cov_3x2pt_10D_to_4D.
+    """
+    # validate structure of the input dictionary
+    validate_cov_dict_structure(cov_dict, space=space)
+
+    if space == 'harmonic':
+        auto_probes = const.HS_AUTO_PROBES
+    elif space == 'real':
+        auto_probes = const.RS_AUTO_PROBES
+    else:
+        raise ValueError('`space` must be in ["harmonic", "real"]')
+
+    # reshape the probe-specific 6d arrays to 4d and 2d
+    for term in cov_dict:  # noqa: PLC0206
+        for probe_ab, probe_cd in cov_dict[term]:
+            # additional check: the input dictionary should only contain the '6d' dim
+            dims = set(cov_dict[term][probe_ab, probe_cd].keys())
+            if dims != {'6d'}:
+                raise ValueError(f"Expected only '6d' dimension, got {dims}")
+
+            # extract array
+            cov_6d = cov_dict[term][probe_ab, probe_cd]['6d']
+
+            # prepare ind and zpairs
+            ind_ab = ind_auto if probe_ab in auto_probes else ind_cross
+            ind_cd = ind_auto if probe_cd in auto_probes else ind_cross
+            zpairs_ab = zpairs_auto if probe_ab in auto_probes else zpairs_cross
+            zpairs_cd = zpairs_auto if probe_cd in auto_probes else zpairs_cross
+
+            # reshape to 4d, then to 2d
+            cov_dict[term][probe_ab, probe_cd]['4d'] = cov_6D_to_4D_blocks(
+                cov_6d, nbx, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+            )
+            cov_dict[term][probe_ab, probe_cd]['2d'] = cov_4D_to_2D(
+                cov_dict[term][probe_ab, probe_cd]['4d'], block_index=block_index
+            )
+
+    return cov_dict
+
+
 def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmonic'):
     """Convert a dictionary of 4D blocks into a single 4D array.
 
@@ -2878,7 +3006,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
         if space == 'harmonic':
             probe_tpl = tuple(probe)
         elif space == 'real':
-            probe_tpl = split_probe_name(probe)
+            probe_tpl = split_probe_name(probe, 'real')
 
         assert probe_tpl in cov_3x2pt_8D_dict, (
             f'Probe combination {probe_tpl} not found in the input dictionary'
@@ -2915,7 +3043,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
     elif space == 'real':
         row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
         for probe in req_probe_combs_2d:
-            probe_ab, probe_cd = split_probe_name(probe)
+            probe_ab, probe_cd = split_probe_name(probe, 'real')
             if (probe_ab) == 'xip':
                 row_xip_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
             elif (probe_ab) == ('xim'):
@@ -2955,6 +3083,99 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
         raise ValueError('No valid probe combinations found!')
 
     return cov_3x2pt_4D
+
+
+def cov_dict_4d_to_3x2pt_4d_arr(cov_probe_dict: dict, req_probe_combs_2d: list, space: str):
+    """Convert a dictionary of 4D blocks into a single 4D array.
+
+    This is the same code as
+    in the last part of the function above.
+    :param cov_dict: dictionary of 4D covariance blocks
+    :param req_probe_combs_2d: list of probe combinations to use
+    :param space: observables space ("harmonic" or "real")
+    :return: 3x2pt 4D covariance array
+    """
+
+    # make sure that the dict contains 4d arrays
+    for probe_ab, probe_cd in cov_probe_dict:  # noqa: PLC0206
+        dims = set(cov_probe_dict[probe_ab, probe_cd].keys())
+        if '4d' not in dims:
+            raise ValueError(f"Expected '4d' dimension, got {dims}")
+
+    final_rows = []
+
+
+    if space == 'harmonic':
+        row_ll_list, row_gl_list, row_gg_list = [], [], []
+        for probe_abcd in req_probe_combs_2d:
+            probe_ab, probe_cd = split_probe_name(probe_abcd, 'harmonic')
+            if probe_ab == 'LL':
+                row_ll_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'GL':
+                row_gl_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'GG':
+                row_gg_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            else:
+                raise ValueError(
+                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    '("LL") or ("GL") or ("GG") '
+                )
+
+        # concatenate the lists to make rows
+        # (only concatenate and include rows that have content)
+        if row_ll_list:
+            row_ll = np.concatenate(row_ll_list, axis=3)
+            final_rows.append(row_ll)
+        if row_gl_list:
+            row_gl = np.concatenate(row_gl_list, axis=3)
+            final_rows.append(row_gl)
+        if row_gg_list:
+            row_gg = np.concatenate(row_gg_list, axis=3)
+            final_rows.append(row_gg)
+
+    elif space == 'real':
+        row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
+        for probe_abcd in req_probe_combs_2d:
+            probe_ab, probe_cd = split_probe_name(probe_abcd, 'real')
+            if probe_ab == 'xip':
+                row_xip_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'xim':
+                row_xim_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'gt':
+                row_gt_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'gg':
+                row_gg_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            else:
+                raise ValueError(
+                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    '("xip") or ("xim") or ("gt") or ("gg") '
+                )
+        # concatenate the lists to make rows
+        # o(nly concatenate and include rows that have content)
+        if row_xip_list:
+            row_xip = np.concatenate(row_xip_list, axis=3)
+            final_rows.append(row_xip)
+        if row_xim_list:
+            row_xim = np.concatenate(row_xim_list, axis=3)
+            final_rows.append(row_xim)
+        if row_gt_list:
+            row_gt = np.concatenate(row_gt_list, axis=3)
+            final_rows.append(row_gt)
+        if row_gg_list:
+            row_gg = np.concatenate(row_gg_list, axis=3)
+            final_rows.append(row_gg)
+
+    else:
+        raise ValueError(f'space must me "harmonic" or "real", not: {space}')
+
+    # concatenate the rows to construct the final matrix
+    if final_rows:
+        cov_3x2pt_4d = np.concatenate(final_rows, axis=2)
+    else:
+        # If no rows at all, return empty array with appropriate shape
+        raise ValueError('No valid probe combinations found!')
+
+    return cov_3x2pt_4d
 
 
 def cov_3x2pt_4d_to_10d_dict(

@@ -161,7 +161,15 @@ def cov_bnt_transform(
     return cov_bnt_6d
 
 
-def bnt_transform_whole_cov_dict(cov_dict, bnt_matrix, req_probe_combs_2d):
+def bnt_transform_whole_cov_dict(
+    cov_dict: dict, bnt_matrix: np.ndarray, req_probe_combs_2d: list
+) -> dict:
+    """Wrapper function to apply the BNT transform to all the probes and terms in 
+    the cov_dict.
+    
+    Note: cov_dict is modified in-place, so a return is not strictly needed, but I find 
+    this to be a bit clearer
+    """
     # BNT-transform 6D covs (for all terms and probe combinations)
     # TODO BNT and scale cuts of G term should go in the gauss cov function!
     # ! BNT IS LINEAR, SO BNT(COV_TOT) = \SUM_i BNT(COV_i), but should check

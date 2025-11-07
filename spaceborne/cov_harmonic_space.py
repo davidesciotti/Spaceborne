@@ -29,7 +29,6 @@ class SpaceborneCovariance:
         self.ell_obj = ell_obj
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
-        self.all_terms = ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
         # TODO these should probably be defined on a higher level
         self.llll_ixs = (0, 0, 0, 0)
         self.glgl_ixs = (1, 0, 1, 0)
@@ -341,9 +340,6 @@ class SpaceborneCovariance:
 
         print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
 
-        # reshape to 2D
-        self._cov_6d_and_3x2pt_to_4d_and_2d()
-
     def _cov_6d_and_3x2pt_to_4d_and_2d(self):
         """Reshapes the 3x2pt 10d cov into 2D.
 
@@ -368,7 +364,7 @@ class SpaceborneCovariance:
         # now create 3x2pt 4d and 2d (there is no 3x2pt 6d or 10d!!!)
 
         # check that the key is present and dict is not empty
-        for term in self.all_terms:
+        for term in const.ALL_COV_TERMS:
             if term not in self.cov_dict or not self.cov_dict[term]:
                 continue
 
@@ -393,6 +389,31 @@ class SpaceborneCovariance:
 
         return sl.cov_10d_dict_to_array(
             cov_dict_10d, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
+        )
+
+    def _set_cov_tot_2d(self):
+        """
+        Sums G, SSC and cNG 2D covs to get the total covariance
+        """
+        for probe_abcd in self.req_probe_combs_2d:
+            probe_2tpl = sl.split_probe_name(probe_abcd, 'harmonic')
+            ssc = (
+                self.cov_dict['ssc'][probe_2tpl]['2d'] if 'ssc' in self.cov_dict else 0
+            )
+            cng = (
+                self.cov_dict['cng'][probe_2tpl]['2d'] if 'cng' in self.cov_dict else 0
+            )
+
+            self.cov_dict['tot'][probe_2tpl]['2d'] = (
+                self.cov_dict['g'][probe_2tpl]['2d'] + ssc + cng
+            )
+
+        # do the same for 3x2pt
+        ssc = self.cov_dict['ssc']['3x2pt']['2d'] if 'ssc' in self.cov_dict else 0
+        cng = self.cov_dict['cng']['3x2pt']['2d'] if 'cng' in self.cov_dict else 0
+
+        self.cov_dict['tot']['3x2pt']['2d'] = (
+            self.cov_dict['g']['3x2pt']['2d'] + ssc + cng
         )
 
     def _add_ssc(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
@@ -452,94 +473,6 @@ class SpaceborneCovariance:
                 dim='6d',
                 req_probe_combs_2d=self.req_probe_combs_2d,
                 space='harmonic',
-            )
-        )
-
-    def _slice_3x2pt_cov(self, split_gaussian_cov: bool) -> None:
-        """Helper function to slice the 3x2pt covariance into WL, GC and XC.
-        Note that I am not touching the ell bins here, not even just to exclude
-        a subset of them
-        (e.g. cov_WL_g_6d = cov_3x2pt_g_10d[llll_ixs, :nbl_WL, :nbl_WL, ...])"""
-
-        self.cov_WL_g_6d = self.cov_3x2pt_g_10d[*self.llll_ixs].copy()
-        self.cov_WL_ssc_6d = self.cov_3x2pt_ssc_10d[*self.llll_ixs].copy()
-        self.cov_WL_cng_6d = self.cov_3x2pt_cng_10d[*self.llll_ixs].copy()
-
-        self.cov_GC_g_6d = self.cov_3x2pt_g_10d[*self.gggg_ixs].copy()
-        self.cov_GC_ssc_6d = self.cov_3x2pt_ssc_10d[*self.gggg_ixs].copy()
-        self.cov_GC_cng_6d = self.cov_3x2pt_cng_10d[*self.gggg_ixs].copy()
-
-        self.cov_XC_g_6d = self.cov_3x2pt_g_10d[*self.glgl_ixs].copy()
-        self.cov_XC_ssc_6d = self.cov_3x2pt_ssc_10d[*self.glgl_ixs].copy()
-        self.cov_XC_cng_6d = self.cov_3x2pt_cng_10d[*self.glgl_ixs].copy()
-
-        if split_gaussian_cov:
-            self.cov_WL_sva_6d = self.cov_3x2pt_sva_10d[*self.llll_ixs].copy()
-            self.cov_WL_sn_6d = self.cov_3x2pt_sn_10d[*self.llll_ixs].copy()
-            self.cov_WL_mix_6d = self.cov_3x2pt_mix_10d[*self.llll_ixs].copy()
-
-            self.cov_GC_sva_6d = self.cov_3x2pt_sva_10d[*self.gggg_ixs].copy()
-            self.cov_GC_sn_6d = self.cov_3x2pt_sn_10d[*self.gggg_ixs].copy()
-            self.cov_GC_mix_6d = self.cov_3x2pt_mix_10d[*self.gggg_ixs].copy()
-
-            self.cov_XC_sva_6d = self.cov_3x2pt_sva_10d[*self.glgl_ixs].copy()
-            self.cov_XC_sn_6d = self.cov_3x2pt_sn_10d[*self.glgl_ixs].copy()
-            self.cov_XC_mix_6d = self.cov_3x2pt_mix_10d[*self.glgl_ixs].copy()
-
-    def _all_covs_10d_or_6d_to_2d(self, split_gaussian_cov):
-        """reshapes all covs (g, sva, sn, mix, ssc, cng) for all probes to 2D"""
-        reshape_args = [ 
-            # WL
-            ('cov_WL_g_2d', self.cov_WL_g_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-            ('cov_WL_ssc_2d', self.cov_WL_ssc_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-            ('cov_WL_cng_2d', self.cov_WL_cng_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-            
-            # GC
-            ('cov_GC_g_2d', self.cov_GC_g_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-            ('cov_GC_ssc_2d', self.cov_GC_ssc_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-            ('cov_GC_cng_2d', self.cov_GC_cng_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-            
-            # XC
-            ('cov_XC_g_2d', self.cov_XC_g_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-            ('cov_XC_ssc_2d', self.cov_XC_ssc_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-            ('cov_XC_cng_2d', self.cov_XC_cng_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-            
-            # 3x2pt
-            ('cov_3x2pt_g_2d', self.cov_3x2pt_g_10d, 10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True),
-            ('cov_3x2pt_ssc_2d', self.cov_3x2pt_ssc_10d,10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True),
-            ('cov_3x2pt_cng_2d', self.cov_3x2pt_cng_10d,10, self.ell_obj.nbl_3x2pt, self.zpairs_auto, self.ind, True)
-        ]  # fmt: skip
-
-        if split_gaussian_cov:
-            reshape_args.extend([
-                ('cov_WL_sva_2d', self.cov_WL_sva_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-                ('cov_WL_sn_2d', self.cov_WL_sn_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-                ('cov_WL_mix_2d', self.cov_WL_mix_6d, 6, self.ell_obj.nbl_WL, self.zpairs_auto, self.ind_auto, False),
-                
-                ('cov_GC_sva_2d', self.cov_GC_sva_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-                ('cov_GC_sn_2d', self.cov_GC_sn_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-                ('cov_GC_mix_2d', self.cov_GC_mix_6d, 6, self.ell_obj.nbl_GC, self.zpairs_auto, self.ind_auto, False),
-                
-                ('cov_XC_sva_2d', self.cov_XC_sva_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-                ('cov_XC_sn_2d', self.cov_XC_sn_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-                ('cov_XC_mix_2d', self.cov_XC_mix_6d, 6, self.ell_obj.nbl_XC, self.zpairs_cross, self.ind_cross, False),
-            ]
-            )  # fmt: skip
-
-        # Loop over and set attributes
-        for name, cov, ndim_in, _nbl, _zpairs, ind_probe, is_3x2pt in reshape_args:
-            setattr(
-                self,
-                name,
-                self.reshape_cov(
-                    cov_in=cov,
-                    ndim_in=ndim_in,
-                    ndim_out=2,
-                    nbl=_nbl,
-                    zpairs=_zpairs,
-                    ind_probe=ind_probe,
-                    is_3x2pt=is_3x2pt,
-                ),
             )
 
     def _cov_2d_ell_cuts(self, split_gaussian_cov):
@@ -637,73 +570,31 @@ class SpaceborneCovariance:
         if self.cfg['BNT']['cov_BNT_transform']:
             print('BNT-transforming the covariance matrix...')
             start = time.perf_counter()
-            self._bnt_transform_3x2pt_wrapper()
+            self.cov_dict = bnt_utils.bnt_transform_whole_cov_dict(
+                self.cov_dict, self.bnt_matrix, self.req_probe_combs_2d
+            )
             print(f'...done in {time.perf_counter() - start:.2f} s')
 
         # ! compute coupled NG cov - the "if coupled" is inside the function
         self._couple_cov_ng_3x2pt()
 
-        # ! slice the 3x2pt cov to get the probe-specific ones
-        # TODO implemet probe-specific binning instead!
-        self._slice_3x2pt_cov(split_gaussian_cov)
+        # reshape probe-specific 6d covs to 4d and 2d (as well as 3x2pt)
+        self._cov_6d_and_3x2pt_to_4d_and_2d()
 
-        # ! reshape everything to 2D
-        self._all_covs_10d_or_6d_to_2d(split_gaussian_cov)
+        # sum g + ssc + cng to get tot (only 2D)
+        self._set_cov_tot_2d()
+
+        # # ! slice the 3x2pt cov to get the probe-specific ones
+        # # TODO implemet probe-specific binning instead!
+        # self._slice_3x2pt_cov(split_gaussian_cov)
+
+        # # ! reshape everything to 2D
+        # self._all_covs_10d_or_6d_to_2d(split_gaussian_cov)
 
         # ! perform ell cuts on the 2D covs
         self._cov_2d_ell_cuts(split_gaussian_cov)
 
-        # ! sum different terms to get total cov
-        self.cov_WL_tot_2d = self.cov_WL_g_2d + self.cov_WL_ssc_2d + self.cov_WL_cng_2d
-        self.cov_GC_tot_2d = self.cov_GC_g_2d + self.cov_GC_ssc_2d + self.cov_GC_cng_2d
-        self.cov_XC_tot_2d = self.cov_XC_g_2d + self.cov_XC_ssc_2d + self.cov_XC_cng_2d
-        self.cov_3x2pt_tot_2d = (
-            self.cov_3x2pt_g_2d + self.cov_3x2pt_ssc_2d + self.cov_3x2pt_cng_2d
-        )
-        self.cov_3x2pt_tot_10d = (
-            self.cov_3x2pt_g_10d + self.cov_3x2pt_ssc_10d + self.cov_3x2pt_cng_10d
-        )
-
         print('Covariance matrices computed')
-
-    def _bnt_transform_3x2pt_wrapper(self):
-        # turn 3x2pt 10d array to dict for the BNT function
-        cov_3x2pt_g_10d_dict = sl.cov_10d_array_to_dict(
-            self.cov_3x2pt_g_10d, self.probe_ordering
-        )
-        cov_3x2pt_ssc_10d_dict = sl.cov_10d_array_to_dict(
-            self.cov_3x2pt_ssc_10d, self.probe_ordering
-        )
-        cov_3x2pt_cng_10d_dict = sl.cov_10d_array_to_dict(
-            self.cov_3x2pt_cng_10d, self.probe_ordering
-        )
-
-        # BNT-transform WL and 3x2pt g, ng and tot covariances
-        x_dict = bnt_utils.build_x_matrix_bnt(self.bnt_matrix)
-        # TODO BNT and scale cuts of G term should go in the gauss cov function!
-        cov_3x2pt_g_10d_dict = bnt_utils.cov_3x2pt_bnt_transform(
-            cov_3x2pt_g_10d_dict, x_dict
-        )
-        cov_3x2pt_ssc_10d_dict = bnt_utils.cov_3x2pt_bnt_transform(
-            cov_3x2pt_ssc_10d_dict, x_dict
-        )
-        cov_3x2pt_cng_10d_dict = bnt_utils.cov_3x2pt_bnt_transform(
-            cov_3x2pt_cng_10d_dict, x_dict
-        )
-
-        # revert to 10D arrays - this is not strictly necessary since
-        # cov_3x2pt_10d_to_4D accepts both a dictionary and
-        # an array as input, but it's done to keep the variable names consistent
-        # ! BNT IS LINEAR, SO BNT(COV_TOT) = \SUM_i BNT(COV_i), but should check
-        self.cov_3x2pt_g_10d = sl.cov_10d_dict_to_array(
-            cov_3x2pt_g_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
-        )
-        self.cov_3x2pt_ssc_10d = sl.cov_10d_dict_to_array(
-            cov_3x2pt_ssc_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
-        )
-        self.cov_3x2pt_cng_10d = sl.cov_10d_dict_to_array(
-            cov_3x2pt_cng_10d_dict, self.ell_obj.nbl_3x2pt, self.zbins, n_probes=2
-        )
 
     def _couple_cov_ng_3x2pt(self):
         if not self.cov_cfg['coupled_cov']:
@@ -720,18 +611,11 @@ class SpaceborneCovariance:
         from spaceborne import cov_partial_sky
 
         # construct mcm array for better probe handling (especially for 3x2pt)
-        mcm_3x2pt_arr = np.zeros(
-            (
-                self.n_probes,
-                self.n_probes,
-                self.ell_obj.nbl_3x2pt,
-                self.ell_obj.nbl_3x2pt,
-            )
-        )
-        mcm_3x2pt_arr[0, 0] = self.nmt_cov_obj.mcm_ee_binned
-        mcm_3x2pt_arr[1, 0] = self.nmt_cov_obj.mcm_te_binned
-        mcm_3x2pt_arr[0, 1] = self.nmt_cov_obj.mcm_et_binned
-        mcm_3x2pt_arr[1, 1] = self.nmt_cov_obj.mcm_tt_binned
+        mcm_dict = np.zeros((self.ell_obj.nbl_3x2pt, self.ell_obj.nbl_3x2pt))
+        mcm_dict['LL'] = self.nmt_cov_obj.mcm_ee_binned
+        mcm_dict['GL'] = self.nmt_cov_obj.mcm_te_binned
+        # mcm_3x2pt_dict['LG'] = self.nmt_cov_obj.mcm_et_binned
+        mcm_dict['GG'] = self.nmt_cov_obj.mcm_tt_binned
 
         # cov_WL_ssc_6d = cov_partial_sky.couple_cov_6d(
         #     mcm_3x2pt_arr[0, 0], cov_WL_ssc_6d, mcm_3x2pt_arr[0, 0].T
@@ -752,16 +636,17 @@ class SpaceborneCovariance:
         #     mcm_3x2pt_arr[1, 0], cov_XC_cng_6d, mcm_3x2pt_arr[1, 0].T
         # )
 
-        for a, b, c, d in itertools.product(range(2), repeat=4):
-            self.cov_3x2pt_ssc_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
-                mcm_3x2pt_arr[a, b],
-                self.cov_3x2pt_ssc_10d[a, b, c, d],
-                mcm_3x2pt_arr[c, d].T,
+        for probe_abcd in self.req_probe_combs_2d:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
+            self.cov_3x2pt_ssc_10d[probe_ab, probe_cd] = cov_partial_sky.couple_cov_6d(
+                mcm_dict[probe_ab],
+                self.cov_dict['ssc'][probe_ab, probe_cd]['6d'],
+                mcm_dict[probe_cd].T,
             )
-            self.cov_3x2pt_cng_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
-                mcm_3x2pt_arr[a, b],
-                self.cov_3x2pt_cng_10d[a, b, c, d],
-                mcm_3x2pt_arr[c, d].T,
+            self.cov_3x2pt_cng_10d[probe_ab, probe_cd] = cov_partial_sky.couple_cov_6d(
+                mcm_dict[probe_ab],
+                self.cov_dict['cng'][probe_ab, probe_cd]['6d'],
+                mcm_dict[probe_cd].T,
             )
         print('...done')
 

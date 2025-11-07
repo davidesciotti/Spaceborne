@@ -1394,7 +1394,7 @@ class CovRealSpace:
             delta_ell = np.ones_like(self.ells + 1)
 
             cov_sva_sb_hs_10d, _cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = (
-                sl.covariance_einsum(
+                sl.compute_g_cov(
                     self.cl_3x2pt_5d,
                     noise_5d,
                     self.fsky,

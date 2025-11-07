@@ -1148,14 +1148,9 @@ cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
 cov_hs_obj.set_ind_and_zpairs(ind)
 cov_hs_obj.consistency_checks()
 cov_hs_obj.set_gauss_cov(
-    ccl_obj=ccl_obj,
-    split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
+    ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
 )
 
-sl.matshow(cov_hs_obj.cov_dict['cng']['3x2pt']['2d'])
-
-
-assert False, 'stop here'
 # ! =================================== OneCovariance ================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
@@ -1191,7 +1186,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     ell_min_unb_oc = 2
     ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
     nbl_3x2pt_oc = 500
-    
+
     ells_3x2pt_oc = np.geomspace(
         ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )
@@ -1614,7 +1609,7 @@ if compute_ccl_ssc or compute_ccl_cng:
         )
 
 # ! ========================== Combine covariance terms ================================
-cov_hs_obj.build_covs(
+cov_hs_obj.combine_and_reshape_covs(
     ccl_obj=ccl_obj,
     oc_obj=oc_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
@@ -1662,19 +1657,19 @@ else:
 # ! save 2D covs (for each term) in npz archive
 cov_dict_tosave_2d = {}
 if cfg['covariance']['G']:
-    cov_dict_tosave_2d['Gauss'] = _cov_obj.cov_3x2pt_g_2d
+    cov_dict_tosave_2d['Gauss'] = _cov_obj.cov_dict['g']['3x2pt']['2d']
 if cfg['covariance']['SSC']:
-    cov_dict_tosave_2d['SSC'] = _cov_obj.cov_3x2pt_ssc_2d
+    cov_dict_tosave_2d['SSC'] = _cov_obj.cov_dict['ssc']['3x2pt']['2d']
 if cfg['covariance']['cNG']:
-    cov_dict_tosave_2d['cNG'] = _cov_obj.cov_3x2pt_cng_2d
+    cov_dict_tosave_2d['cNG'] = _cov_obj.cov_dict['cng']['3x2pt']['2d']
 if cfg['covariance']['split_gaussian_cov']:
-    cov_dict_tosave_2d['SVA'] = _cov_obj.cov_3x2pt_sva_2d
-    cov_dict_tosave_2d['SN'] = _cov_obj.cov_3x2pt_sn_2d
-    cov_dict_tosave_2d['MIX'] = _cov_obj.cov_3x2pt_mix_2d
+    cov_dict_tosave_2d['SVA'] = _cov_obj.cov_dict['sva']['3x2pt']['2d']
+    cov_dict_tosave_2d['SN'] = _cov_obj.cov_dict['sn']['3x2pt']['2d']
+    cov_dict_tosave_2d['MIX'] = _cov_obj.cov_dict['mix']['3x2pt']['2d']
 # the total covariance is equal to the Gaussian one if neither SSC nor cNG are computed,
 # so only save it if at least one of the two is computed
 if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
-    cov_dict_tosave_2d['TOT'] = _cov_obj.cov_3x2pt_tot_2d
+    cov_dict_tosave_2d['TOT'] = _cov_obj.cov_dict['tot']['3x2pt']['2d']
 
 cov_filename = cfg['covariance']['cov_filename']
 np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d)
@@ -1684,77 +1679,32 @@ np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d
 # ! i.e. there is no cov_3x2pt_{term}_6d
 if cfg['covariance']['save_full_cov']:
     cov_dict_tosave_6d = {}
-
+    cd = _cov_obj.cov_dict  # just to make the code more readable
     for _probe in _probes:
-        if obs_space == 'harmonic':
-            probe_a, probe_b, probe_c, probe_d = tuple(_probe)
-            probe_ixs = (
-                const.HS_PROBE_NAME_TO_IX_DICT[probe_a],
-                const.HS_PROBE_NAME_TO_IX_DICT[probe_b],
-                const.HS_PROBE_NAME_TO_IX_DICT[probe_c],
-                const.HS_PROBE_NAME_TO_IX_DICT[probe_d],
-            )
-            if cfg['covariance']['G']:
-                cov_dict_tosave_6d[f'{_probe}_Gauss'] = _cov_obj.cov_3x2pt_g_10d[
-                    *probe_ixs, ...
-                ]
-            if cfg['covariance']['SSC']:
-                cov_dict_tosave_6d[f'{_probe}_SSC'] = _cov_obj.cov_3x2pt_ssc_10d[
-                    *probe_ixs, ...
-                ]
-            if cfg['covariance']['cNG']:
-                cov_dict_tosave_6d[f'{_probe}_cNG'] = _cov_obj.cov_3x2pt_cng_10d[
-                    *probe_ixs, ...
-                ]
-            if cfg['covariance']['split_gaussian_cov']:
-                cov_dict_tosave_6d[f'{_probe}_SVA'] = _cov_obj.cov_3x2pt_sva_10d[
-                    *probe_ixs, ...
-                ]
-                cov_dict_tosave_6d[f'{_probe}_SN'] = _cov_obj.cov_3x2pt_sn_10d[
-                    *probe_ixs, ...
-                ]
-                cov_dict_tosave_6d[f'{_probe}_MIX'] = _cov_obj.cov_3x2pt_mix_10d[
-                    *probe_ixs, ...
-                ]
-            if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
-                cov_dict_tosave_6d[f'{_probe}_TOT'] = _cov_obj.cov_3x2pt_tot_10d[
-                    *probe_ixs, ...
-                ]
-
-        # This case is a bit different, no cov_3x2pt_10d is ever created, but I have
-        # individual attributes for the 6d covs for each probe
-        elif obs_space == 'real':
-            if cfg['covariance']['G']:
-                cov_dict_tosave_6d[f'{_probe}_Gauss'] = getattr(
-                    _cov_obj, f'cov_{_probe}_g_6d'
-                )
-            if cfg['covariance']['SSC']:
-                cov_dict_tosave_6d[f'{_probe}_SSC'] = getattr(
-                    _cov_obj, f'cov_{_probe}_ssc_6d'
-                )
-            if cfg['covariance']['cNG']:
-                cov_dict_tosave_6d[f'{_probe}_cNG'] = getattr(
-                    _cov_obj, f'cov_{_probe}_cng_6d'
-                )
-            if cfg['covariance']['split_gaussian_cov']:
-                cov_dict_tosave_6d[f'{_probe}_SVA'] = getattr(
-                    _cov_obj, f'cov_{_probe}_sva_6d'
-                )
-                cov_dict_tosave_6d[f'{_probe}_SN'] = getattr(
-                    _cov_obj, f'cov_{_probe}_sn_6d'
-                )
-                cov_dict_tosave_6d[f'{_probe}_MIX'] = getattr(
-                    _cov_obj, f'cov_{_probe}_mix_6d'
-                )
-            if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
-                cov_dict_tosave_6d[f'{_probe}_TOT'] = getattr(
-                    _cov_obj, f'cov_{_probe}_tot_6d'
-                )
+        probe_ab, probe_cd = sl.split_probe_name(_probe, obs_space)
+        probe_2tpl = (probe_ab, probe_cd)  # just to make the code more readable
+        if cfg['covariance']['G']:
+            cov_dict_tosave_6d[f'{_probe}_Gauss'] = cd['g'][probe_2tpl]['6d']
+        if cfg['covariance']['SSC']:
+            cov_dict_tosave_6d[f'{_probe}_SSC'] = cd['ssc'][probe_2tpl]['6d']
+        if cfg['covariance']['cNG']:
+            cov_dict_tosave_6d[f'{_probe}_cNG'] = cd['cng'][probe_2tpl]['6d']
+        if cfg['covariance']['split_gaussian_cov']:
+            cov_dict_tosave_6d[f'{_probe}_SVA'] = cd['sva'][probe_2tpl]['6d']
+            cov_dict_tosave_6d[f'{_probe}_SN'] = cd['sn'][probe_2tpl]['6d']
+            cov_dict_tosave_6d[f'{_probe}_MIX'] = cd['mix'][probe_2tpl]['6d']
+        if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
+            cov_dict_tosave_6d[f'{_probe}_TOT'] = cd['tot'][probe_2tpl]['6d']
 
     np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **cov_dict_tosave_6d)
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
     io_obj.save_cov_euclidlib(cov_hs_obj=_cov_obj)
+if cfg['covariance']['save_cov_fits'] and obs_space != 'harmonic':
+    raise ValueError(
+        'Official Euclid .fits format is only supported for the harmonic space '
+        'for the moment'
+    )
 
 print(f'Covariance matrices saved in {output_path}\n')
 

@@ -245,7 +245,7 @@ class SpaceborneCovariance:
 
         return cov_out
 
-    def set_gauss_cov(self, ccl_obj, split_gaussian_cov):
+    def set_gauss_cov(self, ccl_obj: CCLInterface, split_gaussian_cov: bool):
         start = time.perf_counter()
 
         # signal
@@ -277,7 +277,7 @@ class SpaceborneCovariance:
             )
 
         # ! compute 3x2pt fsky Gaussian covariance: by default, split SVA, SN and MIX
-        (cov_3x2pt_sva_10d, cov_3x2pt_sn_10d, cov_3x2pt_mix_10d) = sl.covariance_einsum(
+        (cov_3x2pt_sva_10d, cov_3x2pt_sn_10d, cov_3x2pt_mix_10d) = sl.compute_g_cov(
             cl_5d=cl_3x2pt_5d,
             noise_5d=noise_3x2pt_5d,
             fsky=self.fsky,
@@ -590,7 +590,7 @@ class SpaceborneCovariance:
                 self.cov_3x2pt_cng_2d, self.ell_dict['idxs_to_delete_dict']['3x2pt']
             )
 
-    def build_covs(
+    def combine_and_reshape_covs(
         self,
         ccl_obj: CCLInterface,
         oc_obj: OneCovarianceInterface,

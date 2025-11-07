@@ -5,6 +5,7 @@ import numpy as np
 from scipy.integrate import simpson as simps
 
 from spaceborne import cosmo_lib as csmlib
+from spaceborne import sb_lib as sl
 
 
 def compute_bnt_matrix(zbins, zgrid_n_of_z, n_of_z_arr, cosmo_ccl, plot_nz=True):
@@ -78,10 +79,7 @@ def cl_bnt_transform(cl_3d, bnt_matrix, probe_A, probe_B):
         'the number of ell bins in cl_3d and bnt_matrix must be the same'
     )
 
-    bnt_transform_dict = {
-        'L': bnt_matrix,
-        'G': np.eye(bnt_matrix.shape[0]),
-    }
+    bnt_transform_dict = {'L': bnt_matrix, 'G': np.eye(bnt_matrix.shape[0])}
 
     cl_bnt_3d = np.zeros(cl_3d.shape)
     for ell_idx in range(cl_3d.shape[0]):
@@ -138,44 +136,44 @@ def build_x_matrix_bnt(bnt_matrix):
     """
     X = {}
     delta_kron = np.eye(bnt_matrix.shape[0])
-    X['L', 'L'] = np.einsum('ae, bf -> aebf', bnt_matrix, bnt_matrix)
-    X['G', 'G'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
-    X['G', 'L'] = np.einsum('ae, bf -> aebf', delta_kron, bnt_matrix)
-    X['L', 'G'] = np.einsum('ae, bf -> aebf', bnt_matrix, delta_kron)
+    X['LL'] = np.einsum('ae, bf -> aebf', bnt_matrix, bnt_matrix)
+    X['GG'] = np.einsum('ae, bf -> aebf', delta_kron, delta_kron)
+    X['GL'] = np.einsum('ae, bf -> aebf', delta_kron, bnt_matrix)
+    X['LG'] = np.einsum('ae, bf -> aebf', bnt_matrix, delta_kron)
     return X
 
 
 def cov_bnt_transform(
-    cov_nobnt_6D, X_dict, probe_A, probe_B, probe_C, probe_D, optimize=True
+    cov_nobnt_6d: np.ndarray, X_dict: dict, probe_ab: str, probe_cd: str, optimize=True
 ):
     """Same as above, but only for one probe (i.e., LL or GL: GG is not modified
     by the BNT)
     """
-    cov_bnt_6D = np.einsum(
+    assert cov_nobnt_6d.ndim == 6, 'The input covariance should have 6 dimensions'
+
+    cov_bnt_6d = np.einsum(
         'aebf, cgdh, LMefgh -> LMabcd',
-        X_dict[probe_A, probe_B],
-        X_dict[probe_C, probe_D],
-        cov_nobnt_6D,
+        X_dict[probe_ab],
+        X_dict[probe_cd],
+        cov_nobnt_6d,
         optimize=optimize,
     )
-    return cov_bnt_6D
+    return cov_bnt_6d
 
 
-def cov_3x2pt_bnt_transform(cov_3x2pt_dict_10D, X_dict, optimize=True):
-    """In np.einsum below, L and M are the ell1, ell2 indices, which are not
-    touched by the BNT transform
-    """
-    cov_3x2pt_bnt_dict_10D = {}
-
-    for probe_A, probe_B, probe_C, probe_D in cov_3x2pt_dict_10D:
-        cov_3x2pt_bnt_dict_10D[probe_A, probe_B, probe_C, probe_D] = cov_bnt_transform(
-            cov_3x2pt_dict_10D[probe_A, probe_B, probe_C, probe_D],
-            X_dict,
-            probe_A,
-            probe_B,
-            probe_C,
-            probe_D,
-            optimize=optimize,
-        )
-
-    return cov_3x2pt_bnt_dict_10D
+def bnt_transform_whole_cov_dict(cov_dict, bnt_matrix, req_probe_combs_2d):
+    # BNT-transform 6D covs (for all terms and probe combinations)
+    # TODO BNT and scale cuts of G term should go in the gauss cov function!
+    # ! BNT IS LINEAR, SO BNT(COV_TOT) = \SUM_i BNT(COV_i), but should check
+    x_dict = build_x_matrix_bnt(bnt_matrix)
+    for term in cov_dict:
+        for probe_abcd in req_probe_combs_2d:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
+            cov_dict[term][probe_ab, probe_cd]['6d'] = cov_bnt_transform(
+                cov_dict[term][probe_ab, probe_cd]['6d'],
+                x_dict,
+                probe_ab,
+                probe_cd,
+                optimize=True,
+            )
+    return cov_dict

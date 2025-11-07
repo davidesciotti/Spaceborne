@@ -1612,7 +1612,6 @@ if compute_ccl_ssc or compute_ccl_cng:
 cov_hs_obj.combine_and_reshape_covs(
     ccl_obj=ccl_obj,
     oc_obj=oc_obj,
-    split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
 
 

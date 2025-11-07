@@ -1147,9 +1147,7 @@ cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
 )
 cov_hs_obj.set_ind_and_zpairs(ind)
 cov_hs_obj.consistency_checks()
-cov_hs_obj.set_gauss_cov(
-    ccl_obj=ccl_obj, split_gaussian_cov=cfg['covariance']['split_gaussian_cov']
-)
+cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
 
 # ! =================================== OneCovariance ================================
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
@@ -1612,6 +1610,7 @@ if compute_ccl_ssc or compute_ccl_cng:
 cov_hs_obj.combine_and_reshape_covs(
     ccl_obj=ccl_obj,
     oc_obj=oc_obj,
+    split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
 
 

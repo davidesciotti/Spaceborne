@@ -13,6 +13,8 @@ SR_TO_ARCMIN2 = (180 / np.pi * 60) ** 2
 DR1_DATE = 9191.0
 SPEED_OF_LIGHT = 299792.458  # km/s
 
+ALL_COV_TERMS = ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
+
 # admittedly, these are not physical constants ^^
 HS_ALL_PROBE_COMBS = [
     'LLLL', 'LLGL', 'LLGG',

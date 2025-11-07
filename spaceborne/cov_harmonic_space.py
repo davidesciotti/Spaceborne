@@ -244,7 +244,7 @@ class SpaceborneCovariance:
 
         return cov_out
 
-    def set_gauss_cov(self, ccl_obj: CCLInterface, split_gaussian_cov: bool):
+    def set_gauss_cov(self, ccl_obj: CCLInterface):
         start = time.perf_counter()
 
         # signal
@@ -397,12 +397,12 @@ class SpaceborneCovariance:
         """
         for probe_abcd in self.req_probe_combs_2d:
             probe_2tpl = sl.split_probe_name(probe_abcd, 'harmonic')
-            ssc = (
-                self.cov_dict['ssc'][probe_2tpl]['2d'] if 'ssc' in self.cov_dict else 0
-            )
-            cng = (
-                self.cov_dict['cng'][probe_2tpl]['2d'] if 'cng' in self.cov_dict else 0
-            )
+
+            # coincise way to check that the key exists and the dict is not empty
+            ssc_dict = self.cov_dict.get('ssc')
+            cng_dict = self.cov_dict.get('cng')
+            ssc = ssc_dict[probe_2tpl]['2d'] if ssc_dict else 0
+            cng = cng_dict[probe_2tpl]['2d'] if cng_dict else 0
 
             self.cov_dict['tot'][probe_2tpl]['2d'] = (
                 self.cov_dict['g'][probe_2tpl]['2d'] + ssc + cng
@@ -474,6 +474,7 @@ class SpaceborneCovariance:
                 req_probe_combs_2d=self.req_probe_combs_2d,
                 space='harmonic',
             )
+        )
 
     def _cov_2d_ell_cuts(self, split_gaussian_cov):
         # TODO reimplement this (I think it still works, but needs to be tested)
@@ -578,18 +579,11 @@ class SpaceborneCovariance:
         # ! compute coupled NG cov - the "if coupled" is inside the function
         self._couple_cov_ng_3x2pt()
 
-        # reshape probe-specific 6d covs to 4d and 2d (as well as 3x2pt)
+        # ! reshape probe-specific 6d covs to 4d and 2d (as well as 3x2pt)
         self._cov_6d_and_3x2pt_to_4d_and_2d()
 
-        # sum g + ssc + cng to get tot (only 2D)
+        # ! sum g + ssc + cng to get tot (only 2D)
         self._set_cov_tot_2d()
-
-        # # ! slice the 3x2pt cov to get the probe-specific ones
-        # # TODO implemet probe-specific binning instead!
-        # self._slice_3x2pt_cov(split_gaussian_cov)
-
-        # # ! reshape everything to 2D
-        # self._all_covs_10d_or_6d_to_2d(split_gaussian_cov)
 
         # ! perform ell cuts on the 2D covs
         self._cov_2d_ell_cuts(split_gaussian_cov)
@@ -611,11 +605,16 @@ class SpaceborneCovariance:
         from spaceborne import cov_partial_sky
 
         # construct mcm array for better probe handling (especially for 3x2pt)
-        mcm_dict = np.zeros((self.ell_obj.nbl_3x2pt, self.ell_obj.nbl_3x2pt))
+        mcm_dict = {}
         mcm_dict['LL'] = self.nmt_cov_obj.mcm_ee_binned
         mcm_dict['GL'] = self.nmt_cov_obj.mcm_te_binned
         # mcm_3x2pt_dict['LG'] = self.nmt_cov_obj.mcm_et_binned
         mcm_dict['GG'] = self.nmt_cov_obj.mcm_tt_binned
+
+        for k, v in mcm_dict.items():
+            assert v.shape == (self.ell_obj.nbl_3x2pt, self.ell_obj.nbl_3x2pt), (
+                f'mcm {k} has wrong shape {v.shape}'
+            )
 
         # cov_WL_ssc_6d = cov_partial_sky.couple_cov_6d(
         #     mcm_3x2pt_arr[0, 0], cov_WL_ssc_6d, mcm_3x2pt_arr[0, 0].T
@@ -638,15 +637,19 @@ class SpaceborneCovariance:
 
         for probe_abcd in self.req_probe_combs_2d:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
-            self.cov_3x2pt_ssc_10d[probe_ab, probe_cd] = cov_partial_sky.couple_cov_6d(
-                mcm_dict[probe_ab],
-                self.cov_dict['ssc'][probe_ab, probe_cd]['6d'],
-                mcm_dict[probe_cd].T,
+            self.cov_dict['ssc'][probe_ab, probe_cd]['6d'] = (
+                cov_partial_sky.couple_cov_6d(
+                    mcm_dict[probe_ab],
+                    self.cov_dict['ssc'][probe_ab, probe_cd]['6d'],
+                    mcm_dict[probe_cd].T,
+                )
             )
-            self.cov_3x2pt_cng_10d[probe_ab, probe_cd] = cov_partial_sky.couple_cov_6d(
-                mcm_dict[probe_ab],
-                self.cov_dict['cng'][probe_ab, probe_cd]['6d'],
-                mcm_dict[probe_cd].T,
+            self.cov_dict['cng'][probe_ab, probe_cd]['6d'] = (
+                cov_partial_sky.couple_cov_6d(
+                    mcm_dict[probe_ab],
+                    self.cov_dict['cng'][probe_ab, probe_cd]['6d'],
+                    mcm_dict[probe_cd].T,
+                )
             )
         print('...done')
 

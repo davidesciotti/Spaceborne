@@ -27,18 +27,18 @@ import spaceborne.constants as const
 
 def validate_cov_dict_structure(cov_dict: dict, space: str):
     """
-    Validates that cov_dict follows the structure:
-    cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
-    "Notation":
-    - cov_dict[term] = probe_dict
-    - probe_dict[probe_ab, probe_cd] = dim_dict
-    - dim_dict[dim] = cov
+        Validates that cov_dict follows the structure:
+        cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
+        "Notation":
+        - cov_dict[term] = probe_dict
+        - probe_dict[probe_ab, probe_cd] = dim_dict
+        - dim_dict[dim] = cov
 
-    Args:
-        cov_dict: Dictionary to validate
-'        space: 'harmonic' or 'real'
-        expected_probes: Optional list of expected probe tuples
-        expected_dims: Optional list of expected dimensions (e.g., ['6d', '8d'])
+        Args:
+            cov_dict: Dictionary to validate
+    '        space: 'harmonic' or 'real'
+            expected_probes: Optional list of expected probe tuples
+            expected_dims: Optional list of expected dimensions (e.g., ['6d', '8d'])
     """
     import numpy as np
 
@@ -2716,17 +2716,17 @@ def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_diagonal_ells):
     return cov
 
 
-def covariance_einsum(
-    cl_5d,
-    noise_5d,
-    fsky,
-    ell_values,
-    delta_ell,
-    split_terms,
-    return_only_diagonal_ells=False,
+def compute_g_cov(
+    cl_5d: np.ndarray,
+    noise_5d: np.ndarray,
+    fsky: float,
+    ell_values: np.ndarray,
+    delta_ell: np.ndarray,
+    split_terms: bool,
+    return_only_diagonal_ells: bool = False,
 ):
-    """Optimized version to avoid repeated code in the covariance
-    calculation.
+    """Computes the Gaussian (1/fsky) covariance term, splitting into SVA, SN and MIX
+    terms if required.
     """
     assert cl_5d.shape[0] in [1, 2], 'This function only works with 1 or 2 probes'
     assert cl_5d.shape[0] == cl_5d.shape[1], (
@@ -3085,7 +3085,9 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
     return cov_3x2pt_4D
 
 
-def cov_dict_4d_to_3x2pt_4d_arr(cov_probe_dict: dict, req_probe_combs_2d: list, space: str):
+def cov_dict_4d_to_3x2pt_4d_arr(
+    cov_probe_dict: dict, req_probe_combs_2d: list, space: str
+):
     """Convert a dictionary of 4D blocks into a single 4D array.
 
     This is the same code as
@@ -3103,7 +3105,6 @@ def cov_dict_4d_to_3x2pt_4d_arr(cov_probe_dict: dict, req_probe_combs_2d: list, 
             raise ValueError(f"Expected '4d' dimension, got {dims}")
 
     final_rows = []
-
 
     if space == 'harmonic':
         row_ll_list, row_gl_list, row_gg_list = [], [], []

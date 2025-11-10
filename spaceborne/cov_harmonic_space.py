@@ -340,14 +340,8 @@ class SpaceborneCovariance:
 
         print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
 
-    def _cov_6d_and_3x2pt_to_4d_and_2d(self):
-        """Reshapes the 3x2pt 10d cov into 2D.
-
-        Parameters
-        ----------
-        split_gaussian_cov : bool
-            Whether to split (hence to reshape) the SVA/SN/MIX parts of the G cov
-        """
+    def _reshape_covs_6d_to_4d_and_2d(self):
+        """Reshapes the 6d probe cov into 2D."""
 
         # populate the dict with 4d and 2d probe-specific arrays (from the 6d ones)
         self.cov_dict = sl.add_4d_and_2d_to_cov_dict_6d(
@@ -361,10 +355,15 @@ class SpaceborneCovariance:
             block_index=self.block_index,
         )
 
-        # now create 3x2pt 4d and 2d (there is no 3x2pt 6d or 10d!!!)
+    def _build_cov_3x2pt_4d_and_2d(self):
+        """For each covariance term, constructs the 4d and 2d 3x2pt covs from
+        the 6d probe-specific ones.
 
-        # check that the key is present and dict is not empty
+        Note: remember that there is no 6d 3x2pt 6d or 10d cov!
+        """
+
         for term in const.ALL_COV_TERMS:
+            # check that the key is present and dict is not empty
             if term not in self.cov_dict or not self.cov_dict[term]:
                 continue
 
@@ -416,6 +415,19 @@ class SpaceborneCovariance:
         self.cov_dict['tot']['3x2pt']['2d'] = (
             self.cov_dict['g']['3x2pt']['2d'] + ssc + cng
         )
+
+    def _remove_split_terms_from_dict(self, split_gaussian_cov: bool):
+        """Helper function to remove the SVA/SN/MIX parts of the G cov if
+        split_gaussian_cov is True.
+
+        Note: I already remove the sva, sn, mix terms when saving the covs at the end
+        of main.py, this is redundand."""
+        if split_gaussian_cov:
+            return
+
+        for term in ('sva', 'sn', 'mix'):
+            if term in self.cov_dict:
+                del self.cov_dict[term]
 
     def _add_ssc(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
         """Helper function to get the SSC from the required code and uniform its
@@ -580,11 +592,17 @@ class SpaceborneCovariance:
         # ! compute coupled NG cov - the "if coupled" is inside the function
         self._couple_cov_ng_3x2pt()
 
-        # ! reshape probe-specific 6d covs to 4d and 2d (as well as 3x2pt)
-        self._cov_6d_and_3x2pt_to_4d_and_2d()
+        # ! reshape probe-specific 6d covs to 4d and 2d
+        self._reshape_covs_6d_to_4d_and_2d()
+
+        # ! construct 3x2pt 4d and 2d covs
+        self._build_cov_3x2pt_4d_and_2d()
 
         # ! sum g + ssc + cng to get tot (only 2D)
         self._set_cov_tot_2d_and_6d()
+
+        # ! clean upd dictionaries:
+        self._remove_split_terms_from_dict(split_gaussian_cov)
 
         # ! perform ell cuts on the 2D covs
         self._cov_2d_ell_cuts(split_gaussian_cov)

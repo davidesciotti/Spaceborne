@@ -391,24 +391,25 @@ class SpaceborneCovariance:
             cov_dict_10d, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
         )
 
-    def _set_cov_tot_2d(self):
+    def _set_cov_tot_2d_and_6d(self):
         """
         Sums G, SSC and cNG 2D covs to get the total covariance
         """
-        for probe_abcd in self.req_probe_combs_2d:
-            probe_2tpl = sl.split_probe_name(probe_abcd, 'harmonic')
+        for dim in ('2d', '6d'):
+            for probe_abcd in self.req_probe_combs_2d:
+                probe_2tpl = sl.split_probe_name(probe_abcd, 'harmonic')
 
-            # coincise way to check that the key exists and the dict is not empty
-            ssc_dict = self.cov_dict.get('ssc')
-            cng_dict = self.cov_dict.get('cng')
-            ssc = ssc_dict[probe_2tpl]['2d'] if ssc_dict else 0
-            cng = cng_dict[probe_2tpl]['2d'] if cng_dict else 0
+                # coincise way to check that the key exists and the dict is not empty
+                ssc_dict = self.cov_dict.get('ssc')
+                cng_dict = self.cov_dict.get('cng')
+                ssc = ssc_dict[probe_2tpl][dim] if ssc_dict else 0
+                cng = cng_dict[probe_2tpl][dim] if cng_dict else 0
 
-            self.cov_dict['tot'][probe_2tpl]['2d'] = (
-                self.cov_dict['g'][probe_2tpl]['2d'] + ssc + cng
-            )
+                self.cov_dict['tot'][probe_2tpl][dim] = (
+                    self.cov_dict['g'][probe_2tpl][dim] + ssc + cng
+                )
 
-        # do the same for 3x2pt
+        # do the same for 3x2pt (for which only 2d exists)
         ssc = self.cov_dict['ssc']['3x2pt']['2d'] if 'ssc' in self.cov_dict else 0
         cng = self.cov_dict['cng']['3x2pt']['2d'] if 'cng' in self.cov_dict else 0
 
@@ -583,7 +584,7 @@ class SpaceborneCovariance:
         self._cov_6d_and_3x2pt_to_4d_and_2d()
 
         # ! sum g + ssc + cng to get tot (only 2D)
-        self._set_cov_tot_2d()
+        self._set_cov_tot_2d_and_6d()
 
         # ! perform ell cuts on the 2D covs
         self._cov_2d_ell_cuts(split_gaussian_cov)

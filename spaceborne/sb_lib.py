@@ -129,7 +129,7 @@ def cov_10d_arr_to_dict(
     if space != 'harmonic':
         raise NotImplementedError(
             'This function will fail for the real space for the moment: '
-            'probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in [probe_abcd])'
+            'probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)'
             'is only ok for HS'
         )
     assert cov_10d.ndim == 10, 'input covariance is not 10-dimensional'
@@ -142,7 +142,7 @@ def cov_10d_arr_to_dict(
         if empty:
             result[probe_key] = {dim: {}}
         else:
-            probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in [probe_abcd])
+            probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
             result[probe_key] = {dim: cov_10d[probe_ixs]}
     return result
 

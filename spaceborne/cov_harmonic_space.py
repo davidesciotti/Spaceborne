@@ -569,11 +569,39 @@ class SpaceborneCovariance:
         """
 
         if self.g_code == 'OneCovariance':
-            self.cov_3x2pt_g_10d = oc_obj.cov_3x2pt_g_10d
+            self.cov_dict['g'].update(
+                sl.cov_10d_arr_to_dict(
+                    cov_10d=oc_obj.cov_3x2pt_g_10d,
+                    dim='6d',
+                    req_probe_combs_2d=self.req_probe_combs_2d,
+                    space='harmonic',
+                )
+            )
             if split_gaussian_cov:
-                self.cov_3x2pt_sva_10d = oc_obj.cov_3x2pt_sva_10d
-                self.cov_3x2pt_sn_10d = oc_obj.cov_3x2pt_sn_10d
-                self.cov_3x2pt_mix_10d = oc_obj.cov_3x2pt_mix_10d
+                self.cov_dict['sva'].update(
+                    sl.cov_10d_arr_to_dict(
+                        cov_10d=oc_obj.cov_3x2pt_sva_10d,
+                        dim='6d',
+                        req_probe_combs_2d=self.req_probe_combs_2d,
+                        space='harmonic',
+                    )
+                )
+                self.cov_dict['sn'].update(
+                    sl.cov_10d_arr_to_dict(
+                        cov_10d=oc_obj.cov_3x2pt_sn_10d,
+                        dim='6d',
+                        req_probe_combs_2d=self.req_probe_combs_2d,
+                        space='harmonic',
+                    )
+                )
+                self.cov_dict['mix'].update(
+                    sl.cov_10d_arr_to_dict(
+                        cov_10d=oc_obj.cov_3x2pt_mix_10d,
+                        dim='6d',
+                        req_probe_combs_2d=self.req_probe_combs_2d,
+                        space='harmonic',
+                    )
+                )
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
         # ! are inside the function

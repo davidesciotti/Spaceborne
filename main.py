@@ -1267,9 +1267,10 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_output_covlist_fname = (
         f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
     )
-    oc_obj.cov_dict_6d = oc_interface.process_cov_from_list_file(
+    oc_obj.cov_dict = oc_interface.process_cov_from_list_file(
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
+        obs_space=obs_space,
         df_chunk_size=5_000_000,
     )
 
@@ -1294,44 +1295,15 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         ] is True
 
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
-    oc_obj.cov_dict_6d = oc_interface.symmetrize_probes_dict_6d(
-        cov_dict_6d=oc_obj.cov_dict_6d, space=obs_space, valid_probes=_valid_probes_oc
+    oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(
+        cov_dict=oc_obj.cov_dict,
     )
+    
+    assert False, 'stop here'
+    # BOOKMARK: check what has been done so far, move symmetrize_probe_cov_dict_6d func
+    # to sb_lib (I think it's gonna be used elsewhere...) and keep refactoring (eg add 
+    # tot cov) and kill the 10D array stuff below
 
-    # turn to 10d arrays, which are still used in the SpaceborneCovariance class
-    cov_tot = np.zeros(
-        (
-            n_probes_oc,
-            n_probes_oc,
-            n_probes_oc,
-            n_probes_oc,
-            nbx,
-            nbx,
-            zbins,
-            zbins,
-            zbins,
-            zbins,
-        )
-    )
-    for term in ['sva', 'sn', 'mix', 'g', 'ssc', 'cng']:
-        cov = oc_interface.oc_cov_dict_6d_to_array_10d(
-            cov_dict_6d=oc_obj.cov_dict_6d,
-            desired_term=term,
-            n_probes=n_probes_oc,
-            nbx=nbx,
-            zbins=zbins,
-            probe_idx_dict=probe_idx_dict,
-        )
-
-        # finally, store the arrays in the corresponding attributes
-        setattr(oc_obj, f'cov_3x2pt_{term}_10d', cov)
-        cov_tot += cov
-
-    # set also total covariance
-    oc_obj.cov_3x2pt_tot_10d = cov_tot
-    # free memory
-    del cov_tot
-    gc.collect()
 
     # compare list and mat formats
     if full_cov:
@@ -1944,7 +1916,6 @@ if cfg['misc']['save_output_as_benchmark']:
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
-    # BOOKMARK finish this
     # ! old
     # save every array contained in _cov_obj
     # covs_arrays_dict = {
@@ -1963,7 +1934,7 @@ if cfg['misc']['save_output_as_benchmark']:
                 covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
             elif probe_abcd == ('GL', 'GL'):
                 covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-                
+
     if 'ssc' not in _cov_obj.cov_dict:
         for probe in ['WL', 'GC', '3x2pt']:
             covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0

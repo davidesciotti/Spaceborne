@@ -208,32 +208,43 @@ def process_cov_from_list_file(
     )
     column_names = header_list
 
-    usecols = ['#obs', 'tomoi']
+    # Determine scale type
     if 'theta1' in column_names:
         theta_or_ell = 'theta'
     elif 'ell1' in column_names:
         theta_or_ell = 'ell'
     else:
         raise ValueError('OneCov column names not recognised')
-    usecols += [f'{theta_or_ell}1']
+
+    usecols = ['#obs', 'tomoi', f'{theta_or_ell}1']
 
     # partial (much quicker) import of the .list file, to get info about thetas, probes
     # and to perform checks on the tomo bin idxs
     data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep='\s+')
 
-    # check thetas and nbt
     scales_oc_load = data[f'{theta_or_ell}1'].unique()
-    cov_scale_indices = {scale_out: idx for idx, scale_out in enumerate(scales_oc_load)}
+    cov_scale_indices = {scale: idx for idx, scale in enumerate(scales_oc_load)}
     nbx_oc = len(scales_oc_load)  # 'nbx' = nbt or nbl
 
     # check tomo idxs: SB tomographic indices start from 0
     tomoi_oc_load = data['tomoi'].unique()
-    subtract_one_from_z_ix = False
-    if min(tomoi_oc_load) == 1:
-        subtract_one_from_z_ix = True
+    subtract_one_from_z_ix = min(tomoi_oc_load) == 1
 
-    # ! import .list covariance file
+    # Setup probe translation
+    if obs_space == 'harmonic':
+        valid_probes = const.HS_DIAG_PROBES_OC
+        probe_transl_dict = const.HS_DIAG_PROBES_OC_TO_SB
+        assert theta_or_ell == 'ell', 'theta_or_ell must be "ell" for harmonic space'
+    elif obs_space == 'real':
+        valid_probes = const.RS_DIAG_PROBES_OC
+        probe_transl_dict = const.RS_DIAG_PROBES_OC_TO_SB
+        assert theta_or_ell == 'theta', 'theta_or_ell must be "theta" for real space'
+    else:
+        raise ValueError('obs_space must be either "harmonic" or "real"')
+
     print(f'Loading OneCovariance output from {oc_output_covlist_fname} file...')
+
+    # Initialize arrays
     cov_dict = defaultdict(lambda: defaultdict(dict))
     temp_cov_arrays = defaultdict(
         lambda: defaultdict(
@@ -241,14 +252,14 @@ def process_cov_from_list_file(
         )
     )
 
-    if obs_space == 'harmonic':
-        valid_probes = const.HS_DIAG_PROBES_OC
-        probe_transl_dict = const.HS_DIAG_PROBES_OC_TO_SB
-    elif obs_space == 'real':
-        valid_probes = const.RS_DIAG_PROBES_OC
-        probe_transl_dict = const.RS_DIAG_PROBES_OC_TO_SB
-    else:
-        raise ValueError('obs_space must be either "harmonic" or "real"')
+    # Column mapping for covariance terms
+    term_columns = {
+        'sva': 'covg sva',
+        'mix': 'covg mix',
+        'sn': 'covg sn',
+        'ssc': 'covssc',
+        'cng': 'covng',
+    }
 
     for df_chunk in pd.read_csv(
         oc_output_covlist_fname,
@@ -258,17 +269,16 @@ def process_cov_from_list_file(
         chunksize=df_chunk_size,
     ):
         for probe_abcd_oc, subdf in df_chunk.groupby('#obs'):
-            # split (OneCovariance) probe name
             probe_ab_oc, probe_cd_oc = sl.split_probe_name(
                 probe_abcd_oc, space=None, valid_probes=valid_probes
             )
-            # translate into Spaceborne-compatible 2-tuple
             probe_ab, probe_cd = (
                 probe_transl_dict[probe_ab_oc],
                 probe_transl_dict[probe_cd_oc],
             )
             probe_2tpl = (probe_ab, probe_cd)
 
+            # Pre-compute indices once
             theta1_idx = subdf[f'{theta_or_ell}1'].map(cov_scale_indices).values
             theta2_idx = subdf[f'{theta_or_ell}2'].map(cov_scale_indices).values
 
@@ -286,21 +296,18 @@ def process_cov_from_list_file(
                 z_ixs[:, 3],
             )
 
-            for term, col in {
-                'sva': 'covg sva',
-                'mix': 'covg mix',
-                'sn': 'covg sn',
-                'ssc': 'covssc',
-                'cng': 'covng',
-            }.items():
+            # Assign individual terms
+            for term, col in term_columns.items():
                 temp_cov_arrays[term][probe_2tpl][index_tuple] = subdf[col].values
 
+            # Compute 'g' term as sum of sva, sn and mix
             temp_cov_arrays['g'][probe_2tpl][index_tuple] = (
                 subdf['covg sva'].values
-                + subdf['covg mix'].values
                 + subdf['covg sn'].values
+                + subdf['covg mix'].values
             )
 
+    # Transfer to final structure
     for term, probe_dict in temp_cov_arrays.items():
         for probe_2tpl, array_data in probe_dict.items():
             cov_dict[term][probe_2tpl]['6d'] = array_data
@@ -1095,152 +1102,6 @@ class OneCovarianceInterface:
         cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
 
         return cov_llglgg_2d
-
-    def process_cov_from_list_file_hs(self, df_chunk_size=5_000_000):
-        """
-        Import and reshape the output of the OneCovariance (OC) .dat
-        (aka "list") file into a set of 10d arrays.
-        The function also performs some additional processing,
-        such as symmetrizing the output dictionary.
-        """
-        raise NotImplementedError(
-            'This function should be deprecated; use '
-            'process_cov_from_list_file() instead'
-        )
-        import re
-
-        import pandas as pd
-
-        # set df column names
-        with open(f'{self.oc_path}/{self.cov_oc_fname}_list.dat') as file:
-            header = (
-                file.readline().strip()
-            )  # Read the first line and strip newline characters
-        header_list = re.split(
-            '\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t')
-        )
-        column_names = header_list
-
-        # ell values actually used in OC; save in self to be able to compare to
-        # the SB ell values
-        # note use delim_whitespace=True instead of sep='\s+' if this gives
-        # compatibility issues
-        self.ells_oc_load = pd.read_csv(
-            f'{self.oc_path}/{self.cov_oc_fname}_list.dat', usecols=['ell1'], sep='\s+'
-        )['ell1'].unique()
-
-        # check if the saved ells are within 1% of the required ones;
-        # I think the saved values are truncated to only
-        # 2 decimals, so this is a rough comparison (rtol is 1%)
-        try:
-            np.testing.assert_allclose(
-                self.new_ells_oc, self.ells_oc_load, atol=0, rtol=1e-2
-            )
-        except AssertionError as err:
-            print('ell values computed vs loaded for OC are not the same')
-            print(err)
-
-        cov_ell_indices = {
-            ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)
-        }
-
-        # ! import .list covariance file
-        shape = (
-            self.n_probes,
-            self.n_probes,
-            self.n_probes,
-            self.n_probes,
-            self.nbl_3x2pt,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.zbins,
-            self.zbins,
-            self.zbins,
-        )
-        self.cov_g_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_sva_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_mix_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_sn_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_ssc_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_cng_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_tot_oc_3x2pt_10D = np.zeros(shape)
-
-        print('Loading OneCovariance output from covariance_list.dat file...')
-        start = time.perf_counter()
-        for df_chunk in pd.read_csv(
-            f'{self.oc_path}/covariance_list.dat',
-            sep='\s+',
-            names=column_names,
-            skiprows=1,
-            chunksize=df_chunk_size,
-        ):
-            # Vectorize the extraction of probe indices
-            probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict).values
-            probe_idx_b = df_chunk['#obs'].str[1].map(probe_idx_dict).values
-            probe_idx_c = df_chunk['#obs'].str[2].map(probe_idx_dict).values
-            probe_idx_d = df_chunk['#obs'].str[3].map(probe_idx_dict).values
-
-            # Map 'ell' values to their corresponding indices
-            ell1_idx = df_chunk['ell1'].map(cov_ell_indices).values
-            ell2_idx = df_chunk['ell2'].map(cov_ell_indices).values
-
-            # Compute z indices
-            if np.min(df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values) == 1:
-                z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
-            else:
-                warnings.warn('tomo indices seem to start from 0...', stacklevel=2)
-                z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
-
-            # Vectorized assignment to the arrays
-            index_tuple = (
-                probe_idx_a,
-                probe_idx_b,
-                probe_idx_c,
-                probe_idx_d,
-                ell1_idx,
-                ell2_idx,
-                z_indices[:, 0],
-                z_indices[:, 1],
-                z_indices[:, 2],
-                z_indices[:, 3],
-            )
-
-            self.cov_sva_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values
-            self.cov_mix_oc_3x2pt_10D[index_tuple] = df_chunk['covg mix'].values
-            self.cov_sn_oc_3x2pt_10D[index_tuple] = df_chunk['covg sn'].values
-            self.cov_g_oc_3x2pt_10D[index_tuple] = (
-                df_chunk['covg sva'].values
-                + df_chunk['covg mix'].values
-                + df_chunk['covg sn'].values
-            )
-            self.cov_ssc_oc_3x2pt_10D[index_tuple] = df_chunk['covssc'].values
-            self.cov_cng_oc_3x2pt_10D[index_tuple] = df_chunk['covng'].values
-            self.cov_tot_oc_3x2pt_10D[index_tuple] = df_chunk['cov'].values
-
-        covs_10d = [
-            self.cov_sva_oc_3x2pt_10D,
-            self.cov_mix_oc_3x2pt_10D,
-            self.cov_sn_oc_3x2pt_10D,
-            self.cov_g_oc_3x2pt_10D,
-            self.cov_ssc_oc_3x2pt_10D,
-            self.cov_cng_oc_3x2pt_10D,
-            self.cov_tot_oc_3x2pt_10D,
-        ]
-
-        for cov_10d in covs_10d:
-            cov_10d[0, 0, 1, 1] = (
-                np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-            ).copy()
-            cov_10d[1, 0, 0, 0] = (
-                np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-            ).copy()
-            cov_10d[1, 0, 1, 1] = (
-                np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-            ).copy()
-
-        print(
-            f'OneCovariance output loaded in {time.perf_counter() - start:.2f} seconds'
-        )
 
     def _oc_output_to_dict_or_array(
         self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None

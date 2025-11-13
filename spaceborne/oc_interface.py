@@ -16,6 +16,7 @@ Key Features:
 
 """
 
+from collections import defaultdict
 import configparser
 import os
 import subprocess
@@ -61,7 +62,7 @@ def oc_cov_dict_6d_to_array_10d(
     #         cov_10d[*probe_ixs] = cov
 
     if not cov_dict_6d:
-        raise ValueError("cov_dict_6d is empty")
+        raise ValueError('cov_dict_6d is empty')
 
     key_found = False
     for key, cov in cov_dict_6d.items():
@@ -76,26 +77,6 @@ def oc_cov_dict_6d_to_array_10d(
     if not key_found:
         raise KeyError(f"No keys with term '{desired_term}' found in cov_dict_6d.")
     return cov_10d
-
-
-def symmetrize_probes_dict_6d(cov_dict_6d: dict, space: str, valid_probes: list):
-    """Fills the symmetric probe combinations (e.g., given gggt, fills gtgg)"""
-
-    # this is needed to avoid mutating the dict while I loop over it
-    new_entries = {}
-    for key, cov in cov_dict_6d.items():
-        # compute symmetric_key, symmetric_cov
-        probe_abcd, term = key.split('_')
-
-        probe_ab, probe_cd = sl.split_probe_name(
-            full_probe_name=probe_abcd, space=space, valid_probes=valid_probes
-        )
-        probe_cdab = probe_cd + probe_ab
-        new_entries[f'{probe_cdab}_{term}'] = cov.transpose(1, 0, 4, 5, 2, 3)
-
-    cov_dict_6d.update(new_entries)
-
-    return cov_dict_6d
 
 
 def compare_sb_cov_to_oc_list(
@@ -210,7 +191,9 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
         print()  # Add a blank line for readability between sections
 
 
-def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_000_000):
+def process_cov_from_list_file(
+    oc_output_covlist_fname, zbins, obs_space, df_chunk_size=5_000_000
+):
     import re
 
     import pandas as pd
@@ -251,7 +234,22 @@ def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_0
 
     # ! import .list covariance file
     print(f'Loading OneCovariance output from {oc_output_covlist_fname} file...')
-    covs_dict_6d = {}
+    cov_dict = defaultdict(lambda: defaultdict(dict))
+    temp_cov_arrays = defaultdict(
+        lambda: defaultdict(
+            lambda: np.zeros((nbx_oc, nbx_oc, zbins, zbins, zbins, zbins))
+        )
+    )
+
+    if obs_space == 'harmonic':
+        valid_probes = const.HS_DIAG_PROBES_OC
+        probe_transl_dict = const.HS_DIAG_PROBES_OC_TO_SB
+    elif obs_space == 'real':
+        valid_probes = const.RS_DIAG_PROBES_OC
+        probe_transl_dict = const.RS_DIAG_PROBES_OC_TO_SB
+    else:
+        raise ValueError('obs_space must be either "harmonic" or "real"')
+
     for df_chunk in pd.read_csv(
         oc_output_covlist_fname,
         sep='\s+',
@@ -259,19 +257,26 @@ def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_0
         skiprows=1,
         chunksize=df_chunk_size,
     ):
-        # now group by probe string
-        for probe, subdf in df_chunk.groupby('#obs'):
-            # Map 'ell' values to their corresponding indices
+        for probe_abcd_oc, subdf in df_chunk.groupby('#obs'):
+            # split (OneCovariance) probe name
+            probe_ab_oc, probe_cd_oc = sl.split_probe_name(
+                probe_abcd_oc, space=None, valid_probes=valid_probes
+            )
+            # translate into Spaceborne-compatible 2-tuple
+            probe_ab, probe_cd = (
+                probe_transl_dict[probe_ab_oc],
+                probe_transl_dict[probe_cd_oc],
+            )
+            probe_2tpl = (probe_ab, probe_cd)
+
             theta1_idx = subdf[f'{theta_or_ell}1'].map(cov_scale_indices).values
             theta2_idx = subdf[f'{theta_or_ell}2'].map(cov_scale_indices).values
 
-            # Compute z indices
             if subtract_one_from_z_ix:
                 z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
             else:
                 z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].values
 
-            # define index tuple
             index_tuple = (
                 theta1_idx,
                 theta2_idx,
@@ -281,7 +286,6 @@ def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_0
                 z_ixs[:, 3],
             )
 
-            # for each covariance term, insert into dict
             for term, col in {
                 'sva': 'covg sva',
                 'mix': 'covg mix',
@@ -289,31 +293,20 @@ def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_0
                 'ssc': 'covssc',
                 'cng': 'covng',
             }.items():
-                key = f'{probe}_{term}'
+                temp_cov_arrays[term][probe_2tpl][index_tuple] = subdf[col].values
 
-                # allocate shape: (nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
-                if key not in covs_dict_6d:
-                    covs_dict_6d[key] = np.zeros(
-                        (nbx_oc, nbx_oc, zbins, zbins, zbins, zbins)
-                    )
-
-                # assign array to the correct key
-                covs_dict_6d[key][index_tuple] = subdf[col].values
-
-            # gauss is the sum of sva + mix + sn
-            key = f'{probe}_g'
-            if key not in covs_dict_6d:
-                covs_dict_6d[key] = np.zeros(
-                    (nbx_oc, nbx_oc, zbins, zbins, zbins, zbins)
-                )
-            covs_dict_6d[key][index_tuple] = (
+            temp_cov_arrays['g'][probe_2tpl][index_tuple] = (
                 subdf['covg sva'].values
                 + subdf['covg mix'].values
                 + subdf['covg sn'].values
             )
 
+    for term, probe_dict in temp_cov_arrays.items():
+        for probe_2tpl, array_data in probe_dict.items():
+            cov_dict[term][probe_2tpl]['6d'] = array_data
+
     print('...done')
-    return covs_dict_6d
+    return cov_dict
 
 
 class OneCovarianceInterface:
@@ -374,7 +367,7 @@ class OneCovarianceInterface:
         self.z_grid_trisp_sb: np.ndarray = _UNSET
         self.path_to_config_oc_ini: str = _UNSET
         self.ells_sb: np.ndarray = _UNSET
-        self.cov_dict_6d: dict = _UNSET
+        self.cov_dict: dict = _UNSET
         self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
         self.cov_3x2pt_sn_10d: np.ndarray = _UNSET
         self.cov_3x2pt_mix_10d: np.ndarray = _UNSET

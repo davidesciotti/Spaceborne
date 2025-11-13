@@ -29,12 +29,16 @@ RS_ALL_PROBE_COMBS = [
     'ggxip',  'ggxim',  'gggt',  'gggg',
 ]  # fmt: skip
 
+# TODO use w for sb gggg?
 HS_DIAG_PROBE_COMBS = ['LLLL', 'GLGL', 'GGGG']
 RS_DIAG_PROBE_COMBS = ['xipxip', 'ximxim', 'gtgt', 'gggg']
 HS_DIAG_PROBES = ['LL', 'GL', 'GG']
 RS_DIAG_PROBES = ['xip', 'xim', 'gt', 'gg']
 HS_DIAG_PROBES_OC = ['mm', 'gm', 'gg']
 RS_DIAG_PROBES_OC = ['xip', 'xim', 'gm', 'gg']
+
+HS_DIAG_PROBES_OC_TO_SB = {'mm': 'LL', 'gm': 'GL', 'gg': 'GG'}
+RS_DIAG_PROBES_OC_TO_SB = {'xip': 'xip', 'xim': 'xim', 'gm': 'gt', 'gg': 'gg'}
 
 # used for the reshaping logic
 HS_AUTO_PROBES = ['LL', 'GG']
@@ -131,7 +135,6 @@ labels_tex = {
     'omegam': '\\Omega_{\\rm m}',
     'omegab': '\\Omega_{\\rm b}',
     'HMCode_logT_AGN': '\\log{T_{\\rm AGN}}',
-    
     # new
     'H0': 'H_0',
     'h': 'h',

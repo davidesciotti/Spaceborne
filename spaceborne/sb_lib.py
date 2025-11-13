@@ -25,6 +25,33 @@ from scipy.special import jv
 import spaceborne.constants as const
 
 
+def symmetrize_probe_cov_dict_6d(cov_dict: dict):
+    """Fills the symmetric 6D probe combinations (e.g., given gggt, fills gtgg)"""
+
+    # iterate through the different terms and shorten the name of the dict
+    for probe_cov_dict in cov_dict.values():
+        # Create a list of keys to avoid modifying dict during iteration
+        existing_probe_2tpl = list(probe_cov_dict.keys())
+
+        # if present, remove "3x2pt" from the list
+        existing_probe_2tpl = [
+            probe for probe in existing_probe_2tpl if '3x2pt' not in probe
+        ]
+
+        for probe_ab, probe_cd in existing_probe_2tpl:
+            # Only add symmetric if it doesn't already exist and it's
+            # not auto-correlation
+            if (probe_cd, probe_ab) not in probe_cov_dict and probe_ab != probe_cd:
+                cov = (
+                    probe_cov_dict[probe_ab, probe_cd]['6d']
+                    .transpose(1, 0, 4, 5, 2, 3)
+                    .copy()
+                )
+                probe_cov_dict[probe_cd, probe_ab] = {'6d': cov}
+
+    return cov_dict
+
+
 def validate_cov_dict_structure(cov_dict: dict, space: str):
     """
         Validates that cov_dict follows the structure:

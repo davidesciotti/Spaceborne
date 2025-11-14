@@ -16,12 +16,11 @@ Key Features:
 
 """
 
-from collections import defaultdict
 import configparser
+from copy import deepcopy
 import os
 import subprocess
-import time
-import warnings
+from collections import defaultdict
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -307,6 +306,12 @@ def process_cov_from_list_file(
                 + subdf['covg mix'].values
             )
 
+            temp_cov_arrays['tot'][probe_2tpl][index_tuple] = (
+                temp_cov_arrays['g'][probe_2tpl][index_tuple]
+                + temp_cov_arrays['ssc'][probe_2tpl][index_tuple]
+                + temp_cov_arrays['cng'][probe_2tpl][index_tuple]
+            )
+
     # Transfer to final structure
     for term, probe_dict in temp_cov_arrays.items():
         for probe_2tpl, array_data in probe_dict.items():
@@ -363,6 +368,7 @@ class OneCovarianceInterface:
         self.obs_space = self.cfg['probe_selection']['space']
 
         # paths and filenems
+        self.path_to_oc_env = cfg['OneCovariance']['path_to_oc_env']
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
 
         self.probe_idx_dict_hs = {
@@ -734,8 +740,12 @@ class OneCovarianceInterface:
     def call_oc_from_bash(self) -> None:
         """This function runs OneCovariance"""
         subprocess.run(
-            ['python', self.path_to_oc_executable, self.path_to_config_oc_ini],
-            check=True,  # raise CalledProcessError if it fails
+            [
+                self.path_to_oc_env,
+                self.path_to_oc_executable,
+                self.path_to_config_oc_ini,
+            ],
+            check=True,
         )
 
     def call_oc_from_class(self):
@@ -744,6 +754,7 @@ class OneCovarianceInterface:
             - Streamlines the call to the code by instantiating and calling the
             CovELLSpace class directly
             (as done in OneCovariance main file)
+
             - Returns outputs which are in a more similar format as Spaceborne
             - Returns outputs with more significant digits
         Cons:
@@ -953,7 +964,12 @@ class OneCovarianceInterface:
             cov_in, elem_auto, elem_cross
         )
 
-    def output_sanity_check(self, req_probe_combs_2d: list, rtol: float = 1e-4):
+    def output_sanity_check(
+        self,
+        req_probe_combs_2d: list,
+        cov_dict_6d_to_4d_and_2d_kw: dict,
+        rtol: float = 1e-4,
+    ):
         """
         Checks that the .dat and .mat outputs give consistent results
         """
@@ -967,14 +983,33 @@ class OneCovarianceInterface:
         elif self.obs_space == 'real':
             cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
 
+        # NOTE: 3x2pt 4d and 2d is created on-the-fly for this check,
+        # and not stored in self. This is because of 2 reasons:
+        # 1. The reshaping is centralized in the SB cov (hs/rs) classes.
+        # 2. The zpair ordering is hardcoded in OC
+        # TODO check point number 2, there is some option in the ini file...
+
+        # create a copy to avoid polluting the original dict,
+        # which has only 6d and no 3x2pt
+        cov_dict_tmplist = deepcopy(self.cov_dict)
+        # reshape individual blocks to 4d and 2d
+        cov_dict_tmplist = sl.cov_dict_6d_to_4d_and_2d(
+            cov_dict_tmplist, **cov_dict_6d_to_4d_and_2d_kw
+        )
+
         for term in self.cov_dict_matfmt:
-            breakpoint()
+            # create 3x2pt 4d
+            cov_term_3x2pt_list_4d = sl.cov_dict_4d_blocks_4d_3x2pt(
+                cov_dict_tmplist[term], req_probe_combs_2d, self.obs_space
+            )
+            # create 3x2pt 2d
             cov_term_3x2pt_list_2d = cov_4d_to_2dcloe_func(
-                self.cov_dict[term]['3x2pt']['4d'],
+                cov_term_3x2pt_list_4d,
                 zbins=self.zbins,
                 req_probe_combs_2d=req_probe_combs_2d,
                 block_index='zpair',
             )
+            # compare with mat fmt
             np.testing.assert_allclose(
                 cov_term_3x2pt_list_2d,
                 self.cov_dict_matfmt[term]['3x2pt']['2d'],

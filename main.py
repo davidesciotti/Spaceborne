@@ -1,7 +1,6 @@
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
-import gc
 import itertools
 import os
 import sys
@@ -1294,16 +1293,37 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
             'cross_cov'
         ] is True
 
-    # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
-    oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(
-        cov_dict=oc_obj.cov_dict,
-    )
-    
-    assert False, 'stop here'
-    # BOOKMARK: check what has been done so far, move symmetrize_probe_cov_dict_6d func
-    # to sb_lib (I think it's gonna be used elsewhere...) and keep refactoring (eg add 
-    # tot cov) and kill the 10D array stuff below
+    # def instantiate_cov_dict(req_terms, unique_probe_combs):
+    #     cov_dict = {}
+    #     for term in req_terms:
+    #         for probe_comb in unique_probe_combs:
+    #             cov_dict[term][probe_comb]['6d'] = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
+    #     return cov_dict
 
+    # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
+    oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=oc_obj.cov_dict)
+
+    # now reshape into 4d and 2d
+    oc_obj.cov_dict = sl.cov_dict_6d_to_4d_and_2d(
+        cov_dict=oc_obj.cov_dict,
+        obs_space=obs_space,
+        nbx=nbx,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        block_index=cov_hs_obj.block_index,
+    )
+
+    # lastly, create 3x2pt 4d and 2d
+    for cov_probe_dict in oc_obj.cov_dict.values():
+        cov_probe_dict['3x2pt']['4d'] = sl.cov_dict_4d_blocks_4d_3x2pt(
+            cov_probe_dict, _req_probe_combs_2d, obs_space
+        )
+
+        cov_probe_dict['3x2pt']['2d'] = cov_hs_obj.cov_4D_to_2D_3x2pt_func(
+            cov_probe_dict['3x2pt']['4d'], **cov_hs_obj.cov_4D_to_2D_3x2pt_func_kw
+        )
 
     # compare list and mat formats
     if full_cov:

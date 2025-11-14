@@ -1293,41 +1293,28 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
             'cross_cov'
         ] is True
 
-    # def instantiate_cov_dict(req_terms, unique_probe_combs):
-    #     cov_dict = {}
-    #     for term in req_terms:
-    #         for probe_comb in unique_probe_combs:
-    #             cov_dict[term][probe_comb]['6d'] = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
-    #     return cov_dict
-
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
     oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=oc_obj.cov_dict)
 
-    # now reshape into 4d and 2d
-    oc_obj.cov_dict = sl.cov_dict_6d_to_4d_and_2d(
-        cov_dict=oc_obj.cov_dict,
-        obs_space=obs_space,
-        nbx=nbx,
-        ind_auto=ind_auto,
-        ind_cross=ind_cross,
-        zpairs_auto=zpairs_auto,
-        zpairs_cross=zpairs_cross,
-        block_index=cov_hs_obj.block_index,
-    )
-
-    # lastly, create 3x2pt 4d and 2d
-    for cov_probe_dict in oc_obj.cov_dict.values():
-        cov_probe_dict['3x2pt']['4d'] = sl.cov_dict_4d_blocks_4d_3x2pt(
-            cov_probe_dict, _req_probe_combs_2d, obs_space
-        )
-
-        cov_probe_dict['3x2pt']['2d'] = cov_hs_obj.cov_4D_to_2D_3x2pt_func(
-            cov_probe_dict['3x2pt']['4d'], **cov_hs_obj.cov_4D_to_2D_3x2pt_func_kw
-        )
-
     # compare list and mat formats
     if full_cov:
-        oc_obj.output_sanity_check(req_probe_combs_2d=_req_probe_combs_2d, rtol=1e-4)
+        # For this check, we need to create 3x2pt 4d and 2d. The first step is to
+        # reshape the blocks to 4d and 2d. This is done here because I don't want
+        # to pass
+        cov_dict_6d_to_4d_and_2d_kw = {
+            'obs_space': obs_space,
+            'nbx': nbx,
+            'ind_auto': ind_auto,
+            'ind_cross': ind_cross,
+            'zpairs_auto': zpairs_auto,
+            'zpairs_cross': zpairs_cross,
+            'block_index': cov_hs_obj.block_index,
+        }
+        oc_obj.output_sanity_check(
+            req_probe_combs_2d=_req_probe_combs_2d,
+            cov_dict_6d_to_4d_and_2d_kw=cov_dict_6d_to_4d_and_2d_kw,
+            rtol=1e-4,
+        )
 
     # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks
@@ -1361,6 +1348,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         )
 
     print(f'Time taken to compute OC: {(time.perf_counter() - start_time) / 60:.2f} m')
+
 
 else:
     oc_obj = None
@@ -2020,7 +2008,9 @@ if (
     or cfg['misc']['test_numpy_inversion']
     or cfg['misc']['test_symmetry']
 ):
-    key = list(cov_dict_tosave_2d.keys())[0] if len(cov_dict_tosave_2d) == 1 else 'TOT'
+    key = (
+        'TOT' if 'SSC' in cov_dict_tosave_2d or 'cNG' in cov_dict_tosave_2d else 'Gauss'
+    )
     cov = cov_dict_tosave_2d[key]
     print(f'Testing cov {cov_name}...\n')
 

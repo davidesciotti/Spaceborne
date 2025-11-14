@@ -60,6 +60,12 @@ cov_dict (4d) -> 3x2pt arr (4d):
             cov_dict[term]['3x2pt']['4d'], **cov_hs_obj.cov_4D_to_2D_3x2pt_func_kw
             )
 
+
+Naming conventions:
+
+- cov_dict[term] = probe_dict
+- probe_dict[probe_ab, probe_cd] = dim_dict
+- dim_dict[dim] = cov (the actual array)
 """
 
 
@@ -271,10 +277,6 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
     """
     Validates that cov_dict follows the structure:
     cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
-    "Notation":
-    - cov_dict[term] = probe_dict
-    - probe_dict[probe_ab, probe_cd] = dim_dict
-    - dim_dict[dim] = cov (the actual array)
 
     Additionally, the function checks that the term, probe_ab, probe_cd, and dim
     keys have one ov the expected values (among all the possible ones!)

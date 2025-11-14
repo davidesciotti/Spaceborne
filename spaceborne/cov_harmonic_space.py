@@ -341,12 +341,13 @@ class SpaceborneCovariance:
         print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
 
     def _reshape_covs_6d_to_4d_and_2d(self):
-        """Reshapes the 6d probe cov into 2D."""
+        """Simple wrapper to reshape the 6d covs (for each term and probe comb)
+        into 4d and into 2d."""
 
         # populate the dict with 4d and 2d probe-specific arrays (from the 6d ones)
-        self.cov_dict = sl.add_4d_and_2d_to_cov_dict_6d(
+        self.cov_dict = sl.cov_dict_6d_to_4d_and_2d(
             cov_dict=self.cov_dict,
-            space='harmonic',
+            obs_space='harmonic',
             nbx=self.ell_obj.nbl_3x2pt,
             ind_auto=self.ind_auto,
             ind_cross=self.ind_cross,
@@ -367,15 +368,17 @@ class SpaceborneCovariance:
             if term not in self.cov_dict or not self.cov_dict[term]:
                 continue
 
-            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_to_3x2pt_4d_arr(
-                self.cov_dict[term], self.req_probe_combs_2d, space='harmonic'
+            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_blocks_4d_3x2pt(
+                self.cov_dict[term], self.req_probe_combs_2d, obs_space='harmonic'
             )
             self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
                 self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
             )
 
     def _cov_8d_dict_to_10d_arr(self, cov_dict_8d):
-        """Helper function to process a single covariance component"""
+        """Helper function to process a single covariance component
+        THIS FUNCTION HAS TO BE DEPRECATED!
+        """
         cov_dict_10d = sl.cov_3x2pt_dict_8d_to_10d(
             cov_3x2pt_dict_8D=cov_dict_8d,
             nbl=self.ell_obj.nbl_3x2pt,

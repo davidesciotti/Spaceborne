@@ -1611,3 +1611,95 @@ def legendre_angular_average(theta_min, theta_max, ell):
     denominator = (2 * ell + 1) * (cos_theta_min - cos_theta_max)
 
     return numerator / denominator
+
+def legendre_expanded_formula(theta_min, theta_max, ell, sign='plus'):
+    """
+    Compute the expanded Legendre polynomial formula:
+
+    = { - (ℓ(ℓ-1)/2)(ℓ + 2/(2ℓ+1))[P_{ℓ-1}(x)]_{cos θ_max}^{cos θ_min}
+        - ℓ(ℓ-1)(2-ℓ)/2 [xP_ℓ(x)]_{cos θ_max}^{cos θ_min}
+        + ℓ(ℓ-1)/(2ℓ+1) [P_{ℓ+1}(x)]_{cos θ_max}^{cos θ_min}
+        + (4-ℓ)[dP_ℓ(x)/dx]_{cos θ_max}^{cos θ_min}
+        + (ℓ+2){[x dP_{ℓ-1}(x)/dx]_{cos θ_max}^{cos θ_min} - [P_{ℓ-1}(x)]_{cos θ_max}^{cos θ_min}}
+        ± 2(ℓ-1){[x dP_ℓ(x)/dx]_{cos θ_max}^{cos θ_min} - [P_ℓ(x)]_{cos θ_max}^{cos θ_min}}
+        ∓ 2(ℓ+2)[dP_{ℓ-1}(x)/dx]_{cos θ_max}^{cos θ_min}
+      } / (cos θ_min - cos θ_max)
+
+    LaTeX form:
+    = \left\{ - \left(\frac{\ell(\ell-1)}{2}\right)\left(\ell + \frac{2}{2\ell+1}\right)[P_{\ell-1}(x)]_{\cos\theta_{\max}}^{\cos\theta_{\min}}
+    - \frac{\ell(\ell-1)(2-\ell)}{2}[xP_{\ell}(x)]_{\cos\theta_{\max}}^{\cos\theta_{\min}}
+    + \frac{\ell(\ell-1)}{2\ell+1}[P_{\ell+1}(x)]_{\cos\theta_{\max}}^{\cos\theta_{\min}}
+    + (4-\ell)\left[\frac{dP_{\ell}(x)}{dx}\right]_{\cos\theta_{\max}}^{\cos\theta_{\min}}
+    + (\ell+2)\left\{\left[x\frac{dP_{\ell-1}(x)}{dx}\right]_{\cos\theta_{\max}}^{\cos\theta_{\min}}
+      - [P_{\ell-1}(x)]_{\cos\theta_{\max}}^{\cos\theta_{\min}}\right\}
+    \pm 2(\ell-1)\left\{\left[x\frac{dP_{\ell}(x)}{dx}\right]_{\cos\theta_{\max}}^{\cos\theta_{\min}}
+      - [P_{\ell}(x)]_{\cos\theta_{\max}}^{\cos\theta_{\min}}\right\}
+    \mp 2(\ell+2)\left[\frac{dP_{\ell-1}(x)}{dx}\right]_{\cos\theta_{\max}}^{\cos\theta_{\min}}
+    \right\} \frac{1}{\cos\theta_{\min} - \cos\theta_{\max}}
+
+    Parameters:
+    -----------
+    theta_min : float
+        Minimum angle in radians
+    theta_max : float
+        Maximum angle in radians
+    ell : int
+        Order of the Legendre polynomial (must be >= 1)
+    sign : str
+        'plus' for + in the ± term, 'minus' for - in the ± term
+
+    Returns:
+    --------
+    float
+        The computed value
+    """
+    # Compute cosines
+    cos_theta_min = np.cos(theta_min)
+    cos_theta_max = np.cos(theta_max)
+
+    # Get Legendre polynomials and their derivatives
+    P_ell_minus_1 = legendre(ell - 1)
+    P_ell = legendre(ell)
+    P_ell_plus_1 = legendre(ell + 1)
+
+    dP_ell_minus_1 = P_ell_minus_1.deriv()
+    dP_ell = P_ell.deriv()
+
+    # Helper function to evaluate [f(x)]_{cos_theta_max}^{cos_theta_min}
+    # This means f(cos_theta_min) - f(cos_theta_max)
+    def eval_bracket(func):
+        return func(cos_theta_min) - func(cos_theta_max)
+
+    # Term 1: -(ℓ(ℓ-1)/2)(ℓ + 2/(2ℓ+1))[P_{ℓ-1}(x)]
+    term1 = -(ell * (ell - 1) / 2) * (ell + 2 / (2 * ell + 1)) * eval_bracket(P_ell_minus_1)
+
+    # Term 2: -ℓ(ℓ-1)(2-ℓ)/2 [xP_ℓ(x)]
+    term2 = -(ell * (ell - 1) * (2 - ell) / 2) * eval_bracket(lambda x: x * P_ell(x))
+
+    # Term 3: +ℓ(ℓ-1)/(2ℓ+1) [P_{ℓ+1}(x)]
+    term3 = (ell * (ell - 1) / (2 * ell + 1)) * eval_bracket(P_ell_plus_1)
+
+    # Term 4: +(4-ℓ)[dP_ℓ(x)/dx]
+    term4 = (4 - ell) * eval_bracket(dP_ell)
+
+    # Term 5: +(ℓ+2){[x dP_{ℓ-1}(x)/dx] - [P_{ℓ-1}(x)]}
+    term5_part1 = eval_bracket(lambda x: x * dP_ell_minus_1(x))
+    term5_part2 = eval_bracket(P_ell_minus_1)
+    term5 = (ell + 2) * (term5_part1 - term5_part2)
+
+    # Term 6: ±2(ℓ-1){[x dP_ℓ(x)/dx] - [P_ℓ(x)]}
+    sign_factor = 1 if sign == 'plus' else -1
+    term6_part1 = eval_bracket(lambda x: x * dP_ell(x))
+    term6_part2 = eval_bracket(P_ell)
+    term6 = sign_factor * 2 * (ell - 1) * (term6_part1 - term6_part2)
+
+    # Term 7: ∓2(ℓ+2)[dP_{ℓ-1}(x)/dx]
+    term7 = -sign_factor * 2 * (ell + 2) * eval_bracket(dP_ell_minus_1)
+
+    # Sum all terms
+    numerator = term1 + term2 + term3 + term4 + term5 + term6 + term7
+
+    # Denominator
+    denominator = cos_theta_min - cos_theta_max
+
+    return numerator / denominator

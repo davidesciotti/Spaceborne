@@ -209,6 +209,8 @@ covariance:
   SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
+  G_code: OneCovariance # Type: bool. Enable/disable the Gaussian covariance term.
+  
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
   # Choose whether to use the upper ('triu') or lower ('tril') triangle

@@ -921,6 +921,8 @@ class OneCovarianceInterface:
             self.zbins
         )
 
+        self.cov_dict_matfmt = defaultdict(lambda: defaultdict(dict))
+
         elem_auto = self.zpairs_auto * self.nbl_3x2pt
         elem_cross = self.zpairs_cross * self.nbl_3x2pt
 
@@ -928,11 +930,13 @@ class OneCovarianceInterface:
             cov_in = np.genfromtxt(
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
             )
-            self.cov_mat_g_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
+            self.cov_dict_matfmt['g']['3x2pt']['2d'] = self.cov_ggglll_to_llglgg(
+                cov_in, elem_auto, elem_cross
+            )
 
         if self.compute_ssc:
             cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
-            self.cov_mat_ssc_2d = self.cov_ggglll_to_llglgg(
+            self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = self.cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
@@ -940,128 +944,45 @@ class OneCovarianceInterface:
             cov_in = np.genfromtxt(
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
             )
-            self.cov_mat_cng_2d = self.cov_ggglll_to_llglgg(
+            self.cov_dict_matfmt['cng']['3x2pt']['2d'] = self.cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
         cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
-        self.cov_mat_tot_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
+        self.cov_dict_matfmt['tot']['3x2pt']['2d'] = self.cov_ggglll_to_llglgg(
+            cov_in, elem_auto, elem_cross
+        )
 
     def output_sanity_check(self, req_probe_combs_2d: list, rtol: float = 1e-4):
         """
         Checks that the .dat and .mat outputs give consistent results
         """
 
-        # TODO why am I processing the output twice?
-        # TODO this should be generalised to real space
-
+        # process the covariance from the mat file.
+        # This creates the 3x2pt 2D cov for the different terms
         self.process_cov_from_mat_file()
-
-        cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_3x2pt_g_10d,
-            self.probe_ordering,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.ind,
-            self.GL_OR_LG,
-            req_probe_combs_2d=req_probe_combs_2d,
-        )
-        cov_list_ssc_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_3x2pt_ssc_10d,
-            self.probe_ordering,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.ind,
-            self.GL_OR_LG,
-            req_probe_combs_2d=req_probe_combs_2d,
-        )
-        cov_list_cng_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_3x2pt_cng_10d,
-            self.probe_ordering,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.ind,
-            self.GL_OR_LG,
-            req_probe_combs_2d=req_probe_combs_2d,
-        )
-        cov_list_tot_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_3x2pt_tot_10d,
-            self.probe_ordering,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.ind,
-            self.GL_OR_LG,
-            req_probe_combs_2d=req_probe_combs_2d,
-        )
 
         if self.obs_space == 'harmonic':
             cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_hs
         elif self.obs_space == 'real':
             cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
 
-        cov_list_g_2d = cov_4d_to_2dcloe_func(
-            cov_list_g_4d,
-            zbins=self.zbins,
-            req_probe_combs_2d=req_probe_combs_2d,
-            block_index='zpair',
-        )
-        cov_list_ssc_2d = cov_4d_to_2dcloe_func(
-            cov_list_ssc_4d,
-            zbins=self.zbins,
-            req_probe_combs_2d=req_probe_combs_2d,
-            block_index='zpair',
-        )
-        cov_list_cng_2d = cov_4d_to_2dcloe_func(
-            cov_list_cng_4d,
-            zbins=self.zbins,
-            req_probe_combs_2d=req_probe_combs_2d,
-            block_index='zpair',
-        )
-        cov_list_tot_2d = cov_4d_to_2dcloe_func(
-            cov_list_tot_4d,
-            zbins=self.zbins,
-            req_probe_combs_2d=req_probe_combs_2d,
-            block_index='zpair',
-        )
-
-        if self.compute_g:
+        for term in self.cov_dict_matfmt:
+            breakpoint()
+            cov_term_3x2pt_list_2d = cov_4d_to_2dcloe_func(
+                self.cov_dict[term]['3x2pt']['4d'],
+                zbins=self.zbins,
+                req_probe_combs_2d=req_probe_combs_2d,
+                block_index='zpair',
+            )
             np.testing.assert_allclose(
-                cov_list_g_2d,
-                self.cov_mat_g_2d,
-                atol=0,
+                cov_term_3x2pt_list_2d,
+                self.cov_dict_matfmt[term]['3x2pt']['2d'],
                 rtol=rtol,
-                err_msg='Gaussian covariance matrix from .mat file is'
+                atol=0,
+                err_msg=f'{term} covariance matrix from .mat file is'
                 ' not consistent with .dat output',
             )
-
-        if self.compute_ssc:
-            np.testing.assert_allclose(
-                cov_list_ssc_2d,
-                self.cov_mat_ssc_2d,
-                atol=0,
-                rtol=rtol,
-                err_msg='SSC covariance matrix from .mat file is'
-                ' not consistent with .dat output',
-            )
-
-        if self.compute_cng:
-            np.testing.assert_allclose(
-                cov_list_cng_2d,
-                self.cov_mat_cng_2d,
-                atol=0,
-                rtol=rtol,
-                err_msg='cNG covariance matrix from .mat file is'
-                ' not consistent with .dat output',
-            )
-
-        np.testing.assert_allclose(
-            cov_list_tot_2d,
-            self.cov_mat_tot_2d,
-            atol=0,
-            rtol=rtol,
-            err_msg='Total covariance matrix from .mat file is'
-            ' not consistent with .dat output',
-        )
 
     def cov_ggglll_to_llglgg(
         self, cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int

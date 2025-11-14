@@ -22,6 +22,7 @@ import pyccl as ccl
 # import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
+from scipy.special import legendre
 from tqdm import tqdm
 
 from spaceborne import constants as const
@@ -841,7 +842,7 @@ class CovRealSpace:
         self.nbt_fine = self.nbt_coarse
 
 
-        # TODO this should probably go in the ell_binning class (which should be 
+        # TODO this should probably go in the ell_binning class (which should be
         # TODO renamed)
         if self.cfg['binning']['binning_type'] == 'log':
             _binning_func = np.geomspace
@@ -1573,3 +1574,40 @@ class CovRealSpace:
             )
 
         return cov_3x2pt_dict_4d
+
+def legendre_angular_average(theta_min, theta_max, ell):
+    """
+    Compute the Legendre polynomial expression:
+    [P_{ell+1}(x) - P_{ell-1}(x)]^{cos(theta_max)}_{cos(theta_min)} / [(2*ell + 1)(cos(theta_min) - cos(theta_max))]
+
+    Parameters:
+    -----------
+    theta_min : float
+        Minimum angle in radians
+    theta_max : float
+        Maximum angle in radians
+    ell : int
+        Order of the Legendre polynomial
+
+    Returns:
+    --------
+    float
+        The computed value
+    """
+    # Compute cosines
+    cos_theta_min = np.cos(theta_min)
+    cos_theta_max = np.cos(theta_max)
+
+    # Get Legendre polynomials
+    P_ell_plus_1 = legendre(ell + 1)
+    P_ell_minus_1 = legendre(ell - 1)
+
+    # Evaluate at the boundaries
+    # [f(x)]^b_a means f(b) - f(a)
+    numerator = (P_ell_plus_1(cos_theta_max) - P_ell_minus_1(cos_theta_max)) - \
+                (P_ell_plus_1(cos_theta_min) - P_ell_minus_1(cos_theta_min))
+
+    # Compute denominator
+    denominator = (2 * ell + 1) * (cos_theta_min - cos_theta_max)
+
+    return numerator / denominator

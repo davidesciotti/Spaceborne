@@ -1,3 +1,4 @@
+from copy import deepcopy
 import itertools
 import time
 import warnings
@@ -572,39 +573,40 @@ class SpaceborneCovariance:
         """
 
         if self.g_code == 'OneCovariance':
-            self.cov_dict['g'].update(
-                sl.cov_10d_arr_to_dict(
-                    cov_10d=oc_obj.cov_3x2pt_g_10d,
-                    dim='6d',
-                    req_probe_combs_2d=self.req_probe_combs_2d,
-                    space='harmonic',
-                )
-            )
+            # first of all, check that the keys  coincide
+            _terms_tocheck = ['g']
             if split_gaussian_cov:
-                self.cov_dict['sva'].update(
-                    sl.cov_10d_arr_to_dict(
-                        cov_10d=oc_obj.cov_3x2pt_sva_10d,
-                        dim='6d',
-                        req_probe_combs_2d=self.req_probe_combs_2d,
-                        space='harmonic',
-                    )
+                _terms_tocheck.extend(['sva', 'sn', 'mix'])
+
+            for _term in _terms_tocheck:
+                # check terms
+                assert _term in self.cov_dict, '_term not in self.cov_dict'
+                assert _term in oc_obj.cov_dict, '_term not in oc_obj.cov_dict'
+
+                # check probes
+                probe_list_sb = sorted(self.cov_dict[_term].keys())
+                probe_list_oc = sorted(oc_obj.cov_dict[_term].keys())
+                assert probe_list_sb == probe_list_oc, (
+                    f'probe_list_sb: {probe_list_sb}, probe_list_oc: {probe_list_oc}'
                 )
-                self.cov_dict['sn'].update(
-                    sl.cov_10d_arr_to_dict(
-                        cov_10d=oc_obj.cov_3x2pt_sn_10d,
-                        dim='6d',
-                        req_probe_combs_2d=self.req_probe_combs_2d,
-                        space='harmonic',
+
+                # check dims
+                for _probe_2tpl in probe_list_sb:
+                    dim_list_sb = sorted(self.cov_dict[_term][_probe_2tpl].keys())
+                    dim_list_oc = sorted(oc_obj.cov_dict[_term][_probe_2tpl].keys())
+                    assert dim_list_sb == dim_list_oc, (
+                        f'dim_list_sb: {dim_list_sb}, dim_list_oc: {dim_list_oc}'
                     )
-                )
-                self.cov_dict['mix'].update(
-                    sl.cov_10d_arr_to_dict(
-                        cov_10d=oc_obj.cov_3x2pt_mix_10d,
-                        dim='6d',
-                        req_probe_combs_2d=self.req_probe_combs_2d,
-                        space='harmonic',
+                    assert dim_list_sb == ['6d'], (
+                        'the dict should only contain 6d arrays for the moment'
                     )
-                )
+
+            # having checked the covs, overwrite the relevand dict items
+            self.cov_dict['g'] = deepcopy(oc_obj.cov_dict['g'])
+            if split_gaussian_cov:
+                self.cov_dict['sva'] = deepcopy(oc_obj.cov_dict['sva'])
+                self.cov_dict['sn'] = deepcopy(oc_obj.cov_dict['sn'])
+                self.cov_dict['mix'] = deepcopy(oc_obj.cov_dict['mix'])
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
         # ! are inside the function

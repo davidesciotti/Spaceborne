@@ -53,7 +53,7 @@ os.environ['MKL_NUM_THREADS'] = str(num_threads)
 os.environ['VECLIB_MAXIMUM_THREADS'] = str(num_threads)
 os.environ['NUMEXPR_NUM_THREADS'] = str(num_threads)
 os.environ['XLA_FLAGS'] = (
-    f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
+    f'--xla_cpu_multi_thread_eigen=true --intra_op_parallelism_threads={str(num_threads)}'
 )
 
 
@@ -2001,6 +2001,8 @@ if cfg['misc']['save_output_as_benchmark']:
         metadata=metadata,
     )
 
+# BOOKMARK check cov_oc vs cov_sb in common_data/.../develop
+
 
 if (
     cfg['misc']['test_condition_number']
@@ -2012,7 +2014,7 @@ if (
         'TOT' if 'SSC' in cov_dict_tosave_2d or 'cNG' in cov_dict_tosave_2d else 'Gauss'
     )
     cov = cov_dict_tosave_2d[key]
-    print(f'Testing cov {cov_name}...\n')
+    print(f'Testing cov {key}...\n')
 
     if cfg['misc']['test_condition_number']:
         cond_number = np.linalg.cond(cov)

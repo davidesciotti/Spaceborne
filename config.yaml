@@ -209,7 +209,7 @@ covariance:
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
-  G_code: OneCovariance # Type: bool. Enable/disable the Gaussian covariance term.
+  G_code: Spaceborne # Type: bool. Enable/disable the Gaussian covariance term.
   
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
@@ -279,7 +279,7 @@ covariance:
   use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
   # Name of the output covariance file.
-  cov_filename: cov_fsky # Type: str.
+  cov_filename: cov_sb # Type: str.
   save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module. 
 
 

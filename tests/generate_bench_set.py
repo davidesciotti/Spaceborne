@@ -1,20 +1,20 @@
 """
 LAST UPDATE: 2025-09-16
 
-Script to produce a set of benchmarks to test the Spaceborne code. More in detail, it 
+Script to produce a set of benchmarks to test the Spaceborne code. More in detail, it
 performs the following operations:
 
-1. Manually define a `base_cfg` dict (this is safer than importing the standard 
+1. Manually define a `base_cfg` dict (this is safer than importing the standard
    Spaceborne/config.yaml file) with fast runtime (e.g. setting a low number of points
    for the z and k grids).
-2. Change some settings to test the different parts of the code (and, to ensure fast 
+2. Change some settings to test the different parts of the code (and, to ensure fast
    execution), thereby producing a list of cfg dicts to test (`configs_to_test`).
 3. Save the list of cfg dicts to yaml files in the folder
    {ROOT}/Spaceborne_bench/bench_set_cfg.
 4. Run SB with these yaml files, generating a set of benchmarks (npz archives) to use as
    an exhaustive reference to test the code against. The benchmarks are stored in
    {ROOT}/Spaceborne_bench/bench_set_output
-   
+
 
 NOTES
 
@@ -22,8 +22,8 @@ NOTES
    If you want to overwrite them, delete the existing ones (e.g.):
    {ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
    or change the benchmark filename.
-   
--  The SB output produced at runtime during the production of these benchmarks 
+
+-  The SB output produced at runtime during the production of these benchmarks
    is in
    {ROOT}/Spaceborne_bench/bench_set_output/_sb_output,
    but you don't need to care about this.
@@ -251,7 +251,40 @@ base_cfg = {
         'halo_profile_dm': 'HaloProfileNFW',
         'halo_profile_hod': 'HaloProfileHOD',
     },
-    'probe_selection': {'LL': True, 'GL': True, 'GG': True, 'cross_cov': True},
+    'probe_selection': {
+        'space': 'harmonic',
+        'LL': True,
+        'GL': True,
+        'GG': True,
+        'xip': True,
+        'xim': True,
+        'gt': True,
+        'w': True,
+        'cross_cov': True,
+    },
+    'nz': {
+        'nz_sources_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_lenses_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'ngal_sources': [8.09216, 8.09215, 8.09215],
+        'ngal_lenses': [8.09216, 8.09215, 8.09215],
+        'shift_nz': False,
+        'dzWL': [-0.008848, 0.051368, 0.059484],
+        'dzGC': [-0.008848, 0.051368, 0.059484],
+        'clip_zmin': 0,
+        'clip_zmax': 3,
+        'smooth_nz': False,
+        'sigma_smoothing': 10,
+    },
+    'binning': {
+        'binning_type': 'ref_cut',
+        'ell_min': 10,
+        'ell_max': 3000,
+        'ell_bins': 15,
+        'ell_bins_filename': '../common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt',
+        'theta_min_arcmin': 50,
+        'theta_max_arcmin': 300,
+        'theta_bins': 10,
+    },
     'C_ell': {
         'use_input_cls': False,
         'cl_LL_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt',
@@ -273,20 +306,6 @@ base_cfg = {
             'non_limber_integration_method': 'FKEM',
         },
     },
-    'nz': {
-        'nz_sources_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
-        'nz_lenses_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
-        'ngal_sources': [8.09216, 8.09215, 8.09215],
-        'ngal_lenses': [8.09216, 8.09215, 8.09215],
-        'shift_nz': False,
-        'dzWL': [-0.008848, 0.051368, 0.059484],
-        'dzGC': [-0.008848, 0.051368, 0.059484],
-        'normalize_shifted_nz': True,
-        'clip_zmin': 0,
-        'clip_zmax': 3,
-        'smooth_nz': False,
-        'sigma_smoothing': 10,
-    },
     'mask': {
         'load_mask': False,
         'mask_path': '../input/mask.fits',
@@ -295,18 +314,6 @@ base_cfg = {
         'survey_area_deg2': 13245,
         'apodize': False,
         'aposize': 0.1,
-    },
-    'binning': {
-        'binning_type': 'ref_cut',
-        'ell_min_WL': 10,
-        'ell_max_WL': 3000,
-        'ell_bins_WL': 15,
-        'ell_min_GC': 10,
-        'ell_max_GC': 3000,
-        'ell_bins_GC': 15,
-        'ell_min_ref': 10,
-        'ell_max_ref': 3000,
-        'ell_bins_ref': 15,
     },
     'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
     'covariance': {
@@ -334,8 +341,16 @@ base_cfg = {
         'z_steps_trisp': 10,
         'use_KE_approximation': False,
         'cov_filename': 'cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz',
+        'save_cov_fits': False,
     },
-    # Base configuration (common parameters) - these will be applied first
+    'PyCCL': {
+        'cov_integration_method': 'spline',
+        'load_cached_tkka': False,
+        'use_default_k_a_grids': False,
+        'n_samples_wf': 1000,
+        'spline_params': {'A_SPLINE_NA_PK': 240, 'K_MAX_SPLINE': 300},
+        'gsl_params': None,
+    },
     'namaster': {
         'use_namaster': False,
         'spin0': False,
@@ -348,25 +363,31 @@ base_cfg = {
         'nreal': 5000,
         'fix_seed': True,
     },
-    'PyCCL': {
-        'cov_integration_method': 'spline',
-        'load_cached_tkka': False,
-        'use_default_k_a_grids': False,
-        'n_samples_wf': 1000,
-        'spline_params': {'A_SPLINE_NA_PK': 240, 'K_MAX_SPLINE': 300},
-        'gsl_params': None,
+    'precision': {
+        'n_iter_nmt': None,
+        'n_sub': 20,
+        'n_bisec_max': 500,
+        'rel_acc': 1.0e-7,
+        'boost_bessel': True,
+        'verbose': True,
+        'ell_min_rs': 2,
+        'ell_max_rs': 100000,
+        'ell_bins_rs': 500,
+        'ell_bins_rs_nongauss': 100,
     },
-    'precision': {'n_iter_nmt': None},
     'misc': {
         'num_threads': 40,
+        'jax_platform': 'auto',
+        'jax_enable_x64': True,
         'test_numpy_inversion': True,
         'test_condition_number': True,
         'test_cholesky_decomposition': True,
         'test_symmetry': True,
         'cl_triangle_plot': False,
-        'save_figs': False,
+        'plot_probe_names': True,
         'output_path': './output',
         'save_output_as_benchmark': True,
+        'save_figs': False,
     },
 }
 
@@ -403,7 +424,6 @@ configs_to_test = [
     {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
     # cNG
     {'covariance': {'G': True, 'SSC': False, 'cNG': True}},
-    
     # === namaster runs, quite slow ===
     {
         'covariance': {'G': True},

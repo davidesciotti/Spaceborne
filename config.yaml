@@ -93,7 +93,7 @@ nz:
 
 
 binning:
-  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut']
+  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
 
   ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL

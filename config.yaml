@@ -360,7 +360,7 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might 
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 1 # Type: int. How many threads to use for the parallel computations
+  num_threads: 14 # Type: int. How many threads to use for the parallel computations
   
   # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'

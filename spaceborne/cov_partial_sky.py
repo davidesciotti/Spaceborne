@@ -278,47 +278,25 @@ def nmt_gaussian_cov(
             'interpolate': True,
         }
 
+        # in the coupled case, namaster returns unbinned covariance matrices
         if coupled:
-            # in this case, the nmt output is unbinned
-            cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                cov=covar_EE_EE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                cov=covar_TE_EE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                cov=covar_TE_TE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                cov=covar_TT_EE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                cov=covar_TT_TE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                cov=covar_TT_TT, **common_kw
-            )
-            # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
-            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                cov=covar_TE_EE.T, **common_kw
-            )
-            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                cov=covar_TT_EE.T, **common_kw
-            )
-            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                cov=covar_TT_TE.T, **common_kw
-            )
-        else:
-            cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
-            cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_TE_EE
-            cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_TE_TE
-            cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = covar_TT_EE
-            cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = covar_TT_TE
-            cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = covar_TT_TT
-            # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
-            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = covar_TE_EE.T
-            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_EE.T
-            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_TE.T
+            covar_EE_EE = sl.bin_2d_array_vectorized(covar_EE_EE, **common_kw)
+            covar_TE_EE = sl.bin_2d_array_vectorized(covar_TE_EE, **common_kw)
+            covar_TE_TE = sl.bin_2d_array_vectorized(covar_TE_TE, **common_kw)
+            covar_TT_EE = sl.bin_2d_array_vectorized(covar_TT_EE, **common_kw)
+            covar_TT_TE = sl.bin_2d_array_vectorized(covar_TT_TE, **common_kw)
+            covar_TT_TT = sl.bin_2d_array_vectorized(covar_TT_TT, **common_kw)
+
+        cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
+        cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_TE_EE
+        cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_TE_TE
+        cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = covar_TT_EE
+        cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = covar_TT_TE
+        cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = covar_TT_TT
+        # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
+        cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = covar_TE_EE.T
+        cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_EE.T
+        cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_TE.T
 
     return cov_nmt_10d_arr
 
@@ -426,46 +404,23 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
         }
 
         if coupled:
-            cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_EE_EE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_EE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TE_TE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_EE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_TE, **common_kw
-            )
-            cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = sl.bin_2d_array(
-                covar_TT_TT, **common_kw
-            )
-            # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
-            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                cov=covar_TE_EE.T, **common_kw
-            )
-            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                cov=covar_TT_EE.T, **common_kw
-            )
-            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = sl.bin_2d_array(
-                cov=covar_TT_TE.T, **common_kw
-            )
+            covar_EE_EE = sl.bin_2d_array_vectorized(covar_EE_EE, **common_kw)
+            covar_TE_EE = sl.bin_2d_array_vectorized(covar_TE_EE, **common_kw)
+            covar_TE_TE = sl.bin_2d_array_vectorized(covar_TE_TE, **common_kw)
+            covar_TT_EE = sl.bin_2d_array_vectorized(covar_TT_EE, **common_kw)
+            covar_TT_TE = sl.bin_2d_array_vectorized(covar_TT_TE, **common_kw)
+            covar_TT_TT = sl.bin_2d_array_vectorized(covar_TT_TT, **common_kw)
 
-        else:
-            cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
-            cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_TE_EE
-            cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_TE_TE
-            cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = covar_TT_EE
-            cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = covar_TT_TE
-            cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = covar_TT_TT
-            # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
-            cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = covar_TE_EE.T
-            cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_EE.T
-            cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_TE.T
+        cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
+        cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_TE_EE
+        cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_TE_TE
+        cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = covar_TT_EE
+        cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = covar_TT_TE
+        cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = covar_TT_TT
+        # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
+        cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = covar_TE_EE.T
+        cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_EE.T
+        cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_TE.T
 
     return cov_nmt_10d_arr
 

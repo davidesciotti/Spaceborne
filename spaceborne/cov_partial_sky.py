@@ -1074,12 +1074,14 @@ class NmtCov:
         f2_mask = nmt.NmtField(
             mask=self.mask_obj.mask, maps=None, spin=2, lite=True, lmax=ell_max_eff
         )
-        w00 = nmt.NmtWorkspace()
-        w02 = nmt.NmtWorkspace()
-        w22 = nmt.NmtWorkspace()
-        w00.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
-        w02.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
-        w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
+
+        with sl.timer('\nComputing namaster workspaces and coupling matrices...'):
+            w00 = nmt.NmtWorkspace()
+            w02 = nmt.NmtWorkspace()
+            w22 = nmt.NmtWorkspace()
+            w00.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
+            w02.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
+            w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
 
         # store in cache for later reuse, if required (TODO)
         os.makedirs(f'{self.output_path}/cache/nmt', exist_ok=True)
@@ -1136,11 +1138,9 @@ class NmtCov:
         cl_bb_4covnmt = np.zeros_like(cl_tt_4covnmt)
 
         # ! NAMASTER covariance
-        start_time = time.perf_counter()
-        cw = nmt.NmtCovarianceWorkspace()
-        print('Computing cov workspace coupling coefficients...')
-        cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
-        print(f'...done in {(time.perf_counter() - start_time):.2f} s')
+        with sl.timer('\nComputing cov workspace coupling coefficients...'):
+            cw = nmt.NmtCovarianceWorkspace()
+            cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
 
         if nmt_cfg['use_namaster']:
             coupled_str = 'coupled' if self.coupled_cov else 'decoupled'

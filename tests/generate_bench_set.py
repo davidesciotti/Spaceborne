@@ -395,55 +395,33 @@ base_cfg = {
 # Define your "zipped" sets of changes as a list of dictionaries
 # Each dictionary represents one configuration to test
 configs_to_test = [
-    # G with split
-    {'covariance': {'G': True, 'split_gaussian_cov': False}},
-    #  G without split
-    {'covariance': {'G': True, 'split_gaussian_cov': True}},
-    # G nmt spin0, log ell binning
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'binning': {'binning_type': 'log'},
-    },
-    # G nmt spin0, lin ell binning
-    # ==============================
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'binning': {'binning_type': 'lin'},
-    },
-    # G nmt spin2, lin ell binning
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': False},
-        'binning': {'binning_type': 'lin'},
-    },
+    # 1/fsky covs
+    {'covariance': {'split_gaussian_cov': False}},
+    {'covariance': {'split_gaussian_cov': True}},
     # SSC KE
-    {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
+    {'covariance': {'SSC': True, 'cNG': False}},
     # SSC LR
-    {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
+    {'covariance': {'SSC': True, 'cNG': False}},
     # cNG
-    {'covariance': {'G': True, 'SSC': False, 'cNG': True}},
-    # === namaster runs, quite slow ===
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'log'},
-    },
-    # G spin0, lin ell binning
-    # ==============================
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'lin'},
-    },
-    # G spin2, lin ell binning
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': False},
-        'ell_binning': {'binning_type': 'lin'},
-    },
+    {'covariance': {'SSC': False, 'cNG': True}},
 ]
+
+# ! NAMASTER
+for coupled_cov in [True, False]:
+    for spin0 in [True, False]:
+        for use_INKA in [True, False]:
+            for binning_type in ['log', 'lin']:
+                configs_to_test.extend(
+                    {
+                        'covariance': {'coupled_cov': coupled_cov},
+                        'namaster': {
+                            'use_namaster': True,
+                            'spin0': spin0,
+                            'use_INKA': use_INKA,
+                        },
+                        'binning': {'binning_type': binning_type},
+                    }
+                )
 
 
 # Generate configurations

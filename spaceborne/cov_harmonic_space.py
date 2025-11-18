@@ -695,7 +695,6 @@ class SpaceborneCovariance:
                 stacklevel=2,
             )
 
-        print('Coupling the non-Gaussian covariance...')
         from spaceborne import cov_partial_sky
 
         # construct mcm array for better probe handling (especially for 3x2pt)
@@ -731,18 +730,18 @@ class SpaceborneCovariance:
         #     mcm_3x2pt_arr[1, 0], cov_XC_cng_6d, mcm_3x2pt_arr[1, 0].T
         # )
 
-        for a, b, c, d in itertools.product(range(2), repeat=4):
-            self.cov_3x2pt_ssc_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
-                mcm_3x2pt_arr[a, b],
-                self.cov_3x2pt_ssc_10d[a, b, c, d],
-                mcm_3x2pt_arr[c, d].T,
-            )
-            self.cov_3x2pt_cng_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
-                mcm_3x2pt_arr[a, b],
-                self.cov_3x2pt_cng_10d[a, b, c, d],
-                mcm_3x2pt_arr[c, d].T,
-            )
-        print('...done')
+        with sl.timer('\nCoupling non-Gaussian covariance matrices...'):
+            for a, b, c, d in itertools.product(range(2), repeat=4):
+                self.cov_3x2pt_ssc_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
+                    mcm_3x2pt_arr[a, b],
+                    self.cov_3x2pt_ssc_10d[a, b, c, d],
+                    mcm_3x2pt_arr[c, d].T,
+                )
+                self.cov_3x2pt_cng_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
+                    mcm_3x2pt_arr[a, b],
+                    self.cov_3x2pt_cng_10d[a, b, c, d],
+                    mcm_3x2pt_arr[c, d].T,
+                )
 
 
     def get_ellmax_nbl(self, probe, covariance_cfg):

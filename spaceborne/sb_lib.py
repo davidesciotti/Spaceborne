@@ -393,7 +393,7 @@ def bin_2d_array_vectorized(
     """Vectorized version of bin_2d_array with pre-computed masks.
 
     Optimizations:
-    - Pre-computes all bin masks once
+    - Pre-computes all bin masks once (for 'sum' binning mode)
     - Uses direct array slicing for better cache locality
     - Skips empty bins
     - Removes redundant meshgrid operations
@@ -414,6 +414,7 @@ def bin_2d_array_vectorized(
     assert len(weights_in) == len(ells_in), (
         'weights_in must be the same length as ells_in'
     )
+    assert type(interpolate) is bool, 'interpolate must be a boolean'
 
     n_bins = len(ells_out)
     binned_cov = np.zeros((n_bins, n_bins))

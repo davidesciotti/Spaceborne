@@ -84,7 +84,6 @@ nz:
   shift_nz: True # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
   dzWL: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
   dzGC: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
-  normalize_shifted_nz: True # Type: bool. Whether to normalize the shifted n(z) distributions
   clip_zmin: 0. # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
   clip_zmax: 3. # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
 
@@ -95,27 +94,16 @@ nz:
 binning:
   binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
 
-  ell_min_WL: 10 # Type: int. Minimum ell for WL
-  ell_max_WL: 1500 # Type: int. Maximum ell for WL
-  ell_bins_WL: 32 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+  ell_min: 10 # Type: int. Minimum ell
+  ell_max: 200 # Type: int. Maximum ell
+  ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
-  ell_min_GC: 10 # Type: int. Minimum ell for GC
-  ell_max_GC: 1500 # Type: int. Maximum ell for GC
-  ell_bins_GC: 32 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
-
-  # ell binning for the reference case; only a subset of these bins, depending on the
-  # desired ell range of WL and GC, will be used in the 'ref_cut' case.
-  ell_min_ref: 10 # Type: int. Minimum ell for reference case
-  ell_max_ref: 1500 # Type: int. Maximum ell for reference case
-  ell_bins_ref: 32 # Type: int. Number of bins for reference case
-
-  WL_bins_filename: '...'
-  GC_bins_filename: '...'
+  ell_bins_filename: '../common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt'
 
   # theta binning for the real-space covariance matrix
-  theta_min_arcmin: 50  # Type: float | int
-  theta_max_arcmin: 300  # Type: float | int
-  theta_bins: 10  # Type: int
+  theta_min_arcmin: 50  # Type: float | int. Minimum theta (in arcminutes)
+  theta_max_arcmin: 300  # Type: float | int. Maximum theta (in arcminutes)
+  theta_bins: 10  # Type: int. Number of theta bins
 
 
 C_ell:
@@ -345,7 +333,7 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might 
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 40 # Type: int. How many threads to use for the parallel computations
+  num_threads: 72 # Type: int. How many threads to use for the parallel computations
   
   # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'

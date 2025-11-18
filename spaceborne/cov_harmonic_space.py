@@ -251,6 +251,7 @@ class SpaceborneCovariance:
         return cov_out
 
     def set_gauss_cov(self, ccl_obj, split_gaussian_cov, nonreq_probe_combs_ix):
+        print('\nComputing Gaussian covariance...')
         start = time.perf_counter()
 
         # signal
@@ -325,7 +326,7 @@ class SpaceborneCovariance:
             self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
             self.cov_3x2pt_g_10d = self.nmt_cov_obj.build_psky_cov()
 
-        print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
+        print(f'...done in {(time.perf_counter() - start):.2f} s')
 
         # reshape to 2D
         self._cov_g_3x2pt_10d_to_2d_wrapper(split_gaussian_cov)
@@ -412,7 +413,7 @@ class SpaceborneCovariance:
             )
 
         else:
-            print('Skipping SSC computation')
+            print('\nSkipping SSC computation')
             self.cov_3x2pt_ssc_10d = np.zeros_like(self.cov_3x2pt_g_10d)
 
     def _add_cng(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
@@ -695,7 +696,6 @@ class SpaceborneCovariance:
                 stacklevel=2,
             )
 
-        print('Coupling the non-Gaussian covariance...')
         from spaceborne import cov_partial_sky
 
         # construct mcm array for better probe handling (especially for 3x2pt)
@@ -731,30 +731,15 @@ class SpaceborneCovariance:
         #     mcm_3x2pt_arr[1, 0], cov_XC_cng_6d, mcm_3x2pt_arr[1, 0].T
         # )
 
-        for a, b, c, d in itertools.product(range(2), repeat=4):
-            self.cov_3x2pt_ssc_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
-                mcm_3x2pt_arr[a, b],
-                self.cov_3x2pt_ssc_10d[a, b, c, d],
-                mcm_3x2pt_arr[c, d].T,
-            )
-            self.cov_3x2pt_cng_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
-                mcm_3x2pt_arr[a, b],
-                self.cov_3x2pt_cng_10d[a, b, c, d],
-                mcm_3x2pt_arr[c, d].T,
-            )
-        print('...done')
-
-
-    def get_ellmax_nbl(self, probe, covariance_cfg):
-        if probe == 'LL':
-            ell_max = covariance_cfg['ell_max_WL']
-            nbl = covariance_cfg['nbl_WL']
-        elif probe == 'GG':
-            ell_max = covariance_cfg['ell_max_GC']
-            nbl = covariance_cfg['nbl_GC']
-        elif probe == '3x2pt':
-            ell_max = covariance_cfg['ell_max_3x2pt']
-            nbl = covariance_cfg['nbl_3x2pt']
-        else:
-            raise ValueError('probe must be LL or GG or 3x2pt')
-        return ell_max, nbl
+        with sl.timer('\nCoupling non-Gaussian covariance matrices...'):
+            for a, b, c, d in itertools.product(range(2), repeat=4):
+                self.cov_3x2pt_ssc_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
+                    mcm_3x2pt_arr[a, b],
+                    self.cov_3x2pt_ssc_10d[a, b, c, d],
+                    mcm_3x2pt_arr[c, d].T,
+                )
+                self.cov_3x2pt_cng_10d[a, b, c, d] = cov_partial_sky.couple_cov_6d(
+                    mcm_3x2pt_arr[a, b],
+                    self.cov_3x2pt_cng_10d[a, b, c, d],
+                    mcm_3x2pt_arr[c, d].T,
+                )

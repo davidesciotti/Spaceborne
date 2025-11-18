@@ -16,7 +16,9 @@ def get_mask_cl(mask: np.ndarray) -> tuple:
 
 def generate_polar_cap_func(area_deg2, nside):
     _fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
-    print(f'Generating a polar cap mask with area {area_deg2} deg^2 and nside {nside}')
+    print(
+        f'\nGenerating a polar cap mask with area {area_deg2} deg^2 and nside {nside}'
+    )
 
     # Convert the area to radians squared for the angular radius calculation
     area_rad2 = area_deg2 * (np.pi / 180) ** 2
@@ -29,8 +31,7 @@ def generate_polar_cap_func(area_deg2, nside):
     theta_cap_deg = np.degrees(theta_cap_rad)
     print(f'Angular radius of the cap: {theta_cap_deg:.4f} deg')
 
-    # Vector pointing to the North Pole (θ=0, φ can be anything since
-    # θ=0 defines the pole)
+    # Vector pointing to the North Pole (θ=0); φ can take any value
     vec = hp.ang2vec(0, 0)
     pixels_in_cap = hp.query_disc(nside, vec, theta_cap_rad)
 
@@ -90,7 +91,7 @@ class Mask:
         if not os.path.exists(self.mask_path):
             raise FileNotFoundError(f'{self.mask_path} does not exist.')
 
-        print(f'Loading mask file from {self.mask_path}')
+        print(f'\nLoading mask file from {self.mask_path}')
 
         if self.mask_path.endswith('.fits') or self.mask_path.endswith('.fits.gz'):
             try:
@@ -167,4 +168,4 @@ class Mask:
 
         print(f'fsky = {self.fsky:.4f}')
         print(f'survey_area_sr = {self.survey_area_sr:.4f}')
-        print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}')
+        print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}\n')

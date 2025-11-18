@@ -276,7 +276,7 @@ base_cfg = {
         'sigma_smoothing': 10,
     },
     'binning': {
-        'binning_type': 'ref_cut',
+        'binning_type': 'log',
         'ell_min': 10,
         'ell_max': 3000,
         'ell_bins': 15,

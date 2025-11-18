@@ -92,10 +92,10 @@ nz:
 
 
 binning:
-  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
+  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
   ell_min: 10 # Type: int. Minimum ell
-  ell_max: 200 # Type: int. Maximum ell
+  ell_max: 3000 # Type: int. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   ell_bins_filename: '../common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt'

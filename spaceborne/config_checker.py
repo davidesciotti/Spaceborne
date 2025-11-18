@@ -327,7 +327,7 @@ class SpaceborneConfigChecker:
             )
             assert isinstance(oc_cfg.get('oc_output_filename'), str), (
                 'OneCovariance: oc_output_filename must be a string, found '
-                f"{oc_cfg} instead"
+                f'{oc_cfg} instead'
             )
 
         # Ell Binning
@@ -338,16 +338,15 @@ class SpaceborneConfigChecker:
         assert isinstance(binning_cfg.get('binning_type'), str), (
             'binning: binning_type must be a string'
         )
-        for case in ['WL', 'GC', 'ref']:
-            assert isinstance(binning_cfg.get(f'ell_min_{case}'), int), (
-                f'binning: ell_min_{case} must be an int'
-            )
-            assert isinstance(binning_cfg.get(f'ell_max_{case}'), int), (
-                f'binning: ell_max_{case} must be an int'
-            )
-            assert isinstance(binning_cfg.get(f'ell_bins_{case}'), int), (
-                f'binning: ell_bins_{case} must be an int'
-            )
+        assert isinstance(binning_cfg.get('ell_min'), (float, int)), (
+            'binning: ell_min must be a float or an int'
+        )
+        assert isinstance(binning_cfg.get('ell_max'), (float, int)), (
+            'binning: ell_max must be a float or an int'
+        )
+        assert isinstance(binning_cfg.get('ell_bins'), int), (
+            'binning: ell_bins must be an int'
+        )
         assert isinstance(binning_cfg.get('theta_min_arcmin'), (float, int)), (
             'binning: theta_min_arcmin must be a float or an int'
         )

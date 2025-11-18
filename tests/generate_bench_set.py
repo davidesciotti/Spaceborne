@@ -411,7 +411,7 @@ for coupled_cov in [True, False]:
     for spin0 in [True, False]:
         for use_INKA in [True, False]:
             for binning_type in ['log', 'lin']:
-                configs_to_test.extend(
+                configs_to_test.append(
                     {
                         'covariance': {'coupled_cov': coupled_cov},
                         'namaster': {

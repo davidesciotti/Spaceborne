@@ -30,7 +30,7 @@ intrinsic_alignment:
   bIA: 0.0 # Type: float. \beta_{IA}
   CIA: 0.0134 # Type: float.
   z_pivot_IA: 0.0 # Type: float.
-  lumin_ratio_filename: null # Type: str | None. null if not used, otherwise path to the file (e.g. ./input/scaledmeanlum-E2Sa.dat)
+  lumin_ratio_filename: null # Type: str | None. null if not used, otherwise path to the file
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
 # (see https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology
@@ -75,7 +75,7 @@ probe_selection:
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
   
-  cross_cov: True # Type: bool. Whether to compute the cross-terms between the selected probes
+  cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
 
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.
@@ -266,7 +266,7 @@ covariance:
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
   log10_k_max: 2.0 # Type: float. Units: 1/Mpc
-  k_steps: 150 # Type: int. Around 100 should be enough
+  k_steps: 150 # Type: int. Around 150 should be enough
 
   # TODO what is this 0.02?
   z_min: 0.02 # Type: float

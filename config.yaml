@@ -98,7 +98,6 @@ nz:
   shift_nz: True # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
   dzWL: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
   dzGC: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
-  normalize_shifted_nz: True # Type: bool. Whether to normalize the shifted n(z) distributions
   clip_zmin: 0. # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
   clip_zmax: 3. # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
 

@@ -240,9 +240,6 @@ class SpaceborneConfigChecker:
                 'nz: All elements in dzGC must be floats'
             )
 
-        assert isinstance(nz_cfg.get('normalize_shifted_nz'), bool), (
-            'nz: normalize_shifted_nz must be a boolean'
-        )
         assert isinstance(nz_cfg.get('clip_zmin'), float), (
             'nz: clip_zmin must be a float'
         )
@@ -555,20 +552,6 @@ class SpaceborneConfigChecker:
             'misc: save_figs must be a boolean'
         )
 
-    def check_ell_binning(self) -> None:
-        # assert self.cfg['binning']['nbl_WL_opt'] == 32, (
-        #     'this is used as the reference binning, from which the cuts are made'
-        # )
-        # assert self.cfg['binning']['ell_max_WL_opt'] == 5000, (
-        #     'this is used as the reference binning, from which the cuts are made'
-        # )
-        # assert (
-        #     self.cfg['binning']['ell_max_WL'],
-        #     self.cfg['binning']['ell_max_GC'],
-        # ) == (5000, 3000) or (1500, 750), (
-        #     'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
-        # )
-        pass
 
     def check_misc(self) -> None:
         assert self.cfg['covariance']['n_probes'] == 2, (
@@ -726,7 +709,6 @@ class SpaceborneConfigChecker:
         # self.check_fsky()
         self.check_probe_selection()
         self.check_types()
-        self.check_ell_binning()
         self.check_misc()
         self.check_nz()
         self.check_cosmo()

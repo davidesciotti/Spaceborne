@@ -312,7 +312,7 @@ def bin_2d_array(
         'weights_in must be the same length as ells_in'
     )
 
-    assert type(interpolate) is bool, 'interpolate must be a boolean'
+    assert isinstance(interpolate, bool), 'interpolate must be a boolean'
 
     # Loop over the output bins
     for ell1_idx, _ in enumerate(ells_out):

@@ -49,7 +49,7 @@ else:
 # if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
 
-# Cap num_threads at physical core count to prevent oversubscription
+# Cap num_threads at logical CPU count to prevent oversubscription
 cpu_count = os.cpu_count() or 1
 if num_threads > cpu_count:
     print(f'WARNING: num_threads={num_threads} exceeds CPU count={cpu_count}')

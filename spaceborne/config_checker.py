@@ -327,7 +327,7 @@ class SpaceborneConfigChecker:
             )
             assert isinstance(oc_cfg.get('oc_output_filename'), str), (
                 'OneCovariance: oc_output_filename must be a string, found '
-                f'{oc_cfg} instead'
+                f'{oc_cfg.get("oc_output_filename")} instead'
             )
 
         # Ell Binning

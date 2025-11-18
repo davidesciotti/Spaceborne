@@ -25,28 +25,275 @@ from scipy.special import jv
 import spaceborne.constants as const
 
 
-def validate_cov_dict_structure(cov_dict: dict, space: str):
-    """
-        Validates that cov_dict follows the structure:
-        cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
-        "Notation":
-        - cov_dict[term] = probe_dict
-        - probe_dict[probe_ab, probe_cd] = dim_dict
-        - dim_dict[dim] = cov
+"""
+COVARIANCE DICTIONARY STRUCTURE AND FUNCTIONS USED TO RESHAPE IT
+This is a small vademecum for the structure of the covariance dictionary 
+used in Spaceborne and the functions used to reshape it.
 
-        Args:
-            cov_dict: Dictionary to validate
-    '        space: 'harmonic' or 'real'
-            expected_probes: Optional list of expected probe tuples
-            expected_dims: Optional list of expected dimensions (e.g., ['6d', '8d'])
+The dictionary is structured as follows:
+    cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray (6d, 4d or 2d)
+
+The possible keys are:
+    term: ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
+    probe_ab/probe_cd: const.HS_DIAG_PROBES or const.RS_DIAG_PROBES, depending on 
+                       the space ('harmonic' or 'real')
+    dim: ['2d', '4d', '6d']
+    
+An "exception" to this is the 3x2pt, for which the structure is:
+    cov_dict['3x2pt'][dim] = np.ndarray (4d or 2d)
+so beware that:
+- the probe key is not a 2-tuple
+- there is no 6d key
+
+To reshape the covariance *blocks*, you can use:
+6d -> 4d: 
+    cov_dict = cov_dict_6d_to_4d_or_2d(..., dim_out='4d')
+6d -> 2d: 
+    cov_dict = cov_dict_6d_to_4d_or_2d(..., dim_out='2d')
+
+To create the 4d 3x2pt covariance, you can use (you have to loop over terms here!):
+
+cov_dict (4d) -> 3x2pt arr (4d): 
+    cov_dict[term]['3x2pt']['4d'] = cov_dict_4d_blocks_4d_3x2pt (returns an array)
+3x2pt arr (4d) -> 3x2pt arr (2d): 
+    cov_dict[term]['3x2pt']['2d'] = cov_hs_obj.cov_4D_to_2D_3x2pt_func(
+            cov_dict[term]['3x2pt']['4d'], **cov_hs_obj.cov_4D_to_2D_3x2pt_func_kw
+            )
+
+
+Naming conventions:
+
+- cov_dict[term] = probe_dict
+- probe_dict[probe_ab, probe_cd] = dim_dict
+- dim_dict[dim] = cov (the actual array)
+"""
+
+
+def get_cov_dict_memory_footprint(cov_dict: dict):
+    """Returns the size of the covariance dictionary in MB."""
+    dim_b = sum(
+        arr.nbytes
+        for term in cov_dict.values()
+        for probe in term.values()
+        for arr in probe.values()
+    )
+
+    dim_mb = dim_b / (1024**2)
+    return dim_mb
+
+
+def print_cov_dict_info(cov_dict: dict, show_array_info: bool = True):
+    """
+    Print the structure of a nested covariance dictionary in a tree format.
+
+    Structure: cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
+
+    Parameters
+    ----------
+    cov_dict : dict
+        Nested covariance dictionary
+    show_array_info : bool
+        If True, shows array shapes and dtypes
+    """
+
+    print('cov_dict info:')
+    print('=' * 60)
+
+    # Iterate through terms (level 1)
+    for term_idx, (term, probe_dict) in enumerate(cov_dict.items(), 1):
+        is_last_term = term_idx == len(cov_dict)
+        term_prefix = '└──' if is_last_term else '├──'
+
+        print(f"{term_prefix} Term: '{term}' ({len(probe_dict)} probe combinations)")
+
+        # Iterate through probe tuples (level 2)
+        for probe_idx, (probe_tpl, dim_dict) in enumerate(probe_dict.items(), 1):
+            is_last_probe = probe_idx == len(probe_dict)
+
+            # Formatting for tree structure
+            if is_last_term:
+                probe_prefix = '    └──'
+                dim_parent_prefix = '        '
+            else:
+                probe_prefix = '│   └──' if is_last_probe else '│   ├──'
+                dim_parent_prefix = '│       ' if is_last_probe else '│   │   '
+
+            probe_ab, probe_cd = probe_tpl
+            print(
+                f'{probe_prefix} Probe combination: '
+                f'({probe_ab}, {probe_cd}) - {len(dim_dict)} dimensions'
+            )
+
+            # Iterate through dimensions (level 3)
+            for dim_idx, (dim, array) in enumerate(dim_dict.items(), 1):
+                is_last_dim = dim_idx == len(dim_dict)
+                dim_prefix = '└──' if is_last_dim else '├──'
+
+                if show_array_info:
+                    array_info = f'shape={array.shape}, dtype={array.dtype}'
+                    print(
+                        f"{dim_parent_prefix}{dim_prefix} Dim: '{dim}' ({array_info})"
+                    )
+                else:
+                    print(f"{dim_parent_prefix}{dim_prefix} Dim: '{dim}'")
+
+    print('=' * 60)
+
+
+def compare_cov_dicts(
+    cov_dict1: dict, cov_dict2: dict, rtol: float = 1e-7, atol: float = 0
+) -> bool:
+    """
+    Compare two nested covariance dictionaries with structure:
+    cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
+
+    Parameters
+    ----------
+    cov_dict1, cov_dict2 : dict
+        Nested dictionaries to compare
+    rtol : float
+        Relative tolerance for numpy array comparison
+    atol : float
+        Absolute tolerance for numpy array comparison
+
+    Returns
+    -------
+    bool
+        True if dictionaries are identical, False otherwise
+
+    Raises
+    ------
+    AssertionError
+        If dictionaries differ, with detailed error message
+    """
+    # Check if both dicts have same terms (outermost keys)
+    terms1 = set(cov_dict1.keys())
+    terms2 = set(cov_dict2.keys())
+
+    if terms1 != terms2:
+        missing_in_2 = terms1 - terms2
+        missing_in_1 = terms2 - terms1
+        raise AssertionError(
+            f'Terms mismatch. Missing in dict2: {missing_in_2}. '
+            f'Missing in dict1: {missing_in_1}'
+        )
+
+    # Iterate through each term
+    for term in terms1:
+        probe_dict1 = cov_dict1[term]
+        probe_dict2 = cov_dict2[term]
+
+        # Check if both probe_dicts have same probe tuples
+        probes1 = set(probe_dict1.keys())
+        probes2 = set(probe_dict2.keys())
+
+        if probes1 != probes2:
+            missing_in_2 = probes1 - probes2
+            missing_in_1 = probes2 - probes1
+            raise AssertionError(
+                f"Probe tuples mismatch in term '{term}'. "
+                f'Missing in dict2: {missing_in_2}. '
+                f'Missing in dict1: {missing_in_1}'
+            )
+
+        # Iterate through each probe tuple
+        for probe_tpl in probes1:
+            dim_dict1 = probe_dict1[probe_tpl]
+            dim_dict2 = probe_dict2[probe_tpl]
+
+            # Check if both dim_dicts have same dimensions
+            dims1 = set(dim_dict1.keys())
+            dims2 = set(dim_dict2.keys())
+
+            if dims1 != dims2:
+                missing_in_2 = dims1 - dims2
+                missing_in_1 = dims2 - dims1
+                raise AssertionError(
+                    f"Dimension keys mismatch in term '{term}', probe {probe_tpl}. "
+                    f'Missing in dict2: {missing_in_2}. '
+                    f'Missing in dict1: {missing_in_1}'
+                )
+
+            # Compare arrays for each dimension
+            for dim in dims1:
+                arr1 = dim_dict1[dim]
+                arr2 = dim_dict2[dim]
+
+                # Check array shapes match
+                if arr1.shape != arr2.shape:
+                    raise AssertionError(
+                        f"Shape mismatch in term '{term}', "
+                        f"probe {probe_tpl}, dim '{dim}'. "
+                        f'Shape1: {arr1.shape}, Shape2: {arr2.shape}'
+                    )
+
+                # Check array values are close
+                if not np.allclose(arr1, arr2, rtol=rtol, atol=atol):
+                    max_diff = np.max(np.abs(arr1 - arr2))
+                    raise AssertionError(
+                        f"Array values differ in term '{term}', "
+                        f"probe {probe_tpl}, dim '{dim}'. "
+                        f'Max absolute difference: {max_diff}'
+                    )
+
+    return True
+
+
+def symmetrize_probe_cov_dict_6d(cov_dict: dict):
+    """Fills the symmetric 6D probe combinations (e.g., given gggt, fills gtgg)"""
+
+    # iterate through the different terms and shorten the name of the dict
+    for probe_cov_dict in cov_dict.values():
+        # Create a list of keys to avoid modifying dict during iteration
+        existing_probe_2tpl = list(probe_cov_dict.keys())
+
+        # if present, remove "3x2pt" from the list
+        existing_probe_2tpl = [
+            probe for probe in existing_probe_2tpl if '3x2pt' not in probe
+        ]
+
+        # Validate that all keys are 2-tuples
+        for _probe in existing_probe_2tpl:
+            if not isinstance(_probe, tuple) or len(_probe) != 2:
+                raise ValueError(
+                    f'Expected 2-tuple key, got {type(_probe)} with value {_probe}'
+                )
+
+        for probe_ab, probe_cd in existing_probe_2tpl:
+            # Only add symmetric if it doesn't already exist and it's
+            # not auto-correlation
+            if (probe_cd, probe_ab) not in probe_cov_dict and probe_ab != probe_cd:
+                cov = (
+                    probe_cov_dict[probe_ab, probe_cd]['6d']
+                    .transpose(1, 0, 4, 5, 2, 3)
+                    .copy()
+                )
+                probe_cov_dict[probe_cd, probe_ab] = {'6d': cov}
+
+    return cov_dict
+
+
+def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
+    """
+    Validates that cov_dict follows the structure:
+    cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
+
+    Additionally, the function checks that the term, probe_ab, probe_cd, and dim
+    keys have one ov the expected values (among all the possible ones!)
+
+    Args:
+        cov_dict: Dictionary to validate
+        space: 'harmonic' or 'real'
+        expected_probes: Optional list of expected probe tuples
+        expected_dims: Optional list of expected dimensions (e.g., ['6d', '8d'])
     """
     import numpy as np
 
-    expected_terms = ['sva', 'sn', 'mix', 'g', 'ssc', 'tot']
+    expected_terms = ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
     expected_dims = ['2d', '4d', '6d']
-    if space == 'harmonic':
+    if obs_space == 'harmonic':
         expected_probes_ab = const.HS_DIAG_PROBES
-    elif space == 'real':
+    elif obs_space == 'real':
         expected_probes_ab = const.RS_DIAG_PROBES
     else:
         raise ValueError('`space` must be in ["harmonic", "real"]')
@@ -129,7 +376,7 @@ def cov_10d_arr_to_dict(
     if space != 'harmonic':
         raise NotImplementedError(
             'This function will fail for the real space for the moment: '
-            'probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in [probe_abcd])'
+            'probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)'
             'is only ok for HS'
         )
     assert cov_10d.ndim == 10, 'input covariance is not 10-dimensional'
@@ -142,7 +389,7 @@ def cov_10d_arr_to_dict(
         if empty:
             result[probe_key] = {dim: {}}
         else:
-            probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in [probe_abcd])
+            probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
             result[probe_key] = {dim: cov_10d[probe_ixs]}
     return result
 
@@ -2932,9 +3179,9 @@ def cov_3x2pt_10D_to_4D(
     return cov_3x2pt_4D
 
 
-def add_4d_and_2d_to_cov_dict_6d(
+def cov_dict_6d_to_4d_and_2d(
     cov_dict: dict,
-    space: str,
+    obs_space: str,
     nbx: int,
     ind_auto: np.ndarray,
     ind_cross: np.ndarray,
@@ -2943,15 +3190,17 @@ def add_4d_and_2d_to_cov_dict_6d(
     block_index: str,
 ):
     """
-    Takes the cov dictionary and reshapes each A, B, C, D block separately to 4d and 2d.
-    This is the updated version of cov_3x2pt_10D_to_4D.
+    Takes the cov dictionary, validates its structure, and for each term reshapes each
+    [ab, cd] probe block separately to 4d and 2d.
+
+    Note: This is the updated version of cov_3x2pt_10D_to_4D.
     """
     # validate structure of the input dictionary
-    validate_cov_dict_structure(cov_dict, space=space)
+    validate_cov_dict_structure(cov_dict, obs_space=obs_space)
 
-    if space == 'harmonic':
+    if obs_space == 'harmonic':
         auto_probes = const.HS_AUTO_PROBES
-    elif space == 'real':
+    elif obs_space == 'real':
         auto_probes = const.RS_AUTO_PROBES
     else:
         raise ValueError('`space` must be in ["harmonic", "real"]')
@@ -2975,10 +3224,18 @@ def add_4d_and_2d_to_cov_dict_6d(
 
             # reshape to 4d, then to 2d
             cov_dict[term][probe_ab, probe_cd]['4d'] = cov_6D_to_4D_blocks(
-                cov_6d, nbx, zpairs_ab, zpairs_cd, ind_ab, ind_cd
+                cov_6D=cov_6d,
+                nbl=nbx,
+                npairs_AB=zpairs_ab,
+                npairs_CD=zpairs_cd,
+                ind_AB=ind_ab,
+                ind_CD=ind_cd,
             )
+
             cov_dict[term][probe_ab, probe_cd]['2d'] = cov_4D_to_2D(
-                cov_dict[term][probe_ab, probe_cd]['4d'], block_index=block_index
+                cov_4D=cov_dict[term][probe_ab, probe_cd]['4d'],
+                block_index=block_index,
+                optimize=True,
             )
 
     return cov_dict
@@ -3085,8 +3342,8 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
     return cov_3x2pt_4D
 
 
-def cov_dict_4d_to_3x2pt_4d_arr(
-    cov_probe_dict: dict, req_probe_combs_2d: list, space: str
+def cov_dict_4d_blocks_4d_3x2pt(
+    cov_probe_dict: dict, req_probe_combs_2d: list, obs_space: str
 ):
     """Convert a dictionary of 4D blocks into a single 4D array.
 
@@ -3094,7 +3351,7 @@ def cov_dict_4d_to_3x2pt_4d_arr(
     in the last part of the function above.
     :param cov_dict: dictionary of 4D covariance blocks
     :param req_probe_combs_2d: list of probe combinations to use
-    :param space: observables space ("harmonic" or "real")
+    :param obs_space: observables space ("harmonic" or "real")
     :return: 3x2pt 4D covariance array
     """
 
@@ -3106,7 +3363,7 @@ def cov_dict_4d_to_3x2pt_4d_arr(
 
     final_rows = []
 
-    if space == 'harmonic':
+    if obs_space == 'harmonic':
         row_ll_list, row_gl_list, row_gg_list = [], [], []
         for probe_abcd in req_probe_combs_2d:
             probe_ab, probe_cd = split_probe_name(probe_abcd, 'harmonic')
@@ -3134,7 +3391,7 @@ def cov_dict_4d_to_3x2pt_4d_arr(
             row_gg = np.concatenate(row_gg_list, axis=3)
             final_rows.append(row_gg)
 
-    elif space == 'real':
+    elif obs_space == 'real':
         row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
         for probe_abcd in req_probe_combs_2d:
             probe_ab, probe_cd = split_probe_name(probe_abcd, 'real')
@@ -3167,7 +3424,7 @@ def cov_dict_4d_to_3x2pt_4d_arr(
             final_rows.append(row_gg)
 
     else:
-        raise ValueError(f'space must me "harmonic" or "real", not: {space}')
+        raise ValueError(f'space must me "harmonic" or "real", not: {obs_space}')
 
     # concatenate the rows to construct the final matrix
     if final_rows:

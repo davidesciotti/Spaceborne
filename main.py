@@ -1,7 +1,6 @@
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
-import gc
 import itertools
 import os
 import sys
@@ -54,7 +53,7 @@ os.environ['MKL_NUM_THREADS'] = str(num_threads)
 os.environ['VECLIB_MAXIMUM_THREADS'] = str(num_threads)
 os.environ['NUMEXPR_NUM_THREADS'] = str(num_threads)
 os.environ['XLA_FLAGS'] = (
-    f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
+    f'--xla_cpu_multi_thread_eigen=true --intra_op_parallelism_threads={str(num_threads)}'
 )
 
 
@@ -1267,9 +1266,10 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     oc_output_covlist_fname = (
         f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
     )
-    oc_obj.cov_dict_6d = oc_interface.process_cov_from_list_file(
+    oc_obj.cov_dict = oc_interface.process_cov_from_list_file(
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
+        obs_space=obs_space,
         df_chunk_size=5_000_000,
     )
 
@@ -1294,48 +1294,27 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         ] is True
 
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
-    oc_obj.cov_dict_6d = oc_interface.symmetrize_probes_dict_6d(
-        cov_dict_6d=oc_obj.cov_dict_6d, space=obs_space, valid_probes=_valid_probes_oc
-    )
-
-    # turn to 10d arrays, which are still used in the SpaceborneCovariance class
-    cov_tot = np.zeros(
-        (
-            n_probes_oc,
-            n_probes_oc,
-            n_probes_oc,
-            n_probes_oc,
-            nbx,
-            nbx,
-            zbins,
-            zbins,
-            zbins,
-            zbins,
-        )
-    )
-    for term in ['sva', 'sn', 'mix', 'g', 'ssc', 'cng']:
-        cov = oc_interface.oc_cov_dict_6d_to_array_10d(
-            cov_dict_6d=oc_obj.cov_dict_6d,
-            desired_term=term,
-            n_probes=n_probes_oc,
-            nbx=nbx,
-            zbins=zbins,
-            probe_idx_dict=probe_idx_dict,
-        )
-
-        # finally, store the arrays in the corresponding attributes
-        setattr(oc_obj, f'cov_3x2pt_{term}_10d', cov)
-        cov_tot += cov
-
-    # set also total covariance
-    oc_obj.cov_3x2pt_tot_10d = cov_tot
-    # free memory
-    del cov_tot
-    gc.collect()
+    oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=oc_obj.cov_dict)
 
     # compare list and mat formats
     if full_cov:
-        oc_obj.output_sanity_check(req_probe_combs_2d=_req_probe_combs_2d, rtol=1e-4)
+        # For this check, we need to create 3x2pt 4d and 2d. The first step is to
+        # reshape the blocks to 4d and 2d. This is done here because I don't want
+        # to pass
+        cov_dict_6d_to_4d_and_2d_kw = {
+            'obs_space': obs_space,
+            'nbx': nbx,
+            'ind_auto': ind_auto,
+            'ind_cross': ind_cross,
+            'zpairs_auto': zpairs_auto,
+            'zpairs_cross': zpairs_cross,
+            'block_index': cov_hs_obj.block_index,
+        }
+        oc_obj.output_sanity_check(
+            req_probe_combs_2d=_req_probe_combs_2d,
+            cov_dict_6d_to_4d_and_2d_kw=cov_dict_6d_to_4d_and_2d_kw,
+            rtol=1e-4,
+        )
 
     # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks
@@ -1369,6 +1348,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         )
 
     print(f'Time taken to compute OC: {(time.perf_counter() - start_time) / 60:.2f} m')
+
 
 else:
     oc_obj = None
@@ -1675,6 +1655,7 @@ np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
 # ! i.e. there is no cov_3x2pt_{term}_6d
+
 if cfg['covariance']['save_full_cov']:
     cov_dict_tosave_6d = {}
     cd = _cov_obj.cov_dict  # just to make the code more readable
@@ -1943,14 +1924,40 @@ if cfg['misc']['save_output_as_benchmark']:
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
+    # ! old
     # save every array contained in _cov_obj
-    covs_arrays_dict = {
-        k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
-    }
+    # covs_arrays_dict = {
+    #     k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
+    # }
+
+    # ! new
+    covs_arrays_dict = {}
+    for term, cov_probe_dict in _cov_obj.cov_dict.items():
+        for probe_abcd in cov_probe_dict:
+            if probe_abcd == '3x2pt':
+                covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
+            elif probe_abcd == ('LL', 'LL'):
+                covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+            elif probe_abcd == ('GG', 'GG'):
+                covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+            elif probe_abcd == ('GL', 'GL'):
+                covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+
+    if 'ssc' not in _cov_obj.cov_dict:
+        for probe in ['WL', 'GC', '3x2pt']:
+            covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
+    if 'cng' not in _cov_obj.cov_dict:
+        for probe in ['WL', 'GC', 'XC', '3x2pt']:
+            covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
+
     # remove the 'ind' arrays
-    covs_arrays_dict.pop('ind')
-    covs_arrays_dict.pop('ind_auto')
-    covs_arrays_dict.pop('ind_cross')
+    covs_arrays_dict.pop('ind', None)
+    covs_arrays_dict.pop('ind_auto', None)
+    covs_arrays_dict.pop('ind_cross', None)
+    keys = list(covs_arrays_dict.keys())
+    for key in keys:
+        if 'sva' not in key and 'sn' not in key and 'mix' not in key:
+            covs_arrays_dict[key] = covs_arrays_dict[key]
 
     # make the keys consistent with the old benchmark files
     covs_arrays_dict_renamed = covs_arrays_dict.copy()
@@ -1994,6 +2001,8 @@ if cfg['misc']['save_output_as_benchmark']:
         metadata=metadata,
     )
 
+# BOOKMARK check cov_oc vs cov_sb in common_data/.../develop
+
 
 if (
     cfg['misc']['test_condition_number']
@@ -2001,9 +2010,11 @@ if (
     or cfg['misc']['test_numpy_inversion']
     or cfg['misc']['test_symmetry']
 ):
-    key = list(cov_dict_tosave_2d.keys())[0] if len(cov_dict_tosave_2d) == 1 else 'TOT'
+    key = (
+        'TOT' if 'SSC' in cov_dict_tosave_2d or 'cNG' in cov_dict_tosave_2d else 'Gauss'
+    )
     cov = cov_dict_tosave_2d[key]
-    print(f'Testing cov {cov_name}...\n')
+    print(f'Testing cov {key}...\n')
 
     if cfg['misc']['test_condition_number']:
         cond_number = np.linalg.cond(cov)

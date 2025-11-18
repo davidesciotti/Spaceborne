@@ -1,3 +1,4 @@
+from copy import deepcopy
 import itertools
 import time
 import warnings
@@ -340,19 +341,14 @@ class SpaceborneCovariance:
 
         print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
 
-    def _cov_6d_and_3x2pt_to_4d_and_2d(self):
-        """Reshapes the 3x2pt 10d cov into 2D.
-
-        Parameters
-        ----------
-        split_gaussian_cov : bool
-            Whether to split (hence to reshape) the SVA/SN/MIX parts of the G cov
-        """
+    def _reshape_covs_6d_to_4d_and_2d(self):
+        """Simple wrapper to reshape the 6d covs (for each term and probe comb)
+        into 4d and into 2d."""
 
         # populate the dict with 4d and 2d probe-specific arrays (from the 6d ones)
-        self.cov_dict = sl.add_4d_and_2d_to_cov_dict_6d(
+        self.cov_dict = sl.cov_dict_6d_to_4d_and_2d(
             cov_dict=self.cov_dict,
-            space='harmonic',
+            obs_space='harmonic',
             nbx=self.ell_obj.nbl_3x2pt,
             ind_auto=self.ind_auto,
             ind_cross=self.ind_cross,
@@ -361,22 +357,29 @@ class SpaceborneCovariance:
             block_index=self.block_index,
         )
 
-        # now create 3x2pt 4d and 2d (there is no 3x2pt 6d or 10d!!!)
+    def _build_cov_3x2pt_4d_and_2d(self):
+        """For each covariance term, constructs the 4d and 2d 3x2pt covs from
+        the 6d probe-specific ones.
 
-        # check that the key is present and dict is not empty
+        Note: remember that there is no 6d 3x2pt 6d or 10d cov!
+        """
+
         for term in const.ALL_COV_TERMS:
+            # check that the key is present and dict is not empty
             if term not in self.cov_dict or not self.cov_dict[term]:
                 continue
 
-            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_to_3x2pt_4d_arr(
-                self.cov_dict[term], self.req_probe_combs_2d, space='harmonic'
+            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_blocks_4d_3x2pt(
+                self.cov_dict[term], self.req_probe_combs_2d, obs_space='harmonic'
             )
             self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
                 self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
             )
 
     def _cov_8d_dict_to_10d_arr(self, cov_dict_8d):
-        """Helper function to process a single covariance component"""
+        """Helper function to process a single covariance component
+        THIS FUNCTION HAS TO BE DEPRECATED!
+        """
         cov_dict_10d = sl.cov_3x2pt_dict_8d_to_10d(
             cov_3x2pt_dict_8D=cov_dict_8d,
             nbl=self.ell_obj.nbl_3x2pt,
@@ -391,30 +394,44 @@ class SpaceborneCovariance:
             cov_dict_10d, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
         )
 
-    def _set_cov_tot_2d(self):
+    def _set_cov_tot_2d_and_6d(self):
         """
         Sums G, SSC and cNG 2D covs to get the total covariance
         """
-        for probe_abcd in self.req_probe_combs_2d:
-            probe_2tpl = sl.split_probe_name(probe_abcd, 'harmonic')
+        for dim in ('2d', '6d'):
+            for probe_abcd in self.req_probe_combs_2d:
+                probe_2tpl = sl.split_probe_name(probe_abcd, 'harmonic')
 
-            # coincise way to check that the key exists and the dict is not empty
-            ssc_dict = self.cov_dict.get('ssc')
-            cng_dict = self.cov_dict.get('cng')
-            ssc = ssc_dict[probe_2tpl]['2d'] if ssc_dict else 0
-            cng = cng_dict[probe_2tpl]['2d'] if cng_dict else 0
+                # coincise way to check that the key exists and the dict is not empty
+                ssc_dict = self.cov_dict.get('ssc')
+                cng_dict = self.cov_dict.get('cng')
+                ssc = ssc_dict[probe_2tpl][dim] if ssc_dict else 0
+                cng = cng_dict[probe_2tpl][dim] if cng_dict else 0
 
-            self.cov_dict['tot'][probe_2tpl]['2d'] = (
-                self.cov_dict['g'][probe_2tpl]['2d'] + ssc + cng
-            )
+                self.cov_dict['tot'][probe_2tpl][dim] = (
+                    self.cov_dict['g'][probe_2tpl][dim] + ssc + cng
+                )
 
-        # do the same for 3x2pt
+        # do the same for 3x2pt (for which only 2d exists)
         ssc = self.cov_dict['ssc']['3x2pt']['2d'] if 'ssc' in self.cov_dict else 0
         cng = self.cov_dict['cng']['3x2pt']['2d'] if 'cng' in self.cov_dict else 0
 
         self.cov_dict['tot']['3x2pt']['2d'] = (
             self.cov_dict['g']['3x2pt']['2d'] + ssc + cng
         )
+
+    def _remove_split_terms_from_dict(self, split_gaussian_cov: bool):
+        """Helper function to remove the SVA/SN/MIX parts of the G cov if
+        split_gaussian_cov is True.
+
+        Note: I already remove the sva, sn, mix terms when saving the covs at the end
+        of main.py, this is redundand."""
+        if split_gaussian_cov:
+            return
+
+        for term in ('sva', 'sn', 'mix'):
+            if term in self.cov_dict:
+                del self.cov_dict[term]
 
     def _add_ssc(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
         """Helper function to get the SSC from the required code and uniform its
@@ -556,11 +573,40 @@ class SpaceborneCovariance:
         """
 
         if self.g_code == 'OneCovariance':
-            self.cov_3x2pt_g_10d = oc_obj.cov_3x2pt_g_10d
+            # first of all, check that the keys  coincide
+            _terms_tocheck = ['g']
             if split_gaussian_cov:
-                self.cov_3x2pt_sva_10d = oc_obj.cov_3x2pt_sva_10d
-                self.cov_3x2pt_sn_10d = oc_obj.cov_3x2pt_sn_10d
-                self.cov_3x2pt_mix_10d = oc_obj.cov_3x2pt_mix_10d
+                _terms_tocheck.extend(['sva', 'sn', 'mix'])
+
+            for _term in _terms_tocheck:
+                # check terms
+                assert _term in self.cov_dict, '_term not in self.cov_dict'
+                assert _term in oc_obj.cov_dict, '_term not in oc_obj.cov_dict'
+
+                # check probes
+                probe_list_sb = sorted(self.cov_dict[_term].keys())
+                probe_list_oc = sorted(oc_obj.cov_dict[_term].keys())
+                assert probe_list_sb == probe_list_oc, (
+                    f'probe_list_sb: {probe_list_sb}, probe_list_oc: {probe_list_oc}'
+                )
+
+                # check dims
+                for _probe_2tpl in probe_list_sb:
+                    dim_list_sb = sorted(self.cov_dict[_term][_probe_2tpl].keys())
+                    dim_list_oc = sorted(oc_obj.cov_dict[_term][_probe_2tpl].keys())
+                    assert dim_list_sb == dim_list_oc, (
+                        f'dim_list_sb: {dim_list_sb}, dim_list_oc: {dim_list_oc}'
+                    )
+                    assert dim_list_sb == ['6d'], (
+                        'the dict should only contain 6d arrays for the moment'
+                    )
+
+            # having checked the covs, overwrite the relevand dict items
+            self.cov_dict['g'] = deepcopy(oc_obj.cov_dict['g'])
+            if split_gaussian_cov:
+                self.cov_dict['sva'] = deepcopy(oc_obj.cov_dict['sva'])
+                self.cov_dict['sn'] = deepcopy(oc_obj.cov_dict['sn'])
+                self.cov_dict['mix'] = deepcopy(oc_obj.cov_dict['mix'])
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
         # ! are inside the function
@@ -579,11 +625,17 @@ class SpaceborneCovariance:
         # ! compute coupled NG cov - the "if coupled" is inside the function
         self._couple_cov_ng_3x2pt()
 
-        # ! reshape probe-specific 6d covs to 4d and 2d (as well as 3x2pt)
-        self._cov_6d_and_3x2pt_to_4d_and_2d()
+        # ! reshape probe-specific 6d covs to 4d and 2d
+        self._reshape_covs_6d_to_4d_and_2d()
+
+        # ! construct 3x2pt 4d and 2d covs
+        self._build_cov_3x2pt_4d_and_2d()
 
         # ! sum g + ssc + cng to get tot (only 2D)
-        self._set_cov_tot_2d()
+        self._set_cov_tot_2d_and_6d()
+
+        # ! clean upd dictionaries:
+        self._remove_split_terms_from_dict(split_gaussian_cov)
 
         # ! perform ell cuts on the 2D covs
         self._cov_2d_ell_cuts(split_gaussian_cov)

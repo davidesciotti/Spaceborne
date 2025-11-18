@@ -158,9 +158,9 @@ slow_benchs = [
 ]
 
 # remove slow_benchs from bench_yaml_names
-for bench_name in slow_benchs:
-    if bench_name in bench_yaml_names:
-        bench_yaml_names.remove(bench_name)
+# for bench_name in slow_benchs:
+#     if bench_name in bench_yaml_names:
+#         bench_yaml_names.remove(bench_name)
 
 # ... or run specific tests
 # bench_yaml_names = [

@@ -48,6 +48,14 @@ else:
 
 # if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
+
+# Cap num_threads at physical core count to prevent oversubscription
+cpu_count = os.cpu_count() or 1
+if num_threads > cpu_count:
+    print(f'WARNING: num_threads={num_threads} exceeds CPU count={cpu_count}')
+    print(f'         Capping at {cpu_count} to prevent thread oversubscription')
+    num_threads = cpu_count
+
 os.environ['OMP_NUM_THREADS'] = str(num_threads)
 os.environ['OPENBLAS_NUM_THREADS'] = str(num_threads)
 os.environ['MKL_NUM_THREADS'] = str(num_threads)
@@ -884,21 +892,19 @@ for wf_idx in range(len(wf_ccl_list)):
 
 # ! ======================================== Cls =======================================
 # ! note that the function below includes the multiplicative shear bias
-print('Computing Cls...')
-t0 = time.perf_counter()
-_cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
-    ccl_obj,
-    ells=ell_obj.ells_3x2pt,
-    zbins=zbins,
-    mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-    cl_ccl_kwargs=cl_ccl_kwargs,
-    n_probes_hs=cfg['covariance']['n_probes'],
-)
+with sl.timer('\nComputing Cls...'):
+    _cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
+        ccl_obj,
+        ells=ell_obj.ells_3x2pt,
+        zbins=zbins,
+        mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+        cl_ccl_kwargs=cl_ccl_kwargs,
+        n_probes_hs=cfg['covariance']['n_probes'],
+    )
 
 ccl_obj.cl_ll_3d = _cl_3x2pt_5d[0, 0]
 ccl_obj.cl_gl_3d = _cl_3x2pt_5d[1, 0]
 ccl_obj.cl_gg_3d = _cl_3x2pt_5d[1, 1]
-print(f'done in {time.perf_counter() - t0:.2f} s')
 
 
 if cfg['C_ell']['use_input_cls']:
@@ -1188,7 +1194,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     ell_min_unb_oc = 2
     ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
     nbl_3x2pt_oc = 500
-    
+
     ells_3x2pt_oc = np.geomspace(
         ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )

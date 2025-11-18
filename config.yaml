@@ -107,7 +107,7 @@ nz:
 
 
 binning:
-  binning_type: 'from_input' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
+  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
 
   ell_min_WL: 10 # Type: int. Minimum ell for WL
   ell_max_WL: 1500 # Type: int. Maximum ell for WL
@@ -123,8 +123,8 @@ binning:
   ell_max_ref: 1500 # Type: int. Maximum ell for reference case
   ell_bins_ref: 32 # Type: int. Number of bins for reference case
 
-  WL_bins_filename: '/Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/ell_values_3x2pt.txt'
-  GC_bins_filename: '/Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/ell_values_3x2pt.txt'
+  WL_bins_filename: '../common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/ell_values_3x2pt.txt'
+  GC_bins_filename: '../common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/ell_values_3x2pt.txt'
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50  # Type: float | int
@@ -206,7 +206,7 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   coupled_cov: True # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls

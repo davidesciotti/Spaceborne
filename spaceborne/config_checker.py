@@ -267,7 +267,7 @@ class SpaceborneConfigChecker:
         assert isinstance(mask_cfg.get('nside'), (int, type(None))), (
             'mask: nside must be an int or None'
         )
-        assert isinstance(mask_cfg.get('survey_area_deg2'), int), (
+        assert isinstance(mask_cfg.get('survey_area_deg2'), (int, float)), (
             'mask: survey_area_deg2 must be an int'
         )
         assert isinstance(mask_cfg.get('apodize'), bool), (
@@ -327,7 +327,7 @@ class SpaceborneConfigChecker:
             )
             assert isinstance(oc_cfg.get('oc_output_filename'), str), (
                 'OneCovariance: oc_output_filename must be a string, found '
-                f"{oc_cfg} instead"
+                f'{oc_cfg} instead'
             )
 
         # Ell Binning

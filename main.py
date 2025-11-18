@@ -680,7 +680,7 @@ if shift_nz:
         zgrid_nz_src,
         nz_unshifted_src,
         cfg['nz']['dzWL'],
-        normalize=cfg['nz']['normalize_shifted_nz'],
+        normalize=False,
         plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
         bounds_error=False,
@@ -713,21 +713,21 @@ if cfg['nz']['smooth_nz']:
         )
 
 # check if they are normalised, and if not do so
-nz_lns_norm = simps(y=nz_lns, x=zgrid_nz_lns, axis=0)
-nz_src_norm = simps(y=nz_src, x=zgrid_nz_src, axis=0)
+nz_lns_integral = simps(y=nz_lns, x=zgrid_nz_lns, axis=0)
+nz_src_integral = simps(y=nz_src, x=zgrid_nz_src, axis=0)
 
-if not np.allclose(nz_lns_norm, 1, atol=0, rtol=1e-3):
+if not np.allclose(nz_lns_integral, 1, atol=0, rtol=1e-3):
     warnings.warn(
         '\nThe lens n(z) are not normalised. Proceeding to normalise them', stacklevel=2
     )
-    nz_lns /= nz_lns_norm
+    nz_lns /= nz_lns_integral
 
-if not np.allclose(nz_src_norm, 1, atol=0, rtol=1e-3):
+if not np.allclose(nz_src_integral, 1, atol=0, rtol=1e-3):
     warnings.warn(
         '\nThe source n(z) are not normalised. Proceeding to normalise them',
         stacklevel=2,
     )
-    nz_src /= nz_src_norm
+    nz_src /= nz_src_integral
 
 
 ccl_obj.set_nz(
@@ -1190,7 +1190,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
     # oc needs finer ell sampling to avoid issues with ell bin edges
-    ell_max_max = max(cfg['binning']['ell_max_WL'], cfg['binning']['ell_max_GC'])
+    ell_max_max = cfg['binning']['ell_max']
     ell_min_unb_oc = 2
     ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
     nbl_3x2pt_oc = 500

@@ -35,7 +35,9 @@ import os
 import subprocess
 from copy import deepcopy
 from datetime import datetime
+from itertools import product
 
+import numpy as np
 import yaml
 
 
@@ -204,7 +206,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
 
 
 # Example usage
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/u/dsciotti/code'
 bench_set_path = f'{ROOT}/Spaceborne_bench'
 bench_set_path_cfg = f'{bench_set_path}/bench_set_cfg'
 bench_set_path_results = f'{bench_set_path}/bench_set_output'
@@ -224,14 +226,14 @@ base_cfg = {
         'ODE': 0.68,
         'm_nu': 0.06,
         'N_eff': 3.046,
-        'Om_k0': 0,
+        'Om_k0': 0.0,
     },
     'intrinsic_alignment': {
         'Aia': 0.16,
         'eIA': 1.66,
         'bIA': 0.0,
         'CIA': 0.0134,
-        'z_pivot_IA': 0,
+        'z_pivot_IA': 0.0,
         'lumin_ratio_filename': None,
     },
     'extra_parameters': {
@@ -265,13 +267,12 @@ base_cfg = {
     'nz': {
         'nz_sources_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
         'nz_lenses_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'normalize_nz': True,
         'ngal_sources': [8.09216, 8.09215, 8.09215],
         'ngal_lenses': [8.09216, 8.09215, 8.09215],
         'shift_nz': False,
-        'dzWL': [-0.008848, 0.051368, 0.059484],
-        'dzGC': [-0.008848, 0.051368, 0.059484],
-        'clip_zmin': 0,
-        'clip_zmax': 3,
+        'dzWL': [0.0, 0.0, 0.0],
+        'dzGC': [0.0, 0.0, 0.0],
         'smooth_nz': False,
         'sigma_smoothing': 10,
     },
@@ -279,8 +280,8 @@ base_cfg = {
         'binning_type': 'log',
         'ell_min': 10,
         'ell_max': 3000,
-        'ell_bins': 15,
-        'ell_bins_filename': '../common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt',
+        'ell_bins': 10,
+        'ell_bins_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt',
         'theta_min_arcmin': 50,
         'theta_max_arcmin': 300,
         'theta_bins': 10,
@@ -318,7 +319,7 @@ base_cfg = {
     'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
     'covariance': {
         'G': True,
-        'SSC': False,
+        'SSC': True,
         'cNG': False,
         'coupled_cov': False,
         'triu_tril': 'triu',
@@ -332,12 +333,12 @@ base_cfg = {
         'which_b1g_in_resp': 'from_input',
         'include_b2g': True,
         'include_terasawa_terms': False,
-        'log10_k_min': -5,
-        'log10_k_max': 2,
+        'log10_k_min': -5.0,
+        'log10_k_max': 2.0,
         'k_steps': 20,
         'z_min': 0.02,
         'z_max': 3.0,
-        'z_steps': 100,
+        'z_steps': 500,
         'z_steps_trisp': 10,
         'use_KE_approximation': False,
         'cov_filename': 'cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz',
@@ -355,7 +356,7 @@ base_cfg = {
         'use_namaster': False,
         'spin0': False,
         'use_INKA': True,
-        'workspace_path': None,
+        'workspace_path': '...',
     },
     'sample_covariance': {
         'compute_sample_cov': False,
@@ -376,13 +377,13 @@ base_cfg = {
         'ell_bins_rs_nongauss': 100,
     },
     'misc': {
-        'num_threads': 40,
+        'num_threads': 72,
         'jax_platform': 'auto',
         'jax_enable_x64': True,
-        'test_numpy_inversion': True,
-        'test_condition_number': True,
-        'test_cholesky_decomposition': True,
-        'test_symmetry': True,
+        'test_numpy_inversion': False,
+        'test_condition_number': False,
+        'test_cholesky_decomposition': False,
+        'test_symmetry': False,
         'cl_triangle_plot': False,
         'plot_probe_names': True,
         'output_path': './output',
@@ -394,26 +395,90 @@ base_cfg = {
 
 # Define your "zipped" sets of changes as a list of dictionaries
 # Each dictionary represents one configuration to test
-configs_to_test = [
-    # 1/fsky covs
-    {'covariance': {'split_gaussian_cov': False}},
-    {'covariance': {'split_gaussian_cov': True}},
-    # SSC KE
-    {'covariance': {'SSC': True, 'cNG': False}},
-    # SSC LR
-    {'covariance': {'SSC': True, 'cNG': False}},
-    # cNG
-    {'covariance': {'SSC': False, 'cNG': True}},
-]
+configs_to_test = []
 
-# ! NAMASTER
+# ! covariance ordering
+for ordering in ['probe_scale_zpair', 'probe_zpair_scale', 'scale_probe_zpair']:
+    for triu_tril in ['triu', 'tril']:
+        for row_col in ['row-major', 'col-major']:
+            configs_to_test.append(
+                {
+                    'covariance': {
+                        'covariance_ordering_2D': ordering,
+                        'triu_tril': triu_tril,
+                        'row_col_major': row_col,
+                    }
+                }
+            )
+
+# ! SSC  variations
+for ke_approx in [True, False]:
+    for include_b2g in [True, False]:
+        for include_terasawa in [True, False]:
+            configs_to_test.append(
+                {
+                    'covariance': {
+                        'use_KE_approximation': ke_approx,
+                        'include_b2g': include_b2g,
+                        'include_terasawa_terms': include_terasawa,
+                    }
+                }
+            )
+
+
+# ! HS probe combinations
+for LL, GL, GC in product([True, False], repeat=3):
+    for split_gaussian_cov in [True, False]:
+        if not any([LL, GL, GC]):
+            continue
+        configs_to_test.append(
+            {
+                'probe_selection': {'LL': LL, 'GL': GL, 'GG': GC},
+                'covariance': {'split_gaussian_cov': split_gaussian_cov},
+            }
+        )
+
+# ! RS probe combinations
+for xip, xim, gt, w in product([True, False], repeat=4):
+    for split_gaussian_cov in [True, False]:
+        if not any([xip, xim, gt, w]):
+            continue
+        configs_to_test.append(
+            {
+                'probe_selection': {'xip': xip, 'xim': xim, 'gt': gt, 'w': w},
+                'covariance': {'split_gaussian_cov': split_gaussian_cov},
+            }
+        )
+
+# ! nz variations
+for shift_nz in [True, False]:
+    for smooth_nz in [True, False]:
+        configs_to_test.append({'nz': {'shift_nz': shift_nz, 'smooth_nz': smooth_nz}})
+
+# ! Mask variations
+for load_input_mask, generate_polar_cap in zip([True, False], [False, True]):
+    print(load_input_mask, generate_polar_cap)
+    for apodize in [True, False]:
+        for nside in [512, 1024]:
+            configs_to_test.append(
+                {
+                    'mask': {
+                        'generate_polar_cap': generate_polar_cap,
+                        'load_mask': load_input_mask,
+                        'apodize': apodize,
+                        'nside': nside,
+                    }
+                }
+            )
+
+# ! NAMASTER (test only G cov)
 for coupled_cov in [True, False]:
     for spin0 in [True, False]:
         for use_INKA in [True, False]:
-            for binning_type in ['log', 'lin']:
+            for binning_type in ['log', 'lin', 'from_input']:
                 configs_to_test.append(
                     {
-                        'covariance': {'coupled_cov': coupled_cov},
+                        'covariance': {'SSC': False, 'coupled_cov': coupled_cov},
                         'namaster': {
                             'use_namaster': True,
                             'spin0': spin0,
@@ -423,13 +488,13 @@ for coupled_cov in [True, False]:
                     }
                 )
 
-
 # Generate configurations
 configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_path_cfg)
 print(f'Generated {len(configs)} configurations')
 
+
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=14)
+yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=0)
 
 # Run benchmarks
 run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)

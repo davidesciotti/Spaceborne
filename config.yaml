@@ -93,13 +93,13 @@ nz:
 
   # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
-  #        modification to the n(z) by setting shift_nz and smooth_nz to False.
-  # [NOTE] The cuts defined by clip_zmin/zmax are only applied if shift_nz is True
+  #        modification to the n(z) by setting shift_nz and smooth_nz (and possibly normalize_nz) 
+  #        to False.
+  normalize_nz: True # Type: bool. Whether to normalize the input n_i(z) if they are not already (within atol=0, rtol=1e-3) 
+
   shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
   dzWL: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
   dzGC: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
-  clip_zmin: 0. # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
-  clip_zmax: 3. # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.

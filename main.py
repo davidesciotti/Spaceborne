@@ -1916,7 +1916,8 @@ header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 # ))
 # sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
 
-for probe in ['WL', 'GC', '3x2pt']:
+# for probe in ['WL', 'GC', '3x2pt']:
+for probe in ['3x2pt',]:
     ells_2d_save = np.column_stack(
         (
             getattr(ell_obj, f'ells_{probe}'),
@@ -1925,9 +1926,7 @@ for probe in ['WL', 'GC', '3x2pt']:
             getattr(ell_obj, f'ell_edges_{probe}')[1:],
         )
     )
-    sl.savetxt_aligned(
-        f'{output_path}/ell_values_{probe}.txt', ells_2d_save, header_list
-    )
+    sl.savetxt_aligned(f'{output_path}/ell_values.txt', ells_2d_save, header_list)
 
 if cfg['misc']['save_output_as_benchmark']:
     # some of the test quantities are not defined in some cases

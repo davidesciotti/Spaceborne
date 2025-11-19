@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import pyccl as ccl
 from scipy.interpolate import RegularGridInterpolator
@@ -351,7 +352,8 @@ class SpaceborneResponses:
         but it can be extended to allow user-defined profiles.
 
         """
-        print('Computing halo model probe responses...')
+        start_time = time.perf_counter()
+        print('\nComputing halo model probe responses...')
 
         # perform some checks on the input shapes
         assert which_b1g in ['from_HOD', 'from_input'], (
@@ -567,3 +569,5 @@ class SpaceborneResponses:
         self.r1_mm_hm = self.dPmm_ddeltab_hm / self.pknlhm_mm
         self.r1_gm_hm = self.dPgm_ddeltab_hm / self.pknlhm_gm
         self.r1_gg_hm = self.dPgg_ddeltab_hm / self.pknlhm_gg
+
+        print(f'... done in {time.perf_counter() - start_time:.2f} seconds.\n')

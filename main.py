@@ -671,39 +671,34 @@ zgrid_nz_lns = io_obj.zgrid_nz_lns
 nz_src = io_obj.nz_src
 nz_lns = io_obj.nz_lns
 
-# nz may be subjected to a shift: save the original arrays
-nz_unshifted_src = nz_src
-nz_unshifted_lns = nz_lns
-
 if shift_nz:
     nz_src = wf_cl_lib.shift_nz(
         zgrid_nz_src,
-        nz_unshifted_src,
+        nz_src,
         cfg['nz']['dzWL'],
         normalize=False,
         plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
         bounds_error=False,
         fill_value=0,
-        clip_min=cfg['nz']['clip_zmin'],
-        clip_max=cfg['nz']['clip_zmax'],
         plt_title='$n_i(z)$ sources shifts',
     )
     nz_lns = wf_cl_lib.shift_nz(
         zgrid_nz_lns,
-        nz_unshifted_lns,
+        nz_lns,
         cfg['nz']['dzGC'],
         normalize=False,
         plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
         bounds_error=False,
         fill_value=0,
-        clip_min=cfg['nz']['clip_zmin'],
-        clip_max=cfg['nz']['clip_zmax'],
         plt_title='$n_i(z)$ lenses shifts',
     )
 
 if cfg['nz']['smooth_nz']:
+    print(
+        f'Smoothing n(z) with Gaussian filter of sigma = {cfg["nz"]["sigma_smoothing"]}'
+    )
     for zi in range(zbins):
         nz_src[:, zi] = gaussian_filter1d(
             nz_src[:, zi], sigma=cfg['nz']['sigma_smoothing']
@@ -712,23 +707,31 @@ if cfg['nz']['smooth_nz']:
             nz_lns[:, zi], sigma=cfg['nz']['sigma_smoothing']
         )
 
-# check if they are normalised, and if not do so
-nz_lns_integral = simps(y=nz_lns, x=zgrid_nz_lns, axis=0)
-nz_src_integral = simps(y=nz_src, x=zgrid_nz_src, axis=0)
+# check if they are normalized, and if not do so
+if cfg['nz']['normalize_nz']:
+    print('Checking n(z) normalization...')
+    nz_lns_integral = simps(y=nz_lns, x=zgrid_nz_lns, axis=0)
+    nz_src_integral = simps(y=nz_src, x=zgrid_nz_src, axis=0)
 
-if not np.allclose(nz_lns_integral, 1, atol=0, rtol=1e-3):
-    warnings.warn(
-        '\nThe lens n(z) are not normalised. Proceeding to normalise them', stacklevel=2
-    )
-    nz_lns /= nz_lns_integral
+    if not np.allclose(nz_lns_integral, 1, atol=0, rtol=1e-3):
+        warnings.warn(
+            '\nThe lens n(z) are not normalized within atol=0, rtol=1e-3. '
+            'Proceeding to normalize them',
+            stacklevel=2,
+        )
+        nz_lns /= nz_lns_integral
+    else:
+        print('Lens n(z) are normalized')
 
-if not np.allclose(nz_src_integral, 1, atol=0, rtol=1e-3):
-    warnings.warn(
-        '\nThe source n(z) are not normalised. Proceeding to normalise them',
-        stacklevel=2,
-    )
-    nz_src /= nz_src_integral
-
+    if not np.allclose(nz_src_integral, 1, atol=0, rtol=1e-3):
+        warnings.warn(
+            '\nThe source n(z) are not normalized within atol=0, rtol=1e-3. '
+            'Proceeding to normalize them',
+            stacklevel=2,
+        )
+        nz_src /= nz_src_integral
+    else:
+        print('Source n(z) are normalized')
 
 ccl_obj.set_nz(
     nz_full_src=np.hstack((zgrid_nz_src[:, None], nz_src)),

@@ -214,38 +214,37 @@ class SpaceborneConfigChecker:
         assert isinstance(nz_cfg.get('ngal_sources'), list), (
             'nz: ngal_sources must be a list'
         )
-        assert all(isinstance(x, float) for x in nz_cfg['ngal_sources']), (
-            'nz: All elements in ngal_sources must be floats'
-        )
-
         assert isinstance(nz_cfg.get('ngal_lenses'), list), (
             'nz: ngal_lenses must be a list'
+        )
+        assert all(isinstance(x, float) for x in nz_cfg['ngal_sources']), (
+            'nz: All elements in ngal_sources must be floats'
         )
         assert all(isinstance(x, float) for x in nz_cfg['ngal_lenses']), (
             'nz: All elements in ngal_lenses must be floats'
         )
-
         assert isinstance(nz_cfg.get('shift_nz'), bool), (
             'nz: shift_nz must be a boolean'
+        )
+        assert isinstance(nz_cfg.get('normalize_nz'), bool), (
+            'nz: normalize_nz must be a boolean'
+        )
+        assert isinstance(nz_cfg.get('smooth_nz'), bool), (
+            'nz: smooth_nz must be a boolean'
+        )
+        assert isinstance(nz_cfg.get('sigma_smoothing'), (int, float)), (
+            'nz: sigma_smoothing must be a float or an int'
         )
 
         if nz_cfg['shift_nz']:
             assert isinstance(nz_cfg.get('dzWL'), list), 'nz: dzWL must be a list'
+            assert isinstance(nz_cfg.get('dzGC'), list), 'nz: dzGC must be a list'
             assert all(isinstance(x, float) for x in nz_cfg['dzWL']), (
                 'nz: All elements in dzWL must be floats'
             )
-
-            assert isinstance(nz_cfg.get('dzGC'), list), 'nz: dzGC must be a list'
             assert all(isinstance(x, float) for x in nz_cfg['dzGC']), (
                 'nz: All elements in dzGC must be floats'
             )
-
-        assert isinstance(nz_cfg.get('clip_zmin'), float), (
-            'nz: clip_zmin must be a float'
-        )
-        assert isinstance(nz_cfg.get('clip_zmax'), float), (
-            'nz: clip_zmax must be a float'
-        )
 
         # Mask
         assert isinstance(self.cfg.get('mask'), dict), (
@@ -551,7 +550,6 @@ class SpaceborneConfigChecker:
         assert isinstance(misc_cfg.get('save_figs'), bool), (
             'misc: save_figs must be a boolean'
         )
-
 
     def check_misc(self) -> None:
         assert self.cfg['covariance']['n_probes'] == 2, (

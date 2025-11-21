@@ -7,6 +7,7 @@ import pickle
 import subprocess
 import time
 import warnings
+from collections import defaultdict
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
@@ -1243,7 +1244,7 @@ def cov_3x2pt_dict_8d_to_10d(
 
 
 def cov_probe_dict_4d_to_6d(
-    cov_probe_dict: dict[tuple[str, str], dict],
+    cov_probe_dict_4d: dict[tuple[str, str], dict],
     nbx: int,
     zbins: int,
     ind_dict: dict,
@@ -1256,6 +1257,8 @@ def cov_probe_dict_4d_to_6d(
     Reshape each element of the cov_probe_dict from 4d to 6d.
     The probe_dict must have structure
     [probe_ab, probe_cd]['4d']: np.ndarray (of ndim=4)
+    
+    Note that this function returns a new dictionary, without the original '4d' key
 
     4d: (probe_ab, probe_cd) -> np.ndarray(nbx, nbx, zpairs, zpairs)
     6d: (probe_ab, probe_cd) -> np.ndarray(nbx, nbx, zbins, zbins, zbins, zbins)
@@ -1266,7 +1269,7 @@ def cov_probe_dict_4d_to_6d(
             raise ValueError(f"Probe string '{_probe_str}' must be length 4")
 
     # check that the input cov dict has only the '4d' key to avoid overwriting
-    for v in cov_probe_dict.values():
+    for v in cov_probe_dict_4d.values():
         if set(v.keys()) != {'4d'}:
             raise KeyError(
                 'The input dictionary should only contain 4d arrays '
@@ -1276,6 +1279,7 @@ def cov_probe_dict_4d_to_6d(
     # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
     symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs, space)
 
+    cov_probe_dict_6d = defaultdict(lambda: defaultdict(dict))
     # * First pass: compute only the requested blocks
     # the requested probes are also unique, e.g. if unique_probe_combs contains 'LLGL'
     # it will not include 'GLLL'. These blocks can be filled by simmetry, transposing
@@ -1287,8 +1291,8 @@ def cov_probe_dict_4d_to_6d(
     for probe_abcd in unique_probe_combs:
         probe_ab, probe_cd = split_probe_name(probe_abcd, space='harmonic')
         probe_2tpl = (probe_ab, probe_cd)
-        cov_probe_dict[probe_2tpl]['6d'] = cov_4D_to_6D_blocks(
-            cov_4D=cov_probe_dict[probe_2tpl]['4d'],
+        cov_probe_dict_6d[probe_2tpl]['6d'] = cov_4D_to_6D_blocks(
+            cov_4D=cov_probe_dict_4d[probe_2tpl]['4d'],
             nbl=nbx,
             zbins=zbins,
             ind_ab=ind_dict[probe_ab],
@@ -1300,19 +1304,21 @@ def cov_probe_dict_4d_to_6d(
     # * Second pass: fill symmetric counterparts
     for probe_abcd in symm_probe_combs:
         probe_ab, probe_cd = split_probe_name(probe_abcd, space='harmonic')
-        cov_probe_dict[probe_ab, probe_cd]['6d'] = (
-            cov_probe_dict[probe_cd, probe_ab]['6d'].transpose(1, 0, 4, 5, 2, 3).copy()
+        cov_probe_dict_6d[probe_ab, probe_cd]['6d'] = (
+            cov_probe_dict_6d[probe_cd, probe_ab]['6d']
+            .transpose(1, 0, 4, 5, 2, 3)
+            .copy()
         )
 
     # * Third pass: zero for non-requested combinations
     # [BOOKM ] nonreq_probe_combs is the issue!
     for probe_abcd in nonreq_probe_combs:
         probe_2tpl = split_probe_name(probe_abcd, space='harmonic')
-        cov_probe_dict[probe_2tpl]['6d'] = np.zeros(
+        cov_probe_dict_6d[probe_2tpl]['6d'] = np.zeros(
             (nbx, nbx, zbins, zbins, zbins, zbins)
         )
 
-    return cov_probe_dict
+    return cov_probe_dict_6d
 
 
 def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):

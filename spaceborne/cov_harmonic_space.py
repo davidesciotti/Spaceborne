@@ -110,9 +110,9 @@ class SpaceborneCovariance:
         ].copy()
 
         self.ind_dict = {
-            ('L', 'L'): self.ind_auto,
-            ('G', 'L'): self.ind_cross,
-            ('G', 'G'): self.ind_auto,
+            ('LL'): self.ind_auto,
+            ('GL'): self.ind_cross,
+            ('GG'): self.ind_auto,
         }
 
     def consistency_checks(self):
@@ -440,10 +440,24 @@ class SpaceborneCovariance:
             print('Skipping SSC computation')
             return
 
+        # check: ssc key should not already be in dict
+        if 'ssc' in self.cov_dict:
+            raise ValueError('"ssc" key already present in cov_dict')
+
         if self.ssc_code == 'Spaceborne':
-            cov_3x2pt_ssc_10d = self._cov_8d_dict_to_10d_arr(
-                self.cov_ssc_sb_3x2pt_dict_8D
+            # assign 4d
+            self.cov_dict['ssc'] = deepcopy(self.cov_ssc_dict)
+            # reshape to and assign 6d
+            self.cov_dict['ssc'] = sl.cov_probe_dict_4d_to_6d(
+                cov_probe_dict=self.cov_dict['ssc'],
+                nbx=self.ell_obj.nbl_3x2pt,
+                zbins=self.zbins,
+                ind_dict=self.ind_dict,
+                unique_probe_combs=self.unique_probe_combs,
+                space='harmonic',
+                symmetrize_output_dict=const.HS_SYMMETRIZE_OUTPUT_DICT,
             )
+
         elif self.ssc_code == 'PyCCL':
             cov_3x2pt_ssc_10d = self._cov_8d_dict_to_10d_arr(
                 ccl_obj.cov_ssc_ccl_3x2pt_dict_8D
@@ -455,15 +469,17 @@ class SpaceborneCovariance:
             f'{self.ssc_code} SSC covariance matrix is identically zero'
         )
 
-        # assign to dictionary
-        self.cov_dict['ssc'].update(
-            sl.cov_10d_arr_to_dict(
-                cov_3x2pt_ssc_10d,
-                dim='6d',
-                req_probe_combs_2d=self.req_probe_combs_2d,
-                space='harmonic',
+        # TODO remove this once the new dict struct is applied
+        if self.ssc_code in ['PyCCL', 'OneCovariance']:
+            # assign to dictionary
+            self.cov_dict['ssc'].update(
+                sl.cov_10d_arr_to_dict(
+                    cov_3x2pt_ssc_10d,
+                    dim='6d',
+                    req_probe_combs_2d=self.req_probe_combs_2d,
+                    space='harmonic',
+                )
             )
-        )
 
     def _add_cng(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
         """Helper function to get the cNG from the required code and uniform its

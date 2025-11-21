@@ -445,11 +445,10 @@ class SpaceborneCovariance:
             raise ValueError('"ssc" key already present in cov_dict')
 
         if self.ssc_code == 'Spaceborne':
-            # assign 4d
-            self.cov_dict['ssc'] = deepcopy(self.cov_ssc_dict)
-            # reshape to and assign 6d
+            # assign only the 6d covs to self.cov_dict, since the reshaping is 
+            # handled downstream 
             self.cov_dict['ssc'] = sl.cov_probe_dict_4d_to_6d(
-                cov_probe_dict=self.cov_dict['ssc'],
+                cov_probe_dict_4d=self.cov_ssc_dict,
                 nbx=self.ell_obj.nbl_3x2pt,
                 zbins=self.zbins,
                 ind_dict=self.ind_dict,
@@ -463,14 +462,14 @@ class SpaceborneCovariance:
                 ccl_obj.cov_ssc_ccl_3x2pt_dict_8D
             )
         elif self.ssc_code == 'OneCovariance':
-            cov_3x2pt_ssc_10d = oc_obj.cov_3x2pt_ssc_10d
-
-        assert not np.allclose(cov_3x2pt_ssc_10d, 0, atol=0, rtol=1e-10), (
-            f'{self.ssc_code} SSC covariance matrix is identically zero'
-        )
+            self.cov_dict['ssc'] = deepcopy(oc_obj.cov_dict['ssc'])
 
         # TODO remove this once the new dict struct is applied
-        if self.ssc_code in ['PyCCL', 'OneCovariance']:
+        if self.ssc_code == 'PyCCL':
+            assert not np.allclose(cov_3x2pt_ssc_10d, 0, atol=0, rtol=1e-10), (
+                f'{self.ssc_code} SSC covariance matrix is identically zero'
+            )
+
             # assign to dictionary
             self.cov_dict['ssc'].update(
                 sl.cov_10d_arr_to_dict(

@@ -45,8 +45,8 @@ def sigma2_z1z2_fft(
     dk = k_grid[1] - k_grid[0]
     Pk0 = ccl.linear_matter_power(cosmo_ccl, k=k_grid, a=1.0)
 
-    # real FFT → cosine coefficients on linear grid
-    fft_coeffs = rfft(Pk0) * dk  # \sum f(k) cos → Re{FFT} * dk
+    # real FFT -> cosine coefficients on linear grid
+    fft_coeffs = rfft(Pk0) * dk  # \sum f(k) cos -> Re{FFT} * dk
     r_grid = np.arange(fft_coeffs.size) * 2 * np.pi / (k_max - k_min)
     c_r = fft_coeffs.real
 

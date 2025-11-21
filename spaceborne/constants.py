@@ -48,10 +48,10 @@ HS_PROBE_NAME_TO_IX_DICT = {'L': 0, 'G': 1}
 HS_PROBE_IX_TO_NAME_DICT = {0: 'L', 1: 'G'}
 
 HS_SYMMETRIZE_OUTPUT_DICT = {
-    ('L', 'L'): True,
-    ('G', 'L'): False,
-    ('L', 'G'): False,
-    ('G', 'G'): True,
+    ('LL'): True,
+    ('GL'): False,
+    ('LG'): False,
+    ('GG'): True,
 }
 
 # bessel functions order for the different real space probes

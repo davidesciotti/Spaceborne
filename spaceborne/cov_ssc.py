@@ -1,3 +1,4 @@
+from collections import defaultdict
 import time
 
 import jax
@@ -275,9 +276,9 @@ class SpaceborneSSC:
             d2CGL_dVddeltab_3d[:, zij, :] = d2CGL_dVddeltab_4d[:, zi, zj, :]
 
         d2CAB_dVddeltab_dict_3d = {
-            ('L', 'L'): d2CLL_dVddeltab_3d,
-            ('G', 'L'): d2CGL_dVddeltab_3d,
-            ('G', 'G'): d2CGG_dVddeltab_3d,
+            ('LL'): d2CLL_dVddeltab_3d,
+            ('GL'): d2CGL_dVddeltab_3d,
+            ('GG'): d2CGG_dVddeltab_3d,
         }
 
         # ! necessary ingredients for the integration:
@@ -296,13 +297,14 @@ class SpaceborneSSC:
         )
 
         # ! start the actual computation
-        cov_ssc_3x2pt_dict_4d = {}
+        cov_ssc_dict = defaultdict(lambda: defaultdict(dict))
+
         start = time.perf_counter()
         # * compute required blocks
         for probe_abcd in unique_probe_combs_hs:
-            probe_a, probe_b, probe_c, probe_d = probe_abcd
-            d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_a, probe_b)]
-            d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_c, probe_d)]
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
+            d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_ab)]
+            d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_cd)]
 
             result = self.ssc_func(
                 jnp.array(d2CABdVddeltab_3d),
@@ -313,31 +315,26 @@ class SpaceborneSSC:
                 jnp.array(simpson_weights),
             )
 
-            cov_ssc_3x2pt_dict_4d[probe_a, probe_b, probe_c, probe_d] = np.array(result)
+            cov_ssc_dict[probe_ab, probe_cd]['4d'] = np.array(result)
 
         # * fill the symmetric counterparts of the required blocks
         # * (excluding diagonal blocks)
         for probe_abcd in symm_probe_combs_hs:
-            probe_a, probe_b, probe_c, probe_d = probe_abcd
-            probe_tpl_orig = (probe_a, probe_b, probe_c, probe_d)
-            probe_tpl_symm = (probe_c, probe_d, probe_a, probe_b)
-
-            cov_ssc_3x2pt_dict_4d[probe_tpl_orig] = (
-                cov_ssc_3x2pt_dict_4d[probe_tpl_symm].transpose(1, 0, 3, 2)
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
+            cov_ssc_dict[probe_ab, probe_cd]['4d'] = (
+                cov_ssc_dict[probe_cd, probe_ab]['4d'].transpose(1, 0, 3, 2)
             ).copy()
 
         # * if block is not required, set it to 0
         for probe_abcd in nonreq_probe_combs_hs:
-            probe_a, probe_b, probe_c, probe_d = probe_abcd
-            probe_tpl = (probe_a, probe_b, probe_c, probe_d)
-            print('SSC 3x2pt cov: skipping probe combination ', probe_tpl)
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
+            probe_2tpl = (probe_ab, probe_cd)
+            print('SSC 3x2pt cov: skipping probe combination ', probe_2tpl)
 
-            zpairs_ab = self.ind_dict[probe_a, probe_b].shape[0]
-            zpairs_cd = self.ind_dict[probe_c, probe_d].shape[0]
-            cov_ssc_3x2pt_dict_4d[probe_tpl] = np.zeros(
-                (nbl, nbl, zpairs_ab, zpairs_cd)
-            )
+            zpairs_ab = self.ind_dict[probe_ab].shape[0]
+            zpairs_cd = self.ind_dict[probe_cd].shape[0]
+            cov_ssc_dict[probe_2tpl]['4d'] = np.zeros((nbl, nbl, zpairs_ab, zpairs_cd))
 
         print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
 
-        return cov_ssc_3x2pt_dict_4d
+        return cov_ssc_dict

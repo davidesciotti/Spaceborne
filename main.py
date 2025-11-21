@@ -53,7 +53,7 @@ os.environ['MKL_NUM_THREADS'] = str(num_threads)
 os.environ['VECLIB_MAXIMUM_THREADS'] = str(num_threads)
 os.environ['NUMEXPR_NUM_THREADS'] = str(num_threads)
 os.environ['XLA_FLAGS'] = (
-    f'--xla_cpu_multi_thread_eigen=true --intra_op_parallelism_threads={str(num_threads)}'
+    f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
 )
 
 
@@ -1532,7 +1532,7 @@ if compute_sb_ssc:
     ssc_obj = cov_ssc.SpaceborneSSC(cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units)
     ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
 
-    cov_ssc_3x2pt_dict_8D = ssc_obj.compute_ssc(
+    cov_ssc_dict = ssc_obj.compute_ssc(
         d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
         d2CGL_dVddeltab_4d=d2CGL_dVddeltab,
         d2CGG_dVddeltab_4d=d2CGG_dVddeltab,
@@ -1544,14 +1544,15 @@ if compute_sb_ssc:
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
-        for key in cov_ssc_3x2pt_dict_8D:
-            cov_ssc_3x2pt_dict_8D[key] /= mask_obj.fsky
+        for probe_2tpl in cov_ssc_dict:
+            for dim in cov_ssc_dict[probe_2tpl]:
+                cov_ssc_dict[probe_2tpl][dim] /= mask_obj.fsky
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
         raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
-    cov_hs_obj.cov_ssc_sb_3x2pt_dict_8D = cov_ssc_3x2pt_dict_8D
+    cov_hs_obj.cov_ssc_dict = cov_ssc_dict
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:

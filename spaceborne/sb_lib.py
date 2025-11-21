@@ -24,7 +24,6 @@ from scipy.special import jv
 
 import spaceborne.constants as const
 
-
 """
 COVARIANCE DICTIONARY STRUCTURE AND FUNCTIONS USED TO RESHAPE IT
 This is a small vademecum for the structure of the covariance dictionary 
@@ -63,9 +62,9 @@ cov_dict (4d) -> 3x2pt arr (4d):
 
 Naming conventions:
 
-- cov_dict[term] = probe_dict
-- probe_dict[probe_ab, probe_cd] = dim_dict
-- dim_dict[dim] = cov (the actual array)
+- cov_dict[term] = cov_probe_dict
+- cov_probe_dict[probe_ab, probe_cd] = cov_dim_dict
+- cov_dim_dict[dim] = cov (the actual array)
 """
 
 
@@ -100,15 +99,17 @@ def print_cov_dict_info(cov_dict: dict, show_array_info: bool = True):
     print('=' * 60)
 
     # Iterate through terms (level 1)
-    for term_idx, (term, probe_dict) in enumerate(cov_dict.items(), 1):
+    for term_idx, (term, cov_probe_dict) in enumerate(cov_dict.items(), 1):
         is_last_term = term_idx == len(cov_dict)
         term_prefix = '└──' if is_last_term else '├──'
 
-        print(f"{term_prefix} Term: '{term}' ({len(probe_dict)} probe combinations)")
+        print(
+            f"{term_prefix} Term: '{term}' ({len(cov_probe_dict)} probe combinations)"
+        )
 
         # Iterate through probe tuples (level 2)
-        for probe_idx, (probe_tpl, dim_dict) in enumerate(probe_dict.items(), 1):
-            is_last_probe = probe_idx == len(probe_dict)
+        for probe_idx, (probe_tpl, dim_dict) in enumerate(cov_probe_dict.items(), 1):
+            is_last_probe = probe_idx == len(cov_probe_dict)
 
             # Formatting for tree structure
             if is_last_term:
@@ -180,12 +181,12 @@ def compare_cov_dicts(
 
     # Iterate through each term
     for term in terms1:
-        probe_dict1 = cov_dict1[term]
-        probe_dict2 = cov_dict2[term]
+        cov_probe_dict1 = cov_dict1[term]
+        cov_probe_dict2 = cov_dict2[term]
 
-        # Check if both probe_dicts have same probe tuples
-        probes1 = set(probe_dict1.keys())
-        probes2 = set(probe_dict2.keys())
+        # Check if both cov_probe_dicts have same probe tuples
+        probes1 = set(cov_probe_dict1.keys())
+        probes2 = set(cov_probe_dict2.keys())
 
         if probes1 != probes2:
             missing_in_2 = probes1 - probes2
@@ -198,8 +199,8 @@ def compare_cov_dicts(
 
         # Iterate through each probe tuple
         for probe_tpl in probes1:
-            dim_dict1 = probe_dict1[probe_tpl]
-            dim_dict2 = probe_dict2[probe_tpl]
+            dim_dict1 = cov_probe_dict1[probe_tpl]
+            dim_dict2 = cov_probe_dict2[probe_tpl]
 
             # Check if both dim_dicts have same dimensions
             dims1 = set(dim_dict1.keys())
@@ -301,17 +302,17 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
     if not isinstance(cov_dict, dict):
         raise ValueError('cov_dict must be a dictionary')
 
-    for term, probe_dict in cov_dict.items():
+    for term, cov_probe_dict in cov_dict.items():
         if term not in expected_terms:
             raise ValueError(
                 f'Unexpected term: {term}, expected one of {expected_terms}'
             )
-        if not isinstance(probe_dict, dict):
+        if not isinstance(cov_probe_dict, dict):
             raise ValueError(
-                f"Term '{term}' must contain a dictionary, got {type(probe_dict)}"
+                f"Term '{term}' must contain a dictionary, got {type(cov_probe_dict)}"
             )
 
-        for probe_2tpl, dim_dict in probe_dict.items():
+        for probe_2tpl, dim_dict in cov_probe_dict.items():
             # check the probe names
             if probe_2tpl[0] not in expected_probes_ab:
                 raise ValueError(
@@ -1241,6 +1242,79 @@ def cov_3x2pt_dict_8d_to_10d(
     return cov_3x2pt_dict_10D
 
 
+def cov_probe_dict_4d_to_6d(
+    cov_probe_dict: dict[tuple[str, str], dict],
+    nbx: int,
+    zbins: int,
+    ind_dict: dict,
+    unique_probe_combs: list[str],
+    space: str,
+    symmetrize_output_dict: dict[str, bool] = const.HS_SYMMETRIZE_OUTPUT_DICT,
+) -> dict[tuple[str, str], dict]:
+    """
+
+    Reshape each element of the cov_probe_dict from 4d to 6d.
+    The probe_dict must have structure
+    [probe_ab, probe_cd]['4d']: np.ndarray (of ndim=4)
+
+    4d: (probe_ab, probe_cd) -> np.ndarray(nbx, nbx, zpairs, zpairs)
+    6d: (probe_ab, probe_cd) -> np.ndarray(nbx, nbx, zbins, zbins, zbins, zbins)
+    """
+    # just a check
+    for _probe_str in unique_probe_combs:
+        if len(_probe_str) != 4:
+            raise ValueError(f"Probe string '{_probe_str}' must be length 4")
+
+    # check that the input cov dict has only the '4d' key to avoid overwriting
+    for v in cov_probe_dict.values():
+        if set(v.keys()) != {'4d'}:
+            raise KeyError(
+                'The input dictionary should only contain 4d arrays '
+                f'(found keys {sorted(v.keys())})'
+            )
+
+    # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
+    symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs, space)
+
+    # * First pass: compute only the requested blocks
+    # the requested probes are also unique, e.g. if unique_probe_combs contains 'LLGL'
+    # it will not include 'GLLL'. These blocks can be filled by simmetry, transposing
+    # - (A, B, C, D) -> (C, D, A, B),
+    # - (ell1, ell2) -> (ell2, ell1),
+    # - (zi, zj, zk, zl) <-> (zk, zl, zi, zj)
+    # be careful, the latter is *not*
+    # (zi, zj, zk, zl) <-> (zj, zi, zl, zk)!!
+    for probe_abcd in unique_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space='harmonic')
+        probe_2tpl = (probe_ab, probe_cd)
+        cov_probe_dict[probe_2tpl]['6d'] = cov_4D_to_6D_blocks(
+            cov_4D=cov_probe_dict[probe_2tpl]['4d'],
+            nbl=nbx,
+            zbins=zbins,
+            ind_ab=ind_dict[probe_ab],
+            ind_cd=ind_dict[probe_cd],
+            symmetrize_output_ab=symmetrize_output_dict[probe_ab],
+            symmetrize_output_cd=symmetrize_output_dict[probe_cd],
+        )
+
+    # * Second pass: fill symmetric counterparts
+    for probe_abcd in symm_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space='harmonic')
+        cov_probe_dict[probe_ab, probe_cd]['6d'] = (
+            cov_probe_dict[probe_cd, probe_ab]['6d'].transpose(1, 0, 4, 5, 2, 3).copy()
+        )
+
+    # * Third pass: zero for non-requested combinations
+    # [BOOKM ] nonreq_probe_combs is the issue!
+    for probe_abcd in nonreq_probe_combs:
+        probe_2tpl = split_probe_name(probe_abcd, space='harmonic')
+        cov_probe_dict[probe_2tpl]['6d'] = np.zeros(
+            (nbx, nbx, zbins, zbins, zbins, zbins)
+        )
+
+    return cov_probe_dict
+
+
 def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     with open(f'{ascii_folder}/{ascii_filename}.ascii', 'w') as file:
         # Write header
@@ -1329,7 +1403,7 @@ def compare_fm_constraints(
                     normalize=True,
                 )[:nparams_toplot]
                 for masked_fm_dict, masked_fid_pars_dict in zip(
-                    masked_fm_dict_list, masked_fid_pars_dict_list
+                    masked_fm_dict_list, masked_fid_pars_dict_list, strict=False
                 )
             ]
         )
@@ -1486,7 +1560,7 @@ def contour_FoM_calculator(sample, param1, param2, sigma_level=1):
             xy = path.vertices
             x = xy[:, 0]
             y = xy[:, 1]
-            contour_coords[ii] = list(zip(x, y))
+            contour_coords[ii] = list(zip(x, y, strict=False))
     sigma_lvls = {3: 0, 2: 1, 1: 2}
     poly = Polygon(
         contour_coords[sigma_lvls[sigma_level]]
@@ -1683,7 +1757,7 @@ def table_to_3d_array(file_path, is_auto_spectrum):
 
     cl_3d = np.zeros((nbl, zbins, zbins))
     for ell_idx in range(nbl):
-        for zpair_idx, (zi, zj) in enumerate(zip(ind[:, 0], ind[:, 1])):
+        for zpair_idx, (zi, zj) in enumerate(zip(ind[:, 0], ind[:, 1], strict=False)):
             cl_3d[ell_idx, zi, zj] = cl_2d[ell_idx, zpair_idx]
 
     if is_auto_spectrum:
@@ -4449,7 +4523,7 @@ def build_noise(
 
     """
     # assert appropriate inputs are list, tuple or np.ndarray
-    for var, name in zip([ng_shear, ng_clust], ['ng_shear', 'ng_clust']):
+    for var, name in zip([ng_shear, ng_clust], ['ng_shear', 'ng_clust'], strict=False):
         #     [ng_shear, ng_clust, sigma_eps2],
         #     ['ng_shear', 'ng_clust', 'sigma_eps2'],
         # ):

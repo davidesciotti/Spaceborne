@@ -1,6 +1,6 @@
 """
 Branch TODO list:
-* update partial sky
+* update partial sky            [ok]
 * update real space
 * adjust outputs for tests?
 """
@@ -1128,7 +1128,6 @@ if obs_space == 'real':
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
     cov_rs_obj.set_cov_2d_ordering(req_probe_combs_2d=req_probe_combs_rs_2d)
-    cov_rs_obj.set_ind_and_zpairs(ind, zbins)
     ell_obj.compute_ells_3x2pt_rs()
     cov_rs_obj.ells = ell_obj.ells_3x2pt_rs
     cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_rs)
@@ -1607,7 +1606,7 @@ cov_hs_obj.combine_and_reshape_covs(
 
 
 if obs_space == 'real':
-    print('Computing RS covariance...')
+    print('\nComputing real-space covariance...')
     start_rs = time.perf_counter()
 
     # TODO understand a bit better how to treat real-space SSC and cNG
@@ -1616,7 +1615,7 @@ if obs_space == 'real':
     ):
         print(f'\n***** working on probe {_probe} - term {_term} *****')
         cov_rs_obj.compute_realspace_cov(
-            cov_hs_obj=cov_hs_obj, probe=_probe, term=_term
+            cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
         )
 
     for term in cov_rs_obj.terms_toloop:
@@ -1624,11 +1623,14 @@ if obs_space == 'real':
             term, symm_probe_combs_rs, nonreq_probe_combs_rs
         )
 
-    # put everything together
-    cov_rs_obj.combine_terms_and_probes(
-        unique_probe_combs=unique_probe_combs_rs,
-        req_probe_combs_2d=req_probe_combs_rs_2d,
-    )
+    # construct 4d and 2d 3x2pt
+    cov_rs_obj._build_cov_3x2pt_4d_and_2d()
+    # cov_rs_obj.combine_terms_and_probes(
+        # unique_probe_combs=unique_probe_combs_rs,
+        # req_probe_combs_2d=req_probe_combs_rs_2d,
+    # )
+
+
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 

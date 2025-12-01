@@ -1,3 +1,11 @@
+"""
+Branch TODO list:
+* update partial sky
+* update real space
+* adjust outputs for tests?
+"""
+
+
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib

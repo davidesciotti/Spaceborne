@@ -36,14 +36,23 @@ class SpaceborneCovariance:
         self.gggg_ixs = (1, 1, 1, 1)
 
         self.zbins = pvt_cfg['zbins']
-        self.GL_OR_LG = pvt_cfg['GL_OR_LG']
-        if self.GL_OR_LG == 'LG':  # on-the-fly check
-            raise ValueError('the cross-correlation between G and L must be GL, not LG')
 
         self.fsky = pvt_cfg['fsky']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.unique_probe_combs = pvt_cfg['unique_probe_combs']
+
+        # ordering-related stuff
         self.probe_ordering = pvt_cfg['probe_ordering']  # TODO delete this??
+        self.ind = pvt_cfg['ind']
+        self.ind_auto = pvt_cfg['ind_auto']
+        self.ind_cross = pvt_cfg['ind_cross']
+        self.ind_dict = pvt_cfg['ind_dict']
+        self.zpairs_auto = pvt_cfg['zpairs_auto']
+        self.zpairs_cross = pvt_cfg['zpairs_cross']
+        self.zpairs_3x2pt = pvt_cfg['zpairs_3x2pt']
+        self.GL_OR_LG = pvt_cfg['GL_OR_LG']
+        if self.GL_OR_LG == 'LG':  # on-the-fly check
+            raise ValueError('the cross-correlation between G and L must be GL, not LG')
 
         # get_probe_combs is called to get all_req_probe_combs
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_2d']
@@ -97,23 +106,6 @@ class SpaceborneCovariance:
             }
         else:
             raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
-
-    def set_ind_and_zpairs(self, ind):
-        # set indices array
-        self.ind = ind
-        self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
-            self.zbins
-        )
-        self.ind_auto = ind[: self.zpairs_auto, :].copy()
-        self.ind_cross = ind[
-            self.zpairs_auto : self.zpairs_cross + self.zpairs_auto, :
-        ].copy()
-
-        self.ind_dict = {
-            ('LL'): self.ind_auto,
-            ('GL'): self.ind_cross,
-            ('GG'): self.ind_auto,
-        }
 
     def consistency_checks(self):
         # sanity checks
@@ -433,80 +425,52 @@ class SpaceborneCovariance:
             if term in self.cov_dict:
                 del self.cov_dict[term]
 
-    def _add_ssc(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
-        """Helper function to get the SSC from the required code and uniform its
-        shape"""
-        if not self.include_ssc:
-            print('Skipping SSC computation')
-            return
+    def _add_ng_cov(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
+        """Helper function to retrieve the SSC from the required code-specific object.
 
-        # check: ssc key should not already be in dict
-        if 'ssc' in self.cov_dict:
-            raise ValueError('"ssc" key already present in cov_dict')
+        Note:  this function needs to assign the cov_dict['ssc'][<probe_2tpl>]['6d']
+               6d covariances only, since the reshaping is handled downstream.
+               For Spaceborne and PyCCL, the covariance is computed in 4D for
+               efficiency, which means that the array has to be reshaped to 6d here.
+               OneCovariance, on the other hand, already provides the 6d covariances.
+        """
 
-        if self.ssc_code == 'Spaceborne':
-            # assign only the 6d covs to self.cov_dict, since the reshaping is 
-            # handled downstream 
-            self.cov_dict['ssc'] = sl.cov_probe_dict_4d_to_6d(
-                cov_probe_dict_4d=self.cov_ssc_dict,
-                nbx=self.ell_obj.nbl_3x2pt,
-                zbins=self.zbins,
-                ind_dict=self.ind_dict,
-                unique_probe_combs=self.unique_probe_combs,
-                space='harmonic',
-                symmetrize_output_dict=const.HS_SYMMETRIZE_OUTPUT_DICT,
-            )
+        for ng_cov in ['ssc', 'cng']:
+            # guards
+            if ng_cov == 'ssc' and not self.include_ssc:
+                print('Skipping SSC computation')
+                continue
+            if ng_cov == 'cng' and not self.include_cng:
+                print('Skipping cNG computation')
+                continue
 
-        elif self.ssc_code == 'PyCCL':
-            cov_3x2pt_ssc_10d = self._cov_8d_dict_to_10d_arr(
-                ccl_obj.cov_ssc_ccl_3x2pt_dict_8D
-            )
-        elif self.ssc_code == 'OneCovariance':
-            self.cov_dict['ssc'] = deepcopy(oc_obj.cov_dict['ssc'])
+            # set convenience variables
+            _ng_cov_code = getattr(self, f'{ng_cov}_code')
 
-        # TODO remove this once the new dict struct is applied
-        if self.ssc_code == 'PyCCL':
-            assert not np.allclose(cov_3x2pt_ssc_10d, 0, atol=0, rtol=1e-10), (
-                f'{self.ssc_code} SSC covariance matrix is identically zero'
-            )
+            # get the relevant dictionary. Note that the structure is still
+            # slightly different here
+            if _ng_cov_code == 'Spaceborne':
+                _cov_ng_dict = getattr(self, f'cov_{ng_cov}_dict')
+            elif _ng_cov_code == 'PyCCL':
+                _cov_ng_dict = ccl_obj.cov_dict[ng_cov]
 
-            # assign to dictionary
-            self.cov_dict['ssc'].update(
-                sl.cov_10d_arr_to_dict(
-                    cov_3x2pt_ssc_10d,
-                    dim='6d',
-                    req_probe_combs_2d=self.req_probe_combs_2d,
+            if _ng_cov_code in ['Spaceborne', 'PyCCL']:
+                # assign only the 6d covs to self.cov_dict, since the reshaping is
+                # handled downstream
+                self.cov_dict[ng_cov] = sl.cov_probe_dict_4d_to_6d(
+                    cov_probe_dict_4d=_cov_ng_dict,
+                    nbx=self.ell_obj.nbl_3x2pt,
+                    zbins=self.zbins,
+                    ind_dict=self.ind_dict,
+                    unique_probe_combs=self.unique_probe_combs,
                     space='harmonic',
+                    symmetrize_output_dict=self.symmetrize_output_dict,
                 )
-            )
-
-    def _add_cng(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
-        """Helper function to get the cNG from the required code and uniform its
-        shape"""
-        if not self.include_cng:
-            print('Skipping cNG computation')
-            return
-
-        if self.cng_code == 'PyCCL':
-            cov_3x2pt_cng_10d = self._cov_8d_dict_to_10d_arr(
-                ccl_obj.cov_cng_ccl_3x2pt_dict_8D
-            )
-        elif self.cng_code == 'OneCovariance':
-            cov_3x2pt_cng_10d = oc_obj.cov_3x2pt_cng_10d
-
-        assert not np.allclose(cov_3x2pt_cng_10d, 0, atol=0, rtol=1e-10), (
-            f'{self.cng_code} cNG covariance matrix is identically zero'
-        )
-
-        # assign to dictionary
-        self.cov_dict['cng'].update(
-            sl.cov_10d_arr_to_dict(
-                cov_3x2pt_cng_10d,
-                dim='6d',
-                req_probe_combs_2d=self.req_probe_combs_2d,
-                space='harmonic',
-            )
-        )
+            elif _ng_cov_code == 'OneCovariance':
+                # in this case, assign the 6d covs directly
+                self.cov_dict[ng_cov] = deepcopy(oc_obj.cov_dict[ng_cov])
+            else:
+                raise ValueError(f'Unknown code: {_ng_cov_code}')
 
     def _cov_2d_ell_cuts(self, split_gaussian_cov):
         # TODO reimplement this (I think it still works, but needs to be tested)
@@ -625,8 +589,7 @@ class SpaceborneCovariance:
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
         # ! are inside the function
-        self._add_ssc(ccl_obj, oc_obj)
-        self._add_cng(ccl_obj, oc_obj)
+        self._add_ng_cov(ccl_obj, oc_obj)
 
         # ! BNT transform (6/10D covs needed for this implementation)
         if self.cfg['BNT']['cov_BNT_transform']:

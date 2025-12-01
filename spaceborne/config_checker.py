@@ -33,9 +33,13 @@ class SpaceborneConfigChecker:
                 'The BNT transform should be applied either to the Cls '
                 'or to the covariance.'
             )
+        if self.cfg['BNT']['cov_BNT_transform'] or self.cfg['BNT']['cl_BNT_transform']:
+            assert self.cfg['probe_selection']['space'] == 'harmonic', (
+                'The BNT transform can only be applied in harmonic space.'
+            )
 
         # def check_fsky(self) -> None:
-        _fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])
+        # _fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])
         # assert np.abs(sl.percent_diff(self.cfg['mask']['fsky'], fsky_check)) < 1e-5, (
         #     'fsky does not match the survey area.'
         # )

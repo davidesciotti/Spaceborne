@@ -56,7 +56,7 @@ halo_model:
 
 OneCovariance:
     path_to_oc_env: '/opt/miniconda3/envs/cov20_env/bin/python'
-    path_to_oc_executable: '/Users/davidesciotti/Documents/Work/Code/OneCovariance/covariance.py'
+    path_to_oc_executable: '../OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 
@@ -83,8 +83,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename:  ../common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_lenses_filename:  ../common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -136,9 +136,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_path:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path:  /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path:  ../common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path:  ../common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path:  ../common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -155,8 +155,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -194,7 +194,7 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   G_code: Spaceborne # Type: bool. Enable/disable the Gaussian covariance term.
@@ -371,5 +371,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: /Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/develop # Type: str. Path to the output directory
+  output_path: ../common_data/Spaceborne_jobs/develop # Type: str. Path to the output directory
   save_figs: True  # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

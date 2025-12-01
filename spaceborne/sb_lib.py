@@ -2732,6 +2732,11 @@ def build_full_ind(triu_tril, row_col_major, size):
 
 
 def build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG):
+    
+    raise NotImplementedError(
+        'build_ind_dict is deprecated and has been removed. Use the new method instead.'
+    )
+        
     ind = build_full_ind(triu_tril, row_col_major, size)
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(size)
 
@@ -3519,6 +3524,9 @@ def cov_dict_4d_blocks_4d_3x2pt(
 def cov_3x2pt_4d_to_10d_dict(
     cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy, optimize=False
 ):
+    raise NotImplementedError(
+        'This function is deprecated'
+    )
     zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
 
     ind_copy = ind_copy.copy()  # just to ensure the input ind file is not changed

@@ -449,7 +449,6 @@ class SpaceborneConfigChecker:
         )
 
         # PyCCL
-        # PyCCL
         assert isinstance(self.cfg.get('PyCCL'), dict), (
             "Section 'PyCCL' must be a dictionary"
         )
@@ -483,7 +482,6 @@ class SpaceborneConfigChecker:
             'PyCCL: gsl_params must be a dictionary or None'
         )
 
-        # precision
         # precision
         assert isinstance(self.cfg.get('precision'), dict), (
             "Section 'precision' must be a dictionary"
@@ -696,6 +694,14 @@ class SpaceborneConfigChecker:
             assert self.cfg['binning']['binning_type'] != 'ref_cut', (
                 'ref_cut case incompatible with nmt for the moment. '
                 'Please use a different binning type.'
+            )
+        if (
+            self.cfg['namaster']['use_namaster']
+            and self.cfg['covariance']['G_code'] != 'Spaceborne'
+        ):
+            raise ValueError(
+                'If computing the partial-sky covariance with NaMaster, '
+                '`covariance: G_code` should not be set (or set to "Spaceborne").'
             )
 
     def run_all_checks(self) -> None:

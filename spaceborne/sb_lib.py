@@ -642,12 +642,13 @@ def is_main_branch():
 
 @contextlib.contextmanager
 def timer(msg):
+    print(msg, flush=True)
     start = time.perf_counter()
     try:
         yield
     finally:
         stop = time.perf_counter()
-        print(f'{msg} done in {stop - start:.2f} s', flush=True)
+        print(f'...done in {stop - start:.2f} s', flush=True)
 
 
 def bin_2d_array(
@@ -682,7 +683,7 @@ def bin_2d_array(
         'weights_in must be the same length as ells_in'
     )
 
-    assert type(interpolate) is bool, 'interpolate must be a boolean'
+    assert isinstance(interpolate, bool), 'interpolate must be a boolean'
 
     # Loop over the output bins
     for ell1_idx, _ in enumerate(ells_out):
@@ -747,6 +748,179 @@ def bin_2d_array(
                 norm2 = simps(y=weights2_fine, x=ell2_fine)
 
             binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
+
+    return binned_cov
+
+
+def bin_2d_array_vectorized(
+    cov: np.ndarray,
+    ells_in: np.ndarray,
+    ells_out: np.ndarray,
+    ells_out_edges: np.ndarray,
+    weights_in: np.ndarray | None,
+    which_binning: str = 'sum',
+    interpolate: bool = True,
+):
+    """Vectorized version of bin_2d_array with pre-computed masks.
+
+    Optimizations:
+    - Pre-computes all bin masks once (for 'sum' binning mode)
+    - Uses direct array slicing for better cache locality
+    - Skips empty bins
+    - Removes redundant meshgrid operations
+    """
+    assert cov.shape[0] == cov.shape[1] == len(ells_in), (
+        'ells_in must be the same length as the covariance matrix'
+    )
+    assert len(ells_out) == len(ells_out_edges) - 1, (
+        'ells_out must be the same length as the number of edges - 1'
+    )
+    assert which_binning in ['sum', 'integral'], (
+        'which_binning must be either "sum" or "integral"'
+    )
+
+    if weights_in is None:
+        weights_in = np.ones_like(ells_in)
+
+    assert len(weights_in) == len(ells_in), (
+        'weights_in must be the same length as ells_in'
+    )
+    assert type(interpolate) is bool, 'interpolate must be a boolean'
+
+    n_bins = len(ells_out)
+    binned_cov = np.zeros((n_bins, n_bins))
+
+    if which_binning == 'sum':
+        # Pre-compute bin masks and norms for all bins
+        bin_masks = []
+        bin_weights = []
+        bin_norms = []
+
+        for i in range(n_bins):
+            mask = (ells_in >= ells_out_edges[i]) & (ells_in < ells_out_edges[i + 1])
+            weights = weights_in[mask]
+            bin_masks.append(mask)
+            bin_weights.append(weights)
+            bin_norms.append(np.sum(weights))
+
+        # Vectorized binning
+        for i in range(n_bins):
+            mask_i = bin_masks[i]
+            w_i = bin_weights[i]
+            norm_i = bin_norms[i]
+
+            if norm_i == 0:
+                continue
+
+            # Extract rows corresponding to bin i
+            cov_rows = cov[mask_i, :]
+
+            for j in range(n_bins):
+                mask_j = bin_masks[j]
+                w_j = bin_weights[j]
+                norm_j = bin_norms[j]
+
+                if norm_j == 0:
+                    continue
+
+                # Extract the block
+                cov_block = cov_rows[:, mask_j]
+
+                # Weighted sum using outer product
+                total = np.sum(cov_block * w_i[:, None] * w_j[None, :])
+                binned_cov[i, j] = total / (norm_i * norm_j)
+
+    elif which_binning == 'integral' and not interpolate:
+        # Vectorized integral version without interpolation
+        ells_edges_low = ells_out_edges[:-1]
+        ells_edges_high = ells_out_edges[1:]
+
+        for ell1_idx in range(n_bins):
+            ell1_min = ells_edges_low[ell1_idx]
+            ell1_max = ells_edges_high[ell1_idx]
+
+            mask1 = (ells_in >= ell1_min) & (ells_in < ell1_max)
+            ell1_in = ells_in[mask1]
+            weights1_in = weights_in[mask1]
+
+            if len(ell1_in) == 0:
+                continue
+
+            norm1 = simps(y=weights1_in, x=ell1_in)
+            cov_rows = cov[mask1, :]
+
+            for ell2_idx in range(n_bins):
+                ell2_min = ells_edges_low[ell2_idx]
+                ell2_max = ells_edges_high[ell2_idx]
+
+                mask2 = (ells_in >= ell2_min) & (ells_in < ell2_max)
+                ell2_in = ells_in[mask2]
+                weights2_in = weights_in[mask2]
+
+                if len(ell2_in) == 0:
+                    continue
+
+                cov_block = cov_rows[:, mask2]
+                norm2 = simps(y=weights2_in, x=ell2_in)
+
+                # Double integral
+                weights2_in_yy = weights2_in[None, :]
+                weights1_in_xx = weights1_in[:, None]
+                partial_integral = simps(
+                    y=cov_block * weights1_in_xx * weights2_in_yy, x=ell2_in, axis=1
+                )
+                total = simps(y=partial_integral, x=ell1_in, axis=0)
+                
+                binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
+
+    elif which_binning == 'integral' and interpolate:
+        # Use original implementation with spline for interpolated integral
+        cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
+        ells_edges_low = ells_out_edges[:-1]
+        ells_edges_high = ells_out_edges[1:]
+
+        for ell1_idx in range(n_bins):
+            ell1_min = ells_edges_low[ell1_idx]
+            ell1_max = ells_edges_high[ell1_idx]
+
+            mask1 = (ells_in >= ell1_min) & (ells_in < ell1_max)
+            ell1_in = ells_in[mask1]
+            weights1_in = weights_in[mask1]
+
+            if len(ell1_in) == 0:
+                continue
+
+            for ell2_idx in range(n_bins):
+                ell2_min = ells_edges_low[ell2_idx]
+                ell2_max = ells_edges_high[ell2_idx]
+
+                mask2 = (ells_in >= ell2_min) & (ells_in < ell2_max)
+                ell2_in = ells_in[mask2]
+                weights2_in = weights_in[mask2]
+
+                if len(ell2_in) == 0:
+                    continue
+
+                # Interpolate to fine grid
+                ell1_fine = np.linspace(ell1_min, ell1_max, num=100)
+                ell2_fine = np.linspace(ell2_min, ell2_max, num=100)
+                cov_interp = cov_interp_func(ell1_fine, ell2_fine)
+
+                # Interpolate weights
+                weights1_fine = np.interp(ell1_fine, ell1_in, weights1_in)
+                weights2_fine = np.interp(ell2_fine, ell2_in, weights2_in)
+
+                # Double integral
+                partial_integral = simps(
+                    y=cov_interp * weights1_fine[:, None] * weights2_fine[None, :],
+                    x=ell2_fine,
+                    axis=1,
+                )
+                total = simps(y=partial_integral, x=ell1_fine, axis=0)
+                norm1 = simps(y=weights1_fine, x=ell1_fine)
+                norm2 = simps(y=weights2_fine, x=ell2_fine)
+                
+                binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
 
     return binned_cov
 

@@ -1,20 +1,20 @@
 """
 LAST UPDATE: 2025-09-16
 
-Script to produce a set of benchmarks to test the Spaceborne code. More in detail, it 
+Script to produce a set of benchmarks to test the Spaceborne code. More in detail, it
 performs the following operations:
 
-1. Manually define a `base_cfg` dict (this is safer than importing the standard 
+1. Manually define a `base_cfg` dict (this is safer than importing the standard
    Spaceborne/config.yaml file) with fast runtime (e.g. setting a low number of points
    for the z and k grids).
-2. Change some settings to test the different parts of the code (and, to ensure fast 
+2. Change some settings to test the different parts of the code (and, to ensure fast
    execution), thereby producing a list of cfg dicts to test (`configs_to_test`).
 3. Save the list of cfg dicts to yaml files in the folder
    {ROOT}/Spaceborne_bench/bench_set_cfg.
 4. Run SB with these yaml files, generating a set of benchmarks (npz archives) to use as
    an exhaustive reference to test the code against. The benchmarks are stored in
    {ROOT}/Spaceborne_bench/bench_set_output
-   
+
 
 NOTES
 
@@ -22,8 +22,8 @@ NOTES
    If you want to overwrite them, delete the existing ones (e.g.):
    {ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
    or change the benchmark filename.
-   
--  The SB output produced at runtime during the production of these benchmarks 
+
+-  The SB output produced at runtime during the production of these benchmarks
    is in
    {ROOT}/Spaceborne_bench/bench_set_output/_sb_output,
    but you don't need to care about this.
@@ -35,7 +35,10 @@ import os
 import subprocess
 from copy import deepcopy
 from datetime import datetime
+from itertools import product
+import time
 
+import numpy as np
 import yaml
 
 
@@ -86,6 +89,7 @@ def save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=0):
     Args:
         configs (list): List of configuration dictionaries
         output_dir (str): Directory to save the YAML files
+        start_ix (int): Starting index for
 
     Returns:
         list: List of paths to the generated YAML files
@@ -113,7 +117,7 @@ def save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=0):
     return yaml_files
 
 
-def run_benchmarks(yaml_files, sb_root_path, output_dir):
+def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = False):
     """Run the benchmarks for each configuration file.
 
     Args:
@@ -147,6 +151,13 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
                 _yaml_file = os.path.abspath(os.path.join(original_dir, yaml_file))
             else:
                 _yaml_file = yaml_file
+
+            if os.path.exists(_yaml_file.replace('.yaml', '.npz')) and skip_existing:
+                print(
+                    f'Benchmark file {_yaml_file.replace(".yaml", ".npz")} '
+                    'already exists. Skipping it...'
+                )
+                continue
 
             print('\n')
             print('*********************************************************')
@@ -204,7 +215,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
 
 
 # Example usage
-ROOT = '/home/davide/Documenti/Lavoro/Programmi'
+ROOT = '/u/dsciotti/code'
 bench_set_path = f'{ROOT}/Spaceborne_bench'
 bench_set_path_cfg = f'{bench_set_path}/bench_set_cfg'
 bench_set_path_results = f'{bench_set_path}/bench_set_output'
@@ -224,14 +235,14 @@ base_cfg = {
         'ODE': 0.68,
         'm_nu': 0.06,
         'N_eff': 3.046,
-        'Om_k0': 0,
+        'Om_k0': 0.0,
     },
     'intrinsic_alignment': {
         'Aia': 0.16,
         'eIA': 1.66,
         'bIA': 0.0,
         'CIA': 0.0134,
-        'z_pivot_IA': 0,
+        'z_pivot_IA': 0.0,
         'lumin_ratio_filename': None,
     },
     'extra_parameters': {
@@ -251,7 +262,39 @@ base_cfg = {
         'halo_profile_dm': 'HaloProfileNFW',
         'halo_profile_hod': 'HaloProfileHOD',
     },
-    'probe_selection': {'LL': True, 'GL': True, 'GG': True, 'cross_cov': True},
+    'probe_selection': {
+        'space': 'harmonic',
+        'LL': True,
+        'GL': True,
+        'GG': True,
+        'xip': True,
+        'xim': True,
+        'gt': True,
+        'w': True,
+        'cross_cov': True,
+    },
+    'nz': {
+        'nz_sources_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_lenses_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'normalize_nz': True,
+        'ngal_sources': [8.09216, 8.09215, 8.09215],
+        'ngal_lenses': [8.09216, 8.09215, 8.09215],
+        'shift_nz': False,
+        'dzWL': [0.0, 0.0, 0.0],
+        'dzGC': [0.0, 0.0, 0.0],
+        'smooth_nz': False,
+        'sigma_smoothing': 10,
+    },
+    'binning': {
+        'binning_type': 'log',
+        'ell_min': 10,
+        'ell_max': 3000,
+        'ell_bins': 10,
+        'ell_bins_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt',
+        'theta_min_arcmin': 50,
+        'theta_max_arcmin': 300,
+        'theta_bins': 10,
+    },
     'C_ell': {
         'use_input_cls': False,
         'cl_LL_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt',
@@ -273,45 +316,19 @@ base_cfg = {
             'non_limber_integration_method': 'FKEM',
         },
     },
-    'nz': {
-        'nz_sources_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
-        'nz_lenses_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
-        'ngal_sources': [8.09216, 8.09215, 8.09215],
-        'ngal_lenses': [8.09216, 8.09215, 8.09215],
-        'shift_nz': False,
-        'dzWL': [-0.008848, 0.051368, 0.059484],
-        'dzGC': [-0.008848, 0.051368, 0.059484],
-        'normalize_shifted_nz': True,
-        'clip_zmin': 0,
-        'clip_zmax': 3,
-        'smooth_nz': False,
-        'sigma_smoothing': 10,
-    },
     'mask': {
         'load_mask': False,
-        'mask_path': '../input/mask.fits',
+        'mask_path': f'{ROOT}/common_data/RR2/Davide/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
         'generate_polar_cap': True,
         'nside': 1024,
         'survey_area_deg2': 13245,
         'apodize': False,
         'aposize': 0.1,
     },
-    'binning': {
-        'binning_type': 'ref_cut',
-        'ell_min_WL': 10,
-        'ell_max_WL': 3000,
-        'ell_bins_WL': 15,
-        'ell_min_GC': 10,
-        'ell_max_GC': 3000,
-        'ell_bins_GC': 15,
-        'ell_min_ref': 10,
-        'ell_max_ref': 3000,
-        'ell_bins_ref': 15,
-    },
     'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
     'covariance': {
         'G': True,
-        'SSC': False,
+        'SSC': True,
         'cNG': False,
         'coupled_cov': False,
         'triu_tril': 'triu',
@@ -325,28 +342,16 @@ base_cfg = {
         'which_b1g_in_resp': 'from_input',
         'include_b2g': True,
         'include_terasawa_terms': False,
-        'log10_k_min': -5,
-        'log10_k_max': 2,
+        'log10_k_min': -5.0,
+        'log10_k_max': 2.0,
         'k_steps': 20,
         'z_min': 0.02,
         'z_max': 3.0,
-        'z_steps': 100,
+        'z_steps': 500,
         'z_steps_trisp': 10,
         'use_KE_approximation': False,
         'cov_filename': 'cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz',
-    },
-    # Base configuration (common parameters) - these will be applied first
-    'namaster': {
-        'use_namaster': False,
-        'spin0': False,
-        'use_INKA': True,
-        'workspace_path': None,
-    },
-    'sample_covariance': {
-        'compute_sample_cov': False,
-        'which_cls': 'namaster',
-        'nreal': 5000,
-        'fix_seed': True,
+        'save_cov_fits': False,
     },
     'PyCCL': {
         'cov_integration_method': 'spline',
@@ -356,88 +361,160 @@ base_cfg = {
         'spline_params': {'A_SPLINE_NA_PK': 240, 'K_MAX_SPLINE': 300},
         'gsl_params': None,
     },
-    'precision': {'n_iter_nmt': None},
+    'namaster': {
+        'use_namaster': False,
+        'spin0': False,
+        'use_INKA': True,
+        'workspace_path': '...',
+    },
+    'sample_covariance': {
+        'compute_sample_cov': False,
+        'which_cls': 'namaster',
+        'nreal': 5000,
+        'fix_seed': True,
+    },
+    'precision': {
+        'n_iter_nmt': None,
+        'n_sub': 20,
+        'n_bisec_max': 500,
+        'rel_acc': 1.0e-7,
+        'boost_bessel': True,
+        'verbose': True,
+        'ell_min_rs': 2,
+        'ell_max_rs': 100000,
+        'ell_bins_rs': 500,
+        'ell_bins_rs_nongauss': 100,
+    },
     'misc': {
-        'num_threads': 40,
-        'test_numpy_inversion': True,
-        'test_condition_number': True,
-        'test_cholesky_decomposition': True,
-        'test_symmetry': True,
+        'num_threads': 72,
+        'jax_platform': 'auto',
+        'jax_enable_x64': True,
+        'test_numpy_inversion': False,
+        'test_condition_number': False,
+        'test_cholesky_decomposition': False,
+        'test_symmetry': False,
         'cl_triangle_plot': False,
-        'save_figs': False,
+        'plot_probe_names': True,
         'output_path': './output',
         'save_output_as_benchmark': True,
+        'save_figs': False,
     },
 }
 
 
 # Define your "zipped" sets of changes as a list of dictionaries
 # Each dictionary represents one configuration to test
-configs_to_test = [
-    # G with split
-    {'covariance': {'G': True, 'split_gaussian_cov': False}},
-    #  G without split
-    {'covariance': {'G': True, 'split_gaussian_cov': True}},
-    # G nmt spin0, log ell binning
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'binning': {'binning_type': 'log'},
-    },
-    # G nmt spin0, lin ell binning
-    # ==============================
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'binning': {'binning_type': 'lin'},
-    },
-    # G nmt spin2, lin ell binning
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': False},
-        'binning': {'binning_type': 'lin'},
-    },
-    # SSC KE
-    {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
-    # SSC LR
-    {'covariance': {'G': True, 'SSC': True, 'cNG': False}},
-    # cNG
-    {'covariance': {'G': True, 'SSC': False, 'cNG': True}},
-    
-    # === namaster runs, quite slow ===
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'log'},
-    },
-    # G spin0, lin ell binning
-    # ==============================
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': True},
-        'ell_binning': {'binning_type': 'lin'},
-    },
-    # G spin2, lin ell binning
-    {
-        'covariance': {'G': True},
-        'namaster': {'use_namaster': True, 'spin0': False},
-        'ell_binning': {'binning_type': 'lin'},
-    },
-]
+configs_to_test = []
 
+# ! covariance ordering
+for ordering in ['probe_scale_zpair', 'probe_zpair_scale', 'scale_probe_zpair']:
+    for triu_tril in ['triu', 'tril']:
+        for row_col in ['row-major', 'col-major']:
+            configs_to_test.append(
+                {
+                    'covariance': {
+                        'covariance_ordering_2D': ordering,
+                        'triu_tril': triu_tril,
+                        'row_col_major': row_col,
+                    }
+                }
+            )
+
+# ! SSC  variations
+for ke_approx in [True, False]:
+    for include_b2g in [True, False]:
+        for include_terasawa in [True, False]:
+            configs_to_test.append(
+                {
+                    'covariance': {
+                        'use_KE_approximation': ke_approx,
+                        'include_b2g': include_b2g,
+                        'include_terasawa_terms': include_terasawa,
+                    }
+                }
+            )
+
+
+# ! HS probe combinations
+for LL, GL, GC in product([True, False], repeat=3):
+    for split_gaussian_cov in [True, False]:
+        if not any([LL, GL, GC]):
+            continue
+        configs_to_test.append(
+            {
+                'probe_selection': {'LL': LL, 'GL': GL, 'GG': GC},
+                'covariance': {'split_gaussian_cov': split_gaussian_cov},
+            }
+        )
+
+# ! RS probe combinations
+for xip, xim, gt, w in product([True, False], repeat=4):
+    for split_gaussian_cov in [True, False]:
+        if not any([xip, xim, gt, w]):
+            continue
+        configs_to_test.append(
+            {
+                'probe_selection': {'xip': xip, 'xim': xim, 'gt': gt, 'w': w},
+                'covariance': {'split_gaussian_cov': split_gaussian_cov},
+            }
+        )
+
+# ! nz variations
+for shift_nz in [True, False]:
+    for smooth_nz in [True, False]:
+        configs_to_test.append({'nz': {'shift_nz': shift_nz, 'smooth_nz': smooth_nz}})
+
+# ! Mask variations
+for load_input_mask, generate_polar_cap in zip([True, False], [False, True]):
+    print(load_input_mask, generate_polar_cap)
+    for nside in [512, 1024]:
+        configs_to_test.append(
+            {
+                'mask': {
+                    'generate_polar_cap': generate_polar_cap,
+                    'load_mask': load_input_mask,
+                    'nside': nside,
+                }
+            }
+        )
+
+# ! NAMASTER (test only G cov)
+for coupled_cov in [True, False]:
+    for spin0 in [True, False]:
+        for use_INKA in [True, False]:
+            for binning_type in ['log', 'lin', 'from_input']:
+                configs_to_test.append(
+                    {
+                        'covariance': {'SSC': False, 'coupled_cov': coupled_cov},
+                        'namaster': {
+                            'use_namaster': True,
+                            'spin0': spin0,
+                            'use_INKA': use_INKA,
+                        },
+                        'binning': {'binning_type': binning_type},
+                    }
+                )
 
 # Generate configurations
 configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_path_cfg)
 print(f'Generated {len(configs)} configurations')
 
+
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=14)
+yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=82)
 
 # Run benchmarks
-run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)
+start = time.perf_counter()
+run_benchmarks(
+    yaml_files,
+    sb_root_path=sb_root_path,
+    output_dir=bench_set_path_results,
+    skip_existing=False,
+)
 
 # To manually run specific configurations:
 # To run a specific config:
 #   python main.py --config {yaml_file}
 
+print(f'All Benchmarks generated in {(time.perf_counter() - start):.2f} s')
 print('\nAll benchmarks saved!🎉')

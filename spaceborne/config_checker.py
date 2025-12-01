@@ -214,41 +214,37 @@ class SpaceborneConfigChecker:
         assert isinstance(nz_cfg.get('ngal_sources'), list), (
             'nz: ngal_sources must be a list'
         )
-        assert all(isinstance(x, float) for x in nz_cfg['ngal_sources']), (
-            'nz: All elements in ngal_sources must be floats'
-        )
-
         assert isinstance(nz_cfg.get('ngal_lenses'), list), (
             'nz: ngal_lenses must be a list'
+        )
+        assert all(isinstance(x, float) for x in nz_cfg['ngal_sources']), (
+            'nz: All elements in ngal_sources must be floats'
         )
         assert all(isinstance(x, float) for x in nz_cfg['ngal_lenses']), (
             'nz: All elements in ngal_lenses must be floats'
         )
-
         assert isinstance(nz_cfg.get('shift_nz'), bool), (
             'nz: shift_nz must be a boolean'
+        )
+        assert isinstance(nz_cfg.get('normalize_nz'), bool), (
+            'nz: normalize_nz must be a boolean'
+        )
+        assert isinstance(nz_cfg.get('smooth_nz'), bool), (
+            'nz: smooth_nz must be a boolean'
+        )
+        assert isinstance(nz_cfg.get('sigma_smoothing'), (int, float)), (
+            'nz: sigma_smoothing must be a float or an int'
         )
 
         if nz_cfg['shift_nz']:
             assert isinstance(nz_cfg.get('dzWL'), list), 'nz: dzWL must be a list'
+            assert isinstance(nz_cfg.get('dzGC'), list), 'nz: dzGC must be a list'
             assert all(isinstance(x, float) for x in nz_cfg['dzWL']), (
                 'nz: All elements in dzWL must be floats'
             )
-
-            assert isinstance(nz_cfg.get('dzGC'), list), 'nz: dzGC must be a list'
             assert all(isinstance(x, float) for x in nz_cfg['dzGC']), (
                 'nz: All elements in dzGC must be floats'
             )
-
-        assert isinstance(nz_cfg.get('normalize_shifted_nz'), bool), (
-            'nz: normalize_shifted_nz must be a boolean'
-        )
-        assert isinstance(nz_cfg.get('clip_zmin'), float), (
-            'nz: clip_zmin must be a float'
-        )
-        assert isinstance(nz_cfg.get('clip_zmax'), float), (
-            'nz: clip_zmax must be a float'
-        )
 
         # Mask
         assert isinstance(self.cfg.get('mask'), dict), (
@@ -327,7 +323,7 @@ class SpaceborneConfigChecker:
             )
             assert isinstance(oc_cfg.get('oc_output_filename'), str), (
                 'OneCovariance: oc_output_filename must be a string, found '
-                f'{oc_cfg} instead'
+                f'{oc_cfg.get("oc_output_filename")} instead'
             )
 
         # Ell Binning
@@ -338,16 +334,15 @@ class SpaceborneConfigChecker:
         assert isinstance(binning_cfg.get('binning_type'), str), (
             'binning: binning_type must be a string'
         )
-        for case in ['WL', 'GC', 'ref']:
-            assert isinstance(binning_cfg.get(f'ell_min_{case}'), int), (
-                f'binning: ell_min_{case} must be an int'
-            )
-            assert isinstance(binning_cfg.get(f'ell_max_{case}'), int), (
-                f'binning: ell_max_{case} must be an int'
-            )
-            assert isinstance(binning_cfg.get(f'ell_bins_{case}'), int), (
-                f'binning: ell_bins_{case} must be an int'
-            )
+        assert isinstance(binning_cfg.get('ell_min'), (float, int)), (
+            'binning: ell_min must be a float or an int'
+        )
+        assert isinstance(binning_cfg.get('ell_max'), (float, int)), (
+            'binning: ell_max must be a float or an int'
+        )
+        assert isinstance(binning_cfg.get('ell_bins'), int), (
+            'binning: ell_bins must be an int'
+        )
         assert isinstance(binning_cfg.get('theta_min_arcmin'), (float, int)), (
             'binning: theta_min_arcmin must be a float or an int'
         )
@@ -556,21 +551,6 @@ class SpaceborneConfigChecker:
             'misc: save_figs must be a boolean'
         )
 
-    def check_ell_binning(self) -> None:
-        # assert self.cfg['binning']['nbl_WL_opt'] == 32, (
-        #     'this is used as the reference binning, from which the cuts are made'
-        # )
-        # assert self.cfg['binning']['ell_max_WL_opt'] == 5000, (
-        #     'this is used as the reference binning, from which the cuts are made'
-        # )
-        # assert (
-        #     self.cfg['binning']['ell_max_WL'],
-        #     self.cfg['binning']['ell_max_GC'],
-        # ) == (5000, 3000) or (1500, 750), (
-        #     'ell_max_WL and ell_max_GC must be either (5000, 3000) or (1500, 750)'
-        # )
-        pass
-
     def check_misc(self) -> None:
         assert self.cfg['covariance']['n_probes'] == 2, (
             'The code can only accept 2 probes at the moment'
@@ -727,7 +707,6 @@ class SpaceborneConfigChecker:
         # self.check_fsky()
         self.check_probe_selection()
         self.check_types()
-        self.check_ell_binning()
         self.check_misc()
         self.check_nz()
         self.check_cosmo()

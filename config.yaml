@@ -30,7 +30,7 @@ intrinsic_alignment:
   bIA: 0.0 # Type: float. \beta_{IA}
   CIA: 0.0134 # Type: float.
   z_pivot_IA: 0.0 # Type: float.
-  lumin_ratio_filename: null # Type: str | None. null if not used, otherwise path to the file (e.g. ./input/scaledmeanlum-E2Sa.dat)
+  lumin_ratio_filename: null # Type: str | None. null if not used, otherwise path to the file
 
 # extra parameters to be passed to CCL cosmo object, eg CAMB extra parameters
 # (see https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology
@@ -75,7 +75,7 @@ probe_selection:
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
   
-  cross_cov: True # Type: bool. Whether to compute the cross-terms between the selected probes
+  cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
 
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.
@@ -93,43 +93,31 @@ nz:
 
   # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
-  #        modification to the n(z) by setting shift_nz and smooth_nz to False.
-  # [NOTE] The cuts defined by clip_zmin/zmax are only applied if shift_nz is True
-  shift_nz: True # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-  dzWL: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
-  dzGC: [-0.008848, 0.051368, 0.059484] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
-  normalize_shifted_nz: True # Type: bool. Whether to normalize the shifted n(z) distributions
-  clip_zmin: 0. # Type: float. Minimum redshift to clip (cut) the shifted n_i(z) distributions
-  clip_zmax: 3. # Type: float. Maximum redshift to clip (cut) the shifted n_i(z) distributions
+  #        modification to the n(z) by setting shift_nz and smooth_nz (and possibly normalize_nz) 
+  #        to False.
+  normalize_nz: True # Type: bool. Whether to normalize the input n_i(z) if they are not already (within atol=0, rtol=1e-3) 
+
+  shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
+  dzWL: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
+  dzGC: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
 
 
 binning:
-  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'ref_cut', 'from_input']
+  binning_type: 'from_input' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
-  ell_min_WL: 10 # Type: int. Minimum ell for WL
-  ell_max_WL: 1500 # Type: int. Maximum ell for WL
-  ell_bins_WL: 32 # Type: int. Number of bins for WL. Not used in the 'unbinned' and 'ref_cut' cases
+  ell_min: 10 # Type: int. Minimum ell
+  ell_max: 200 # Type: int. Maximum ell
+  ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
-  ell_min_GC: 10 # Type: int. Minimum ell for GC
-  ell_max_GC: 1500 # Type: int. Maximum ell for GC
-  ell_bins_GC: 32 # Type: int. Number of bins for GC. Not used in the 'unbinned' and 'ref_cut' cases
-
-  # ell binning for the reference case; only a subset of these bins, depending on the
-  # desired ell range of WL and GC, will be used in the 'ref_cut' case.
-  ell_min_ref: 10 # Type: int. Minimum ell for reference case
-  ell_max_ref: 1500 # Type: int. Maximum ell for reference case
-  ell_bins_ref: 32 # Type: int. Number of bins for reference case
-
-  WL_bins_filename: '/Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/ell_values_3x2pt.txt'
-  GC_bins_filename: '/Users/davidesciotti/Documents/Work/Code/common_data/Spaceborne_jobs/RR2_cov/Guada_01_10_2025_Marseille/input/ell_values_3x2pt.txt'
+  ell_bins_filename: '../common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt'
 
   # theta binning for the real-space covariance matrix
-  theta_min_arcmin: 50  # Type: float | int
-  theta_max_arcmin: 300  # Type: float | int
-  theta_bins: 10  # Type: int
+  theta_min_arcmin: 50  # Type: float | int. Minimum theta (in arcminutes)
+  theta_max_arcmin: 300  # Type: float | int. Maximum theta (in arcminutes)
+  theta_bins: 10  # Type: int. Number of theta bins
 
 
 C_ell:
@@ -268,7 +256,7 @@ covariance:
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
   log10_k_max: 2.0 # Type: float. Units: 1/Mpc
-  k_steps: 150 # Type: int. Around 100 should be enough
+  k_steps: 150 # Type: int. Around 150 should be enough
 
   # TODO what is this 0.02?
   z_min: 0.02 # Type: float
@@ -362,7 +350,7 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might 
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 64 # Type: int. How many threads to use for the parallel computations
+  num_threads: 72 # Type: int. How many threads to use for the parallel computations
   
   # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'

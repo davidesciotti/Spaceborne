@@ -300,6 +300,8 @@ class SpaceborneSSC:
         cov_ssc_dict = defaultdict(lambda: defaultdict(dict))
 
         start = time.perf_counter()
+        print('\nComputing SSC...')
+        
         # * compute required blocks
         for probe_abcd in unique_probe_combs_hs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
@@ -335,6 +337,6 @@ class SpaceborneSSC:
             zpairs_cd = self.ind_dict[probe_cd].shape[0]
             cov_ssc_dict[probe_2tpl]['4d'] = np.zeros((nbl, nbl, zpairs_ab, zpairs_cd))
 
-        print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
+        print(f'...done in {(time.perf_counter() - start):.2f} s')
 
         return cov_ssc_dict

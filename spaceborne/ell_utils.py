@@ -200,8 +200,8 @@ class EllBinning:
 
         # Only load filenames if using 'from_input' binning type
         if self.binning_type == 'from_input':
-            self.wl_bins_filename = cfg['binning']['WL_bins_filename']
-            self.gc_bins_filename = cfg['binning']['GC_bins_filename']
+            self.wl_bins_filename = cfg['binning']['ell_bins_filename']
+            self.gc_bins_filename = cfg['binning']['ell_bins_filename']
         else:
             self.wl_bins_filename = None
             self.gc_bins_filename = None
@@ -212,13 +212,13 @@ class EllBinning:
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
     def set_ell_min_max_from_cfg(self, cfg):
-        self.ell_min_WL = cfg['binning']['ell_min_WL']
-        self.ell_max_WL = cfg['binning']['ell_max_WL']
-        self.nbl_WL = cfg['binning']['ell_bins_WL']
+        self.ell_min_WL = cfg['binning']['ell_min']
+        self.ell_max_WL = cfg['binning']['ell_max']
+        self.nbl_WL = cfg['binning']['ell_bins']
 
-        self.ell_min_GC = cfg['binning']['ell_min_GC']
-        self.ell_max_GC = cfg['binning']['ell_max_GC']
-        self.nbl_GC = cfg['binning']['ell_bins_GC']
+        self.ell_min_GC = cfg['binning']['ell_min']
+        self.ell_max_GC = cfg['binning']['ell_max']
+        self.nbl_GC = cfg['binning']['ell_bins']
 
     def build_ell_bins(self):
         """Builds ell bins based on the specified configuration."""

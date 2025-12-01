@@ -317,7 +317,7 @@ class SpaceborneCovariance:
                 if term in self.cov_dict:
                     del self.cov_dict[term]
 
-        print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
+        print(f'...done in {(time.perf_counter() - start):.2f} s')
 
     def _reshape_covs_6d_to_4d_and_2d(self):
         """Simple wrapper to reshape the 6d covs (for each term and probe comb)
@@ -618,7 +618,6 @@ class SpaceborneCovariance:
                 stacklevel=2,
             )
 
-        print('Coupling the non-Gaussian covariance...')
         from spaceborne import cov_partial_sky
 
         # construct mcm array for better probe handling (especially for 3x2pt)
@@ -683,3 +682,4 @@ class SpaceborneCovariance:
         else:
             raise ValueError('probe must be LL or GG or 3x2pt')
         return ell_max, nbl
+

@@ -5,22 +5,21 @@ from copy import deepcopy
 import yaml
 
 
-
 def generate_zipped_configs(base_config: dict, changes_list: list[dict]) -> list:
     """Apply changes to a base config and return the list of resulting configs."""
     configs = []
 
+    def apply_changes(target_dict, changes_dict):
+        for key, value in changes_dict.items():
+            if isinstance(value, dict):
+                if key not in target_dict or not isinstance(target_dict[key], dict):
+                    target_dict[key] = {}
+                apply_changes(target_dict[key], value)
+            else:
+                target_dict[key] = value
+
     for change_set in changes_list:
         config = deepcopy(base_config)
-
-        def apply_changes(target_dict, changes_dict):
-            for key, value in changes_dict.items():
-                if isinstance(value, dict):
-                    if key not in target_dict or not isinstance(target_dict[key], dict):
-                        target_dict[key] = {}
-                    apply_changes(target_dict[key], value)
-                else:
-                    target_dict[key] = value
 
         apply_changes(config, change_set)
         configs.append(config)
@@ -67,11 +66,25 @@ configs_to_run = [
         'nz': {
             'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
             'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'ngal_sources': [2.1279869461396435, 2.8237964415236063, 2.564394831195362, 1.2930977380060946, 0.4702026378518463, 0.1069525663290778],  # fmt: skip
-            'ngal_lenses': [2.87799343223134, 2.098809385748583, 1.8471870250265632, 1.3455375854538179, 0.36423337434626685, 0.09234518996285011],  # fmt: skip
+            'ngal_sources': [
+                2.1279869461396435,
+                2.8237964415236063,
+                2.564394831195362,
+                1.2930977380060946,
+                0.4702026378518463,
+                0.1069525663290778,
+            ],  # fmt: skip
+            'ngal_lenses': [
+                2.87799343223134,
+                2.098809385748583,
+                1.8471870250265632,
+                1.3455375854538179,
+                0.36423337434626685,
+                0.09234518996285011,
+            ],  # fmt: skip
             'smooth_nz': True,
         },  # fmt: skip
-        'ell_binning': {'ell_max_WL': 1500, 'ell_max_GC': 1500, 'ell_max_ref': 1500},
+        'binning': {'ell_max': 1500},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
         'misc': {
             'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500'
@@ -82,11 +95,25 @@ configs_to_run = [
         'nz': {
             'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
             'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'ngal_sources': [1.68850, 1.68847, 1.68853, 1.68850, 1.68850, 1.68850],  # fmt: skip
-            'ngal_lenses': [1.68850, 1.68847, 1.68853, 1.68850, 1.68850, 1.68850],  # fmt: skip
+            'ngal_sources': [
+                1.68850,
+                1.68847,
+                1.68853,
+                1.68850,
+                1.68850,
+                1.68850,
+            ],  # fmt: skip
+            'ngal_lenses': [
+                1.68850,
+                1.68847,
+                1.68853,
+                1.68850,
+                1.68850,
+                1.68850,
+            ],  # fmt: skip
             'smooth_nz': True,
         },
-        'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
+        'binning': {'ell_max': 5000},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
         'misc': {
             'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000'
@@ -97,11 +124,25 @@ configs_to_run = [
         'nz': {
             'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
             'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'ngal_sources': [2.1279869461396435, 2.8237964415236063, 2.564394831195362, 1.2930977380060946, 0.4702026378518463, 0.1069525663290778, ],  # fmt: skip
-            'ngal_lenses': [2.87799343223134, 2.098809385748583, 1.8471870250265632, 1.3455375854538179, 0.36423337434626685, 0.09234518996285011,],  # fmt: skip
+            'ngal_sources': [
+                2.1279869461396435,
+                2.8237964415236063,
+                2.564394831195362,
+                1.2930977380060946,
+                0.4702026378518463,
+                0.1069525663290778,
+            ],  # fmt: skip
+            'ngal_lenses': [
+                2.87799343223134,
+                2.098809385748583,
+                1.8471870250265632,
+                1.3455375854538179,
+                0.36423337434626685,
+                0.09234518996285011,
+            ],  # fmt: skip
             'smooth_nz': True,
         },
-        'ell_binning': {'ell_max_WL': 1500, 'ell_max_GC': 1500, 'ell_max_ref': 1500},
+        'binning': {'ell_max': 1500},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
             'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500_BNT'
@@ -112,11 +153,25 @@ configs_to_run = [
         'nz': {
             'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
             'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'ngal_sources': [2.1279869461396435, 2.8237964415236063, 2.564394831195362, 1.2930977380060946, 0.4702026378518463, 0.1069525663290778, ],  # fmt: skip
-            'ngal_lenses': [2.87799343223134, 2.098809385748583, 1.8471870250265632, 1.3455375854538179, 0.36423337434626685, 0.09234518996285011,],  # fmt: skip
+            'ngal_sources': [
+                2.1279869461396435,
+                2.8237964415236063,
+                2.564394831195362,
+                1.2930977380060946,
+                0.4702026378518463,
+                0.1069525663290778,
+            ],  # fmt: skip
+            'ngal_lenses': [
+                2.87799343223134,
+                2.098809385748583,
+                1.8471870250265632,
+                1.3455375854538179,
+                0.36423337434626685,
+                0.09234518996285011,
+            ],  # fmt: skip
             'smooth_nz': True,
         },
-        'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
+        'binning': {'ell_max': 5000},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
             'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000_BNT'
@@ -130,32 +185,71 @@ configs_to_run = [
             'nz_sources_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzSources-EP06-zedMin02-zedMax25-SN05.dat',
             'nz_lenses_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzLenses-EP06-zedMin02-zedMax25-IE235.dat',
             # /home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzPar/ngbsLenses-EP06-zedMin02-zedMax25-IE235.dat
-            'ngal_sources': [5.98069, 5.98077, 5.98074, 5.98072, 5.98074, 5.98073], # fmt: skip
-            'ngal_lenses': [1.68850, 1.68847, 1.68853, 1.68850, 1.68850, 1.68850], # fmt: skip
+            'ngal_sources': [
+                5.98069,
+                5.98077,
+                5.98074,
+                5.98072,
+                5.98074,
+                5.98073,
+            ],  # fmt: skip
+            'ngal_lenses': [
+                1.68850,
+                1.68847,
+                1.68853,
+                1.68850,
+                1.68850,
+                1.68850,
+            ],  # fmt: skip
             'smooth_nz': False,
         },
-        'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
+        'binning': {'ell_max': 5000},
         'covariance': {'sigma_eps_i': [0.26] * 6},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
             'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP06_nbl32_ellmax5000'
         },
     },
-
-
     # ! nzSPV3_EP13_nbl32_ellmax5000
     {
         'nz': {
             'nz_sources_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
             'nz_lenses_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
             # sftp://davide.sciotti@melodie.phys.uniroma1.it/export/NAS/cosmo/users/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzPar/from ngbsTab-EP13-zedMin02-zedMax25-mag230
-            'ngal_sources': [0.51609, 0.51609, 0.51610, 0.5160, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51612, 0.5160], # fmt: skip
-            'ngal_lenses': [0.51609, 0.51609, 0.51610, 0.5160, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51612, 0.5160], # fmt: skip
+            'ngal_sources': [
+                0.51609,
+                0.51609,
+                0.51610,
+                0.5160,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51612,
+                0.5160,
+            ],  # fmt: skip
+            'ngal_lenses': [
+                0.51609,
+                0.51609,
+                0.51610,
+                0.5160,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51612,
+                0.5160,
+            ],  # fmt: skip
             'smooth_nz': False,
-            
         },
-        'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
-        'C_ell': {'mult_shear_bias': [0.]*13},
+        'binning': {'ell_max': 5000},
+        'C_ell': {'mult_shear_bias': [0.0] * 13},
         'covariance': {'sigma_eps_i': [0.26] * 13},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
@@ -168,12 +262,40 @@ configs_to_run = [
             'nz_sources_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
             'nz_lenses_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
             # sftp://davide.sciotti@melodie.phys.uniroma1.it/export/NAS/cosmo/users/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzPar/from ngbsTab-EP13-zedMin02-zedMax25-mag230
-            'ngal_sources': [0.51609, 0.51609, 0.51610, 0.5160, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51612, 0.5160], # fmt: skip
-            'ngal_lenses': [0.51609, 0.51609, 0.51610, 0.5160, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51609, 0.51612, 0.5160], # fmt: skip
+            'ngal_sources': [
+                0.51609,
+                0.51609,
+                0.51610,
+                0.5160,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51612,
+                0.5160,
+            ],  # fmt: skip
+            'ngal_lenses': [
+                0.51609,
+                0.51609,
+                0.51610,
+                0.5160,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51609,
+                0.51612,
+                0.5160,
+            ],  # fmt: skip
             'smooth_nz': False,
         },
-        'ell_binning': {'ell_max_WL': 5000, 'ell_max_GC': 5000, 'ell_max_ref': 5000},
-        'C_ell': {'mult_shear_bias': [0.]*13},
+        'binning': {'ell_max': 5000},
+        'C_ell': {'mult_shear_bias': [0.0] * 13},
         'covariance': {'sigma_eps_i': [0.26] * 13},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
@@ -181,8 +303,6 @@ configs_to_run = [
         },
     },
 ]
-
-
 
 
 # assign yaml filenames based on output path

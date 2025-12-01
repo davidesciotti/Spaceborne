@@ -298,6 +298,8 @@ class SpaceborneSSC:
         # ! start the actual computation
         cov_ssc_3x2pt_dict_4d = {}
         start = time.perf_counter()
+        print('\nComputing SSC...')
+        
         # * compute required blocks
         for probe_abcd in unique_probe_combs_hs:
             probe_a, probe_b, probe_c, probe_d = probe_abcd
@@ -338,6 +340,6 @@ class SpaceborneSSC:
                 (nbl, nbl, zpairs_ab, zpairs_cd)
             )
 
-        print(f'SSC computed with JAX in {(time.perf_counter() - start):.2f} s')
+        print(f'...done in {(time.perf_counter() - start):.2f} s')
 
         return cov_ssc_3x2pt_dict_4d

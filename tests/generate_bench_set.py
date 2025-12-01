@@ -466,7 +466,6 @@ for shift_nz in [True, False]:
 
 # ! Mask variations
 for load_input_mask, generate_polar_cap in zip([True, False], [False, True]):
-    print(load_input_mask, generate_polar_cap)
     for nside in [512, 1024]:
         configs_to_test.append(
             {

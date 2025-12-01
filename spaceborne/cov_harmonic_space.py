@@ -340,6 +340,7 @@ class SpaceborneCovariance:
         the 6d probe-specific ones.
 
         Note: remember that there is no 6d 3x2pt 6d or 10d cov!
+        Note: This exact same function is also defined in cov_real_space.py
         """
 
         for term in const.ALL_COV_TERMS:
@@ -375,6 +376,9 @@ class SpaceborneCovariance:
     def _set_cov_tot_2d_and_6d(self):
         """
         Sums G, SSC and cNG 2D covs to get the total covariance
+
+        Note: simply looping over terms would sum sva + sn + mix + g, resulting in
+        double counting of the Gaussian term.
         """
         for dim in ('2d', '6d'):
             for probe_abcd in self.req_probe_combs_2d:
@@ -588,12 +592,12 @@ class SpaceborneCovariance:
             print(f'...done in {time.perf_counter() - start:.2f} s')
 
         # ! compute coupled NG cov - the "if coupled" is inside the function
-        self._couple_cov_ng_3x2pt()
+        self._couple_cov_ng()
 
         # ! reshape probe-specific 6d covs to 4d and 2d
         self._reshape_covs_6d_to_4d_and_2d()
 
-        # ! construct 3x2pt 4d and 2d covs
+        # ! construct 3x2pt 4d and 2d covs (there is no 6d 3x2pt!)
         self._build_cov_3x2pt_4d_and_2d()
 
         # ! sum g + ssc + cng to get tot (only 2D)
@@ -607,7 +611,7 @@ class SpaceborneCovariance:
 
         print('Covariance matrices computed')
 
-    def _couple_cov_ng_3x2pt(self):
+    def _couple_cov_ng(self):
         if not self.cov_cfg['coupled_cov']:
             return
 
@@ -682,4 +686,3 @@ class SpaceborneCovariance:
         else:
             raise ValueError('probe must be LL or GG or 3x2pt')
         return ell_max, nbl
-

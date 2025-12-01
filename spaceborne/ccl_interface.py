@@ -792,7 +792,7 @@ class CCLInterface:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             probe_2tpl = (probe_ab, probe_cd)
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
-            print('CCL 3x2pt cov: computing probe combination ', probe_ab, probe_cd)
+            print('CCL 3x2pt cov: computing probe combination ', probe_ab + probe_cd)
 
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
                 which_ng_cov=which_ng_cov,
@@ -816,7 +816,7 @@ class CCLInterface:
             probe_2tpl_orig = (probe_ab, probe_cd)
             probe_2tpl_symm = (probe_cd, probe_ab)
             print(
-                f'CCL 3x2pt cov: filling probe combination {probe_2tpl_orig} by symmetry'
+                f'CCL 3x2pt cov: filling probe combination {probe_ab + probe_cd} by symmetry'
             )
 
             self.cov_dict[ng_term][probe_2tpl_orig]['4d'] = (
@@ -827,7 +827,7 @@ class CCLInterface:
         # for probe_abcd in nonreq_probe_combs:
         #     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
         #     probe_2tpl = (probe_ab, probe_cd)
-        #     print('CCL 3x2pt cov: skipping probe combination ', probe_2tpl)
+        #     print(f'CCL 3x2pt cov: skipping probe combination {probe_ab + probe_cd}')
 
         #     zpairs_ab = ind_dict[probe_ab].shape[0]
         #     zpairs_cd = ind_dict[probe_cd].shape[0]

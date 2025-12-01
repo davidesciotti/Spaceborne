@@ -162,7 +162,7 @@ def ssc_integral_4D_simps_jax_ke_approx(
 
 
 class SpaceborneSSC:
-    def __init__(self, cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units):
+    def __init__(self, cfg, pvt_cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units):
         self.use_ke_approx = cfg['covariance']['use_KE_approximation']
         self.z_grid = z_grid
         self.zbins = zbins
@@ -181,10 +181,11 @@ class SpaceborneSSC:
             self.ssc_func = ssc_integral_4D_simps_jax
             self.cl_integral_convention_ssc = 'Euclid'
 
-        self.ind_dict = ind_dict
-        self.ind_auto = ind_dict[('L', 'L')]
-        self.ind_cross = ind_dict[('G', 'L')]
-        self.zpairs_auto, self.zpairs_cross, _ = sl.get_zpairs(self.zbins)
+        self.ind_dict = pvt_cfg['ind_dict']
+        self.ind_auto = pvt_cfg['ind_auto']
+        self.ind_cross = pvt_cfg['ind_cross']
+        self.zpairs_auto = pvt_cfg['zpairs_auto']
+        self.zpairs_cross = pvt_cfg['zpairs_cross']
 
         assert self.zpairs_auto == self.ind_auto.shape[0]
         assert self.zpairs_cross == self.ind_cross.shape[0]
@@ -301,7 +302,7 @@ class SpaceborneSSC:
 
         start = time.perf_counter()
         print('\nComputing SSC...')
-        
+
         # * compute required blocks
         for probe_abcd in unique_probe_combs_hs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')

@@ -1540,7 +1540,7 @@ if compute_sb_ssc:
 
     from spaceborne import cov_ssc
 
-    ssc_obj = cov_ssc.SpaceborneSSC(cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units)
+    ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units)
     ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
 
     cov_ssc_dict = ssc_obj.compute_ssc(
@@ -1700,7 +1700,6 @@ if cfg['covariance']['save_cov_fits'] and obs_space != 'harmonic':
 print(f'Covariance matrices saved in {output_path}\n')
 
 # ! ============================ plot & tests ==========================================
-
 with np.errstate(invalid='ignore', divide='ignore'):
     for cov_name, cov in cov_dict_tosave_2d.items():
         if not np.allclose(cov, 0, atol=0, rtol=1e-6):
@@ -1914,17 +1913,9 @@ if cfg['misc']['save_output_as_benchmark']:
         'commit': commit,
     }
 
-    # this is no longer set manually
-    # bench_filename = cfg['misc']['bench_filename'].format(
-    #     g_code=cfg['covariance']['G_code'],
-    #     ssc_code=cfg['covariance']['SSC_code'] if cfg['covariance']['SSC'] else 'None',
-    #     cng_code=cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else 'None',
-    #     use_KE=str(cfg['covariance']['use_KE_approximation']),
-    #     which_pk_responses=cfg['covariance']['which_pk_responses'],
-    #     which_b1g_in_resp=cfg['covariance']['which_b1g_in_resp'],
-    # )
     bench_filename = cfg['misc']['bench_filename']
-
+    
+    # protect against unwanted oversubscription
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError(
             'You are trying to overwrite the benchmark file at'

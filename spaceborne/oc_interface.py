@@ -739,14 +739,25 @@ class OneCovarianceInterface:
 
     def call_oc_from_bash(self) -> None:
         """This function runs OneCovariance"""
-        subprocess.run(
-            [
-                self.path_to_oc_env,
-                self.path_to_oc_executable,
-                self.path_to_config_oc_ini,
-            ],
-            check=True,
-        )
+        try:
+            # Set MPLBACKEND to prevent display errors in subprocess
+            env = os.environ.copy()
+            env['MPLBACKEND'] = 'Agg'
+            
+            subprocess.run(
+                [
+                    self.path_to_oc_env,
+                    self.path_to_oc_executable,
+                    self.path_to_config_oc_ini,
+                ],
+                check=True,
+                capture_output=False,
+                text=True,
+                env=env,
+            )
+        except subprocess.CalledProcessError as e:
+            print('OneCovariance failed with error:')
+            raise e
 
     def call_oc_from_class(self):
         """This interface was originally created by Robert Reischke.

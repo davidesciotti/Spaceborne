@@ -47,6 +47,11 @@ RS_AUTO_PROBES = ['xip', 'xim', 'gg']
 HS_PROBE_NAME_TO_IX_DICT = {'L': 0, 'G': 1}
 HS_PROBE_IX_TO_NAME_DICT = {0: 'L', 1: 'G'}
 
+# whether or not to symmetrize the covariance probe blocks when
+# reshaping it from 4D to 6D.
+# Useful if the 6D cov elements need to be accessed directly, whereas if
+# the cov is again reduced to 4D or 2D.
+# Can be set to False for a significant speedup
 HS_SYMMETRIZE_OUTPUT_DICT = {
     ('LL'): True,
     ('GL'): False,

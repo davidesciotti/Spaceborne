@@ -307,29 +307,15 @@ class SpaceborneCovariance:
                 axis=2,
             )
             self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
-            cov_3x2pt_gnmt_10d = self.nmt_cov_obj.build_psky_cov()
+            cov_nmt_dict = self.nmt_cov_obj.build_psky_cov()
 
-            self.cov_dict['g'].update(
-                sl.cov_10d_arr_to_dict(
-                    cov_3x2pt_gnmt_10d,
-                    dim='6d',
-                    req_probe_combs_2d=self.req_probe_combs_2d,
-                    space='harmonic',
-                )
-            )
+            self.cov_dict['g'] = deepcopy(cov_nmt_dict['g'])
 
             # delete the SVA, SN and MIX terms to avoid confusion, only the g one
             # remains in the partial sky case
-            for term in ['sva', 'sn', 'mix']:
-                self.cov_dict[term].update(
-                    sl.cov_10d_arr_to_dict(
-                        None,
-                        dim='6d',
-                        req_probe_combs_2d=self.req_probe_combs_2d,
-                        space='harmonic',
-                        empty=True,
-                    )
-                )
+            for term in ('sva', 'sn', 'mix'):
+                if term in self.cov_dict:
+                    del self.cov_dict[term]
 
         print(f'Gauss. cov. matrices computed in {(time.perf_counter() - start):.2f} s')
 
@@ -426,7 +412,8 @@ class SpaceborneCovariance:
                 del self.cov_dict[term]
 
     def _add_ng_cov(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
-        """Helper function to retrieve the SSC from the required code-specific object.
+        """Helper function to retrieve the non-Gaussian covariance from the required
+        code-specific object.
 
         Note:  this function needs to assign the cov_dict['ssc'][<probe_2tpl>]['6d']
                6d covariances only, since the reshaping is handled downstream.

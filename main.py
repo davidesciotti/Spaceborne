@@ -204,18 +204,6 @@ k_steps_sigma2_simps = 20_000
 k_steps_sigma2_levin = 300
 shift_nz_interpolation_kind = 'linear'
 
-# whether or not to symmetrize the covariance probe blocks when
-# reshaping it from 4D to 6D.
-# Useful if the 6D cov elements need to be accessed directly, whereas if
-# the cov is again reduced to 4D or 2D.
-# Can be set to False for a significant speedup
-symmetrize_output_dict = {
-    ('L', 'L'): False,
-    ('G', 'L'): False,
-    ('L', 'G'): False,
-    ('G', 'G'): False,
-}
-
 
 # these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
@@ -441,12 +429,13 @@ if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
 
 _condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
 if compute_ccl_cng and _condition:
-    raise ValueError(
+    warnings.warn(
         'There seems to be some issue with the symmetry of the GLGL '
         'block in the '
         'CCL cNG covariance, so for the moment it is disabled. '
         'The LLLL and GGGG blocks are not affected, so you can still '
-        'compute the single-probe cNG covariances.'
+        'compute the single-probe cNG covariances.',
+        stacklevel=2,
     )
 
 # ! set HS probes to compute depending on RS ones
@@ -600,7 +589,7 @@ ind = sl.build_full_ind(
 )
 ind_auto = ind[:zpairs_auto, :].copy()
 ind_cross = ind[zpairs_auto : zpairs_cross + zpairs_auto, :].copy()
-ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
+ind_dict = {'LL': ind_auto, 'GL': ind_cross, 'GG': ind_auto}
 
 # private cfg dictionary. This serves a couple different purposeses:
 # 1. To store and pass hardcoded parameters in a convenient way
@@ -608,6 +597,12 @@ ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
 pvt_cfg = {
     'zbins': zbins,
     'ind': ind,
+    'ind_dict': ind_dict,
+    'ind_auto': ind_auto,
+    'ind_cross': ind_cross,
+    'zpairs_auto': zpairs_auto,
+    'zpairs_cross': zpairs_cross,
+    'zpairs_3x2pt': zpairs_3x2pt,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
     'unique_probe_combs': unique_probe_combs_hs,
@@ -616,7 +611,7 @@ pvt_cfg = {
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
-    'symmetrize_output_dict': symmetrize_output_dict,
+    'symmetrize_output_dict': const.HS_SYMMETRIZE_OUTPUT_DICT,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
 }
@@ -1144,7 +1139,6 @@ if obs_space == 'real':
 cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
     cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix
 )
-cov_hs_obj.set_ind_and_zpairs(ind)
 cov_hs_obj.consistency_checks()
 cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
 

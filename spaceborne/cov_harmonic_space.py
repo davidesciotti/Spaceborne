@@ -632,22 +632,20 @@ class SpaceborneCovariance:
         #     mcm_3x2pt_arr[1, 0], cov_XC_cng_6d, mcm_3x2pt_arr[1, 0].T
         # )
 
-        for probe_abcd in self.req_probe_combs_2d:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
-            self.cov_dict['ssc'][probe_ab, probe_cd]['6d'] = (
-                cov_partial_sky.couple_cov_6d(
-                    mcm_dict[probe_ab],
-                    self.cov_dict['ssc'][probe_ab, probe_cd]['6d'],
-                    mcm_dict[probe_cd].T,
+        for ng_term in ['ssc', 'cng']:
+            if ng_term not in self.cov_dict:
+                continue
+
+            for probe_abcd in self.req_probe_combs_2d:
+                probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
+                self.cov_dict[ng_term][probe_ab, probe_cd]['6d'] = (
+                    cov_partial_sky.couple_cov_6d(
+                        mcm_dict[probe_ab],
+                        self.cov_dict[ng_term][probe_ab, probe_cd]['6d'],
+                        mcm_dict[probe_cd].T,
+                    )
                 )
-            )
-            self.cov_dict['cng'][probe_ab, probe_cd]['6d'] = (
-                cov_partial_sky.couple_cov_6d(
-                    mcm_dict[probe_ab],
-                    self.cov_dict['cng'][probe_ab, probe_cd]['6d'],
-                    mcm_dict[probe_cd].T,
-                )
-            )
+
         print('...done')
 
     def get_ellmax_nbl(self, probe, covariance_cfg):

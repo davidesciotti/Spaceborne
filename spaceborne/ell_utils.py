@@ -16,17 +16,17 @@ def nmt_linear_binning(lmin, lmax, bw, w=None):
     return b
 
 
-def log_binning(lmax, lmin, nbl, w=None):
+def nmt_log_binning(lmin, lmax, nbl, w=None):
     """
     Define a logarithmic ell binning scheme with optional weights.
     Function written by Sylvain Gouyou Beauchamps.
 
     Parameters
     ----------
-    lmax : int
-        Maximum ell value for the binning.
     lmin : int
         Minimum ell value for the binning.
+    lmax : int
+        Maximum ell value for the binning.
     nbl : int
         Number of bins.
     w : array-like, optional

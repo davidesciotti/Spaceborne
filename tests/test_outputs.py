@@ -79,8 +79,8 @@ def test_main_script(test_cfg_path):
     # print keys not in common
     uncommon_keys = list(set(keys_test) ^ set(keys_bench))
     for key in uncommon_keys:
-        key_in_test = '✅' if key in keys_test else '❌'
-        key_in_bench = '✅' if key in keys_bench else '❌'
+        key_in_test = '✅' if key in keys_test else '✖️'
+        key_in_bench = '✅' if key in keys_bench else '✖️'
         print(f'{key:<15} \t\t in test: {key_in_test} \t in bench: {key_in_bench}')
 
     # test keys in common

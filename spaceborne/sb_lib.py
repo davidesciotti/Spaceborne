@@ -47,9 +47,7 @@ so beware that:
 
 To reshape the covariance *blocks*, you can use:
 6d -> 4d: 
-    cov_dict = cov_dict_6d_to_4d_or_2d(..., dim_out='4d')
-6d -> 2d: 
-    cov_dict = cov_dict_6d_to_4d_or_2d(..., dim_out='2d')
+    cov_dict = cov_dict_6d_to_4d_and_2d()
 
 To create the 4d 3x2pt covariance, you can use (you have to loop over terms here!):
 
@@ -81,7 +79,7 @@ def set_cov_tot_2d_and_6d(cov_dict: dict, req_probe_combs_2d: list, space: str) 
         for probe_abcd in req_probe_combs_2d:
             probe_2tpl = split_probe_name(probe_abcd, space=space)
 
-            # coincise way to check that the key exists and the dict is not empty
+            # concise way to check that the key exists and the dict is not empty
             ssc_dict = cov_dict.get('ssc')
             cng_dict = cov_dict.get('cng')
             ssc = ssc_dict[probe_2tpl][dim] if ssc_dict else 0
@@ -316,16 +314,14 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
     cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
 
     Additionally, the function checks that the term, probe_ab, probe_cd, and dim
-    keys have one ov the expected values (among all the possible ones!)
+    keys have one of the expected values (among all the possible ones!)
 
     Args:
         cov_dict: Dictionary to validate
-        space: 'harmonic' or 'real'
+        obs_space: 'harmonic' or 'real'
         expected_probes: Optional list of expected probe tuples
         expected_dims: Optional list of expected dimensions (e.g., ['6d', '8d'])
     """
-    import numpy as np
-
     expected_terms = ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
     expected_dims = ['2d', '4d', '6d']
     if obs_space == 'harmonic':
@@ -333,7 +329,7 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
     elif obs_space == 'real':
         expected_probes_ab = const.RS_DIAG_PROBES
     else:
-        raise ValueError('`space` must be in ["harmonic", "real"]')
+        raise ValueError('`obs_space` must be in ["harmonic", "real"]')
 
     if not isinstance(cov_dict, dict):
         raise ValueError('cov_dict must be a dictionary')
@@ -349,6 +345,13 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
             )
 
         for probe_2tpl, dim_dict in cov_probe_dict.items():
+            
+            if not isinstance(probe_2tpl, tuple) or len(probe_2tpl) != 2:
+                raise ValueError(
+                    f"Probe key {probe_2tpl} in term '{term}' must be "
+                    'a tuple of 2 elements'
+                )
+            
             # check the probe names
             if probe_2tpl[0] not in expected_probes_ab:
                 raise ValueError(

@@ -268,7 +268,7 @@ class SpaceborneConfigChecker:
             'mask: nside must be an int or None'
         )
         assert isinstance(mask_cfg.get('survey_area_deg2'), (int, float)), (
-            'mask: survey_area_deg2 must be an int'
+            'mask: survey_area_deg2 must be an int or float'
         )
         assert isinstance(mask_cfg.get('apodize'), bool), (
             'mask: apodize must be a boolean'

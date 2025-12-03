@@ -1,8 +1,9 @@
 """
 Branch TODO list:
 * update partial sky            [ok]
-* update real space
-* adjust outputs for tests?
+* update real space             [ok, finish checking]
+* adjust outputs for tests?     [done, generate new benchmarks also from develop, there was a bug]
+* rerun all tests
 """
 
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
@@ -1084,14 +1085,14 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
             io_handler.check_ells_for_spline(ells_in)
             io_handler.check_ells_for_spline(ells_out)
 
-    # initialize nmt_cov_obj and set a couple useful attributes
-    nmt_cov_obj = cov_partial_sky.NmtCov(
+    # initialize cov_nmt_obj and set a couple useful attributes
+    cov_nmt_obj = cov_partial_sky.NmtCov(
         cfg=cfg, pvt_cfg=pvt_cfg, ell_obj=ell_obj, mask_obj=mask_obj
     )
 
-    # set unbinned ells in nmt_cov_obj
-    nmt_cov_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
-    nmt_cov_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
+    # set unbinned ells in cov_nmt_obj
+    cov_nmt_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
+    cov_nmt_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
     if cfg['C_ell']['use_input_cls']:
         cl_3x2pt_5d_unb = np.zeros(
@@ -1112,12 +1113,12 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
             n_probes_hs=cfg['covariance']['n_probes'],
         )
 
-    nmt_cov_obj.cl_ll_unb_3d = cl_3x2pt_5d_unb[0, 0]
-    nmt_cov_obj.cl_gl_unb_3d = cl_3x2pt_5d_unb[1, 0]
-    nmt_cov_obj.cl_gg_unb_3d = cl_3x2pt_5d_unb[1, 1]
+    cov_nmt_obj.cl_ll_unb_3d = cl_3x2pt_5d_unb[0, 0]
+    cov_nmt_obj.cl_gl_unb_3d = cl_3x2pt_5d_unb[1, 0]
+    cov_nmt_obj.cl_gg_unb_3d = cl_3x2pt_5d_unb[1, 1]
 
 else:
-    nmt_cov_obj = None
+    cov_nmt_obj = None
 
 
 # ! ============================== Init real space cov object ==========================
@@ -1152,7 +1153,7 @@ if obs_space == 'real':
 
 # !  =============================== Build Gaussian covs ===============================
 cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
-    cfg, pvt_cfg, ell_obj, nmt_cov_obj, bnt_matrix
+    cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
 )
 cov_hs_obj.consistency_checks()
 cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
@@ -1258,24 +1259,24 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # * 2. compute cov using the onecovariance interface class
     print('Start cov computation with OneCovariance...')
     # initialize object, build cfg file
-    oc_obj = oc_interface.OneCovarianceInterface(
+    cov_oc_obj = oc_interface.OneCovarianceInterface(
         cfg, pvt_cfg, do_g=compute_oc_g, do_ssc=compute_oc_ssc, do_cng=compute_oc_cng
     )
-    oc_obj.oc_path = oc_path
-    oc_obj.z_grid_trisp_sb = z_grid_trisp
-    oc_obj.path_to_config_oc_ini = f'{oc_obj.oc_path}/input_configs.ini'
-    oc_obj.ells_sb = ell_obj.ells_3x2pt
-    oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
+    cov_oc_obj.oc_path = oc_path
+    cov_oc_obj.z_grid_trisp_sb = z_grid_trisp
+    cov_oc_obj.path_to_config_oc_ini = f'{cov_oc_obj.oc_path}/input_configs.ini'
+    cov_oc_obj.ells_sb = ell_obj.ells_3x2pt
+    cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
 
     # compute covs
-    oc_obj.call_oc_from_bash()
+    cov_oc_obj.call_oc_from_bash()
 
     # load output .list file (maybe the .mat format would be better, actually...)
     # and store it into a 6d dictionary
     oc_output_covlist_fname = (
         f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
     )
-    oc_obj.cov_dict = oc_interface.process_cov_from_list_file(
+    cov_oc_obj.cov_dict = oc_interface.process_cov_from_list_file(
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
         obs_space=obs_space,
@@ -1289,7 +1290,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         _valid_probes_oc = const.HS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_hs_2d
         nbx = ell_obj.nbl_3x2pt
-        probe_idx_dict = oc_obj.probe_idx_dict_hs
+        probe_idx_dict = cov_oc_obj.probe_idx_dict_hs
         n_probes_oc = 2
         full_cov = (ps['LL'] + ps['GL'] + ps['GG']) == 3 and ps['cross_cov'] is True
     elif obs_space == 'real':
@@ -1303,7 +1304,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         ] is True
 
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
-    oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=oc_obj.cov_dict)
+    cov_oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=cov_oc_obj.cov_dict)
 
     # compare list and mat formats
     if full_cov:
@@ -1319,7 +1320,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
             'zpairs_cross': zpairs_cross,
             'block_index': cov_hs_obj.block_index,
         }
-        oc_obj.output_sanity_check(
+        cov_oc_obj.output_sanity_check(
             req_probe_combs_2d=_req_probe_combs_2d,
             cov_dict_6d_to_4d_and_2d_kw=cov_dict_6d_to_4d_and_2d_kw,
             rtol=1e-4,
@@ -1329,38 +1330,50 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # I keep the code for optional consistency checks
     if cfg['OneCovariance']['consistency_checks']:
         # store in temp variables for later check
-        check_cov_sva_oc_3x2pt_10D = oc_obj.cov_3x2pt_sva_10d
-        check_cov_mix_oc_3x2pt_10D = oc_obj.cov_3x2pt_mix_10d
-        check_cov_sn_oc_3x2pt_10D = oc_obj.cov_3x2pt_sn_10d
-        check_cov_ssc_oc_3x2pt_10D = oc_obj.cov_3x2pt_ssc_10d
-        check_cov_cng_oc_3x2pt_10D = oc_obj.cov_3x2pt_cng_10d
+        check_cov_sva_oc_3x2pt_10D = cov_oc_obj.cov_3x2pt_sva_10d
+        check_cov_mix_oc_3x2pt_10D = cov_oc_obj.cov_3x2pt_mix_10d
+        check_cov_sn_oc_3x2pt_10D = cov_oc_obj.cov_3x2pt_sn_10d
+        check_cov_ssc_oc_3x2pt_10D = cov_oc_obj.cov_3x2pt_ssc_10d
+        check_cov_cng_oc_3x2pt_10D = cov_oc_obj.cov_3x2pt_cng_10d
 
-        oc_obj.call_oc_from_class()
-        oc_obj.process_cov_from_class()
+        cov_oc_obj.call_oc_from_class()
+        cov_oc_obj.process_cov_from_class()
 
         # a more strict relative tolerance will make this test fail,
         # the number of digits in the .dat and .mat files is lower
         np.testing.assert_allclose(
-            check_cov_sva_oc_3x2pt_10D, oc_obj.cov_sva_oc_3x2pt_10D, atol=0, rtol=1e-3
+            check_cov_sva_oc_3x2pt_10D,
+            cov_oc_obj.cov_sva_oc_3x2pt_10D,
+            atol=0,
+            rtol=1e-3,
         )
         np.testing.assert_allclose(
-            check_cov_mix_oc_3x2pt_10D, oc_obj.cov_mix_oc_3x2pt_10D, atol=0, rtol=1e-3
+            check_cov_mix_oc_3x2pt_10D,
+            cov_oc_obj.cov_mix_oc_3x2pt_10D,
+            atol=0,
+            rtol=1e-3,
         )
         np.testing.assert_allclose(
-            check_cov_sn_oc_3x2pt_10D, oc_obj.cov_sn_oc_3x2pt_10D, atol=0, rtol=1e-3
+            check_cov_sn_oc_3x2pt_10D, cov_oc_obj.cov_sn_oc_3x2pt_10D, atol=0, rtol=1e-3
         )
         np.testing.assert_allclose(
-            check_cov_ssc_oc_3x2pt_10D, oc_obj.cov_ssc_oc_3x2pt_10D, atol=0, rtol=1e-3
+            check_cov_ssc_oc_3x2pt_10D,
+            cov_oc_obj.cov_ssc_oc_3x2pt_10D,
+            atol=0,
+            rtol=1e-3,
         )
         np.testing.assert_allclose(
-            check_cov_cng_oc_3x2pt_10D, oc_obj.cov_cng_oc_3x2pt_10D, atol=0, rtol=1e-3
+            check_cov_cng_oc_3x2pt_10D,
+            cov_oc_obj.cov_cng_oc_3x2pt_10D,
+            atol=0,
+            rtol=1e-3,
         )
 
     print(f'Time taken to compute OC: {(time.perf_counter() - start_time) / 60:.2f} m')
 
 
 else:
-    oc_obj = None
+    cov_oc_obj = None
 
 if compute_sb_ssc:
     # ! ================================= Probe responses ==============================
@@ -1538,9 +1551,7 @@ if compute_sb_ssc:
 
     from spaceborne import cov_ssc
 
-    ssc_obj = cov_ssc.SpaceborneSSC(
-        cfg, pvt_cfg, ccl_obj, z_grid
-    )
+    ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
     ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
 
     cov_ssc_dict = ssc_obj.compute_ssc(
@@ -1601,7 +1612,7 @@ if compute_ccl_ssc or compute_ccl_cng:
 # ! ========================== Combine covariance terms ================================
 cov_hs_obj.combine_and_reshape_covs(
     ccl_obj=ccl_obj,
-    oc_obj=oc_obj,
+    cov_oc_obj=cov_oc_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
 
@@ -1617,7 +1628,7 @@ if obs_space == 'real':
         print(f'\n***** working on probe {_probe} - term {_term} *****')
         cov_rs_obj.compute_rs_cov_term_probe_6d(
             cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
-        ) 
+        )
 
     for term in cov_rs_obj.terms_toloop:
         # fill the remaining probe blocks by symmetry (in 6d)
@@ -1631,7 +1642,6 @@ if obs_space == 'real':
     cov_rs_obj._build_g_term_allprobes_alldims()
     # construct 4d and 2d 3x2pt
     cov_rs_obj._build_cov_3x2pt_4d_and_2d()
-    
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
@@ -1865,6 +1875,7 @@ for probe in ['3x2pt']:
     )
     sl.savetxt_aligned(f'{output_path}/ell_values.txt', ells_2d_save, header_list)
 
+cfg['misc']['save_output_as_benchmark'] = True
 if cfg['misc']['save_output_as_benchmark']:
     # some of the test quantities are not defined in some cases
     # better to work with empty arrays than None
@@ -1929,48 +1940,82 @@ if cfg['misc']['save_output_as_benchmark']:
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
-    # ! old
-    # save every array contained in _cov_obj
-    # covs_arrays_dict = {
-    #     k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
-    # }
-
     # ! new
+    # ! Save all arrays in cov_*_obj objects, as well as all the values in 
+    # ! cov_*_obj.cov_dict 
     covs_arrays_dict = {}
-    for term, cov_probe_dict in _cov_obj.cov_dict.items():
-        for probe_abcd in cov_probe_dict:
-            if probe_abcd == '3x2pt':
-                covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
-            elif probe_abcd == ('LL', 'LL'):
-                covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-            elif probe_abcd == ('GG', 'GG'):
-                covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-            elif probe_abcd == ('GL', 'GL'):
-                covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
 
-    if 'ssc' not in _cov_obj.cov_dict:
-        for probe in ['WL', 'GC', '3x2pt']:
-            covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
-    if 'cng' not in _cov_obj.cov_dict:
-        for probe in ['WL', 'GC', 'XC', '3x2pt']:
-            covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
+    for _cov_obj, _cov_obj_name in zip(
+        [cov_hs_obj, cov_rs_obj, cov_oc_obj, cov_nmt_obj],
+        ['cov_hs_obj', 'cov_rs_obj', 'cov_oc_obj', 'cov_nmt_obj'],
+        strict=True,
+    ):
+        if _cov_obj is None:
+            continue
+
+        # save every array contained in _cov_obj (this will potentially save more
+        # than needed)
+        covs_arrays_dict.update(
+            {k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)}
+        )
+
+        if not hasattr(_cov_obj, 'cov_dict'):
+            continue
+
+        # save all covariance arrays in _cov_obj.cov_dict
+        for term in _cov_obj.cov_dict:
+            for probe_2tpl in _cov_obj.cov_dict[term]:
+                for dim in _cov_obj.cov_dict[term][probe_2tpl]:
+                    if isinstance(probe_2tpl, tuple):
+                        probe_str = ''.join(probe_2tpl)
+                    else:
+                        probe_str = probe_2tpl  # Handle string keys like '3x2pt'
+                    key_name = f'cov_{probe_str}_{term}_{dim}'
+
+                    if key_name in covs_arrays_dict:
+                        key_name += f'_{_cov_obj_name}'
+
+                    covs_arrays_dict[key_name] = _cov_obj.cov_dict[term][probe_2tpl][
+                        dim
+                    ]
+
+
+    # ! old
+    # covs_arrays_dict = {}
+    # for term, cov_probe_dict in _cov_obj.cov_dict.items():
+    #     for probe_abcd in cov_probe_dict:
+    #         if probe_abcd == '3x2pt':
+    #             covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
+    #         elif probe_abcd == ('LL', 'LL'):
+    #             covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+    #         elif probe_abcd == ('GG', 'GG'):
+    #             covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+    #         elif probe_abcd == ('GL', 'GL'):
+    #             covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+
+    # if 'ssc' not in _cov_obj.cov_dict:
+    #     for probe in ['WL', 'GC', '3x2pt']:
+    #         covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
+    # if 'cng' not in _cov_obj.cov_dict:
+    #     for probe in ['WL', 'GC', 'XC', '3x2pt']:
+    #         covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
 
     # remove the 'ind' arrays
-    covs_arrays_dict.pop('ind', None)
-    covs_arrays_dict.pop('ind_auto', None)
-    covs_arrays_dict.pop('ind_cross', None)
-    keys = list(covs_arrays_dict.keys())
-    for key in keys:
-        if 'sva' not in key and 'sn' not in key and 'mix' not in key:
-            pass
+    # covs_arrays_dict.pop('ind', None)
+    # covs_arrays_dict.pop('ind_auto', None)
+    # covs_arrays_dict.pop('ind_cross', None)
+    # keys = list(covs_arrays_dict.keys())
+    # for key in keys:
+    #     if 'sva' not in key and 'sn' not in key and 'mix' not in key:
+    #         pass
 
     # make the keys consistent with the old benchmark files
-    covs_arrays_dict_renamed = covs_arrays_dict.copy()
-    for key, cov in covs_arrays_dict.items():
-        # key_new = key.replace('_tot_', '_TOT_')
-        key_new = key.replace('_2d', '_2D')
-        covs_arrays_dict_renamed[key_new] = cov
-        covs_arrays_dict_renamed.pop(key)
+    # covs_arrays_dict_renamed = covs_arrays_dict.copy()
+    # for key, cov in covs_arrays_dict.items():
+    #     # key_new = key.replace('_tot_', '_TOT_')
+    #     key_new = key.replace('_2d', '_2D')
+    #     covs_arrays_dict_renamed[key_new] = cov
+    #     covs_arrays_dict_renamed.pop(key)
 
     np.savez_compressed(
         bench_filename,

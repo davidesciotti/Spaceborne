@@ -1539,7 +1539,7 @@ if compute_sb_ssc:
     from spaceborne import cov_ssc
 
     ssc_obj = cov_ssc.SpaceborneSSC(
-        cfg, pvt_cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units
+        cfg, pvt_cfg, ccl_obj, z_grid
     )
     ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
 
@@ -1962,7 +1962,7 @@ if cfg['misc']['save_output_as_benchmark']:
     keys = list(covs_arrays_dict.keys())
     for key in keys:
         if 'sva' not in key and 'sn' not in key and 'mix' not in key:
-            covs_arrays_dict[key] = covs_arrays_dict[key]
+            pass
 
     # make the keys consistent with the old benchmark files
     covs_arrays_dict_renamed = covs_arrays_dict.copy()

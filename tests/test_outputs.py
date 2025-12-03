@@ -129,10 +129,18 @@ def test_main_script(test_cfg_path):
                 print(f'cov {probe} tot = G + SSC + cNG ✅')
             except ValueError as e:
                 # Catch shape mismatches (e.g., one empty, one non-empty)
-                print(f"Shape mismatch for '{key}': {e}")
+                print(f"Shape mismatch for '{probe}': {e}")
             except (TypeError, AssertionError) as e:
                 # Catch other errors (dtype mismatches, numerical differences)
-                print(f'Comparison failed for {key}: {e}')
+                print(f'Comparison failed for {probe}: {e}')
+            except KeyError as e:
+                # Catch missing keys
+                print(
+                    f'It looks like cov_{probe}_tot_2D or one of the other '
+                    'covariances is missing. This may be because of the probes '
+                    'selected in the config, and is not necessarily an error.'
+                )
+                print(f'Error: \n{e}\n')
 
     # example of the Note above
     # assert False, 'stop here'
@@ -152,6 +160,8 @@ bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
 bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 bench_yaml_names.sort()
+
+bench_yaml_names = [f'config_{i:04d}' for i in range(70, 100)]
 
 # slow_benchs = [
 #     'config_0004',

@@ -21,7 +21,7 @@ class SpaceborneCovariance:
         cfg: dict,
         pvt_cfg: dict,
         ell_obj: EllBinning,
-        nmt_cov_obj: NmtCov | None,
+        cov_nmt_obj: NmtCov | None,
         bnt_matrix: np.ndarray | None,
     ):
         self.cfg = cfg
@@ -68,7 +68,7 @@ class SpaceborneCovariance:
         self.use_nmt = self.cfg['namaster']['use_namaster']
         self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
         # other useful objects
-        self.nmt_cov_obj = nmt_cov_obj
+        self.cov_nmt_obj = cov_nmt_obj
 
         # Instantiate the nested cov dict of structure
         # [TERM][PROBE_AB, PROBE_CD][DIM]: np.ndarray
@@ -303,11 +303,11 @@ class SpaceborneCovariance:
             # of times (ell by ell)
             noise_3x2pt_unb_5d = np.repeat(
                 noise_3x2pt_4d[:, :, np.newaxis, :, :],
-                repeats=self.nmt_cov_obj.nbl_3x2pt_unb,
+                repeats=self.cov_nmt_obj.nbl_3x2pt_unb,
                 axis=2,
             )
-            self.nmt_cov_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
-            cov_nmt_dict = self.nmt_cov_obj.build_psky_cov()
+            self.cov_nmt_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
+            cov_nmt_dict = self.cov_nmt_obj.build_psky_cov()
 
             self.cov_dict['g'] = deepcopy(cov_nmt_dict['g'])
 
@@ -386,7 +386,7 @@ class SpaceborneCovariance:
             if term in self.cov_dict:
                 del self.cov_dict[term]
 
-    def _add_ng_cov(self, ccl_obj: CCLInterface, oc_obj: OneCovarianceInterface):
+    def _add_ng_cov(self, ccl_obj: CCLInterface, cov_oc_obj: OneCovarianceInterface):
         """Helper function to retrieve the non-Gaussian covariance from the required
         code-specific object.
 
@@ -430,7 +430,7 @@ class SpaceborneCovariance:
                 )
             elif _ng_cov_code == 'OneCovariance':
                 # in this case, assign the 6d covs directly
-                self.cov_dict[ng_cov] = deepcopy(oc_obj.cov_dict[ng_cov])
+                self.cov_dict[ng_cov] = deepcopy(cov_oc_obj.cov_dict[ng_cov])
             else:
                 raise ValueError(f'Unknown code: {_ng_cov_code}')
 
@@ -485,7 +485,7 @@ class SpaceborneCovariance:
     def combine_and_reshape_covs(
         self,
         ccl_obj: CCLInterface,
-        oc_obj: OneCovarianceInterface,
+        cov_oc_obj: OneCovarianceInterface,
         split_gaussian_cov: bool,
     ):
         """
@@ -497,7 +497,7 @@ class SpaceborneCovariance:
         ----------
         ccl_obj : object
             PyCCL interface object containing PyCCL covariance terms, as well as cls
-        oc_obj : object
+        cov_oc_obj : object
             OneCovariance interface object containing OneCovariance covariance terms
         split_gaussian_cov: bool
             Whether to split (hence to reshape) the SVA/SN/MIX parts of the G cov
@@ -522,11 +522,11 @@ class SpaceborneCovariance:
             for _term in _terms_tocheck:
                 # check terms
                 assert _term in self.cov_dict, '_term not in self.cov_dict'
-                assert _term in oc_obj.cov_dict, '_term not in oc_obj.cov_dict'
+                assert _term in cov_oc_obj.cov_dict, '_term not in cov_oc_obj.cov_dict'
 
                 # check probes
                 probe_list_sb = sorted(self.cov_dict[_term].keys())
-                probe_list_oc = sorted(oc_obj.cov_dict[_term].keys())
+                probe_list_oc = sorted(cov_oc_obj.cov_dict[_term].keys())
                 assert probe_list_sb == probe_list_oc, (
                     f'probe_list_sb: {probe_list_sb}, probe_list_oc: {probe_list_oc}'
                 )
@@ -534,7 +534,7 @@ class SpaceborneCovariance:
                 # check dims
                 for _probe_2tpl in probe_list_sb:
                     dim_list_sb = sorted(self.cov_dict[_term][_probe_2tpl].keys())
-                    dim_list_oc = sorted(oc_obj.cov_dict[_term][_probe_2tpl].keys())
+                    dim_list_oc = sorted(cov_oc_obj.cov_dict[_term][_probe_2tpl].keys())
                     assert dim_list_sb == dim_list_oc, (
                         f'dim_list_sb: {dim_list_sb}, dim_list_oc: {dim_list_oc}'
                     )
@@ -543,15 +543,15 @@ class SpaceborneCovariance:
                     )
 
             # having checked the covs, overwrite the relevand dict items
-            self.cov_dict['g'] = deepcopy(oc_obj.cov_dict['g'])
+            self.cov_dict['g'] = deepcopy(cov_oc_obj.cov_dict['g'])
             if split_gaussian_cov:
-                self.cov_dict['sva'] = deepcopy(oc_obj.cov_dict['sva'])
-                self.cov_dict['sn'] = deepcopy(oc_obj.cov_dict['sn'])
-                self.cov_dict['mix'] = deepcopy(oc_obj.cov_dict['mix'])
+                self.cov_dict['sva'] = deepcopy(cov_oc_obj.cov_dict['sva'])
+                self.cov_dict['sn'] = deepcopy(cov_oc_obj.cov_dict['sn'])
+                self.cov_dict['mix'] = deepcopy(cov_oc_obj.cov_dict['mix'])
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
         # ! are inside the function
-        self._add_ng_cov(ccl_obj, oc_obj)
+        self._add_ng_cov(ccl_obj, cov_oc_obj)
 
         # ! BNT transform (6/10D covs needed for this implementation)
         if self.cfg['BNT']['cov_BNT_transform']:
@@ -603,10 +603,10 @@ class SpaceborneCovariance:
 
         # construct mcm array for better probe handling (especially for 3x2pt)
         mcm_dict = {}
-        mcm_dict['LL'] = self.nmt_cov_obj.mcm_ee_binned
-        mcm_dict['GL'] = self.nmt_cov_obj.mcm_te_binned
-        # mcm_3x2pt_dict['LG'] = self.nmt_cov_obj.mcm_et_binned
-        mcm_dict['GG'] = self.nmt_cov_obj.mcm_tt_binned
+        mcm_dict['LL'] = self.cov_nmt_obj.mcm_ee_binned
+        mcm_dict['GL'] = self.cov_nmt_obj.mcm_te_binned
+        # mcm_3x2pt_dict['LG'] = self.cov_nmt_obj.mcm_et_binned
+        mcm_dict['GG'] = self.cov_nmt_obj.mcm_tt_binned
 
         for k, v in mcm_dict.items():
             assert v.shape == (self.ell_obj.nbl_3x2pt, self.ell_obj.nbl_3x2pt), (

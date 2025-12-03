@@ -373,35 +373,6 @@ class SpaceborneCovariance:
             cov_dict_10d, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
         )
 
-    def _set_cov_tot_2d_and_6d(self):
-        """
-        Sums G, SSC and cNG 2D covs to get the total covariance
-
-        Note: simply looping over terms would sum sva + sn + mix + g, resulting in
-        double counting of the Gaussian term.
-        """
-        for dim in ('2d', '6d'):
-            for probe_abcd in self.req_probe_combs_2d:
-                probe_2tpl = sl.split_probe_name(probe_abcd, 'harmonic')
-
-                # coincise way to check that the key exists and the dict is not empty
-                ssc_dict = self.cov_dict.get('ssc')
-                cng_dict = self.cov_dict.get('cng')
-                ssc = ssc_dict[probe_2tpl][dim] if ssc_dict else 0
-                cng = cng_dict[probe_2tpl][dim] if cng_dict else 0
-
-                self.cov_dict['tot'][probe_2tpl][dim] = (
-                    self.cov_dict['g'][probe_2tpl][dim] + ssc + cng
-                )
-
-        # do the same for 3x2pt (for which only 2d exists)
-        ssc = self.cov_dict['ssc']['3x2pt']['2d'] if 'ssc' in self.cov_dict else 0
-        cng = self.cov_dict['cng']['3x2pt']['2d'] if 'cng' in self.cov_dict else 0
-
-        self.cov_dict['tot']['3x2pt']['2d'] = (
-            self.cov_dict['g']['3x2pt']['2d'] + ssc + cng
-        )
-
     def _remove_split_terms_from_dict(self, split_gaussian_cov: bool):
         """Helper function to remove the SVA/SN/MIX parts of the G cov if
         split_gaussian_cov is True.
@@ -601,7 +572,13 @@ class SpaceborneCovariance:
         self._build_cov_3x2pt_4d_and_2d()
 
         # ! sum g + ssc + cng to get tot (only 2D)
-        self._set_cov_tot_2d_and_6d()
+        self.cov_dict.update(
+            sl.set_cov_tot_2d_and_6d(
+                cov_dict=self.cov_dict,
+                req_probe_combs_2d=self.req_probe_combs_2d,
+                space='harmonic',
+            )
+        )
 
         # ! clean upd dictionaries:
         self._remove_split_terms_from_dict(split_gaussian_cov)

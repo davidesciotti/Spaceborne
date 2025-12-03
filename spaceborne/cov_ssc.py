@@ -162,12 +162,10 @@ def ssc_integral_4D_simps_jax_ke_approx(
 
 
 class SpaceborneSSC:
-    def __init__(self, cfg, pvt_cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units):
+    def __init__(self, cfg, pvt_cfg, ccl_obj, z_grid):
         self.use_ke_approx = cfg['covariance']['use_KE_approximation']
         self.z_grid = z_grid
-        self.zbins = zbins
         self.ccl_obj = ccl_obj
-        self.use_h_units = use_h_units
 
         # Enable 64-bit precision if required
         jax.config.update('jax_enable_x64', cfg['misc']['jax_enable_x64'])
@@ -186,6 +184,9 @@ class SpaceborneSSC:
         self.ind_cross = pvt_cfg['ind_cross']
         self.zpairs_auto = pvt_cfg['zpairs_auto']
         self.zpairs_cross = pvt_cfg['zpairs_cross']
+        
+        self.zbins = pvt_cfg['zbins']
+        self.use_h_units = pvt_cfg['use_h_units']
 
         assert self.zpairs_auto == self.ind_auto.shape[0]
         assert self.zpairs_cross == self.ind_cross.shape[0]

@@ -1144,7 +1144,7 @@ class NmtCov:
                     which_binning='sum',
                 )
 
-            elif not nmt_cfg['spin0']:
+            else:
                 cov_nmt_dict = nmt_gaussian_cov(
                     cl_tt=cl_tt_4covnmt,
                     cl_te=cl_te_4covnmt,

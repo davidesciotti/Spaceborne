@@ -5,7 +5,6 @@ Branch TODO list:
 * adjust outputs for tests?
 """
 
-
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
@@ -1539,7 +1538,9 @@ if compute_sb_ssc:
 
     from spaceborne import cov_ssc
 
-    ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units)
+    ssc_obj = cov_ssc.SpaceborneSSC(
+        cfg, pvt_cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units
+    )
     ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
 
     cov_ssc_dict = ssc_obj.compute_ssc(
@@ -1614,23 +1615,23 @@ if obs_space == 'real':
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
         print(f'\n***** working on probe {_probe} - term {_term} *****')
-        cov_rs_obj.compute_realspace_cov(
+        cov_rs_obj.compute_rs_cov_term_probe_6d(
             cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
-        )
+        ) 
 
     for term in cov_rs_obj.terms_toloop:
-        cov_rs_obj.fill_remaining_probe_blocks(
+        # fill the remaining probe blocks by symmetry (in 6d)
+        cov_rs_obj.fill_remaining_probe_blocks_6d(
             term, symm_probe_combs_rs, nonreq_probe_combs_rs
         )
+        # reshape all the probe blocks to 4d and 2d
+        cov_rs_obj._build_4d_and_2d_from_6d(term)
 
+    # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
+    cov_rs_obj._build_g_term_allprobes_alldims()
     # construct 4d and 2d 3x2pt
     cov_rs_obj._build_cov_3x2pt_4d_and_2d()
-    # cov_rs_obj.combine_terms_and_probes(
-        # unique_probe_combs=unique_probe_combs_rs,
-        # req_probe_combs_2d=req_probe_combs_rs_2d,
-    # )
-
-
+    
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
@@ -1853,7 +1854,7 @@ header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 # sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
 
 # for probe in ['WL', 'GC', '3x2pt']:
-for probe in ['3x2pt',]:
+for probe in ['3x2pt']:
     ells_2d_save = np.column_stack(
         (
             getattr(ell_obj, f'ells_{probe}'),
@@ -1916,7 +1917,7 @@ if cfg['misc']['save_output_as_benchmark']:
     }
 
     bench_filename = cfg['misc']['bench_filename']
-    
+
     # protect against unwanted oversubscription
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError(

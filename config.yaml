@@ -64,7 +64,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real'].
-  space: harmonic # Type: str. 
+  space: real # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -106,7 +106,7 @@ nz:
 
 
 binning:
-  binning_type: 'from_input' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
+  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
   ell_min: 10 # Type: int. Minimum ell
   ell_max: 200 # Type: int. Maximum ell
@@ -117,7 +117,7 @@ binning:
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50  # Type: float | int. Minimum theta (in arcminutes)
   theta_max_arcmin: 300  # Type: float | int. Maximum theta (in arcminutes)
-  theta_bins: 10  # Type: int. Number of theta bins
+  theta_bins: 3  # Type: int. Number of theta bins
 
 
 C_ell:
@@ -194,7 +194,7 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   G_code: Spaceborne # Type: bool. Enable/disable the Gaussian covariance term.
@@ -227,7 +227,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: True # Type: bool
+  split_gaussian_cov: False # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -300,8 +300,8 @@ PyCCL:
 
 
 namaster:
-  use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-  spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+  use_namaster: false # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+  spin0: True # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but slightly less accurate)
   use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
   workspace_path: ... # Type: str. Path to the workspace, if already computed
 
@@ -323,12 +323,12 @@ sample_covariance:
 
 
 precision:
-  # ==================================== NaMaster ====================================
+  # ==================================== NaMaster ======================================
   # Number of iterations when computing the alms of the input map. See 
   # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
   n_iter_nmt: null # Type: None | int. 
 
-  # ===================================== pylevin ====================================
+  # ===================================== pylevin ======================================
   # Precision settings for pylevin. See the official documentation for more details:
   # https://levin-bessel.readthedocs.io/en/latest/index.html
   # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
@@ -338,12 +338,12 @@ precision:
   boost_bessel: True  # Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
   verbose: True  # Type: bool. Whether to display warnings
 
-  # ================================= real space cov =================================
+  # ================================= real space cov ===================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_rs: 2  # Type: int
   ell_max_rs: 100000  # Type: int
-  ell_bins_rs: 500  # Type: int. Should be high to get accurate results with Simpson integration
+  ell_bins_rs: 10  # Type: int. Should be high to get accurate results with Simpson integration
   ell_bins_rs_nongauss: 100  # Type: int. Should be high to get accurate results with Simpson integration
   
 
@@ -354,7 +354,7 @@ misc:
   
   # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'
-  jax_enable_x64: true # Type: str. Whether to enable 64-bit precision for computations run on the GPU
+  jax_enable_x64: true # Type: str. Whether to enable 64-bit precision for JAX computations
 
   # some sanity checks on the covariance matrix. These could take a while to run.
   test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv

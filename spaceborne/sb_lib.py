@@ -69,6 +69,37 @@ Naming conventions:
 """
 
 
+def set_cov_tot_2d_and_6d(cov_dict: dict, req_probe_combs_2d: list, space: str) -> dict:
+    """
+    Sums G, SSC and cNG 2D covs to get the total covariance
+
+    Note: simply looping over terms would sum sva + sn + mix + g, resulting in
+    double counting of the Gaussian term.
+    """
+
+    for dim in ('2d', '6d'):
+        for probe_abcd in req_probe_combs_2d:
+            probe_2tpl = split_probe_name(probe_abcd, space=space)
+
+            # coincise way to check that the key exists and the dict is not empty
+            ssc_dict = cov_dict.get('ssc')
+            cng_dict = cov_dict.get('cng')
+            ssc = ssc_dict[probe_2tpl][dim] if ssc_dict else 0
+            cng = cng_dict[probe_2tpl][dim] if cng_dict else 0
+
+            cov_dict['tot'][probe_2tpl][dim] = (
+                cov_dict['g'][probe_2tpl][dim] + ssc + cng
+            )
+
+    # do the same for 3x2pt (for which only 2d exists)
+    ssc = cov_dict['ssc']['3x2pt']['2d'] if 'ssc' in cov_dict else 0
+    cng = cov_dict['cng']['3x2pt']['2d'] if 'cng' in cov_dict else 0
+
+    cov_dict['tot']['3x2pt']['2d'] = cov_dict['g']['3x2pt']['2d'] + ssc + cng
+
+    return cov_dict
+
+
 def get_cov_dict_memory_footprint(cov_dict: dict):
     """Returns the size of the covariance dictionary in MB."""
     dim_b = sum(
@@ -120,10 +151,14 @@ def print_cov_dict_info(cov_dict: dict, show_array_info: bool = True):
                 probe_prefix = '│   └──' if is_last_probe else '│   ├──'
                 dim_parent_prefix = '│       ' if is_last_probe else '│   │   '
 
-            probe_ab, probe_cd = probe_tpl
+            if isinstance(probe_tpl, tuple) and len(probe_tpl) == 2:
+                probe_ab, probe_cd = probe_tpl
+                probe_str = f'({probe_ab}, {probe_cd})'
+            else:
+                probe_str = str(probe_tpl)
             print(
                 f'{probe_prefix} Probe combination: '
-                f'({probe_ab}, {probe_cd}) - {len(dim_dict)} dimensions'
+                f'{probe_str} - {len(dim_dict)} dimensions'
             )
 
             # Iterate through dimensions (level 3)
@@ -870,7 +905,7 @@ def bin_2d_array_vectorized(
                     y=cov_block * weights1_in_xx * weights2_in_yy, x=ell2_in, axis=1
                 )
                 total = simps(y=partial_integral, x=ell1_in, axis=0)
-                
+
                 binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
 
     elif which_binning == 'integral' and interpolate:
@@ -919,7 +954,7 @@ def bin_2d_array_vectorized(
                 total = simps(y=partial_integral, x=ell1_fine, axis=0)
                 norm1 = simps(y=weights1_fine, x=ell1_fine)
                 norm2 = simps(y=weights2_fine, x=ell2_fine)
-                
+
                 binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
 
     return binned_cov
@@ -1427,11 +1462,10 @@ def cov_probe_dict_4d_to_6d(
     symmetrize_output_dict: dict[str, bool] = const.HS_SYMMETRIZE_OUTPUT_DICT,
 ) -> dict[tuple[str, str], dict]:
     """
-
     Reshape each element of the cov_probe_dict from 4d to 6d.
     The probe_dict must have structure
     [probe_ab, probe_cd]['4d']: np.ndarray (of ndim=4)
-    
+
     Note that this function returns a new dictionary, without the original '4d' key
 
     4d: (probe_ab, probe_cd) -> np.ndarray(nbx, nbx, zpairs, zpairs)
@@ -1463,7 +1497,7 @@ def cov_probe_dict_4d_to_6d(
     # be careful, the latter is *not*
     # (zi, zj, zk, zl) <-> (zj, zi, zl, zk)!!
     for probe_abcd in unique_probe_combs:
-        probe_ab, probe_cd = split_probe_name(probe_abcd, space='harmonic')
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
         probe_2tpl = (probe_ab, probe_cd)
         cov_probe_dict_6d[probe_2tpl]['6d'] = cov_4D_to_6D_blocks(
             cov_4D=cov_probe_dict_4d[probe_2tpl]['4d'],
@@ -1477,7 +1511,7 @@ def cov_probe_dict_4d_to_6d(
 
     # * Second pass: fill symmetric counterparts
     for probe_abcd in symm_probe_combs:
-        probe_ab, probe_cd = split_probe_name(probe_abcd, space='harmonic')
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
         cov_probe_dict_6d[probe_ab, probe_cd]['6d'] = (
             cov_probe_dict_6d[probe_cd, probe_ab]['6d']
             .transpose(1, 0, 4, 5, 2, 3)
@@ -1485,9 +1519,9 @@ def cov_probe_dict_4d_to_6d(
         )
 
     # * Third pass: zero for non-requested combinations
-    # [BOOKM ] nonreq_probe_combs is the issue!
+    # [BOOKMARK] nonreq_probe_combs is the issue!
     for probe_abcd in nonreq_probe_combs:
-        probe_2tpl = split_probe_name(probe_abcd, space='harmonic')
+        probe_2tpl = split_probe_name(probe_abcd, space=space)
         cov_probe_dict_6d[probe_2tpl]['6d'] = np.zeros(
             (nbx, nbx, zbins, zbins, zbins, zbins)
         )
@@ -2906,11 +2940,10 @@ def build_full_ind(triu_tril, row_col_major, size):
 
 
 def build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG):
-    
     raise NotImplementedError(
         'build_ind_dict is deprecated and has been removed. Use the new method instead.'
     )
-        
+
     ind = build_full_ind(triu_tril, row_col_major, size)
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(size)
 
@@ -3698,9 +3731,7 @@ def cov_dict_4d_blocks_4d_3x2pt(
 def cov_3x2pt_4d_to_10d_dict(
     cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy, optimize=False
 ):
-    raise NotImplementedError(
-        'This function is deprecated'
-    )
+    raise NotImplementedError('This function is deprecated')
     zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
 
     ind_copy = ind_copy.copy()  # just to ensure the input ind file is not changed

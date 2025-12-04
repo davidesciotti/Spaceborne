@@ -4,6 +4,7 @@ import itertools
 import json
 import os
 import pickle
+import pprint
 import subprocess
 import time
 import warnings
@@ -75,15 +76,17 @@ def set_cov_tot_2d_and_6d(cov_dict: dict, req_probe_combs_2d: list, space: str) 
     double counting of the Gaussian term.
     """
 
+    # if neither ssc nor cng are present, no 'tot' term will be present either
+    if 'tot' not in cov_dict:
+        return cov_dict
+
     for dim in ('2d', '6d'):
         for probe_abcd in req_probe_combs_2d:
             probe_2tpl = split_probe_name(probe_abcd, space=space)
 
             # concise way to check that the key exists and the dict is not empty
-            ssc_dict = cov_dict.get('ssc')
-            cng_dict = cov_dict.get('cng')
-            ssc = ssc_dict[probe_2tpl][dim] if ssc_dict else 0
-            cng = cng_dict[probe_2tpl][dim] if cng_dict else 0
+            ssc = cov_dict['ssc'][probe_2tpl][dim] if 'ssc' in cov_dict else 0
+            cng = cov_dict['cng'][probe_2tpl][dim] if 'cng' in cov_dict else 0
 
             cov_dict['tot'][probe_2tpl][dim] = (
                 cov_dict['g'][probe_2tpl][dim] + ssc + cng
@@ -345,13 +348,12 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
             )
 
         for probe_2tpl, dim_dict in cov_probe_dict.items():
-            
             if not isinstance(probe_2tpl, tuple) or len(probe_2tpl) != 2:
                 raise ValueError(
                     f"Probe key {probe_2tpl} in term '{term}' must be "
                     'a tuple of 2 elements'
                 )
-            
+
             # check the probe names
             if probe_2tpl[0] not in expected_probes_ab:
                 raise ValueError(
@@ -3474,7 +3476,7 @@ def cov_3x2pt_10D_to_4D(
     return cov_3x2pt_4D
 
 
-def cov_dict_6d_to_4d_and_2d(
+def cov_dict_6d_probe_blocks_to_4d_and_2d(
     cov_dict: dict,
     obs_space: str,
     nbx: int,
@@ -3491,7 +3493,7 @@ def cov_dict_6d_to_4d_and_2d(
     Note: This is the updated version of cov_3x2pt_10D_to_4D.
     """
     # validate structure of the input dictionary
-    validate_cov_dict_structure(cov_dict, obs_space=obs_space)
+    # validate_cov_dict_structure(cov_dict, obs_space=obs_space)
 
     if obs_space == 'harmonic':
         auto_probes = const.HS_AUTO_PROBES
@@ -3502,11 +3504,20 @@ def cov_dict_6d_to_4d_and_2d(
 
     # reshape the probe-specific 6d arrays to 4d and 2d
     for term in cov_dict:  # noqa: PLC0206
-        for probe_ab, probe_cd in cov_dict[term]:
+        for probe_2tpl in cov_dict[term]:
+            # skip the 3x2pt key, this function only reshapes probe blocks
+            if probe_2tpl == '3x2pt':
+                continue
+
+            probe_ab, probe_cd = probe_2tpl
+
             # additional check: the input dictionary should only contain the '6d' dim
-            dims = set(cov_dict[term][probe_ab, probe_cd].keys())
-            if dims != {'6d'}:
-                raise ValueError(f"Expected only '6d' dimension, got {dims}")
+            for dim in ['4d', '2d']:
+                assert cov_dict[term][probe_ab, probe_cd][dim] is None, (
+                    f'In term {term}, probe combination {probe_ab, probe_cd}, '
+                    f'dimension {dim} is already set to a non-None value. '
+                    f'Please provide only the 6d array in the input dictionary.'
+                )
 
             # extract array
             cov_6d = cov_dict[term][probe_ab, probe_cd]['6d']
@@ -3637,22 +3648,19 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
     return cov_3x2pt_4D
 
 
-def cov_dict_4d_blocks_4d_3x2pt(
-    cov_probe_dict: dict, req_probe_combs_2d: list, obs_space: str
-):
+def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: str):
     """Convert a dictionary of 4D blocks into a single 4D array.
 
     This is the same code as
     in the last part of the function above.
     :param cov_dict: dictionary of 4D covariance blocks
-    :param req_probe_combs_2d: list of probe combinations to use
     :param obs_space: observables space ("harmonic" or "real")
     :return: 3x2pt 4D covariance array
     """
 
     # make sure that the dict contains 4d arrays
-    for probe_ab, probe_cd in cov_probe_dict:  # noqa: PLC0206
-        dims = set(cov_probe_dict[probe_ab, probe_cd].keys())
+    for probe_2tpl in cov_probe_dict:  # noqa: PLC0206
+        dims = set(cov_probe_dict[probe_2tpl].keys())
         if '4d' not in dims:
             raise ValueError(f"Expected '4d' dimension, got {dims}")
 
@@ -3660,8 +3668,12 @@ def cov_dict_4d_blocks_4d_3x2pt(
 
     if obs_space == 'harmonic':
         row_ll_list, row_gl_list, row_gg_list = [], [], []
-        for probe_abcd in req_probe_combs_2d:
-            probe_ab, probe_cd = split_probe_name(probe_abcd, 'harmonic')
+
+        for probe_2tpl in cov_probe_dict:
+            if probe_2tpl == '3x2pt':
+                continue
+            probe_ab, probe_cd = probe_2tpl
+
             if probe_ab == 'LL':
                 row_ll_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
             elif probe_ab == 'GL':
@@ -3688,8 +3700,11 @@ def cov_dict_4d_blocks_4d_3x2pt(
 
     elif obs_space == 'real':
         row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
-        for probe_abcd in req_probe_combs_2d:
-            probe_ab, probe_cd = split_probe_name(probe_abcd, 'real')
+        for probe_2tpl in cov_probe_dict:
+            if probe_2tpl == '3x2pt':
+                continue
+            probe_ab, probe_cd = probe_2tpl
+            
             if probe_ab == 'xip':
                 row_xip_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
             elif probe_ab == 'xim':

@@ -2,12 +2,12 @@ from copy import deepcopy
 import itertools
 import time
 import warnings
-from collections import defaultdict
 
 import numpy as np
 
 from spaceborne import bnt as bnt_utils
 from spaceborne import constants as const
+from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 from spaceborne.ccl_interface import CCLInterface
 from spaceborne.cov_partial_sky import NmtCov
@@ -54,8 +54,16 @@ class SpaceborneCovariance:
         if self.GL_OR_LG == 'LG':  # on-the-fly check
             raise ValueError('the cross-correlation between G and L must be GL, not LG')
 
-        # get_probe_combs is called to get all_req_probe_combs
-        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_2d']
+        # instantiate cov dict with the required terms and probe combinations
+        self.req_terms = pvt_cfg['req_terms']
+        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_hs_2d']
+
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space='harmonic')
+            for probe in self.req_probe_combs_2d
+        ]
+        _req_probe_combs_2d.append('3x2pt')
+        self.cov_dict = cd.create_cov_dict(self.req_terms, _req_probe_combs_2d)
 
         self.n_probes = self.cov_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
@@ -69,10 +77,6 @@ class SpaceborneCovariance:
         self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
         # other useful objects
         self.cov_nmt_obj = cov_nmt_obj
-
-        # Instantiate the nested cov dict of structure
-        # [TERM][PROBE_AB, PROBE_CD][DIM]: np.ndarray
-        self.cov_dict = defaultdict(lambda: defaultdict(dict))
 
         if self.cov_ordering_2d == 'probe_scale_zpair':
             self.block_index = 'ell'
@@ -309,7 +313,13 @@ class SpaceborneCovariance:
             self.cov_nmt_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
             cov_nmt_dict = self.cov_nmt_obj.build_psky_cov()
 
-            self.cov_dict['g'] = deepcopy(cov_nmt_dict['g'])
+            # assign the G term from namaster
+            for probe_abcd in self.req_probe_combs_2d:
+                probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+                probe_2tpl = (probe_ab, probe_cd)
+                self.cov_dict['g'][probe_2tpl]['6d'] = deepcopy(
+                    cov_nmt_dict['g'][probe_2tpl]['6d']
+                )
 
             # delete the SVA, SN and MIX terms to avoid confusion, only the g one
             # remains in the partial sky case
@@ -324,7 +334,7 @@ class SpaceborneCovariance:
         into 4d and into 2d."""
 
         # populate the dict with 4d and 2d probe-specific arrays (from the 6d ones)
-        self.cov_dict = sl.cov_dict_6d_to_4d_and_2d(
+        self.cov_dict = sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
             cov_dict=self.cov_dict,
             obs_space='harmonic',
             nbx=self.ell_obj.nbl_3x2pt,
@@ -343,13 +353,11 @@ class SpaceborneCovariance:
         Note: This exact same function is also defined in cov_real_space.py
         """
 
-        for term in const.ALL_COV_TERMS:
-            # check that the key is present and dict is not empty
-            if term not in self.cov_dict or not self.cov_dict[term]:
-                continue
-
-            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_blocks_4d_3x2pt(
-                self.cov_dict[term], self.req_probe_combs_2d, obs_space='harmonic'
+        for term in self.cov_dict:
+            self.cov_dict[term]['3x2pt']['4d'] = (
+                sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
+                    self.cov_dict[term], obs_space='harmonic'
+                )
             )
             self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
                 self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw

@@ -2047,7 +2047,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
-        **covs_arrays_dict_renamed,
+        **covs_arrays_dict,
         metadata=metadata,
     )
 

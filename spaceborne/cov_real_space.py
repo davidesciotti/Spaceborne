@@ -12,9 +12,9 @@ mix = mixed term
 # TODO the NG cov needs a smaller number of ell bins for the simpson integration! It's
 # TODO unpractical to compute it in 1000 ell values
 
-from collections import defaultdict
 import itertools
 import warnings
+from collections import defaultdict
 from functools import partial
 
 import numpy as np
@@ -26,6 +26,7 @@ from scipy.integrate import simpson as simps
 from tqdm import tqdm
 
 from spaceborne import constants as const
+from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
 warnings.filterwarnings(
@@ -781,7 +782,6 @@ class CovRealSpace:
         self.pvt_cfg = pvt_cfg
         self.mask_obj = mask_obj
         self.zbins = self.pvt_cfg['zbins']
-        self.cov_dict = defaultdict(lambda: defaultdict(dict))
 
         # ordering-related stuff
         self.cov_ordering_2d = self.cfg['covariance']['covariance_ordering_2D']
@@ -790,6 +790,18 @@ class CovRealSpace:
         self.ind_cross = pvt_cfg['ind_cross']
         self.zpairs_auto = pvt_cfg['zpairs_auto']
         self.zpairs_cross = pvt_cfg['zpairs_cross']
+
+        # instantiate cov dict with the required terms and probe combinations
+        self.req_terms = pvt_cfg['req_terms']
+        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_rs_2d']
+
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space='real')
+            for probe in self.req_probe_combs_2d
+        ]
+        _req_probe_combs_2d.append('3x2pt')
+        self.cov_dict = cd.create_cov_dict(self.req_terms, _req_probe_combs_2d)
+        # self.cov_dict = defaultdict(lambda: defaultdict(dict))
 
         # setters
         self._set_survey_info()
@@ -817,9 +829,8 @@ class CovRealSpace:
         self.ells = _UNSET
         self.nbl = _UNSET
 
-    def set_cov_2d_ordering(self, req_probe_combs_2d):
+    def set_cov_2d_ordering(self):
         # settings for 2D covariance ordering
-        self.req_probe_combs_2d = req_probe_combs_2d
         if self.cov_ordering_2d == 'probe_scale_zpair':
             self.block_index = 'ell'
             self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
@@ -1240,7 +1251,7 @@ class CovRealSpace:
                 'The probe combinations keys in the SVA, SN and MIX covariance '
                 'dictionaries do not match!'
             )
-            
+
         # sanity check: all the probes must match
         probes_sva = sorted(self.cov_dict['sva'].keys())
         probes_sn = sorted(self.cov_dict['sn'].keys())
@@ -1250,12 +1261,10 @@ class CovRealSpace:
                 'The probe combinations in the SVA, SN and MIX covariance '
                 'dictionaries do not match!'
             )
-        
 
         # now sum the terms to get the Gaussian, for all probe combinations and
         # dimensions
         for probe_2tpl in self.cov_dict['sva']:
-            
             # sanity check: all the dimensions must match
             dims_sva = sorted(self.cov_dict['sva'][probe_2tpl].keys())
             dims_sn = sorted(self.cov_dict['sn'][probe_2tpl].keys())
@@ -1265,7 +1274,7 @@ class CovRealSpace:
                     'The probe combinations in the SVA, SN and MIX covariance '
                     'dictionaries do not match!'
                 )
-            
+
             # for each dim, perform the sum
             for dim in ['2d', '4d', '6d']:
                 self.cov_dict['g'][probe_2tpl][dim] = (
@@ -1288,8 +1297,8 @@ class CovRealSpace:
             if term not in self.cov_dict or not self.cov_dict[term]:
                 continue
 
-            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_blocks_4d_3x2pt(
-                self.cov_dict[term], self.req_probe_combs_2d, obs_space='real'
+            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
+                self.cov_dict[term], obs_space='real'
             )
             self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
                 self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
@@ -1303,7 +1312,7 @@ class CovRealSpace:
             )
         )
 
-    def combine_terms_and_probes(self, unique_probe_combs, req_probe_combs_2d):
+    def combine_terms_and_probes(self, unique_probe_combs):
         """For all the required terms, constructs the 3x2pt
         (or nx2pt, depending on the n required probes) 2D cov,
         taking into account the required probe combinations
@@ -1315,11 +1324,11 @@ class CovRealSpace:
         for term in self.terms_toloop:
             # first construct the dict
             cov_term_3x2pt_4d_dict = self.build_cov_3x2pt_8d_dict(
-                req_probe_combs_2d, term
+                self.req_probe_combs_2d, term
             )
             # then turn to 4D array
             cov_term_3x2pt_4d_arr = sl.cov_3x2pt_8D_dict_to_4D(
-                cov_term_3x2pt_4d_dict, req_probe_combs_2d, space='real'
+                cov_term_3x2pt_4d_dict, self.req_probe_combs_2d, space='real'
             )
             # then to 2D array
             cov_term_3x2pt_2d_arr = self.cov_4D_to_2D_3x2pt_func(
@@ -1623,7 +1632,7 @@ class CovRealSpace:
     def _build_4d_and_2d_from_6d(self, term):
         """For the given term, transforms all probe-specific 6d covariances
         into 4d and 2d"""
-        
+
         for probe_2tpl in self.cov_dict[term]:
             probe_abcd = probe_2tpl[0] + probe_2tpl[1]
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')

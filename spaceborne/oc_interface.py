@@ -1004,14 +1004,14 @@ class OneCovarianceInterface:
         # which has only 6d and no 3x2pt
         cov_dict_tmplist = deepcopy(self.cov_dict)
         # reshape individual blocks to 4d and 2d
-        cov_dict_tmplist = sl.cov_dict_6d_to_4d_and_2d(
+        cov_dict_tmplist = sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
             cov_dict_tmplist, **cov_dict_6d_to_4d_and_2d_kw
         )
 
         for term in self.cov_dict_matfmt:
             # create 3x2pt 4d
-            cov_term_3x2pt_list_4d = sl.cov_dict_4d_blocks_4d_3x2pt(
-                cov_dict_tmplist[term], req_probe_combs_2d, self.obs_space
+            cov_term_3x2pt_list_4d = sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
+                cov_dict_tmplist[term], self.obs_space
             )
             # create 3x2pt 2d
             cov_term_3x2pt_list_2d = cov_4d_to_2dcloe_func(

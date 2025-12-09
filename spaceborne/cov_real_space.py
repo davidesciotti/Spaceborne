@@ -1306,7 +1306,7 @@ class CovRealSpace:
                 self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
             )
 
-        # this function modifies the cov_dict in place, no need to reassign the result 
+        # this function modifies the cov_dict in place, no need to reassign the result
         # to self.cov_dict
         sl.set_cov_tot_2d_and_6d(
             cov_dict=self.cov_dict,
@@ -1631,13 +1631,18 @@ class CovRealSpace:
             cov = (cov_cdab.transpose(1, 0, 4, 5, 2, 3)).copy()
             self.cov_dict[term][probe_ab, probe_cd]['6d'] = cov
 
-    def _build_4d_and_2d_from_6d(self, term):
-        """For the given term, transforms all probe-specific 6d covariances
-        into 4d and 2d"""
+    def _cov_blocks_6d_to_4d_and_2d(self, term):
+        """
+        For the input term, transforms all 6d probe-blocks into 4d and 2d.
+        Note: this does not apply to 3x2pt!
+
+        """
 
         for probe_2tpl in self.cov_dict[term]:
+            if probe_2tpl == '3x2pt':
+                continue  # skip 3x2pt, handled elsewhere
+
             probe_abcd = probe_2tpl[0] + probe_2tpl[1]
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
 
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = (
                 const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd]

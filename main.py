@@ -4,6 +4,12 @@ Branch TODO list:
 * update real space             [ok, finish checking]
 * adjust outputs for tests?     [done, generate new benchmarks also from develop, there was a bug]
 * rerun all tests
+* understand this issue:
+Computing namaster workspaces and coupling matrices...
+/Users/davidesciotti/Documents/Work/Code/Spaceborne/spaceborne/sb_lib.py:3287: RuntimeWarning: divide by zero encountered in divide
+  prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell)
+* remove unnecessary functions
+* update vademecum in sb_lib
 """
 
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
@@ -323,8 +329,8 @@ which_sigma2_b = cfg['covariance']['which_sigma2_b']
 # * small naming guide for the confused developer:
 # - unique_probe_combs: the probe combinations which are actually computed, meaning the
 #                       elements of the diagonal and, if requested, the cross-terms.
-# - symm_probe_combs: the lower triangle, (or an empty list if cross terms are not
-#                     required), which are the blocks filled by symmetry
+# - symm_probe_combs:   the lower triangle, (or an empty list if cross terms are not
+#                       required), which are the blocks filled by symmetry
 # - nonreq_probe_combs: the blocks which are not required at all, and are set to 0 in
 #                       the 10D/6D matrix. This does *not* include the probes in
 #                       symm_probe_combs! "Required" means I want that probe combination
@@ -337,7 +343,7 @@ which_sigma2_b = cfg['covariance']['which_sigma2_b']
 
 # example: I request LL and GL, no cross-terms
 # unique_probe_combs = ['LLLL', 'GLGL']
-# symm_probe_combs = []
+# symm_probe_combs   = []
 # nonreq_probe_combs = {'GGGG', 'GGGL', 'GGLL', 'GLGG', 'GLLL', 'LLGG', 'LLGL'}
 # req_probe_combs_2d = ['LLLL', 'LLGL', 'GLLL', 'GLGL']
 
@@ -375,6 +381,7 @@ symm_probe_combs_rs, nonreq_probe_combs_rs = sl.get_probe_combs(
     unique_probe_combs_rs, space='real'
 )
 
+
 # required probe combinations to include in the 2d arrays (must include the
 # cross-terms!)
 _req_probe_combs_hs_2d = sl.build_probe_list(
@@ -399,6 +406,10 @@ req_probe_combs_rs_2d = []
 for probe in const.RS_ALL_PROBE_COMBS:
     if probe in _req_probe_combs_rs_2d:
         req_probe_combs_rs_2d.append(probe)
+
+nonreq_probe_combs_hs = [p for p in nonreq_probe_combs_hs if p in req_probe_combs_hs_2d]
+nonreq_probe_combs_rs = [p for p in nonreq_probe_combs_rs if p in req_probe_combs_rs_2d]
+
 
 unique_probe_combs_ix_hs = [
     [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
@@ -1409,7 +1420,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     print(f'Time taken to compute OC: {(time.perf_counter() - start_time) / 60:.2f} m')
 
-
+cov_ssc_obj = None
 if compute_sb_ssc:
     # ! ================================= Probe responses ==============================
     resp_obj = responses.SpaceborneResponses(
@@ -1586,10 +1597,10 @@ if compute_sb_ssc:
 
     from spaceborne import cov_ssc
 
-    ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
-    ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
+    cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
+    cov_ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
 
-    cov_ssc_dict = ssc_obj.compute_ssc(
+    cov_ssc_obj.compute_ssc(
         d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
         d2CGL_dVddeltab_4d=d2CGL_dVddeltab,
         d2CGG_dVddeltab_4d=d2CGG_dVddeltab,
@@ -1601,15 +1612,15 @@ if compute_sb_ssc:
     # in the full_curved_sky case only, sigma2_b has to be divided by fsky
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
-        for probe_2tpl in cov_ssc_dict:
-            for dim in cov_ssc_dict[probe_2tpl]:
-                cov_ssc_dict[probe_2tpl][dim] /= mask_obj.fsky
+        for probe_2tpl in cov_ssc_obj.cov_dict['ssc']:
+            for dim in cov_ssc_obj.cov_dict['ssc'][probe_2tpl]:
+                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= mask_obj.fsky
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
         raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
-    cov_hs_obj.cov_ssc_dict = cov_ssc_dict
+    cov_hs_obj.cov_ssc_dict = cov_ssc_obj.cov_dict
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
@@ -1625,8 +1636,6 @@ if compute_ccl_ssc:
     )
 
 if compute_ccl_ssc or compute_ccl_cng:
-    
-    
     ccl_ng_cov_terms_list = []
     if compute_ccl_ssc:
         ccl_ng_cov_terms_list.append('SSC')
@@ -1634,8 +1643,7 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_ng_cov_terms_list.append('cNG')
 
     ccl_obj.set_cov_dict(pvt_cfg, ccl_ng_cov_terms_list)
-    
-    
+
     for which_ng_cov in ccl_ng_cov_terms_list:
         ccl_obj.initialize_trispectrum(
             which_ng_cov, unique_probe_combs_hs, cfg['PyCCL']
@@ -1646,12 +1654,15 @@ if compute_ccl_ssc or compute_ccl_cng:
             mask_obj.fsky,
             integration_method=cfg['PyCCL']['cov_integration_method'],
             unique_probe_combs=unique_probe_combs_hs,
+            nonreq_probe_combs=nonreq_probe_combs_hs,
             ind_dict=ind_dict,
         )
+    ccl_obj.check_cov_blocks_symmetry()
 
 # ! ========================== Combine covariance terms ================================
 cov_hs_obj.combine_and_reshape_covs(
     ccl_obj=ccl_obj,
+    cov_ssc_obj=cov_ssc_obj,
     cov_oc_obj=cov_oc_obj,
     split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
 )
@@ -1934,7 +1945,7 @@ if cfg['misc']['save_output_as_benchmark']:
         k_grid_s2b = np.array([])
 
     if compute_sb_ssc:
-        sigma2_b = ssc_obj.sigma2_b
+        sigma2_b = cov_ssc_obj.sigma2_b
 
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
@@ -2055,7 +2066,6 @@ if cfg['misc']['save_output_as_benchmark']:
     #     covs_arrays_dict_renamed[key_new] = cov
     #     covs_arrays_dict_renamed.pop(key)
 
-
     np.savez_compressed(
         bench_filename,
         backup_cfg=cfg,
@@ -2102,7 +2112,7 @@ if (
         'TOT' if 'SSC' in cov_dict_tosave_2d or 'cNG' in cov_dict_tosave_2d else 'Gauss'
     )
     cov = cov_dict_tosave_2d[key]
-    print(f'Testing cov {key}...\n')
+    print(f'Testing cov {key}...')
 
     if cfg['misc']['test_condition_number']:
         cond_number = np.linalg.cond(cov)

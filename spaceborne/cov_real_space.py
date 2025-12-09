@@ -14,7 +14,6 @@ mix = mixed term
 
 import itertools
 import warnings
-from collections import defaultdict
 from functools import partial
 
 import numpy as np
@@ -794,14 +793,16 @@ class CovRealSpace:
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_rs_2d']
+        dims = ['6d', '4d', '2d']
 
         _req_probe_combs_2d = [
             sl.split_probe_name(probe, space='real')
             for probe in self.req_probe_combs_2d
         ]
         _req_probe_combs_2d.append('3x2pt')
-        self.cov_dict = cd.create_cov_dict(self.req_terms, _req_probe_combs_2d)
-        # self.cov_dict = defaultdict(lambda: defaultdict(dict))
+        self.cov_dict = cd.create_cov_dict(
+            self.req_terms, _req_probe_combs_2d, dims=dims
+        )
 
         # setters
         self._set_survey_info()
@@ -1292,24 +1293,25 @@ class CovRealSpace:
         Note: This exact same function is also defined in cov_harmonic_space.py
         """
 
-        for term in const.ALL_COV_TERMS:
-            # check that the key is present and dict is not empty
-            if term not in self.cov_dict or not self.cov_dict[term]:
-                continue
+        for term in self.cov_dict:
+            if term == 'tot':
+                continue  # tot is built at the end, skip it
 
-            self.cov_dict[term]['3x2pt']['4d'] = sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
-                self.cov_dict[term], obs_space='real'
+            self.cov_dict[term]['3x2pt']['4d'] = (
+                sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
+                    self.cov_dict[term], obs_space='real'
+                )
             )
             self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
                 self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
             )
 
-        self.cov_dict.update(
-            sl.set_cov_tot_2d_and_6d(
-                cov_dict=self.cov_dict,
-                req_probe_combs_2d=self.req_probe_combs_2d,
-                space='real',
-            )
+        # this function modifies the cov_dict in place, no need to reassign the result 
+        # to self.cov_dict
+        sl.set_cov_tot_2d_and_6d(
+            cov_dict=self.cov_dict,
+            req_probe_combs_2d=self.req_probe_combs_2d,
+            space='real',
         )
 
     def combine_terms_and_probes(self, unique_probe_combs):

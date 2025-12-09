@@ -1154,8 +1154,10 @@ class NmtCov:
                 'Gaussian covariance with NaMaster...'
             )
 
+            # the nmt_gaussian_cov_spin0 and nmt_gaussian_cov functions modify
+            # cov_dict in-place, so no need to capture any return value
             if nmt_cfg['spin0']:
-                self.cov_dict = nmt_gaussian_cov_spin0(
+                nmt_gaussian_cov_spin0(
                     cov_dict=self.cov_dict,
                     cl_tt=cl_tt_4covnmt,
                     cl_te=cl_te_4covnmt,
@@ -1174,7 +1176,7 @@ class NmtCov:
                 )
 
             else:
-                self.cov_dict = nmt_gaussian_cov(
+                nmt_gaussian_cov(
                     cov_dict=self.cov_dict,
                     cl_tt=cl_tt_4covnmt,
                     cl_te=cl_te_4covnmt,
@@ -1230,7 +1232,9 @@ class NmtCov:
                 n_iter=self.cfg['precision']['n_iter_nmt'],
                 lite=True,
             )
-            raise NotImplementedError('the sample_covariance case should also return a dict!!')
+            raise NotImplementedError(
+                'the sample_covariance case should also return a dict!!'
+            )
             cov_10d_out, self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
 
         return self.cov_dict

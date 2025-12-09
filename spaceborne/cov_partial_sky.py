@@ -1150,7 +1150,7 @@ class NmtCov:
             spin0_str = ' spin0' if nmt_cfg['spin0'] else ''
             start_time = time.perf_counter()
             print(
-                f'Computing {coupled_str}{spin0_str} partial-sky '
+                f'\nComputing {coupled_str}{spin0_str} partial-sky '
                 'Gaussian covariance with NaMaster...'
             )
 

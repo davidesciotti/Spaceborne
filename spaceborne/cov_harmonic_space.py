@@ -57,13 +57,16 @@ class SpaceborneCovariance:
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_hs_2d']
+        dims = ['6d', '4d', '2d']
 
         _req_probe_combs_2d = [
             sl.split_probe_name(probe, space='harmonic')
             for probe in self.req_probe_combs_2d
         ]
         _req_probe_combs_2d.append('3x2pt')
-        self.cov_dict = cd.create_cov_dict(self.req_terms, _req_probe_combs_2d)
+        self.cov_dict = cd.create_cov_dict(
+            self.req_terms, _req_probe_combs_2d, dims=dims
+        )
 
         self.n_probes = self.cov_cfg['n_probes']
         # 'include' instead of 'compute' because it might be loaded from file
@@ -303,6 +306,12 @@ class SpaceborneCovariance:
         # ! raise an error if you require to split the G cov and use_nmt or
         # ! do_sample_cov are True
         if self.use_nmt or self.do_sample_cov:
+            if self.cov_nmt_obj is None:
+                raise ValueError(
+                    'cov_nmt_obj is required when use_namaster or compute_sample_cov '
+                    'is True'
+                )
+
             # noise vector doesn't have to be recomputed, but repeated a larger number
             # of times (ell by ell)
             noise_3x2pt_unb_5d = np.repeat(
@@ -354,6 +363,9 @@ class SpaceborneCovariance:
         """
 
         for term in self.cov_dict:
+            if term == 'tot':
+                continue  # tot is built at the end, skip it
+
             self.cov_dict[term]['3x2pt']['4d'] = (
                 sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
                     self.cov_dict[term], obs_space='harmonic'
@@ -419,15 +431,16 @@ class SpaceborneCovariance:
 
             # get the relevant dictionary. Note that the structure is still
             # slightly different here
+            # TODO homogenize this?
             if _ng_cov_code == 'Spaceborne':
                 _cov_ng_dict = getattr(self, f'cov_{ng_cov}_dict')
             elif _ng_cov_code == 'PyCCL':
                 _cov_ng_dict = ccl_obj.cov_dict[ng_cov]
 
+            # in these 2 cases, assign only the 6d covs to self.cov_dict, since the
+            # reshaping to 4d and 2d is handled downstream
             if _ng_cov_code in ['Spaceborne', 'PyCCL']:
-                # assign only the 6d covs to self.cov_dict, since the reshaping is
-                # handled downstream
-                self.cov_dict[ng_cov] = sl.cov_probe_dict_4d_to_6d(
+                cov_probe_dict_6d = sl.cov_probe_dict_4d_to_6d(
                     cov_probe_dict_4d=_cov_ng_dict,
                     nbx=self.ell_obj.nbl_3x2pt,
                     zbins=self.zbins,
@@ -436,8 +449,16 @@ class SpaceborneCovariance:
                     space='harmonic',
                     symmetrize_output_dict=self.symmetrize_output_dict,
                 )
+                # overwrite explicitly the values at leaf level
+                for probe_2tpl in _cov_ng_dict:
+                    if probe_2tpl == '3x2pt':
+                        continue
+                    self.cov_dict[ng_cov][probe_2tpl]['6d'] = cov_probe_dict_6d[
+                        probe_2tpl
+                    ]['6d']
+
+            # in this case, assign the 6d covs directly
             elif _ng_cov_code == 'OneCovariance':
-                # in this case, assign the 6d covs directly
                 self.cov_dict[ng_cov] = deepcopy(cov_oc_obj.cov_dict[ng_cov])
             else:
                 raise ValueError(f'Unknown code: {_ng_cov_code}')
@@ -580,12 +601,12 @@ class SpaceborneCovariance:
         self._build_cov_3x2pt_4d_and_2d()
 
         # ! sum g + ssc + cng to get tot (only 2D)
-        self.cov_dict.update(
-            sl.set_cov_tot_2d_and_6d(
-                cov_dict=self.cov_dict,
-                req_probe_combs_2d=self.req_probe_combs_2d,
-                space='harmonic',
-            )
+        # this function modifies the cov_dict in place, no need to reassign the result 
+        # to self.cov_dict
+        sl.set_cov_tot_2d_and_6d(
+            cov_dict=self.cov_dict,
+            req_probe_combs_2d=self.req_probe_combs_2d,
+            space='harmonic',
         )
 
         # ! clean upd dictionaries:

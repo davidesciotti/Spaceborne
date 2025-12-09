@@ -1676,7 +1676,7 @@ if obs_space == 'real':
             term, symm_probe_combs_rs, nonreq_probe_combs_rs
         )
         # reshape all the probe blocks to 4d and 2d
-        cov_rs_obj._build_4d_and_2d_from_6d(term)
+        cov_rs_obj._cov_blocks_6d_to_4d_and_2d(term)
 
     # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
     cov_rs_obj._build_g_term_allprobes_alldims()

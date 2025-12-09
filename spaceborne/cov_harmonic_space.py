@@ -1,7 +1,6 @@
-from copy import deepcopy
-import itertools
 import time
 import warnings
+from copy import deepcopy
 
 import numpy as np
 
@@ -11,6 +10,7 @@ from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 from spaceborne.ccl_interface import CCLInterface
 from spaceborne.cov_partial_sky import NmtCov
+from spaceborne.cov_ssc import SpaceborneSSC
 from spaceborne.ell_utils import EllBinning
 from spaceborne.oc_interface import OneCovarianceInterface
 
@@ -338,22 +338,6 @@ class SpaceborneCovariance:
 
         print(f'...done in {(time.perf_counter() - start):.2f} s')
 
-    def _reshape_covs_6d_to_4d_and_2d(self):
-        """Simple wrapper to reshape the 6d covs (for each term and probe comb)
-        into 4d and into 2d."""
-
-        # populate the dict with 4d and 2d probe-specific arrays (from the 6d ones)
-        self.cov_dict = sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
-            cov_dict=self.cov_dict,
-            obs_space='harmonic',
-            nbx=self.ell_obj.nbl_3x2pt,
-            ind_auto=self.ind_auto,
-            ind_cross=self.ind_cross,
-            zpairs_auto=self.zpairs_auto,
-            zpairs_cross=self.zpairs_cross,
-            block_index=self.block_index,
-        )
-
     def _build_cov_3x2pt_4d_and_2d(self):
         """For each covariance term, constructs the 4d and 2d 3x2pt covs from
         the 6d probe-specific ones.
@@ -406,7 +390,12 @@ class SpaceborneCovariance:
             if term in self.cov_dict:
                 del self.cov_dict[term]
 
-    def _add_ng_cov(self, ccl_obj: CCLInterface, cov_oc_obj: OneCovarianceInterface):
+    def _add_cov_ng(
+        self,
+        ccl_obj: CCLInterface,
+        cov_ssc_obj: SpaceborneSSC,
+        cov_oc_obj: OneCovarianceInterface,
+    ):
         """Helper function to retrieve the non-Gaussian covariance from the required
         code-specific object.
 
@@ -417,51 +406,56 @@ class SpaceborneCovariance:
                OneCovariance, on the other hand, already provides the 6d covariances.
         """
 
-        for ng_cov in ['ssc', 'cng']:
+        for ng_term in ['ssc', 'cng']:
             # guards
-            if ng_cov == 'ssc' and not self.include_ssc:
-                print('Skipping SSC computation')
+            if ng_term == 'ssc' and not self.include_ssc:
+                print('\nSkipping SSC computation')
                 continue
-            if ng_cov == 'cng' and not self.include_cng:
-                print('Skipping cNG computation')
+            if ng_term == 'cng' and not self.include_cng:
+                print('\nSkipping cNG computation')
                 continue
 
             # set convenience variables
-            _ng_cov_code = getattr(self, f'{ng_cov}_code')
+            _cov_ng_code = getattr(self, f'{ng_term}_code')
 
             # get the relevant dictionary. Note that the structure is still
             # slightly different here
             # TODO homogenize this?
-            if _ng_cov_code == 'Spaceborne':
-                _cov_ng_dict = getattr(self, f'cov_{ng_cov}_dict')
-            elif _ng_cov_code == 'PyCCL':
-                _cov_ng_dict = ccl_obj.cov_dict[ng_cov]
+            if _cov_ng_code == 'Spaceborne':
+                _cov_ng_dict = cov_ssc_obj.cov_dict[ng_term]
+            elif _cov_ng_code == 'PyCCL':
+                _cov_ng_dict = ccl_obj.cov_dict[ng_term]
 
             # in these 2 cases, assign only the 6d covs to self.cov_dict, since the
             # reshaping to 4d and 2d is handled downstream
-            if _ng_cov_code in ['Spaceborne', 'PyCCL']:
-                cov_probe_dict_6d = sl.cov_probe_dict_4d_to_6d(
-                    cov_probe_dict_4d=_cov_ng_dict,
-                    nbx=self.ell_obj.nbl_3x2pt,
-                    zbins=self.zbins,
-                    ind_dict=self.ind_dict,
-                    unique_probe_combs=self.unique_probe_combs,
-                    space='harmonic',
-                    symmetrize_output_dict=self.symmetrize_output_dict,
-                )
-                # overwrite explicitly the values at leaf level
-                for probe_2tpl in _cov_ng_dict:
+            if _cov_ng_code in ['Spaceborne', 'PyCCL']:
+                for probe_2tpl in self.cov_dict[ng_term]:
                     if probe_2tpl == '3x2pt':
                         continue
-                    self.cov_dict[ng_cov][probe_2tpl]['6d'] = cov_probe_dict_6d[
-                        probe_2tpl
-                    ]['6d']
 
-            # in this case, assign the 6d covs directly
-            elif _ng_cov_code == 'OneCovariance':
-                self.cov_dict[ng_cov] = deepcopy(cov_oc_obj.cov_dict[ng_cov])
+                    probe_ab, probe_cd = probe_2tpl
+
+                    # sanity check: no 6d covs should be assigned yet
+                    assert self.cov_dict[ng_term][probe_2tpl]['6d'] is None, (
+                        f'self.cov_dict[{ng_term}][{probe_2tpl}][6d] is not None '
+                        'before assignment!'
+                    )
+
+                    self.cov_dict[ng_term][probe_2tpl]['6d'] = sl.cov_4D_to_6D_blocks(
+                        cov_4D=_cov_ng_dict[probe_2tpl]['4d'],
+                        nbl=self.ell_obj.nbl_3x2pt,
+                        zbins=self.zbins,
+                        ind_ab=self.ind_dict[probe_ab],
+                        ind_cd=self.ind_dict[probe_cd],
+                        symmetrize_output_ab=self.symmetrize_output_dict[probe_ab],
+                        symmetrize_output_cd=self.symmetrize_output_dict[probe_cd],
+                    )
+
+            # in the OneCovariance case, assign the 6d covs directly
+            elif _cov_ng_code == 'OneCovariance':
+                self.cov_dict[ng_term] = deepcopy(cov_oc_obj.cov_dict[ng_term])
             else:
-                raise ValueError(f'Unknown code: {_ng_cov_code}')
+                raise ValueError(f'Unknown code: {_cov_ng_code}')
 
     def _cov_2d_ell_cuts(self, split_gaussian_cov):
         # TODO reimplement this (I think it still works, but needs to be tested)
@@ -514,6 +508,7 @@ class SpaceborneCovariance:
     def combine_and_reshape_covs(
         self,
         ccl_obj: CCLInterface,
+        cov_ssc_obj: SpaceborneSSC,
         cov_oc_obj: OneCovarianceInterface,
         split_gaussian_cov: bool,
     ):
@@ -580,7 +575,16 @@ class SpaceborneCovariance:
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
         # ! are inside the function
-        self._add_ng_cov(ccl_obj, cov_oc_obj)
+        self._add_cov_ng(ccl_obj, cov_ssc_obj, cov_oc_obj)
+
+        for term in self.cov_dict:
+            for probe_2tpl in self.cov_dict[term]:
+                assert self.cov_dict[term][probe_2tpl]['4d'] is None, (
+                    '4d arrays should be empty at this point'
+                )
+                assert self.cov_dict[term][probe_2tpl]['2d'] is None, (
+                    '2d arrays should be empty at this point'
+                )
 
         # ! BNT transform (6/10D covs needed for this implementation)
         if self.cfg['BNT']['cov_BNT_transform']:
@@ -595,13 +599,23 @@ class SpaceborneCovariance:
         self._couple_cov_ng()
 
         # ! reshape probe-specific 6d covs to 4d and 2d
-        self._reshape_covs_6d_to_4d_and_2d()
+
+        sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
+            cov_dict=self.cov_dict,
+            obs_space='harmonic',
+            nbx=self.ell_obj.nbl_3x2pt,
+            ind_auto=self.ind_auto,
+            ind_cross=self.ind_cross,
+            zpairs_auto=self.zpairs_auto,
+            zpairs_cross=self.zpairs_cross,
+            block_index=self.block_index,
+        )
 
         # ! construct 3x2pt 4d and 2d covs (there is no 6d 3x2pt!)
         self._build_cov_3x2pt_4d_and_2d()
 
         # ! sum g + ssc + cng to get tot (only 2D)
-        # this function modifies the cov_dict in place, no need to reassign the result 
+        # this function modifies the cov_dict in place, no need to reassign the result
         # to self.cov_dict
         sl.set_cov_tot_2d_and_6d(
             cov_dict=self.cov_dict,
@@ -615,7 +629,7 @@ class SpaceborneCovariance:
         # ! perform ell cuts on the 2D covs
         self._cov_2d_ell_cuts(split_gaussian_cov)
 
-        print('Covariance matrices computed')
+        print('\nCovariance matrices computed')
 
     def _couple_cov_ng(self):
         if not self.cov_cfg['coupled_cov']:
@@ -627,61 +641,59 @@ class SpaceborneCovariance:
                 'matrices.',
                 stacklevel=2,
             )
-            
+
         if self.cov_nmt_obj is None:
             raise ValueError(
                 'cov_nmt_obj is required when coupled_cov is True. Found None.'
             )
 
-
         from spaceborne import cov_partial_sky
 
-        # construct mcm array for better probe handling (especially for 3x2pt)
-        mcm_dict = {}
-        mcm_dict['LL'] = self.cov_nmt_obj.mcm_ee_binned
-        mcm_dict['GL'] = self.cov_nmt_obj.mcm_te_binned
-        # mcm_3x2pt_dict['LG'] = self.cov_nmt_obj.mcm_et_binned
-        mcm_dict['GG'] = self.cov_nmt_obj.mcm_tt_binned
+        with sl.timer('\nCoupling non-Gaussian covariance matrices...'):
+            # construct mcm array for better probe handling (especially for 3x2pt)
+            mcm_dict = {}
+            mcm_dict['LL'] = self.cov_nmt_obj.mcm_ee_binned
+            mcm_dict['GL'] = self.cov_nmt_obj.mcm_te_binned
+            # mcm_3x2pt_dict['LG'] = self.cov_nmt_obj.mcm_et_binned
+            mcm_dict['GG'] = self.cov_nmt_obj.mcm_tt_binned
 
-        for k, v in mcm_dict.items():
-            assert v.shape == (self.ell_obj.nbl_3x2pt, self.ell_obj.nbl_3x2pt), (
-                f'mcm {k} has wrong shape {v.shape}'
-            )
-
-        # cov_WL_ssc_6d = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[0, 0], cov_WL_ssc_6d, mcm_3x2pt_arr[0, 0].T
-        # )
-        # cov_WL_cng_6d = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[0, 0], cov_WL_cng_6d, mcm_3x2pt_arr[0, 0].T
-        # )
-        # cov_GC_ssc_6d = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[1, 1], cov_GC_ssc_6d, mcm_3x2pt_arr[1, 1].T
-        # )
-        # cov_GC_cng_6d = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[1, 1], cov_GC_cng_6d, mcm_3x2pt_arr[1, 1].T
-        # )
-        # cov_XC_ssc_6d = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[1, 0], cov_XC_ssc_6d, mcm_3x2pt_arr[1, 0].T
-        # )
-        # cov_XC_cng_6d = cov_partial_sky.couple_cov_6d(
-        #     mcm_3x2pt_arr[1, 0], cov_XC_cng_6d, mcm_3x2pt_arr[1, 0].T
-        # )
-
-        for ng_term in ['ssc', 'cng']:
-            if ng_term not in self.cov_dict:
-                continue
-
-            for probe_abcd in self.req_probe_combs_2d:
-                probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
-                self.cov_dict[ng_term][probe_ab, probe_cd]['6d'] = (
-                    cov_partial_sky.couple_cov_6d(
-                        mcm_dict[probe_ab],
-                        self.cov_dict[ng_term][probe_ab, probe_cd]['6d'],
-                        mcm_dict[probe_cd].T,
-                    )
+            for k, v in mcm_dict.items():
+                assert v.shape == (self.ell_obj.nbl_3x2pt, self.ell_obj.nbl_3x2pt), (
+                    f'mcm {k} has wrong shape {v.shape}'
                 )
 
-        print('...done')
+            # cov_WL_ssc_6d = cov_partial_sky.couple_cov_6d(
+            #     mcm_3x2pt_arr[0, 0], cov_WL_ssc_6d, mcm_3x2pt_arr[0, 0].T
+            # )
+            # cov_WL_cng_6d = cov_partial_sky.couple_cov_6d(
+            #     mcm_3x2pt_arr[0, 0], cov_WL_cng_6d, mcm_3x2pt_arr[0, 0].T
+            # )
+            # cov_GC_ssc_6d = cov_partial_sky.couple_cov_6d(
+            #     mcm_3x2pt_arr[1, 1], cov_GC_ssc_6d, mcm_3x2pt_arr[1, 1].T
+            # )
+            # cov_GC_cng_6d = cov_partial_sky.couple_cov_6d(
+            #     mcm_3x2pt_arr[1, 1], cov_GC_cng_6d, mcm_3x2pt_arr[1, 1].T
+            # )
+            # cov_XC_ssc_6d = cov_partial_sky.couple_cov_6d(
+            #     mcm_3x2pt_arr[1, 0], cov_XC_ssc_6d, mcm_3x2pt_arr[1, 0].T
+            # )
+            # cov_XC_cng_6d = cov_partial_sky.couple_cov_6d(
+            #     mcm_3x2pt_arr[1, 0], cov_XC_cng_6d, mcm_3x2pt_arr[1, 0].T
+            # )
+
+            for ng_term in ['ssc', 'cng']:
+                if ng_term not in self.cov_dict:
+                    continue
+
+                for probe_abcd in self.req_probe_combs_2d:
+                    probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
+                    self.cov_dict[ng_term][probe_ab, probe_cd]['6d'] = (
+                        cov_partial_sky.couple_cov_6d(
+                            mcm_dict[probe_ab],
+                            self.cov_dict[ng_term][probe_ab, probe_cd]['6d'],
+                            mcm_dict[probe_cd].T,
+                        )
+                    )
 
     def get_ellmax_nbl(self, probe, covariance_cfg):
         if probe == 'LL':

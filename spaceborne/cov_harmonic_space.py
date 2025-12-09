@@ -627,6 +627,12 @@ class SpaceborneCovariance:
                 'matrices.',
                 stacklevel=2,
             )
+            
+        if self.cov_nmt_obj is None:
+            raise ValueError(
+                'cov_nmt_obj is required when coupled_cov is True. Found None.'
+            )
+
 
         from spaceborne import cov_partial_sky
 

@@ -167,12 +167,14 @@ def print_cov_dict_info(cov_dict: dict, show_array_info: bool = True):
                 is_last_dim = dim_idx == len(dim_dict)
                 dim_prefix = '└──' if is_last_dim else '├──'
 
-                if show_array_info:
+                if show_array_info and array is not None:
                     array_info = f'shape={array.shape}, dtype={array.dtype}'
                     print(
                         f"{dim_parent_prefix}{dim_prefix} Dim: '{dim}' ({array_info})"
                     )
-                else:
+                elif show_array_info and array is None:
+                    print(f"{dim_parent_prefix}{dim_prefix} Dim: '{dim}' (None)")
+                elif not show_array_info:
                     print(f"{dim_parent_prefix}{dim_prefix} Dim: '{dim}'")
 
     print('=' * 60)
@@ -429,7 +431,7 @@ def cov_10d_arr_to_dict(
         probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
         probe_key = (probe_ab, probe_cd)
         if empty:
-            result[probe_key] = {dim: {}}
+            result[probe_key] = {dim: None}
         else:
             probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
             result[probe_key] = {dim: cov_10d[probe_ixs]}
@@ -3529,20 +3531,24 @@ def cov_dict_6d_probe_blocks_to_4d_and_2d(
             zpairs_cd = zpairs_auto if probe_cd in auto_probes else zpairs_cross
 
             # reshape to 4d, then to 2d
-            cov_dict[term][probe_ab, probe_cd]['4d'] = cov_6D_to_4D_blocks(
-                cov_6D=cov_6d,
-                nbl=nbx,
-                npairs_AB=zpairs_ab,
-                npairs_CD=zpairs_cd,
-                ind_AB=ind_ab,
-                ind_CD=ind_cd,
-            )
+            if cov_6d is None:
+                cov_dict[term][probe_ab, probe_cd]['4d'] = None
+                cov_dict[term][probe_ab, probe_cd]['2d'] = None
+            else:
+                cov_dict[term][probe_ab, probe_cd]['4d'] = cov_6D_to_4D_blocks(
+                    cov_6D=cov_6d,
+                    nbl=nbx,
+                    npairs_AB=zpairs_ab,
+                    npairs_CD=zpairs_cd,
+                    ind_AB=ind_ab,
+                    ind_CD=ind_cd,
+                )
 
-            cov_dict[term][probe_ab, probe_cd]['2d'] = cov_4D_to_2D(
-                cov_4D=cov_dict[term][probe_ab, probe_cd]['4d'],
-                block_index=block_index,
-                optimize=True,
-            )
+                cov_dict[term][probe_ab, probe_cd]['2d'] = cov_4D_to_2D(
+                    cov_4D=cov_dict[term][probe_ab, probe_cd]['4d'],
+                    block_index=block_index,
+                    optimize=True,
+                )
 
     return cov_dict
 
@@ -3700,11 +3706,12 @@ def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: s
 
     elif obs_space == 'real':
         row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
+        
         for probe_2tpl in cov_probe_dict:
             if probe_2tpl == '3x2pt':
                 continue
             probe_ab, probe_cd = probe_2tpl
-            
+
             if probe_ab == 'xip':
                 row_xip_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
             elif probe_ab == 'xim':

@@ -27,9 +27,7 @@ class FrozenDict(dict):
 
 
 def create_cov_dict(
-    required_terms: list[str],
-    probe_pairs: list[tuple[str, str]],
-    dims: list[str] = ['2d', '4d', '6d'],
+    required_terms: list[str], probe_pairs: list[tuple[str, str]], dims: list[str]
 ) -> FrozenDict:
     """
     Create fully structured covariance dict with all levels pre-initialized.
@@ -51,7 +49,7 @@ def create_cov_dict(
 
     Examples
     --------
-    >>> cov_dict = create_covariance_dict(
+    >>> cov_dict = create_cov_dict(
     ...     required_terms=['g', 'ssc'],
     ...     probe_pairs=[('LL','LL'), ('GG','GG')]
     ... )

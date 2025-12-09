@@ -3691,7 +3691,7 @@ def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: s
                     f'Probe combination {probe_ab, probe_cd} does not start with '
                     '("LL") or ("GL") or ("GG") '
                 )
-
+                
         # concatenate the lists to make rows
         # (only concatenate and include rows that have content)
         if row_ll_list:

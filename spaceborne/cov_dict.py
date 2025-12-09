@@ -39,7 +39,7 @@ def create_cov_dict(
     probe_pairs : list[tuple]
         All probe combinations, e.g., [('LL','LL'), ('GL','GL'), ('GG','GG')]
     dims : list[str]
-        Dimensions to pre-create, default ['2d', '4d', '6d']
+        Dimensions to pre-create, e.g. ['2d', '4d', '6d']
 
     Returns
     -------
@@ -51,7 +51,8 @@ def create_cov_dict(
     --------
     >>> cov_dict = create_cov_dict(
     ...     required_terms=['g', 'ssc'],
-    ...     probe_pairs=[('LL','LL'), ('GG','GG')]
+    ...     probe_pairs=[('LL','LL'), ('GG','GG')],
+            dims=['2d', '4d', '6d']
     ... )
     >>> # These work:
     >>> cov_dict['g'][('LL','LL')]['6d'] = array  # ✓ Setting array value

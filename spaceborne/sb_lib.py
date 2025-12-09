@@ -4,11 +4,9 @@ import itertools
 import json
 import os
 import pickle
-import pprint
 import subprocess
 import time
 import warnings
-from collections import defaultdict
 from collections.abc import Sequence
 from copy import deepcopy
 from pathlib import Path
@@ -1458,82 +1456,6 @@ def cov_3x2pt_dict_8d_to_10d(
 
     return cov_3x2pt_dict_10D
 
-
-def cov_probe_dict_4d_to_6d(
-    cov_probe_dict_4d: dict[tuple[str, str], dict],
-    nbx: int,
-    zbins: int,
-    ind_dict: dict,
-    unique_probe_combs: list[str],
-    space: str,
-    symmetrize_output_dict: dict[str, bool] = const.HS_SYMMETRIZE_OUTPUT_DICT,
-) -> dict[tuple[str, str], dict]:
-    """
-    Reshape each element of the cov_probe_dict from 4d to 6d.
-    The probe_dict must have structure
-    [probe_ab, probe_cd]['4d']: np.ndarray (of ndim=4)
-
-    Note that this function returns a new dictionary, without the original '4d' key
-
-    4d: (probe_ab, probe_cd) -> np.ndarray(nbx, nbx, zpairs, zpairs)
-    6d: (probe_ab, probe_cd) -> np.ndarray(nbx, nbx, zbins, zbins, zbins, zbins)
-    """
-    # just a check
-    for _probe_str in unique_probe_combs:
-        if len(_probe_str) != 4:
-            raise ValueError(f"Probe string '{_probe_str}' must be length 4")
-
-    # check that the input cov dict has only the '4d' key to avoid overwriting
-    for v in cov_probe_dict_4d.values():
-        if set(v.keys()) != {'4d'}:
-            raise KeyError(
-                'The input dictionary should only contain 4d arrays '
-                f'(found keys {sorted(v.keys())})'
-            )
-
-    # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
-    symm_probe_combs, nonreq_probe_combs = get_probe_combs(unique_probe_combs, space)
-
-    cov_probe_dict_6d = defaultdict(lambda: defaultdict(dict))
-    # * First pass: compute only the requested blocks
-    # the requested probes are also unique, e.g. if unique_probe_combs contains 'LLGL'
-    # it will not include 'GLLL'. These blocks can be filled by simmetry, transposing
-    # - (A, B, C, D) -> (C, D, A, B),
-    # - (ell1, ell2) -> (ell2, ell1),
-    # - (zi, zj, zk, zl) <-> (zk, zl, zi, zj)
-    # be careful, the latter is *not*
-    # (zi, zj, zk, zl) <-> (zj, zi, zl, zk)!!
-    for probe_abcd in unique_probe_combs:
-        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
-        probe_2tpl = (probe_ab, probe_cd)
-        cov_probe_dict_6d[probe_2tpl]['6d'] = cov_4D_to_6D_blocks(
-            cov_4D=cov_probe_dict_4d[probe_2tpl]['4d'],
-            nbl=nbx,
-            zbins=zbins,
-            ind_ab=ind_dict[probe_ab],
-            ind_cd=ind_dict[probe_cd],
-            symmetrize_output_ab=symmetrize_output_dict[probe_ab],
-            symmetrize_output_cd=symmetrize_output_dict[probe_cd],
-        )
-
-    # * Second pass: fill symmetric counterparts
-    for probe_abcd in symm_probe_combs:
-        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
-        cov_probe_dict_6d[probe_ab, probe_cd]['6d'] = (
-            cov_probe_dict_6d[probe_cd, probe_ab]['6d']
-            .transpose(1, 0, 4, 5, 2, 3)
-            .copy()
-        )
-
-    # * Third pass: zero for non-requested combinations
-    # [BOOKMARK] nonreq_probe_combs is the issue!
-    for probe_abcd in nonreq_probe_combs:
-        probe_2tpl = split_probe_name(probe_abcd, space=space)
-        cov_probe_dict_6d[probe_2tpl]['6d'] = np.zeros(
-            (nbx, nbx, zbins, zbins, zbins, zbins)
-        )
-
-    return cov_probe_dict_6d
 
 
 def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
@@ -3522,19 +3444,20 @@ def cov_dict_6d_probe_blocks_to_4d_and_2d(
                 )
 
             # extract array
-            cov_6d = cov_dict[term][probe_ab, probe_cd]['6d']
-
-            # prepare ind and zpairs
-            ind_ab = ind_auto if probe_ab in auto_probes else ind_cross
-            ind_cd = ind_auto if probe_cd in auto_probes else ind_cross
-            zpairs_ab = zpairs_auto if probe_ab in auto_probes else zpairs_cross
-            zpairs_cd = zpairs_auto if probe_cd in auto_probes else zpairs_cross
+            cov_6d = cov_dict[term][probe_2tpl]['6d']
 
             # reshape to 4d, then to 2d
             if cov_6d is None:
-                cov_dict[term][probe_ab, probe_cd]['4d'] = None
-                cov_dict[term][probe_ab, probe_cd]['2d'] = None
+                cov_dict[term][probe_2tpl]['4d'] = None
+                cov_dict[term][probe_2tpl]['2d'] = None
             else:
+                # prepare ind and zpairs
+                ind_ab = ind_auto if probe_ab in auto_probes else ind_cross
+                ind_cd = ind_auto if probe_cd in auto_probes else ind_cross
+                zpairs_ab = zpairs_auto if probe_ab in auto_probes else zpairs_cross
+                zpairs_cd = zpairs_auto if probe_cd in auto_probes else zpairs_cross
+
+                # reshape
                 cov_dict[term][probe_ab, probe_cd]['4d'] = cov_6D_to_4D_blocks(
                     cov_6D=cov_6d,
                     nbl=nbx,
@@ -3691,7 +3614,7 @@ def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: s
                     f'Probe combination {probe_ab, probe_cd} does not start with '
                     '("LL") or ("GL") or ("GG") '
                 )
-                
+
         # concatenate the lists to make rows
         # (only concatenate and include rows that have content)
         if row_ll_list:
@@ -3706,7 +3629,7 @@ def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: s
 
     elif obs_space == 'real':
         row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
-        
+
         for probe_2tpl in cov_probe_dict:
             if probe_2tpl == '3x2pt':
                 continue

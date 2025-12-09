@@ -1,6 +1,5 @@
 """This module should be run with pyccl >= v3.2.1"""
 
-from collections import defaultdict
 import time
 from functools import partial
 
@@ -11,6 +10,7 @@ from tqdm import tqdm
 
 from spaceborne import constants as const
 from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
+from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
 _UNSET = object()
@@ -145,8 +145,6 @@ class CCLInterface:
         self.halo_profile_hod = getattr(ccl.halos, halo_model_dict['halo_profile_hod'])(
             mass_def=self.mass_def, concentration=self.c_m_relation
         )
-
-        self.cov_dict = defaultdict(lambda: defaultdict(dict))
 
         # declare attributes set at runtime
         self.p_of_k_a = _UNSET
@@ -401,6 +399,26 @@ class CCLInterface:
         )
 
     # ! ================================================================================
+
+    def set_cov_dict(self, pvt_cfg, ccl_ng_cov_terms_list):
+        """Instantiate the covariance dictionary with the required terms.
+        This is not done at initialization since this class does not exclusively handle
+        covariance calculations.
+
+        Note: this class only computes
+          - non-gaussian terms required, also depending on SSC/cNG_code settings
+          - 6d dim
+        """
+
+        _req_terms = [term.lower() for term in ccl_ng_cov_terms_list]
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space='harmonic')
+            for probe in pvt_cfg['req_probe_combs_hs_2d']
+        ]
+        _req_probe_combs_2d.append('3x2pt')
+        _dims = ['4d']
+
+        self.cov_dict = cd.create_cov_dict(_req_terms, _req_probe_combs_2d, dims=_dims)
 
     # TODO deprecate this func
     def set_sigma2_b_old(
@@ -874,7 +892,6 @@ class CCLInterface:
                         print(error)
 
     def save_cov_blocks(self, cov_path, cov_filename):
-        
         raise NotImplementedError(
             'The save_cov_blocks method is deprecated and will be removed in future '
             'versions. Please use the cov_dict structure instead.'

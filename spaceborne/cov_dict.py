@@ -1,10 +1,11 @@
 class FrozenDict(dict):
     """Dictionary that prevents adding new keys after initialization."""
 
-    def __init__(self, *args, protect_structure=False, **kwargs):
+    def __init__(self, *args, protect_structure=True, validate_dims=True, **kwargs):
         super().__init__(*args, **kwargs)
         self._frozen = True
         self._protect_structure = protect_structure
+        self._validate_dims = validate_dims
 
     def __setitem__(self, key, value):
         # Prevent adding new keys
@@ -22,6 +23,26 @@ class FrozenDict(dict):
                     f'You can only modify values at the leaf level (arrays), '
                     f'not replace intermediate dict levels.'
                 )
+
+        # Validate dimension constraints
+        if hasattr(self, '_validate_dims') and self._validate_dims:
+            
+            if value is not None and not isinstance(value, np.ndarray):
+                raise TypeError(
+                    f"Key '{key}' can only store None or numpy arrays, "
+                    f"got {type(value).__name__}"
+                )
+            
+            if isinstance(value, np.ndarray) and isinstance(key, str):
+                # Extract expected dimension from key (e.g., '4d' -> 4)
+                if key.endswith('d') and key[:-1].isdigit():
+                    expected_dim = int(key[:-1])
+                    actual_dim = value.ndim
+                    if actual_dim != expected_dim:
+                        raise ValueError(
+                            f"Key '{key}' expects numpy array with {expected_dim} dimensions, "
+                            f"got array with {actual_dim} dimensions"
+                        )
 
         super().__setitem__(key, value)
 
@@ -70,9 +91,9 @@ def create_cov_dict(
         for probe_pair in probe_pairs:
             # Initialize with None for each dim (will be replaced by arrays)
             cov_dict[term][probe_pair] = {dim: None for dim in dims}
-            # Freeze the dimension level (protect_structure=False: allows array assignment)
+            # Freeze the dimension level (validate_dims=True: enforces type and dimension checks)
             cov_dict[term][probe_pair] = FrozenDict(
-                cov_dict[term][probe_pair], protect_structure=False
+                cov_dict[term][probe_pair], protect_structure=False, validate_dims=True
             )
         # Freeze the probe level (protect_structure=True: prevents replacing FrozenDicts)
         cov_dict[term] = FrozenDict(cov_dict[term], protect_structure=True)

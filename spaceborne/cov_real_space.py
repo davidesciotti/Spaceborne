@@ -1241,7 +1241,7 @@ class CovRealSpace:
             ),
         )  # fmt: skip
 
-    def _build_g_term_allprobes_alldims(self) -> None:
+    def _sum_split_g_terms_allprobeblocks_alldims(self) -> None:
         # small sanity check probe combinations must match for terms (sva, sn, mix)
         if not (
             self.cov_dict['sva'].keys()
@@ -1254,9 +1254,9 @@ class CovRealSpace:
             )
 
         # sanity check: all the probes must match
-        probes_sva = sorted(self.cov_dict['sva'].keys())
-        probes_sn = sorted(self.cov_dict['sn'].keys())
-        probes_mix = sorted(self.cov_dict['mix'].keys())
+        probes_sva = set(self.cov_dict['sva'].keys())
+        probes_sn = set(self.cov_dict['sn'].keys())
+        probes_mix = set(self.cov_dict['mix'].keys())
         if not (probes_sva == probes_sn == probes_mix):
             raise ValueError(
                 'The probe combinations in the SVA, SN and MIX covariance '
@@ -1266,10 +1266,14 @@ class CovRealSpace:
         # now sum the terms to get the Gaussian, for all probe combinations and
         # dimensions
         for probe_2tpl in self.cov_dict['sva']:
+            
+            if probe_2tpl == '3x2pt':
+                continue  # skip 3x2pt, built later
+            
             # sanity check: all the dimensions must match
-            dims_sva = sorted(self.cov_dict['sva'][probe_2tpl].keys())
-            dims_sn = sorted(self.cov_dict['sn'][probe_2tpl].keys())
-            dims_mix = sorted(self.cov_dict['mix'][probe_2tpl].keys())
+            dims_sva = set(self.cov_dict['sva'][probe_2tpl].keys())
+            dims_sn = set(self.cov_dict['sn'][probe_2tpl].keys())
+            dims_mix = set(self.cov_dict['mix'][probe_2tpl].keys())
             if not (dims_sva == dims_sn == dims_mix):
                 raise ValueError(
                     'The probe combinations in the SVA, SN and MIX covariance '

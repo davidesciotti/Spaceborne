@@ -629,8 +629,6 @@ class SpaceborneCovariance:
         # ! perform ell cuts on the 2D covs
         self._cov_2d_ell_cuts(split_gaussian_cov)
 
-        print('\nCovariance matrices computed')
-
     def _couple_cov_ng(self):
         if not self.cov_cfg['coupled_cov']:
             return

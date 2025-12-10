@@ -21,6 +21,8 @@ import sys
 
 import yaml
 
+# [BOOKMARK 9 dec: take a look at coderabbit review and move on]
+
 
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
@@ -1690,7 +1692,7 @@ if obs_space == 'real':
         cov_rs_obj._cov_blocks_6d_to_4d_and_2d(term)
 
     # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
-    cov_rs_obj._build_g_term_allprobes_alldims()
+    cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
     # construct 4d and 2d 3x2pt
     cov_rs_obj._build_cov_3x2pt_4d_and_2d()
 

@@ -1,8 +1,8 @@
 import time
+
 import numpy as np
 import pyccl as ccl
 from scipy.interpolate import RegularGridInterpolator
-from tqdm import tqdm
 
 from spaceborne import cosmo_lib
 
@@ -378,7 +378,7 @@ class SpaceborneResponses:
         prof_m = self.ccl_obj.halo_profile_dm
         prof_g = self.ccl_obj.halo_profile_hod
 
-        for a_idx, aa in tqdm(enumerate(a_grid)):
+        for a_idx, aa in enumerate(a_grid):
             # Linear power spectrum and its derivative
             pklin = pk2d(k_grid, aa)
             dpklin = pk2d(k_grid, aa, derivative=True)

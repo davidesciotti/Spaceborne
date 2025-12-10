@@ -36,6 +36,7 @@ import subprocess
 from copy import deepcopy
 from datetime import datetime
 from itertools import product
+import time
 
 import numpy as np
 import yaml
@@ -88,6 +89,7 @@ def save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=0):
     Args:
         configs (list): List of configuration dictionaries
         output_dir (str): Directory to save the YAML files
+        start_ix (int): Starting index for
 
     Returns:
         list: List of paths to the generated YAML files
@@ -115,7 +117,7 @@ def save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=0):
     return yaml_files
 
 
-def run_benchmarks(yaml_files, sb_root_path, output_dir):
+def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = False):
     """Run the benchmarks for each configuration file.
 
     Args:
@@ -149,6 +151,13 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir):
                 _yaml_file = os.path.abspath(os.path.join(original_dir, yaml_file))
             else:
                 _yaml_file = yaml_file
+
+            if os.path.exists(_yaml_file.replace('.yaml', '.npz')) and skip_existing:
+                print(
+                    f'Benchmark file {_yaml_file.replace(".yaml", ".npz")} '
+                    'already exists. Skipping it...'
+                )
+                continue
 
             print('\n')
             print('*********************************************************')
@@ -309,7 +318,7 @@ base_cfg = {
     },
     'mask': {
         'load_mask': False,
-        'mask_path': '../input/mask.fits',
+        'mask_path': f'{ROOT}/common_data/RR2/Davide/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
         'generate_polar_cap': True,
         'nside': 1024,
         'survey_area_deg2': 13245,
@@ -458,18 +467,16 @@ for shift_nz in [True, False]:
 # ! Mask variations
 for load_input_mask, generate_polar_cap in zip([True, False], [False, True]):
     print(load_input_mask, generate_polar_cap)
-    for apodize in [True, False]:
-        for nside in [512, 1024]:
-            configs_to_test.append(
-                {
-                    'mask': {
-                        'generate_polar_cap': generate_polar_cap,
-                        'load_mask': load_input_mask,
-                        'apodize': apodize,
-                        'nside': nside,
-                    }
+    for nside in [512, 1024]:
+        configs_to_test.append(
+            {
+                'mask': {
+                    'generate_polar_cap': generate_polar_cap,
+                    'load_mask': load_input_mask,
+                    'nside': nside,
                 }
-            )
+            }
+        )
 
 # ! NAMASTER (test only G cov)
 for coupled_cov in [True, False]:
@@ -494,13 +501,20 @@ print(f'Generated {len(configs)} configurations')
 
 
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=0)
+yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=82)
 
 # Run benchmarks
-run_benchmarks(yaml_files, sb_root_path=sb_root_path, output_dir=bench_set_path_results)
+start = time.perf_counter()
+run_benchmarks(
+    yaml_files,
+    sb_root_path=sb_root_path,
+    output_dir=bench_set_path_results,
+    skip_existing=False,
+)
 
 # To manually run specific configurations:
 # To run a specific config:
 #   python main.py --config {yaml_file}
 
+print(f'All Benchmarks generated in {(time.perf_counter() - start):.2f} s')
 print('\nAll benchmarks saved!🎉')

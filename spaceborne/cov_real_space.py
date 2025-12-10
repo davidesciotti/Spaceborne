@@ -1266,10 +1266,9 @@ class CovRealSpace:
         # now sum the terms to get the Gaussian, for all probe combinations and
         # dimensions
         for probe_2tpl in self.cov_dict['sva']:
-            
             if probe_2tpl == '3x2pt':
                 continue  # skip 3x2pt, built later
-            
+
             # sanity check: all the dimensions must match
             dims_sva = set(self.cov_dict['sva'][probe_2tpl].keys())
             dims_sn = set(self.cov_dict['sn'][probe_2tpl].keys())
@@ -1635,11 +1634,26 @@ class CovRealSpace:
             cov = (cov_cdab.transpose(1, 0, 4, 5, 2, 3)).copy()
             self.cov_dict[term][probe_ab, probe_cd]['6d'] = cov
 
-    def _cov_blocks_6d_to_4d_and_2d(self, term):
+        # # * if block is not required, set it to 0
+        for probe_abcd in nonreq_probe_combs:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='real')
+            probe_2tpl = (probe_ab, probe_cd)
+
+            self.cov_dict[term][probe_2tpl]['6d'] = np.zeros(
+                (
+                    self.nbt_coarse,
+                    self.nbt_coarse,
+                    self.zbins,
+                    self.zbins,
+                    self.zbins,
+                    self.zbins,
+                )
+            )
+
+    def _cov_probeblocks_6d_to_4d_and_2d(self, term):
         """
         For the input term, transforms all 6d probe-blocks into 4d and 2d.
         Note: this does not apply to 3x2pt!
-
         """
 
         for probe_2tpl in self.cov_dict[term]:

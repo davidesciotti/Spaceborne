@@ -68,10 +68,10 @@ probe_selection:
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
-  GG: True # Type: bool. Whether to compute the photometric clustering ('GG') covariance
+  GG: False # Type: bool. Whether to compute the photometric clustering ('GG') covariance
   
   xip: True # Type: bool. Whether to compute \xi_+
-  xim: True # Type: bool. Whether to compute \xi_-
+  xim: False # Type: bool. Whether to compute \xi_-
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
   
@@ -109,7 +109,7 @@ binning:
   binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
   ell_min: 10 # Type: int. Minimum ell
-  ell_max: 200 # Type: int. Maximum ell
+  ell_max: 1500 # Type: int. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   ell_bins_filename: '../common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt'
@@ -197,7 +197,7 @@ covariance:
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
-  G_code: Spaceborne # Type: bool. Enable/disable the Gaussian covariance term.
+  SSC_code: Spaceborne 
   
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
@@ -256,7 +256,7 @@ covariance:
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
   log10_k_max: 2.0 # Type: float. Units: 1/Mpc
-  k_steps: 150 # Type: int. Around 150 should be enough
+  k_steps: 20 # Type: int. Around 150 should be enough
 
   # TODO what is this 0.02?
   z_min: 0.02 # Type: float
@@ -300,7 +300,7 @@ PyCCL:
 
 
 namaster:
-  use_namaster: false # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
+  use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
   spin0: True # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but slightly less accurate)
   use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
   workspace_path: ... # Type: str. Path to the workspace, if already computed
@@ -354,7 +354,7 @@ misc:
   
   # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'
-  jax_enable_x64: true # Type: str. Whether to enable 64-bit precision for JAX computations
+  jax_enable_x64: True # Type: bool. Whether to enable 64-bit precision for JAX computations
 
   # some sanity checks on the covariance matrix. These could take a while to run.
   test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv

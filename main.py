@@ -1917,7 +1917,7 @@ header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 # sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
 
 # for probe in ['WL', 'GC', '3x2pt']:
-for probe in ['3x2pt',]:
+for probe in ['3x2pt']:
     ells_2d_save = np.column_stack(
         (
             getattr(ell_obj, f'ells_{probe}'),
@@ -2001,21 +2001,38 @@ if cfg['misc']['save_output_as_benchmark']:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
     # save every array contained in _cov_obj
-    covs_arrays_dict = {
-        k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
-    }
-    # remove the 'ind' arrays
-    covs_arrays_dict.pop('ind')
-    covs_arrays_dict.pop('ind_auto')
-    covs_arrays_dict.pop('ind_cross')
+    # covs_arrays_dict = {
+    #     k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
+    # }
 
-    # make the keys consistent with the old benchmark files
-    covs_arrays_dict_renamed = covs_arrays_dict.copy()
-    for key, cov in covs_arrays_dict.items():
-        # key_new = key.replace('_tot_', '_TOT_')
-        key_new = key.replace('_2d', '_2D')
-        covs_arrays_dict_renamed[key_new] = cov
-        covs_arrays_dict_renamed.pop(key)
+    covs_arrays_dict = {}
+    for term, cov_probe_dict in _cov_obj.cov_dict.items():
+        for probe_abcd in cov_probe_dict:
+            if probe_abcd == '3x2pt':
+                covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
+            elif probe_abcd == ('LL', 'LL'):
+                covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+            elif probe_abcd == ('GG', 'GG'):
+                covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+            elif probe_abcd == ('GL', 'GL'):
+                covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+            else:
+                _probe = ''.join(probe_abcd)
+                covs_arrays_dict[f'cov_{_probe}_{term}_2d'] = cov_probe_dict[
+                    probe_abcd
+                ]['2d']
+
+    if 'ssc' not in _cov_obj.cov_dict:
+        for probe in ['WL', 'GC', '3x2pt']:
+            covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
+    if 'cng' not in _cov_obj.cov_dict:
+        for probe in ['WL', 'GC', 'XC', '3x2pt']:
+            covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
+
+    # remove the 'ind' arrays
+    covs_arrays_dict.pop('ind', None)
+    covs_arrays_dict.pop('ind_auto', None)
+    covs_arrays_dict.pop('ind_cross', None)
 
     np.savez_compressed(
         bench_filename,

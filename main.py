@@ -1,7 +1,7 @@
 """
 Branch TODO list:
 * update partial sky            [ok]
-* update real space             [ok, finish checking]
+* update real space             [ok]
 * adjust outputs for tests?     [done, generate new benchmarks also from develop, there was a bug]
 * rerun all tests
 * understand this issue:
@@ -21,7 +21,7 @@ import sys
 
 import yaml
 
-# [BOOKMARK 9 dec: take a look at coderabbit review and move on]
+# [BOOKMARK 10 dec: take a look at coderabbit review and move on]
 
 
 def load_config(_config_path):
@@ -1688,8 +1688,9 @@ if obs_space == 'real':
         cov_rs_obj.fill_remaining_probe_blocks_6d(
             term, symm_probe_combs_rs, nonreq_probe_combs_rs
         )
+    for term in cov_rs_obj.terms_toloop:
         # reshape all the probe blocks to 4d and 2d
-        cov_rs_obj._cov_blocks_6d_to_4d_and_2d(term)
+        cov_rs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
 
     # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
     cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
@@ -1995,70 +1996,75 @@ if cfg['misc']['save_output_as_benchmark']:
     # ! new
     # ! Save all arrays in cov_*_obj objects, as well as all the values in
     # ! cov_*_obj.cov_dict
-    covs_arrays_dict = {}
+    # covs_arrays_dict = {}
 
-    for _cov_obj, _cov_obj_name in zip(
-        [cov_hs_obj, cov_rs_obj, cov_oc_obj, cov_nmt_obj],
-        ['cov_hs_obj', 'cov_rs_obj', 'cov_oc_obj', 'cov_nmt_obj'],
-        strict=True,
-    ):
-        if _cov_obj is None:
-            continue
+    # for _cov_obj, _cov_obj_name in zip(
+    #     [cov_hs_obj, cov_rs_obj, cov_oc_obj, cov_nmt_obj],
+    #     ['cov_hs_obj', 'cov_rs_obj', 'cov_oc_obj', 'cov_nmt_obj'],
+    #     strict=True,
+    # ):
+    #     if _cov_obj is None:
+    #         continue
 
-        # save every array contained in _cov_obj (this will potentially save more
-        # than needed)
-        # covs_arrays_dict.update(
-        #     {k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)}
-        # )
+    #     # save every array contained in _cov_obj (this will potentially save more
+    #     # than needed)
+    #     # covs_arrays_dict.update(
+    #     #     {k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)}
+    #     # )
 
-        if not hasattr(_cov_obj, 'cov_dict'):
-            continue
+    #     if not hasattr(_cov_obj, 'cov_dict'):
+    #         continue
 
-        # save all covariance arrays in _cov_obj.cov_dict
-        for term in _cov_obj.cov_dict:
-            for probe_2tpl in _cov_obj.cov_dict[term]:
-                for dim in _cov_obj.cov_dict[term][probe_2tpl]:
-                    if isinstance(probe_2tpl, tuple):
-                        probe_str = ''.join(probe_2tpl)
-                    else:
-                        probe_str = probe_2tpl  # Handle string keys like '3x2pt'
-                    key_name = f'cov_{probe_str}_{term}_{dim}'
+    #     # save all covariance arrays in _cov_obj.cov_dict
+    #     for term in _cov_obj.cov_dict:
+    #         for probe_2tpl in _cov_obj.cov_dict[term]:
+    #             for dim in _cov_obj.cov_dict[term][probe_2tpl]:
+    #                 if isinstance(probe_2tpl, tuple):
+    #                     probe_str = ''.join(probe_2tpl)
+    #                 else:
+    #                     probe_str = probe_2tpl  # Handle string keys like '3x2pt'
+    #                 key_name = f'cov_{probe_str}_{term}_{dim}'
 
-                    if key_name in covs_arrays_dict:
-                        key_name += f'_{_cov_obj_name}'
+    #                 if key_name in covs_arrays_dict:
+    #                     key_name += f'_{_cov_obj_name}'
 
-                    covs_arrays_dict[key_name] = _cov_obj.cov_dict[term][probe_2tpl][
-                        dim
-                    ]
+    #                 covs_arrays_dict[key_name] = _cov_obj.cov_dict[term][probe_2tpl][
+    #                     dim
+    #                 ]
 
     # ! old
-    # covs_arrays_dict = {}
-    # for term, cov_probe_dict in _cov_obj.cov_dict.items():
-    #     for probe_abcd in cov_probe_dict:
-    #         if probe_abcd == '3x2pt':
-    #             covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
-    #         elif probe_abcd == ('LL', 'LL'):
-    #             covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-    #         elif probe_abcd == ('GG', 'GG'):
-    #             covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-    #         elif probe_abcd == ('GL', 'GL'):
-    #             covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+    covs_arrays_dict = {}
+    for term, cov_probe_dict in _cov_obj.cov_dict.items():
+        for probe_abcd in cov_probe_dict:
+            if probe_abcd == '3x2pt':
+                covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
+            elif probe_abcd == ('LL', 'LL'):
+                covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+            elif probe_abcd == ('GG', 'GG'):
+                covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+            elif probe_abcd == ('GL', 'GL'):
+                covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+            else:
+                _probe = ''.join(probe_abcd)
+                covs_arrays_dict[f'cov_{_probe}_{term}_2d'] = cov_probe_dict[
+                    probe_abcd
+                ]['2d']
 
-    # if 'ssc' not in _cov_obj.cov_dict:
-    #     for probe in ['WL', 'GC', '3x2pt']:
-    #         covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
-    # if 'cng' not in _cov_obj.cov_dict:
-    #     for probe in ['WL', 'GC', 'XC', '3x2pt']:
-    #         covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
+    if 'ssc' not in _cov_obj.cov_dict:
+        for probe in ['WL', 'GC', '3x2pt']:
+            covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
+    if 'cng' not in _cov_obj.cov_dict:
+        for probe in ['WL', 'GC', 'XC', '3x2pt']:
+            covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
 
     # remove the 'ind' arrays
-    # covs_arrays_dict.pop('ind', None)
-    # covs_arrays_dict.pop('ind_auto', None)
-    # covs_arrays_dict.pop('ind_cross', None)
-    # keys = list(covs_arrays_dict.keys())
-    # for key in keys:
-    #     if 'sva' not in key and 'sn' not in key and 'mix' not in key:
-    #         pass
+    covs_arrays_dict.pop('ind', None)
+    covs_arrays_dict.pop('ind_auto', None)
+    covs_arrays_dict.pop('ind_cross', None)
+    keys = list(covs_arrays_dict.keys())
+    for key in keys:
+        if 'sva' not in key and 'sn' not in key and 'mix' not in key:
+            pass
 
     # make the keys consistent with the old benchmark files
     # covs_arrays_dict_renamed = covs_arrays_dict.copy()
@@ -2100,9 +2106,6 @@ if cfg['misc']['save_output_as_benchmark']:
         **covs_arrays_dict,
         metadata=metadata,
     )
-
-# BOOKMARK check cov_oc vs cov_sb in common_data/.../develop
-
 
 if (
     cfg['misc']['test_condition_number']

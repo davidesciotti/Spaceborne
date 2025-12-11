@@ -419,60 +419,6 @@ class CCLInterface:
 
         self.cov_dict = cd.create_cov_dict(_req_terms, _req_probe_combs_2d, dims=_dims)
 
-    # TODO deprecate this func
-    def set_sigma2_b_old(
-        self, z_grid, fsky, which_sigma2_b, nside_mask, mask_path=None
-    ):
-        self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
-        area_deg2 = fsky * 4 * np.pi * (180 / np.pi) ** 2
-
-        if which_sigma2_b == 'polar_cap_on_the_fly':
-            mask = mask_utils.generate_polar_cap_func(area_deg2, nside_mask)
-
-        elif which_sigma2_b == 'from_input_mask':
-            mask = hp.read_map(mask_path)
-
-        # normalize the mask and pass it to sigma2_B_from_mask
-        if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
-            hp.mollview(
-                mask,
-                coord=['C', 'E'],
-                title='polar cap generated on-the fly',
-                cmap='inferno_r',
-            )
-            cl_mask = hp.anafast(mask)
-            ell_mask = np.arange(len(cl_mask))
-            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * fsky) ** 2
-
-            # quick check
-            fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
-            assert np.fabs(fsky_mask / fsky) < 1.01, (
-                'fsky_in is not the same as the fsky of the mask'
-            )
-
-            # normalization has been checked from
-            # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
-            # and is the same as CSST paper https://zenodo.org/records/7813033
-            sigma2_b = ccl.covariances.sigma2_B_from_mask(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm
-            )
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
-
-        elif which_sigma2_b == 'flat_sky':
-            sigma2_b = ccl.covariances.sigma2_B_disc(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky
-            )
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
-
-        elif which_sigma2_b is None:
-            self.sigma2_b_tuple = None
-
-        else:
-            raise ValueError(
-                'which_sigma2_b must be either "from_input_mask", '
-                '"polar_cap_on_the_fly" or None'
-            )
-
     def set_sigma2_b(self, z_grid, which_sigma2_b, mask_obj):
         self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
 
@@ -520,9 +466,9 @@ class CCLInterface:
         # set relevant dictionaries with the different probe combinations as keys
         self.set_dicts_for_trisp()
         self.tkka_dict = {}
-        
+
         print('')
-        
+
         for probe_abcd in unique_probe_combs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
 
@@ -617,7 +563,7 @@ class CCLInterface:
         # print info
         if a_grid is not None and logn_k_grid is not None:
             print(
-                f'\n{which_ng_cov} trispectrum grid info:\n' 
+                f'\n{which_ng_cov} trispectrum grid info:\n'
                 f'\tz points = {a_grid.size}'
                 f'\n\tk points = {logn_k_grid.size}'
             )
@@ -909,45 +855,3 @@ class CCLInterface:
                     except AssertionError as error:
                         print(f'Probe combination: {term} {probe_abcd}')
                         print(error)
-
-    def save_cov_blocks(self, cov_path, cov_filename):
-        raise NotImplementedError(
-            'The save_cov_blocks method is deprecated and will be removed in future '
-            'versions. Please use the cov_dict structure instead.'
-        )
-
-        for probe_a, probe_b, probe_c, probe_d in self.cov_ng_3x2pt_dict_8D:
-            cov_filename_fmt = cov_filename.format(
-                probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d
-            )
-
-            np.savez_compressed(
-                f'{cov_path}/{cov_filename_fmt}',
-                self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d],
-            )
-
-    def load_cov_blocks(self, cov_path, cov_filename, unique_probe_combs):
-        raise NotImplementedError(
-            'The load_cov_blocks method is deprecated and will be removed in future '
-            'versions. Please use the cov_dict structure instead.'
-        )
-
-        self.cov_ng_3x2pt_dict_8D = {}
-
-        for probe_tuple in unique_probe_combs:
-            probe_a, probe_b, probe_c, probe_d = probe_tuple
-            probe_str = probe_a + probe_b + probe_c + probe_d
-
-            # * load the required blocks
-            cov_filename_fmt = cov_filename.format(
-                probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d
-            )
-            self.cov_ng_3x2pt_dict_8D[probe_tuple] = np.load(
-                f'{cov_path}/{cov_filename_fmt}'
-            )['arr_0']
-
-            # * fill the symmetric counterparts of the required blocks
-            if probe_str not in const.HS_DIAG_PROBE_COMBS:
-                self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b] = np.copy(
-                    self.cov_ng_3x2pt_dict_8D[probe_tuple].transpose(1, 0, 3, 2)
-                )

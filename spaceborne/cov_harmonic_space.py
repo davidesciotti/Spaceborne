@@ -359,23 +359,7 @@ class SpaceborneCovariance:
                 self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
             )
 
-    def _cov_8d_dict_to_10d_arr(self, cov_dict_8d):
-        """Helper function to process a single covariance component
-        THIS FUNCTION HAS TO BE DEPRECATED!
-        """
-        cov_dict_10d = sl.cov_3x2pt_dict_8d_to_10d(
-            cov_3x2pt_dict_8D=cov_dict_8d,
-            nbl=self.ell_obj.nbl_3x2pt,
-            zbins=self.zbins,
-            ind_dict=self.ind_dict,
-            unique_probe_combs=self.unique_probe_combs,
-            space='harmonic',
-            symmetrize_output_dict=self.symmetrize_output_dict,
-        )
 
-        return sl.cov_10d_dict_to_array(
-            cov_dict_10d, self.ell_obj.nbl_3x2pt, self.zbins, self.n_probes
-        )
 
     def _remove_split_terms_from_dict(self, split_gaussian_cov: bool):
         """Helper function to remove the SVA/SN/MIX parts of the G cov if

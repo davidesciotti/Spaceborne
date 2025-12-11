@@ -217,9 +217,8 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
     return results
 
-
 # Example usage
-ROOT = '/u/dsciotti/code'
+ROOT = '/Users/davidesciotti/Documents/Work/Code'
 bench_set_path = f'{ROOT}/Spaceborne_bench'
 bench_set_cfg_path = f'{bench_set_path}/bench_set_cfg'
 bench_set_output_path = f'{bench_set_path}/bench_set_output'

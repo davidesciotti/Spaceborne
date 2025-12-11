@@ -1070,53 +1070,6 @@ class OneCovarianceInterface:
 
         return cov_llglgg_2d
 
-    def _oc_output_to_dict_or_array(
-        self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None
-    ):
-        # ! THIS FUNCTION IS DEPRECATED
-
-        # import
-        filename = self.cov_filename.format(
-            which_ng_cov=which_ng_cov,
-            probe_a='{probe_a:s}',
-            probe_b='{probe_b:s}',
-            probe_c='{probe_c:s}',
-            probe_d='{probe_d:s}',
-        )
-        cov_ng_oc_3x2pt_dict_8D = sl.load_cov_from_probe_blocks(
-            path=self.oc_path,
-            filename=filename,
-            probe_ordering=self.cfg['covariance']['probe_ordering'],
-        )
-
-        # reshape
-        if output_type == '8D_dict':
-            return cov_ng_oc_3x2pt_dict_8D
-
-        elif output_type in ['10D_dict', '10D_array']:
-            cov_ng_oc_3x2pt_dict_10D = sl.cov_3x2pt_dict_8d_to_10d(
-                cov_3x2pt_dict_8D=cov_ng_oc_3x2pt_dict_8D,
-                nbl=self.pvt_cfg['nbl_3x2pt'],
-                zbins=self.zbins,
-                ind_dict=ind_dict,
-                probe_ordering=self.cfg['covariance']['probe_ordering'],
-                space=self.obs_space,
-                symmetrize_output_dict=symmetrize_output_dict,
-            )
-
-            if output_type == '10D_dict':
-                return cov_ng_oc_3x2pt_dict_10D
-
-            elif output_type == '10D_array':
-                return sl.cov_10d_dict_to_array(
-                    cov_ng_oc_3x2pt_dict_10D,
-                    nbl=self.pvt_cfg['nbl_3x2pt'],
-                    zbins=self.zbins,
-                    n_probes=self.cfg['covariance']['n_probes'],
-                )
-
-        else:
-            raise ValueError('output_dict_dim must be 8D or 10D')
 
     def find_optimal_ellmax_oc(self, target_ell_array):
         upper_lim = self.ells_sb[-1] + 300

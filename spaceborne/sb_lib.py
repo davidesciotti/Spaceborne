@@ -1457,7 +1457,6 @@ def cov_3x2pt_dict_8d_to_10d(
     return cov_3x2pt_dict_10D
 
 
-
 def write_cl_ascii(ascii_folder, ascii_filename, cl_3d, ells, zbins):
     with open(f'{ascii_folder}/{ascii_filename}.ascii', 'w') as file:
         # Write header
@@ -2868,30 +2867,6 @@ def build_full_ind(triu_tril, row_col_major, size):
     return ind
 
 
-def build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG):
-    raise NotImplementedError(
-        'build_ind_dict is deprecated and has been removed. Use the new method instead.'
-    )
-
-    ind = build_full_ind(triu_tril, row_col_major, size)
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(size)
-
-    ind_dict = {}
-    ind_dict['L', 'L'] = ind[:zpairs_auto, :]
-    ind_dict['G', 'G'] = ind[(zpairs_auto + zpairs_cross) :, :]
-
-    if GL_OR_LG == 'LG':
-        ind_dict['L', 'G'] = ind[zpairs_auto : (zpairs_auto + zpairs_cross), :]
-        ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
-        ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
-    elif GL_OR_LG == 'GL':
-        ind_dict['G', 'L'] = ind[zpairs_auto : (zpairs_auto + zpairs_cross), :]
-        ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
-        ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]
-
-    return ind_dict
-
-
 # CHECK FOR DUPLICATES
 def cl_2D_to_3D_symmetric(Cl_2D, nbl, zpairs, zbins):
     """Reshape from (nbl, zpairs) to (nbl, zbins, zbins) according to upper
@@ -3676,75 +3651,6 @@ def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: s
     return cov_3x2pt_4d
 
 
-def cov_3x2pt_4d_to_10d_dict(
-    cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy, optimize=False
-):
-    raise NotImplementedError('This function is deprecated')
-    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
-
-    ind_copy = ind_copy.copy()  # just to ensure the input ind file is not changed
-
-    ind_auto = ind_copy[:zpairs_auto, :]
-    ind_cross = ind_copy[zpairs_auto : zpairs_cross + zpairs_auto, :]
-    ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
-
-    assert probe_ordering == (('L', 'L'), ('G', 'L'), ('G', 'G')), (
-        'more elaborate probe_ordering not implemented yet'
-    )
-
-    # slice the 4d cov to be able to use cov_4D_to_6D_blocks on the nine separate blocks
-    zpairs_sum = zpairs_auto + zpairs_cross
-    cov_3x2pt_8d_dict = {}
-    cov_3x2pt_8d_dict['L', 'L', 'L', 'L'] = cov_3x2pt_4d[
-        :, :, :zpairs_auto, :zpairs_auto
-    ]
-    cov_3x2pt_8d_dict['L', 'L', 'G', 'L'] = cov_3x2pt_4d[
-        :, :, :zpairs_auto, zpairs_auto:zpairs_sum
-    ]
-    cov_3x2pt_8d_dict['L', 'L', 'G', 'G'] = cov_3x2pt_4d[
-        :, :, :zpairs_auto, zpairs_sum:
-    ]
-
-    cov_3x2pt_8d_dict['G', 'L', 'L', 'L'] = cov_3x2pt_4d[
-        :, :, zpairs_auto:zpairs_sum, :zpairs_auto
-    ]
-    cov_3x2pt_8d_dict['G', 'L', 'G', 'L'] = cov_3x2pt_4d[
-        :, :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum
-    ]
-    cov_3x2pt_8d_dict['G', 'L', 'G', 'G'] = cov_3x2pt_4d[
-        :, :, zpairs_auto:zpairs_sum, zpairs_sum:
-    ]
-
-    cov_3x2pt_8d_dict['G', 'G', 'L', 'L'] = cov_3x2pt_4d[
-        :, :, zpairs_sum:, :zpairs_auto
-    ]
-    cov_3x2pt_8d_dict['G', 'G', 'G', 'L'] = cov_3x2pt_4d[
-        :, :, zpairs_sum:, zpairs_auto:zpairs_sum
-    ]
-    cov_3x2pt_8d_dict['G', 'G', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_sum:]
-
-    if optimize:
-        # this version is only marginally faster, it seems
-        cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks_opt
-    else:
-        # safer, default value
-        cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks
-
-    cov_3x2pt_10d_dict = {}
-    for key, cov in cov_3x2pt_8d_dict.items():
-        cov_3x2pt_10d_dict[key] = cov_4D_to_6D_blocks_func(
-            cov,
-            nbl,
-            zbins,
-            ind_dict[key[0], key[1]],
-            ind_dict[key[2], key[3]],
-            const.HS_SYMMETRIZE_OUTPUT_DICT[key[0], key[1]],
-            const.HS_SYMMETRIZE_OUTPUT_DICT[key[2], key[3]],
-        )
-
-    return cov_3x2pt_10d_dict
-
-
 # @njit
 def cov_4D_to_6D(cov_4D, nbl, zbins, probe, ind):
     """Transform the cov from shape (nbl, nbl, npairs, npairs) to (nbl, nbl,
@@ -3806,9 +3712,8 @@ def cov_6D_to_4D(cov_6D, nbl, zpairs, ind):
     )
     cov_4D = np.zeros((nbl, nbl, zpairs, zpairs))
 
-    for ell2 in range(
-        nbl
-    ):  # added this loop in the latest version, before it was vectorized
+    # added this loop in the latest version, before it was vectorized
+    for ell2 in range(nbl):
         for ij in range(zpairs):
             for kl in range(zpairs):
                 # rename for better readability

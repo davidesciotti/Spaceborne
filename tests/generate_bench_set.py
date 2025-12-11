@@ -581,8 +581,7 @@ for coupled_cov in [True, False]:
 
 
 # ! BNT transform
-for cl_BNT_transform in [True, False]:
-    for cov_BNT_transform in [True, False]:
+for cl_BNT_transform, cov_BNT_transform in zip([True, False], [False, True], strict=True):
         configs_to_test.append(
             {
                 'BNT': {

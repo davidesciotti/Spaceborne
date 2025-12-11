@@ -7,7 +7,7 @@ Branch TODO list:
 * understand this issue:
 Computing namaster workspaces and coupling matrices...
 /Users/davidesciotti/Documents/Work/Code/Spaceborne/spaceborne/sb_lib.py:3287: RuntimeWarning: divide by zero encountered in divide
-  prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell)
+  prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell) [ok]
 * remove unnecessary functions
 * update vademecum in sb_lib
 """
@@ -2062,17 +2062,14 @@ if cfg['misc']['save_output_as_benchmark']:
     covs_arrays_dict.pop('ind_auto', None)
     covs_arrays_dict.pop('ind_cross', None)
     keys = list(covs_arrays_dict.keys())
-    for key in keys:
-        if 'sva' not in key and 'sn' not in key and 'mix' not in key:
-            pass
 
     # make the keys consistent with the old benchmark files
-    # covs_arrays_dict_renamed = covs_arrays_dict.copy()
+    # covs_arrays_dict = covs_arrays_dict.copy()
     # for key, cov in covs_arrays_dict.items():
     #     # key_new = key.replace('_tot_', '_TOT_')
     #     key_new = key.replace('_2d', '_2D')
-    #     covs_arrays_dict_renamed[key_new] = cov
-    #     covs_arrays_dict_renamed.pop(key)
+    #     covs_arrays_dict[key_new] = cov
+    #     covs_arrays_dict.pop(key)
 
     np.savez_compressed(
         bench_filename,

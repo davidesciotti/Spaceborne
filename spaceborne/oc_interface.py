@@ -219,7 +219,7 @@ def process_cov_from_list_file(
 
     # partial (much quicker) import of the .list file, to get info about thetas, probes
     # and to perform checks on the tomo bin idxs
-    data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep='\s+')
+    data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep=r'\s+')
 
     scales_oc_load = data[f'{theta_or_ell}1'].unique()
     cov_scale_indices = {scale: idx for idx, scale in enumerate(scales_oc_load)}
@@ -262,7 +262,7 @@ def process_cov_from_list_file(
 
     for df_chunk in pd.read_csv(
         oc_output_covlist_fname,
-        sep='\s+',
+        sep=r'\s+',
         names=column_names,
         skiprows=1,
         chunksize=df_chunk_size,

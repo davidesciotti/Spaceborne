@@ -112,7 +112,7 @@ binning:
   ell_max: 200 # Type: int. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
-  ell_bins_filename: '../common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt'
+  ell_bins_filename: '../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt'
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50  # Type: float | int. Minimum theta (in arcminutes)
@@ -369,5 +369,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: ../common_data/Spaceborne_jobs/develop # Type: str. Path to the output directory
+  output_path: ../common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
   save_figs: True  # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

@@ -452,12 +452,13 @@ if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
 
 _condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
 if compute_ccl_cng and _condition:
-    raise ValueError(
+    warnings.warn(
         'There seems to be some issue with the symmetry of the GLGL '
         'block in the '
         'CCL cNG covariance, so for the moment it is disabled. '
         'The LLLL and GGGG blocks are not affected, so you can still '
-        'compute the single-probe cNG covariances.'
+        'compute the single-probe cNG covariances.',
+        stacklevel=2,
     )
 
 # ! set HS probes to compute depending on RS ones
@@ -2002,33 +2003,34 @@ if cfg['misc']['save_output_as_benchmark']:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
     # save every array contained in _cov_obj
-    # covs_arrays_dict = {
-    #     k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
-    # }
+    covs_arrays_dict = {
+        k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
+    }
 
-    covs_arrays_dict = {}
-    for term, cov_probe_dict in _cov_obj.cov_dict.items():
-        for probe_abcd in cov_probe_dict:
-            if probe_abcd == '3x2pt':
-                covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
-            elif probe_abcd == ('LL', 'LL'):
-                covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-            elif probe_abcd == ('GG', 'GG'):
-                covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-            elif probe_abcd == ('GL', 'GL'):
-                covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-            else:
-                _probe = ''.join(probe_abcd)
-                covs_arrays_dict[f'cov_{_probe}_{term}_2d'] = cov_probe_dict[
-                    probe_abcd
-                ]['2d']
 
-    if 'ssc' not in _cov_obj.cov_dict:
-        for probe in ['WL', 'GC', '3x2pt']:
-            covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
-    if 'cng' not in _cov_obj.cov_dict:
-        for probe in ['WL', 'GC', 'XC', '3x2pt']:
-            covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
+    # covs_arrays_dict = {}
+    # for term, cov_probe_dict in _cov_obj.cov_dict.items():
+    #     for probe_abcd in cov_probe_dict:
+    #         if probe_abcd == '3x2pt':
+    #             covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
+    #         elif probe_abcd == ('LL', 'LL'):
+    #             covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+    #         elif probe_abcd == ('GG', 'GG'):
+    #             covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+    #         elif probe_abcd == ('GL', 'GL'):
+    #             covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
+    #         else:
+    #             _probe = ''.join(probe_abcd)
+    #             covs_arrays_dict[f'cov_{_probe}_{term}_2d'] = cov_probe_dict[
+    #                 probe_abcd
+    #             ]['2d']
+
+    # if 'ssc' not in _cov_obj.cov_dict:
+    #     for probe in ['WL', 'GC', '3x2pt']:
+    #         covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
+    # if 'cng' not in _cov_obj.cov_dict:
+    #     for probe in ['WL', 'GC', 'XC', '3x2pt']:
+    #         covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
 
     # remove the 'ind' arrays
     covs_arrays_dict.pop('ind', None)
@@ -2056,7 +2058,7 @@ if cfg['misc']['save_output_as_benchmark']:
         cl_ll_3d=ccl_obj.cl_ll_3d,
         cl_gl_3d=ccl_obj.cl_gl_3d,
         cl_gg_3d=ccl_obj.cl_gg_3d,
-        cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
+        # cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
         sigma2_b=sigma2_b,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,
@@ -2065,7 +2067,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
-        **covs_arrays_dict_renamed,
+        **covs_arrays_dict,
         metadata=metadata,
     )
 

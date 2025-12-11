@@ -390,50 +390,6 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
                     )
 
 
-def cov_10d_arr_to_dict(
-    cov_10d: np.ndarray,
-    dim: str,
-    req_probe_combs_2d: list,
-    space: str,
-    empty: bool = False,
-):
-    """Assigns a 10d array to a dictionary with the new structure, i.e.,
-    cov_dict[TERM][PROBE_AB, PROBE_CD][DIM]: np.ndarray
-
-    Parameters:
-    cov_10d (np.ndarray): The 10d array to be assigned.
-    dim (str): The dimension key to assign the array to
-    req_probe_combs_2d (list): A list of 2D probe combinations.
-    space (str): The space in which the probes are defined.
-    empty (bool): If True, the dictionary is initialized with empty arrays.
-
-    Usage:
-    self.cov_dict['ssc'].update(cov_10d_arr_to_dict(
-        cov_10d=cov_3x2pt_ssc_10d,
-        dim='6d',
-        req_probe_combs_2d=self.req_probe_combs_2d,
-        space='harmonic')
-        )
-    """
-    if space != 'harmonic':
-        raise NotImplementedError(
-            'This function will fail for the real space for the moment: '
-            'probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)'
-            'is only ok for HS'
-        )
-    assert cov_10d.ndim == 10, 'input covariance is not 10-dimensional'
-    assert dim == '6d', 'For the moment, this function only works for 6d'
-
-    result = {}
-    for probe_abcd in req_probe_combs_2d:
-        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
-        probe_key = (probe_ab, probe_cd)
-        if empty:
-            result[probe_key] = {dim: None}
-        else:
-            probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
-            result[probe_key] = {dim: cov_10d[probe_ixs]}
-    return result
 
 
 def matshow_custom_bins(data_array, bin_edges):

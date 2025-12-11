@@ -217,15 +217,17 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
     return results
 
-# Example usage
+# variables to play with
 ROOT = '/Users/davidesciotti/Documents/Work/Code'
+skip_existing = False  # Skip benchmarks that already exist
+
+# set some paths
 bench_set_path = f'{ROOT}/Spaceborne_bench'
 bench_set_cfg_path = f'{bench_set_path}/bench_set_cfg'
 bench_set_output_path = f'{bench_set_path}/bench_set_output'
 output_path = f'{bench_set_output_path}/_sb_output'
 sb_root_path = f'{ROOT}/Spaceborne'
 
-skip_existing = True  # Skip benchmarks that already exist
 
 # ! DEFINE A BASIC CFG FILE TO START FROM
 base_cfg = {

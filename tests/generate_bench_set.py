@@ -454,7 +454,7 @@ for xip, xim, gt, w in product([True, False], repeat=4):
             continue
         configs_to_test.append(
             {
-                'probe_selection': {'xip': xip, 'xim': xim, 'gt': gt, 'w': w},
+                'probe_selection': {'space': 'real', 'xip': xip, 'xim': xim, 'gt': gt, 'w': w},
                 'covariance': {'split_gaussian_cov': split_gaussian_cov},
             }
         )

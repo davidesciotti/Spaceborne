@@ -117,7 +117,7 @@ binning:
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50  # Type: float | int. Minimum theta (in arcminutes)
   theta_max_arcmin: 300  # Type: float | int. Maximum theta (in arcminutes)
-  theta_bins: 3  # Type: int. Number of theta bins
+  theta_bins: 5  # Type: int. Number of theta bins
 
 
 C_ell:

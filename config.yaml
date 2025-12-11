@@ -64,7 +64,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real'].
-  space: harmonic # Type: str. 
+  space: real # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -106,7 +106,7 @@ nz:
 
 
 binning:
-  binning_type: 'from_input' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
+  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
   ell_min: 10 # Type: int. Minimum ell
   ell_max: 200 # Type: int. Maximum ell

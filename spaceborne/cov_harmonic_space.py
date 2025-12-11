@@ -583,7 +583,6 @@ class SpaceborneCovariance:
         self._couple_cov_ng()
 
         # ! reshape probe-specific 6d covs to 4d and 2d
-
         sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
             cov_dict=self.cov_dict,
             obs_space='harmonic',

@@ -65,6 +65,8 @@ os.environ['XLA_FLAGS'] = (
     f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
 )
 
+# override in cfg as well
+cfg['misc']['num_threads'] = num_threads
 
 import pprint
 import time
@@ -1126,7 +1128,6 @@ if obs_space == 'real':
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
     cov_rs_obj.set_cov_2d_ordering(req_probe_combs_2d=req_probe_combs_rs_2d)
-    cov_rs_obj.set_ind_and_zpairs(ind, zbins)
     ell_obj.compute_ells_3x2pt_rs()
     cov_rs_obj.ells = ell_obj.ells_3x2pt_rs
     cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_rs)

@@ -1955,9 +1955,11 @@ if cfg['misc']['save_output_as_benchmark']:
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
     )
 
-    _ell_dict = vars(ell_obj)
+    # _ell_dict = vars(ell_obj)
     # _ell_dict.pop('ell_cuts_dict')
     # _ell_dict.pop('idxs_to_delete_dict')
+    
+    _ell_dict = {k: v for k, v in vars(ell_obj).items() if isinstance(v, np.ndarray)}
 
     if cfg['namaster']['use_namaster']:
         import pymaster

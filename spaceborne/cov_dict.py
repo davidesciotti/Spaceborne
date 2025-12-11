@@ -48,6 +48,15 @@ class FrozenDict(dict):
 
         super().__setitem__(key, value)
 
+    def pop(self, *args):
+        raise TypeError('Cannot remove keys from FrozenDict')
+
+    def popitem(self):
+        raise TypeError('Cannot remove keys from FrozenDict')
+
+    def clear(self):
+        raise TypeError('Cannot clear FrozenDict')
+
 
 def create_cov_dict(
     required_terms: list[str], probe_pairs: list[tuple[str, str]], dims: list[str]
@@ -75,7 +84,7 @@ def create_cov_dict(
     >>> cov_dict = create_cov_dict(
     ...     required_terms=['g', 'ssc'],
     ...     probe_pairs=[('LL','LL'), ('GG','GG')],
-            dims=['2d', '4d', '6d']
+    ...     dims=['2d', '4d', '6d']
     ... )
     >>> # These work:
     >>> cov_dict['g'][('LL','LL')]['6d'] = array  # ✓ Setting array value

@@ -8,7 +8,7 @@ Branch TODO list:
 Computing namaster workspaces and coupling matrices...
 /Users/davidesciotti/Documents/Work/Code/Spaceborne/spaceborne/sb_lib.py:3287: RuntimeWarning: divide by zero encountered in divide
   prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell) [ok]
-* remove unnecessary functions
+* remove unnecessary functions [ok]
 * update vademecum in sb_lib
 """
 

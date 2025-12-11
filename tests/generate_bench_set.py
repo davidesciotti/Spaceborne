@@ -296,11 +296,11 @@ base_cfg = {
         'binning_type': 'log',
         'ell_min': 10,
         'ell_max': 3000,
-        'ell_bins': 10,  # TODO change to 5
+        'ell_bins': 4,
         'ell_bins_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt',
         'theta_min_arcmin': 50,
         'theta_max_arcmin': 300,
-        'theta_bins': 5,
+        'theta_bins': 4,
     },
     'C_ell': {
         'use_input_cls': False,
@@ -582,15 +582,17 @@ for coupled_cov in [True, False]:
 
 
 # ! BNT transform
-for cl_BNT_transform, cov_BNT_transform in zip([True, False], [False, True], strict=True):
-        configs_to_test.append(
-            {
-                'BNT': {
-                    'cl_BNT_transform': cl_BNT_transform,
-                    'cov_BNT_transform': cov_BNT_transform,
-                }
+for cl_BNT_transform, cov_BNT_transform in zip(
+    [True, False], [False, True], strict=True
+):
+    configs_to_test.append(
+        {
+            'BNT': {
+                'cl_BNT_transform': cl_BNT_transform,
+                'cov_BNT_transform': cov_BNT_transform,
             }
-        )
+        }
+    )
 
 
 # Generate configurations

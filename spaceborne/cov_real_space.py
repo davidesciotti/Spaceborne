@@ -779,7 +779,14 @@ class CovRealSpace:
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
         self.mask_obj = mask_obj
+
         self.zbins = self.pvt_cfg['zbins']
+        self.zpairs_auto = pvt_cfg['zpairs_auto']
+        self.zpairs_cross = pvt_cfg['zpairs_cross']
+        self.zpairs_3x2pt = pvt_cfg['zpairs_3x2pt']
+        self.ind_auto = pvt_cfg['ind_auto']
+        self.ind_cross = pvt_cfg['ind_cross']
+        self.ind_dict = pvt_cfg['ind_dict']
         self.cov_ordering_2d = self.cfg['covariance']['covariance_ordering_2D']
 
         # setters
@@ -935,30 +942,6 @@ class CovRealSpace:
             self.terms_toloop.append('ssc')
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
-
-    def set_ind_and_zpairs(self, ind, zbins):
-        # set indices array
-        self.ind = ind
-        self.zbins = zbins
-        self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
-            self.zbins
-        )
-        self.ind_auto = ind[: self.zpairs_auto, :].copy()
-        self.ind_cross = ind[
-            self.zpairs_auto : self.zpairs_cross + self.zpairs_auto, :
-        ].copy()
-        self.ind_dict = {
-            ('L', 'L'): self.ind_auto,
-            ('G', 'L'): self.ind_cross,
-            ('G', 'G'): self.ind_auto,
-        }
-        # TODO? alternative way
-        # self.ind_dict = sl.build_ind_dict(
-        #     self.cfg['covariance']['triu_tril'],
-        #     self.cfg['covariance']['row_col_major'],
-        #     self.zbins,
-        #     self.pvt_cfg['GL_OR_LG'],
-        # )
 
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         # TODO generalize to different n(z)

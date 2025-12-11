@@ -620,6 +620,12 @@ ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
 pvt_cfg = {
     'zbins': zbins,
     'ind': ind,
+    'ind_auto': ind_auto,
+    'ind_cross': ind_cross,
+    'ind_dict': ind_dict,
+    'zpairs_auto': zpairs_auto,
+    'zpairs_cross': zpairs_cross,
+    'zpairs_3x2pt': zpairs_3x2pt,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
     'unique_probe_combs': unique_probe_combs_hs,
@@ -1956,20 +1962,18 @@ if cfg['misc']['save_output_as_benchmark']:
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
     )
 
-    _ell_dict = vars(ell_obj)
-    # _ell_dict.pop('ell_cuts_dict')
-    # _ell_dict.pop('idxs_to_delete_dict')
+    _ell_dict = {k: v for k, v in vars(ell_obj).items() if isinstance(v, np.ndarray)}
 
     if cfg['namaster']['use_namaster']:
         import pymaster
 
         # convert NmtBin objects to effective ells
-        for key in _ell_dict:
+        for key, val in _ell_dict.items():
             if key.startswith('nmt_bin_obj_'):
-                assert isinstance(_ell_dict[key], pymaster.bins.NmtBin), (
-                    f'Expected NmtBin for {key}, got {_ell_dict[key]}'
+                assert isinstance(val, pymaster.bins.NmtBin), (
+                    f'Expected NmtBin for {key}, got {val}'
                 )
-                _ell_dict[key] = _ell_dict[key].get_effective_ells()
+                _ell_dict[key] = val.get_effective_ells()
 
     # save metadata
     import datetime
@@ -1981,15 +1985,6 @@ if cfg['misc']['save_output_as_benchmark']:
         'commit': commit,
     }
 
-    # this is no longer set manually
-    # bench_filename = cfg['misc']['bench_filename'].format(
-    #     g_code=cfg['covariance']['G_code'],
-    #     ssc_code=cfg['covariance']['SSC_code'] if cfg['covariance']['SSC'] else 'None',
-    #     cng_code=cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else 'None',
-    #     use_KE=str(cfg['covariance']['use_KE_approximation']),
-    #     which_pk_responses=cfg['covariance']['which_pk_responses'],
-    #     which_b1g_in_resp=cfg['covariance']['which_b1g_in_resp'],
-    # )
     bench_filename = cfg['misc']['bench_filename']
 
     if os.path.exists(f'{bench_filename}.npz'):
@@ -2004,9 +1999,13 @@ if cfg['misc']['save_output_as_benchmark']:
 
     # save every array contained in _cov_obj
     covs_arrays_dict = {
-        k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
+        k: v
+        for k, v in vars(_cov_obj).items()
+        if (isinstance(v, np.ndarray) and k.startswith('cov_'))
     }
 
+    for k in covs_arrays_dict:
+        print(k)
 
     # covs_arrays_dict = {}
     # for term, cov_probe_dict in _cov_obj.cov_dict.items():
@@ -2032,11 +2031,6 @@ if cfg['misc']['save_output_as_benchmark']:
     #     for probe in ['WL', 'GC', 'XC', '3x2pt']:
     #         covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
 
-    # remove the 'ind' arrays
-    covs_arrays_dict.pop('ind', None)
-    covs_arrays_dict.pop('ind_auto', None)
-    covs_arrays_dict.pop('ind_cross', None)
-
     np.savez_compressed(
         bench_filename,
         backup_cfg=cfg,
@@ -2058,7 +2052,7 @@ if cfg['misc']['save_output_as_benchmark']:
         cl_ll_3d=ccl_obj.cl_ll_3d,
         cl_gl_3d=ccl_obj.cl_gl_3d,
         cl_gg_3d=ccl_obj.cl_gg_3d,
-        # cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
+        cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
         sigma2_b=sigma2_b,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,

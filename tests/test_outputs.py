@@ -161,8 +161,6 @@ bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 bench_yaml_names.sort()
 
-# bench_yaml_names = [f'config_{i:04d}' for i in range(70, 100)]
-
 # slow_benchs = [
 #     'config_0004',
 #     'config_0005',

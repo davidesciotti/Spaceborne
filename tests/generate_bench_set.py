@@ -33,12 +33,11 @@ import gc
 import json
 import os
 import subprocess
+import time
 from copy import deepcopy
 from datetime import datetime
 from itertools import product
-import time
 
-import numpy as np
 import yaml
 
 
@@ -104,7 +103,7 @@ def save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=0):
 
         # Set the output path and bench filename in the configuration
         config['misc']['output_path'] = output_path
-        config['misc']['bench_filename'] = f'{bench_set_path_results}/{filename}'
+        config['misc']['bench_filename'] = f'{bench_set_output_path}/{filename}'
 
         yaml_path = os.path.join(bench_set_path_cfg, f'{filename}.yaml')
 
@@ -147,14 +146,19 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
             # Convert yaml_file to absolute path if needed
             if not os.path.isabs(yaml_file):
-                # Make the path relative to the original directory, not the new working directory
-                _yaml_file = os.path.abspath(os.path.join(original_dir, yaml_file))
+                # Make the path relative to the original directory, not the new working
+                # directory
+                _yaml_filename = os.path.abspath(os.path.join(original_dir, yaml_file))
             else:
-                _yaml_file = yaml_file
+                _yaml_filename = yaml_file
 
-            if os.path.exists(_yaml_file.replace('.yaml', '.npz')) and skip_existing:
+            # e.g. config_0000 from config_0000.yaml
+            _filename = os.path.splitext(config_name)[0]
+            bench_output_filename = f'{bench_set_output_path}/{_filename}.npz'
+
+            if os.path.exists(bench_output_filename) and skip_existing:
                 print(
-                    f'Benchmark file {_yaml_file.replace(".yaml", ".npz")} '
+                    f'Benchmark file {bench_output_filename} '
                     'already exists. Skipping it...'
                 )
                 continue
@@ -168,7 +172,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
             # Run the main script with the current configuration
             start_time = datetime.now()
             result = subprocess.run(
-                ['python', 'main.py', '--config', _yaml_file],
+                ['python', 'main.py', '--config', _yaml_filename],
                 capture_output=False,
                 # text=True,
                 check=True,
@@ -217,10 +221,12 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 # Example usage
 ROOT = '/u/dsciotti/code'
 bench_set_path = f'{ROOT}/Spaceborne_bench'
-bench_set_path_cfg = f'{bench_set_path}/bench_set_cfg'
-bench_set_path_results = f'{bench_set_path}/bench_set_output'
-output_path = f'{bench_set_path_results}/_sb_output'
+bench_set_cfg_path = f'{bench_set_path}/bench_set_cfg'
+bench_set_output_path = f'{bench_set_path}/bench_set_output'
+output_path = f'{bench_set_output_path}/_sb_output'
 sb_root_path = f'{ROOT}/Spaceborne'
+
+skip_existing = True  # Skip benchmarks that already exist
 
 # ! DEFINE A BASIC CFG FILE TO START FROM
 base_cfg = {
@@ -289,23 +295,23 @@ base_cfg = {
         'binning_type': 'log',
         'ell_min': 10,
         'ell_max': 3000,
-        'ell_bins': 5,
-        'ell_bins_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/ell_values_3x2pt.txt',
+        'ell_bins': 10,  # TODO change to 5
+        'ell_bins_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt',
         'theta_min_arcmin': 50,
         'theta_max_arcmin': 300,
         'theta_bins': 5,
     },
     'C_ell': {
         'use_input_cls': False,
-        'cl_LL_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_ll.txt',
-        'cl_GL_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_gl.txt',
-        'cl_GG_path': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/cl_gg.txt',
+        'cl_LL_path': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/cl_ll.txt',
+        'cl_GL_path': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/cl_gl.txt',
+        'cl_GG_path': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/cl_gg.txt',
         'which_gal_bias': 'FS2_polynomial_fit',
         'which_mag_bias': 'FS2_polynomial_fit',
         'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
         'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
-        'gal_bias_table_filename': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/gal_bias.txt',
-        'mag_bias_table_filename': f'{ROOT}/common_data/Spaceborne_jobs/RR2_cov/input/mag_bias.txt',
+        'gal_bias_table_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/gal_bias_table.txt',
+        'mag_bias_table_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/mag_bias_table.txt',
         'mult_shear_bias': [0.0, 0.0, 0.0],
         'has_rsd': False,
         'has_IA': False,
@@ -406,6 +412,60 @@ base_cfg = {
 # Each dictionary represents one configuration to test
 configs_to_test = []
 
+
+# ! Bias models
+for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
+    # for which_mag_bias in ['from_input', 'FS2_polynomial_fit']:
+    for which_b1g_in_resp in ['from_HOD', 'from_input']:
+        configs_to_test.append(
+            {
+                'C_ell': {
+                    'which_gal_bias': which_gal_bias
+                    # 'which_mag_bias': which_mag_bias,
+                },
+                'covariance': {'which_b1g_in_resp': which_b1g_in_resp},
+            }
+        )
+
+# ! Power spectrum responses
+# for which_pk_responses in ['halo_model', 'separate_universe']:
+#     configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
+
+# ! RSD and magnification bias
+for has_IA in [True, False]:
+    for has_rsd in [True, False]:
+        for has_magnification_bias in [True, False]:
+            configs_to_test.append(
+                {
+                    'C_ell': {
+                        'has_IA': has_IA,
+                        'has_rsd': has_rsd,
+                        'has_magnification_bias': has_magnification_bias,
+                    }
+                }
+            )
+
+
+# ! Intrinsic Alignment parameters (only when IA is enabled)
+for Aia in [0.16, 0.5, 1.0]:
+    for eIA in [1.66, 0.0]:
+        configs_to_test.append(
+            {'C_ell': {'has_IA': True}, 'intrinsic_alignment': {'Aia': Aia, 'eIA': eIA}}
+        )
+
+# ! Multiplicative shear bias
+for mult_shear_bias in [[0.0, 0.0, 0.0], [0.01, 0.01, 0.01], [-0.01, -0.01, -0.01]]:
+    configs_to_test.append({'C_ell': {'mult_shear_bias': mult_shear_bias}})
+
+# ! Input Cls vs computed
+for use_input_cls in [True, False]:
+    configs_to_test.append({'C_ell': {'use_input_cls': use_input_cls}})
+
+# ! No sampling noise
+for no_sampling_noise in [True, False]:
+    configs_to_test.append({'covariance': {'no_sampling_noise': no_sampling_noise}})
+
+
 # ! covariance ordering
 for ordering in ['probe_scale_zpair', 'probe_zpair_scale', 'scale_probe_zpair']:
     for triu_tril in ['triu', 'tril']:
@@ -434,30 +494,55 @@ for ke_approx in [True, False]:
                 }
             )
 
+# ! cNG
+# for cng in [True, False]:
+#     configs_to_test.append({'covariance': {'cNG': cng}})
+
+# ! other codes [TODO add OneCov]
+for ssc_code in ['Spaceborne', 'PyCCL']:
+    configs_to_test.append({'covariance': {'SSC_code': ssc_code}})
 
 # ! HS probe combinations
 for LL, GL, GC in product([True, False], repeat=3):
     for split_gaussian_cov in [True, False]:
-        if not any([LL, GL, GC]):
-            continue
-        configs_to_test.append(
-            {
-                'probe_selection': {'LL': LL, 'GL': GL, 'GG': GC},
-                'covariance': {'split_gaussian_cov': split_gaussian_cov},
-            }
-        )
+        for cross_cov in [True, False]:
+            if not any([LL, GL, GC]):
+                continue
+            configs_to_test.append(
+                {
+                    'probe_selection': {
+                        'LL': LL,
+                        'GL': GL,
+                        'GG': GC,
+                        'cross_cov': cross_cov,
+                        'space': 'harmonic',
+                    },
+                    'covariance': {'split_gaussian_cov': split_gaussian_cov},
+                }
+            )
 
 # ! RS probe combinations
 for xip, xim, gt, w in product([True, False], repeat=4):
     for split_gaussian_cov in [True, False]:
-        if not any([xip, xim, gt, w]):
-            continue
-        configs_to_test.append(
-            {
-                'probe_selection': {'space': 'real', 'xip': xip, 'xim': xim, 'gt': gt, 'w': w},
-                'covariance': {'split_gaussian_cov': split_gaussian_cov},
-            }
-        )
+        for cross_cov in [True, False]:
+            if not any([xip, xim, gt, w]):
+                continue
+            configs_to_test.append(
+                {
+                    'probe_selection': {
+                        'xip': xip,
+                        'xim': xim,
+                        'gt': gt,
+                        'w': w,
+                        'cross_cov': cross_cov,
+                        'space': 'real',
+                    },
+                    'covariance': {
+                        'split_gaussian_cov': split_gaussian_cov,
+                        'SSC': False,
+                    },
+                }
+            )
 
 # ! nz variations
 for shift_nz in [True, False]:
@@ -494,21 +579,34 @@ for coupled_cov in [True, False]:
                     }
                 )
 
+
+# ! BNT transform
+for cl_BNT_transform, cov_BNT_transform in zip([True, False], [False, True], strict=True):
+        configs_to_test.append(
+            {
+                'BNT': {
+                    'cl_BNT_transform': cl_BNT_transform,
+                    'cov_BNT_transform': cov_BNT_transform,
+                }
+            }
+        )
+
+
 # Generate configurations
-configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_path_cfg)
+configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_cfg_path)
 print(f'Generated {len(configs)} configurations')
 
 
 # Save configurations to YAML files
-yaml_files = save_configs_to_yaml(configs, bench_set_path_cfg, output_path, start_ix=82)
+yaml_files = save_configs_to_yaml(configs, bench_set_cfg_path, output_path, start_ix=0)
 
 # Run benchmarks
 start = time.perf_counter()
 run_benchmarks(
     yaml_files,
     sb_root_path=sb_root_path,
-    output_dir=bench_set_path_results,
-    skip_existing=False,
+    output_dir=bench_set_output_path,
+    skip_existing=skip_existing,
 )
 
 # To manually run specific configurations:

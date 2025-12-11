@@ -1200,11 +1200,14 @@ if obs_space == 'real':
 
 
 # !  =============================== Build Gaussian covs ===============================
-cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
-    cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
-)
-cov_hs_obj.consistency_checks()
-cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
+if obs_space == 'harmonic':
+    cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
+        cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
+    )
+    cov_hs_obj.consistency_checks()
+    cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
+else:
+    cov_hs_obj = None
 
 # ! =================================== OneCovariance ================================
 # initialize object
@@ -1662,12 +1665,13 @@ if compute_ccl_ssc or compute_ccl_cng:
     ccl_obj.check_cov_blocks_symmetry()
 
 # ! ========================== Combine covariance terms ================================
-cov_hs_obj.combine_and_reshape_covs(
-    ccl_obj=ccl_obj,
-    cov_ssc_obj=cov_ssc_obj,
-    cov_oc_obj=cov_oc_obj,
-    split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
-)
+if obs_space == 'harmonic':
+    cov_hs_obj.combine_and_reshape_covs(
+        ccl_obj=ccl_obj,
+        cov_ssc_obj=cov_ssc_obj,
+        cov_oc_obj=cov_oc_obj,
+        split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
+    )
 
 
 if obs_space == 'real':
@@ -1958,7 +1962,7 @@ if cfg['misc']['save_output_as_benchmark']:
     # _ell_dict = vars(ell_obj)
     # _ell_dict.pop('ell_cuts_dict')
     # _ell_dict.pop('idxs_to_delete_dict')
-    
+
     _ell_dict = {k: v for k, v in vars(ell_obj).items() if isinstance(v, np.ndarray)}
 
     if cfg['namaster']['use_namaster']:
@@ -2058,20 +2062,6 @@ if cfg['misc']['save_output_as_benchmark']:
     if 'cng' not in _cov_obj.cov_dict:
         for probe in ['WL', 'GC', 'XC', '3x2pt']:
             covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
-
-    # remove the 'ind' arrays
-    covs_arrays_dict.pop('ind', None)
-    covs_arrays_dict.pop('ind_auto', None)
-    covs_arrays_dict.pop('ind_cross', None)
-    keys = list(covs_arrays_dict.keys())
-
-    # make the keys consistent with the old benchmark files
-    # covs_arrays_dict = covs_arrays_dict.copy()
-    # for key, cov in covs_arrays_dict.items():
-    #     # key_new = key.replace('_tot_', '_TOT_')
-    #     key_new = key.replace('_2d', '_2D')
-    #     covs_arrays_dict[key_new] = cov
-    #     covs_arrays_dict.pop(key)
 
     np.savez_compressed(
         bench_filename,

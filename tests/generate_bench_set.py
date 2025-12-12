@@ -217,6 +217,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
     return results
 
+
 # variables to play with
 ROOT = '/Users/davidesciotti/Documents/Work/Code'
 skip_existing = False  # Skip benchmarks that already exist
@@ -616,5 +617,5 @@ run_benchmarks(
 # To run a specific config:
 #   python main.py --config {yaml_file}
 
-print(f'All Benchmarks generated in {(time.perf_counter() - start):.2f} s')
-print('\nAll benchmarks saved!🎉')
+print(f'\n⏱️⏱️ All Benchmarks generated in {(time.perf_counter() - start):.2f} s ⏱️⏱️')
+print('\nAll benchmarks saved! 🎉')

@@ -2004,9 +2004,6 @@ if cfg['misc']['save_output_as_benchmark']:
         if (isinstance(v, np.ndarray) and k.startswith('cov_'))
     }
 
-    for k in covs_arrays_dict:
-        print(k)
-
     # covs_arrays_dict = {}
     # for term, cov_probe_dict in _cov_obj.cov_dict.items():
     #     for probe_abcd in cov_probe_dict:

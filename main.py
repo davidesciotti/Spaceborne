@@ -10,6 +10,7 @@ Computing namaster workspaces and coupling matrices...
   prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell) [ok]
 * remove unnecessary functions [ok]
 * update vademecum in sb_lib
+* restore True(s) in const.HS_SYMMETRIZE_OUTPUT_DICT
 """
 
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
@@ -1959,10 +1960,6 @@ if cfg['misc']['save_output_as_benchmark']:
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
     )
 
-    # _ell_dict = vars(ell_obj)
-    # _ell_dict.pop('ell_cuts_dict')
-    # _ell_dict.pop('idxs_to_delete_dict')
-
     _ell_dict = {k: v for k, v in vars(ell_obj).items() if isinstance(v, np.ndarray)}
 
     if cfg['namaster']['use_namaster']:
@@ -2040,21 +2037,28 @@ if cfg['misc']['save_output_as_benchmark']:
 
     # ! old
     covs_arrays_dict = {}
-    for term, cov_probe_dict in _cov_obj.cov_dict.items():
-        for probe_abcd in cov_probe_dict:
-            if probe_abcd == '3x2pt':
-                covs_arrays_dict[f'cov_3x2pt_{term}_2d'] = cov_probe_dict['3x2pt']['2d']
-            elif probe_abcd == ('LL', 'LL'):
-                covs_arrays_dict[f'cov_WL_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-            elif probe_abcd == ('GG', 'GG'):
-                covs_arrays_dict[f'cov_GC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-            elif probe_abcd == ('GL', 'GL'):
-                covs_arrays_dict[f'cov_XC_{term}_2d'] = cov_probe_dict[probe_abcd]['2d']
-            else:
-                _probe = ''.join(probe_abcd)
-                covs_arrays_dict[f'cov_{_probe}_{term}_2d'] = cov_probe_dict[
-                    probe_abcd
-                ]['2d']
+    for term in _cov_obj.cov_dict:
+        for _probe_abcd in _cov_obj.cov_dict[term]:
+            for dim in _cov_obj.cov_dict[term][_probe_abcd]:
+                if _cov_obj.cov_dict[term][_probe_abcd][dim] is None:
+                    value = 0
+                else:
+                    value = _cov_obj.cov_dict[term][_probe_abcd][dim]
+
+                if _probe_abcd == ('LL', 'LL'):
+                    probe_abcd = 'WL'
+                elif _probe_abcd == ('GG', 'GG'):
+                    probe_abcd = 'GC'
+                elif _probe_abcd == ('GL', 'GL'):
+                    probe_abcd = 'XC'
+                else:
+                    probe_abcd = _probe_abcd
+
+                probe_joined = (
+                    ''.join(probe_abcd) if isinstance(probe_abcd, tuple) else probe_abcd
+                )
+                name = f'cov_{probe_joined}_{term}_{dim}'
+                covs_arrays_dict[name] = value
 
     if 'ssc' not in _cov_obj.cov_dict:
         for probe in ['WL', 'GC', '3x2pt']:

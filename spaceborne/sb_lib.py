@@ -390,8 +390,6 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
                     )
 
 
-
-
 def matshow_custom_bins(data_array, bin_edges):
     """
     Plots a 2D matrix with a colorbar based on custom bins.
@@ -4169,6 +4167,98 @@ def _cov_4D_to_2D_assembler(cov_4D, zbins, probe_order, probe_sizes, block_index
 
     return np.vstack(rows)
 
+
+def build_cov_3x2pt_2d(
+    cov_term_dict: dict, cov_ordering_2d: str, obs_space: str
+) -> np.ndarray:
+    """Build the full 2D covariance matrix for 3x2pt from the individual probe blocks
+    stored in cov_dict.
+    This function should allow to skip entirely the cov 3x2pt 4d format, which is
+    rather cumbersome and unnecessary.
+
+    cov_term_dict[probe_ab, probe_cd]['4d']
+    """
+    assert cov_ordering_2d in [
+        'scale_probe_zpair',
+        'probe_scale_zpair',
+        'probe_zpair_scale',
+        'zpair_probe_scale',
+    ], (
+        'cov_ordering_2d must be one of '
+        '"scale_probe_zpair", "probe_scale_zpair", '
+        '"probe_zpair_scale", "zpair_probe_scale"'
+    )
+
+    if obs_space == 'real':
+        diag_probes = const.RS_DIAG_PROBES
+    elif obs_space == 'harmonic':
+        diag_probes = const.HS_DIAG_PROBES
+    else:
+        raise ValueError(f'obs_space must be "real" or "harmonic", not: {obs_space}')
+
+    if cov_ordering_2d in ['probe_scale_zpair', 'probe_zpair_scale']:
+        # I loop like this instead of taking directly the cov keys to enforce
+        # probe ordering to be LL, GL, GG
+        rows = []
+        for probe_ab in diag_probes:
+            row_blocks = []
+            for probe_cd in diag_probes:
+                if (probe_ab, probe_cd) not in cov_term_dict:
+                    continue
+
+                row_blocks.append(cov_term_dict[probe_ab, probe_cd]['2d'])
+
+            if row_blocks:
+                rows.append(np.hstack(row_blocks))
+
+        if rows:
+            cov_3x2pt_2d = np.vstack(rows)
+        else:
+            raise ValueError('No valid probe combinations found!')
+        
+    elif cov_ordering_2d == 'scale_probe_zpair':
+        # For scale_probe_zpair: outer loop is scale/ell, then probe, then zpair
+        # We need to work with 4D arrays and extract slices for each ell combination
+        
+        # Get dimensions from first available diagonal block
+        first_diag = None
+        for probe in diag_probes:
+            if (probe, probe) in cov_term_dict:
+                first_diag = (probe, probe)
+                break
+        
+        if first_diag is None:
+            raise ValueError('No diagonal probe blocks found!')
+        
+        nbl = cov_term_dict[first_diag]['4d'].shape[0]
+        
+        rows = []
+        for ell1 in range(nbl):
+            for ell2 in range(nbl):
+                row_blocks = []
+                for probe_ab in diag_probes:
+                    col_blocks = []
+                    for probe_cd in diag_probes:
+                        if (probe_ab, probe_cd) not in cov_term_dict:
+                            continue
+                        
+                        cov_4d = cov_term_dict[probe_ab, probe_cd]['4d']
+                        # Extract the zpair x zpair slice for this ell pair
+                        cov_slice = cov_4d[ell1, ell2, :, :]
+                        col_blocks.append(cov_slice)
+                    
+                    if col_blocks:
+                        row_blocks.append(np.hstack(col_blocks))
+                
+                if row_blocks:
+                    rows.append(np.hstack(row_blocks))
+        
+        if rows:
+            cov_3x2pt_2d = np.vstack(rows)
+        else:
+            raise ValueError('No valid probe combinations found!')
+        
+        return cov_3x2pt_2d
 
 def cov_4D_to_2DCLOE_3x2pt_hs(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
     """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE

@@ -220,7 +220,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
 # variables to play with
 ROOT = '/Users/davidesciotti/Documents/Work/Code'
-skip_existing = False  # Skip benchmarks that already exist
+skip_existing = True  # Skip benchmarks that already exist
 
 # set some paths
 bench_set_path = f'{ROOT}/Spaceborne_bench'
@@ -326,7 +326,7 @@ base_cfg = {
     },
     'mask': {
         'load_mask': False,
-        'mask_path': f'{ROOT}/common_data/RR2/Davide/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
+        'mask_path': f'{ROOT}/common_data/Euclid_data/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
         'generate_polar_cap': True,
         'nside': 1024,
         'survey_area_deg2': 13245,

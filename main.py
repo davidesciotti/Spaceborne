@@ -2061,15 +2061,21 @@ if cfg['misc']['save_output_as_benchmark']:
                 name = f'cov_{probe_joined}_{term}_{dim}'
                 covs_arrays_dict[name] = value
 
+    # TODO this should be removed after merge with develop
     if 'ssc' not in _cov_obj.cov_dict:
         for probe in ['WL', 'GC', '3x2pt']:
+            covs_arrays_dict[f'cov_{probe}_ssc_6d'] = 0
+            covs_arrays_dict[f'cov_{probe}_ssc_4d'] = 0
             covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
     if 'cng' not in _cov_obj.cov_dict:
         for probe in ['WL', 'GC', 'XC', '3x2pt']:
+            covs_arrays_dict[f'cov_{probe}_cng_6d'] = 0
+            covs_arrays_dict[f'cov_{probe}_cng_4d'] = 0
             covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
 
     np.savez_compressed(
         bench_filename,
+        ind=ind,
         backup_cfg=cfg,
         z_grid=z_grid,
         z_grid_trisp=z_grid_trisp,

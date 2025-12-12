@@ -1910,6 +1910,7 @@ sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
 sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
 
 # save ell values
+# TODO do this for theta values in the real space case
 header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 
 # ells_ref, probably no need to save

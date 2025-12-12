@@ -23,6 +23,7 @@ from scipy.interpolate import CubicSpline, RectBivariateSpline, interp1d
 from scipy.special import jv
 
 import spaceborne.constants as const
+import spaceborne.akima as akima
 
 
 def matshow_custom_bins(data_array, bin_edges):
@@ -287,6 +288,7 @@ def bin_2d_array(
     weights_in: np.ndarray | None,
     which_binning: str = 'sum',
     interpolate: bool = True,
+    interpolation_method: str = 'spline',
 ):
     assert cov.shape[0] == cov.shape[1] == len(ells_in), (
         'ells_in must be the same length as the covariance matrix'
@@ -299,7 +301,10 @@ def bin_2d_array(
     )
 
     binned_cov = np.zeros((len(ells_out), len(ells_out)))
-    cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
+    
+    cov_interp_func = None
+    if interpolate and interpolation_method == 'spline':
+        cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
 
     ells_edges_low = ells_out_edges[:-1]
     ells_edges_high = ells_out_edges[1:]
@@ -359,7 +364,15 @@ def bin_2d_array(
                 # Interpolate the covariance matrix to a finer grid if necessary
                 ell1_fine = np.linspace(ell1_min, ell1_max, num=100)
                 ell2_fine = np.linspace(ell2_min, ell2_max, num=100)
-                cov_interp = cov_interp_func(ell1_fine, ell2_fine)
+                
+                if interpolation_method == 'spline':
+                    cov_interp = cov_interp_func(ell1_fine, ell2_fine)
+                elif interpolation_method == 'akima':
+                    temp = akima.akima_interpolation(cov, ells_in, ell1_fine, axis=0)
+                    cov_interp = akima.akima_interpolation(temp, ells_in, ell2_fine, axis=1)
+                    cov_interp = np.array(cov_interp)
+                else:
+                    raise ValueError(f"Unknown interpolation method: {interpolation_method}")
 
                 # Create fine grids for weights if necessary
                 weights1_fine = np.interp(ell1_fine, ell1_in, weights1_in)

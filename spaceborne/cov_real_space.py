@@ -1505,6 +1505,7 @@ class CovRealSpace:
                 'weights_in': None,
                 'which_binning': 'sum',
                 'interpolate': True,
+                'interpolation_method': self.cfg['precision'].get('interpolation_method', 'spline'),
             }
 
             results = Parallel(n_jobs=self.n_jobs, backend='loky')(

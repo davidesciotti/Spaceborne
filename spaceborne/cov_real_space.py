@@ -1062,10 +1062,12 @@ class CovRealSpace:
         Note: This exact same function is also defined in cov_harmonic_space.py
         """
 
+        # TODO deprecate this func
+
         for term in self.cov_dict:
             if term == 'tot':
                 continue  # tot is built at the end, skip it
-            
+
             self.cov_dict[term]['3x2pt']['4d'] = (
                 sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
                     self.cov_dict[term], obs_space='real'

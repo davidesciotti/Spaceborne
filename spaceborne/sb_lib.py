@@ -372,12 +372,6 @@ def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
             )
 
         for probe_2tpl, cov_dim_dict in cov_probe_dict.items():
-            if not isinstance(probe_2tpl, tuple) or len(probe_2tpl) != 2:
-                raise ValueError(
-                    f"Probe key {probe_2tpl} in term '{term}' must be "
-                    'a tuple of 2 elements'
-                )
-
             # check the probe names
             if probe_2tpl[0] not in expected_probes_ab:
                 raise ValueError(
@@ -3369,8 +3363,6 @@ def cov_dict_6d_probe_blocks_to_4d_and_2d(
 
     Note: This is the updated version of cov_3x2pt_10D_to_4D.
     """
-    # validate structure of the input dictionary
-    # validate_cov_dict_structure(cov_dict, obs_space=obs_space)
 
     if obs_space == 'harmonic':
         auto_probes = const.HS_AUTO_PROBES

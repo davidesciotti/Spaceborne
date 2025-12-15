@@ -136,7 +136,7 @@ def test_main_script(test_cfg_path):
             except KeyError as e:
                 # Catch missing keys
                 print(
-                    f'It looks like cov_{probe}_tot_2D or one of the other '
+                    f'It looks like cov_{probe}_tot_2d or one of the other '
                     'covariances is missing. This may be because of the probes '
                     'selected in the config, and is not necessarily an error.'
                 )

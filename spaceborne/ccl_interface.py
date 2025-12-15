@@ -407,7 +407,7 @@ class CCLInterface:
 
         Note: this class only computes
           - non-gaussian terms required, also depending on SSC/cNG_code settings
-          - 6d dim
+          - 4d dim
         """
 
         _req_terms = [term.lower() for term in ccl_ng_cov_terms_list]

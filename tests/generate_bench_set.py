@@ -426,17 +426,17 @@ for space in ['harmonic', 'real']:
                 for triu_tril in ['triu', 'tril']:
                     for row_col in ['row-major', 'col-major']:
                         if space == 'harmonic':
-                            for LL, GL, GC in product([True, False], repeat=3):
-                                if not any([LL, GL, GC]):
+                            for LL, GL, GG in product([True, False], repeat=3):
+                                if not any([LL, GL, GG]):
                                     continue
                                 configs_to_test.append(
                                     {
                                         'probe_selection': {
                                             'LL': LL,
                                             'GL': GL,
-                                            'GG': GC,
+                                            'GG': GG,
                                             'cross_cov': cross_cov,
-                                            'space': 'harmonic',
+                                            'space': space,
                                         },
                                         'covariance': {
                                             'SSC': False,
@@ -454,11 +454,12 @@ for space in ['harmonic', 'real']:
                                 configs_to_test.append(
                                     {
                                         'probe_selection': {
-                                            'LL': LL,
-                                            'GL': GL,
-                                            'GG': GC,
+                                            'xip': xip,
+                                            'xim': xim,
+                                            'gt': gt,
+                                            'w': w,
                                             'cross_cov': cross_cov,
-                                            'space': 'harmonic',
+                                            'space': space,
                                         },
                                         'covariance': {
                                             'SSC': False,

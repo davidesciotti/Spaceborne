@@ -4189,6 +4189,8 @@ def build_cov_3x2pt_2d(
         '"probe_zpair_scale", "zpair_probe_scale"'
     )
 
+    # I loop like the diagonal probe blocks instead of taking directly the cov 
+    # dict keys to enforce probe ordering to be LL, GL, GG (or xip, xim, gt, w)
     if obs_space == 'real':
         diag_probes = const.RS_DIAG_PROBES
     elif obs_space == 'harmonic':
@@ -4197,8 +4199,6 @@ def build_cov_3x2pt_2d(
         raise ValueError(f'obs_space must be "real" or "harmonic", not: {obs_space}')
 
     if cov_ordering_2d in ['probe_scale_zpair', 'probe_zpair_scale']:
-        # I loop like this instead of taking directly the cov keys to enforce
-        # probe ordering to be LL, GL, GG
         rows = []
         for probe_ab in diag_probes:
             row_blocks = []
@@ -4215,10 +4215,10 @@ def build_cov_3x2pt_2d(
             cov_3x2pt_2d = np.vstack(rows)
         else:
             raise ValueError('No valid probe combinations found!')
-        
+
     elif cov_ordering_2d == 'scale_probe_zpair':
         # For scale_probe_zpair: outer loop is scale/ell, then probe, then zpair
-        # We need to work with 4D arrays and extract slices for each ell combination
+        # Work directly with 4D arrays and extract zpair slices for each ell pair
         
         # Get dimensions from first available diagonal block
         first_diag = None
@@ -4234,31 +4234,36 @@ def build_cov_3x2pt_2d(
         
         rows = []
         for ell1 in range(nbl):
+            row_blocks = []
             for ell2 in range(nbl):
-                row_blocks = []
+                # For this ell pair, stack all probe combinations
+                probe_rows = []
                 for probe_ab in diag_probes:
-                    col_blocks = []
+                    probe_cols = []
                     for probe_cd in diag_probes:
                         if (probe_ab, probe_cd) not in cov_term_dict:
                             continue
                         
                         cov_4d = cov_term_dict[probe_ab, probe_cd]['4d']
-                        # Extract the zpair x zpair slice for this ell pair
-                        cov_slice = cov_4d[ell1, ell2, :, :]
-                        col_blocks.append(cov_slice)
+                        # Extract the zpair×zpair slice for this ell pair
+                        probe_cols.append(cov_4d[ell1, ell2, :, :])
                     
-                    if col_blocks:
-                        row_blocks.append(np.hstack(col_blocks))
+                    if probe_cols:
+                        probe_rows.append(np.hstack(probe_cols))
                 
-                if row_blocks:
-                    rows.append(np.hstack(row_blocks))
+                if probe_rows:
+                    row_blocks.append(np.vstack(probe_rows))
+            
+            if row_blocks:
+                rows.append(np.hstack(row_blocks))
         
         if rows:
             cov_3x2pt_2d = np.vstack(rows)
         else:
             raise ValueError('No valid probe combinations found!')
-        
-        return cov_3x2pt_2d
+
+    return cov_3x2pt_2d
+
 
 def cov_4D_to_2DCLOE_3x2pt_hs(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
     """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE

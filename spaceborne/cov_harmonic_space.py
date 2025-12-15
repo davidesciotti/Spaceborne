@@ -1,3 +1,4 @@
+from collections import defaultdict
 import time
 import warnings
 from copy import deepcopy
@@ -57,6 +58,7 @@ class SpaceborneCovariance:
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_hs_2d']
+        self.nonreq_probe_combs = pvt_cfg['nonreq_probe_combs_hs']
         dims = ['6d', '4d', '2d']
 
         _req_probe_combs_2d = [
@@ -276,6 +278,7 @@ class SpaceborneCovariance:
             )
 
         # ! compute 3x2pt fsky Gaussian covariance: by default, split SVA, SN and MIX
+        # the Gaussian HS cov is computed for all probes at once, still
         (cov_3x2pt_sva_10d, cov_3x2pt_sn_10d, cov_3x2pt_mix_10d) = sl.compute_g_cov(
             cl_5d=cl_3x2pt_5d,
             noise_5d=noise_3x2pt_5d,
@@ -286,7 +289,7 @@ class SpaceborneCovariance:
             return_only_diagonal_ells=False,
         )
 
-        # the Gaussian HS cov is computed for all probes at once, still
+        # assign the different probes in the 10d array to the appropriate dict keys
         for probe_abcd in self.req_probe_combs_2d:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             probe_2tpl = (probe_ab, probe_cd)
@@ -300,6 +303,16 @@ class SpaceborneCovariance:
                 + self.cov_dict['sn'][probe_2tpl]['6d']
                 + self.cov_dict['mix'][probe_2tpl]['6d']
             )
+
+        # zero-out the blocks not requested
+        for probe_abcd in self.nonreq_probe_combs:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            probe_2tpl = (probe_ab, probe_cd)
+            probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
+            for term in ('sva', 'sn', 'mix', 'g'):
+                self.cov_dict[term][probe_2tpl]['6d'] = np.zeros_like(
+                    self.cov_dict[term][probe_2tpl]['6d']
+                )
 
         # ! Partial sky with nmt
         # ! this case overwrites self.cov_3x2pt_g_10d only, but the cfg checker will
@@ -346,6 +359,8 @@ class SpaceborneCovariance:
         Note: This exact same function is also defined in cov_real_space.py
         """
 
+        # TODO deprecate this func
+
         for term in self.cov_dict:
             if term == 'tot':
                 continue  # tot is built at the end, skip it
@@ -358,8 +373,6 @@ class SpaceborneCovariance:
             self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
                 self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
             )
-
-
 
     def _remove_split_terms_from_dict(self, split_gaussian_cov: bool):
         """Helper function to remove the SVA/SN/MIX parts of the G cov if
@@ -492,8 +505,8 @@ class SpaceborneCovariance:
     def combine_and_reshape_covs(
         self,
         ccl_obj: CCLInterface,
-        cov_ssc_obj: SpaceborneSSC,
-        cov_oc_obj: OneCovarianceInterface,
+        cov_ssc_obj: SpaceborneSSC | None,
+        cov_oc_obj: OneCovarianceInterface | None,
         split_gaussian_cov: bool,
     ):
         """
@@ -574,7 +587,7 @@ class SpaceborneCovariance:
         if self.cfg['BNT']['cov_BNT_transform']:
             print('BNT-transforming the covariance matrix...')
             start = time.perf_counter()
-            self.cov_dict = bnt_utils.bnt_transform_whole_cov_dict(
+            self.cov_dict = bnt_utils.bnt_transform_cov_dict(
                 self.cov_dict, self.bnt_matrix, self.req_probe_combs_2d
             )
             print(f'...done in {time.perf_counter() - start:.2f} s')
@@ -595,7 +608,12 @@ class SpaceborneCovariance:
         )
 
         # ! construct 3x2pt 4d and 2d covs (there is no 6d 3x2pt!)
-        self._build_cov_3x2pt_4d_and_2d()
+        for term in self.cov_dict:
+            self.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
+                self.cov_dict[term], self.cov_ordering_2d, obs_space='harmonic'
+            )
+
+        # self._build_cov_3x2pt_4d_and_2d()
 
         # ! sum g + ssc + cng to get tot (only 2D)
         # this function modifies the cov_dict in place, no need to reassign the result

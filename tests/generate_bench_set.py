@@ -219,8 +219,8 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
 
 # variables to play with
-ROOT = '/Users/davidesciotti/Documents/Work/Code'
-skip_existing = False  # Skip benchmarks that already exist
+ROOT = '/u/dsciotti/code'
+skip_existing = True  # Skip benchmarks that already exist
 
 # set some paths
 bench_set_path = f'{ROOT}/Spaceborne_bench'
@@ -427,7 +427,7 @@ for space in ['harmonic', 'real']:
                 'scale_probe_zpair',
             ]:
                 # for triu_tril in ['triu', 'tril']:
-                    # for row_col in ['row-major', 'col-major']:
+                # for row_col in ['row-major', 'col-major']:
                 if space == 'harmonic':
                     for LL, GL, GC in product([True, False], repeat=3):
                         if not any([LL, GL, GC]):
@@ -473,7 +473,6 @@ for space in ['harmonic', 'real']:
                                 },
                             }
                         )
-
 
 
 # ! Bias models
@@ -529,7 +528,6 @@ for no_sampling_noise in [True, False]:
     configs_to_test.append({'covariance': {'no_sampling_noise': no_sampling_noise}})
 
 
-
 # ! SSC  variations
 for ke_approx in [True, False]:
     for include_b2g in [True, False]:
@@ -544,9 +542,19 @@ for ke_approx in [True, False]:
                 }
             )
 
-# ! cNG
-# for cng in [True, False]:
-#     configs_to_test.append({'covariance': {'cNG': cng}})
+# ! BNT transform
+for cl_BNT_transform, cov_BNT_transform in zip(
+    [True, False], [False, True], strict=True
+):
+    configs_to_test.append(
+        {
+            'BNT': {
+                'cl_BNT_transform': cl_BNT_transform,
+                'cov_BNT_transform': cov_BNT_transform,
+            }
+        }
+    )
+
 
 # ! other codes [TODO add OneCov]
 for ssc_code in ['Spaceborne', 'PyCCL']:
@@ -588,19 +596,9 @@ for coupled_cov in [True, False]:
                     }
                 )
 
-
-# ! BNT transform
-for cl_BNT_transform, cov_BNT_transform in zip(
-    [True, False], [False, True], strict=True
-):
-    configs_to_test.append(
-        {
-            'BNT': {
-                'cl_BNT_transform': cl_BNT_transform,
-                'cov_BNT_transform': cov_BNT_transform,
-            }
-        }
-    )
+# ! cNG
+for cng in [True, False]:
+    configs_to_test.append({'covariance': {'cNG': cng}})
 
 
 # Generate configurations

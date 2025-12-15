@@ -229,6 +229,7 @@ bench_set_output_path = f'{bench_set_path}/bench_set_output'
 output_path = f'{bench_set_output_path}/_sb_output'
 sb_root_path = f'{ROOT}/Spaceborne'
 
+skip_existing = True  # Skip benchmarks that already exist
 
 # ! DEFINE A BASIC CFG FILE TO START FROM
 base_cfg = {
@@ -415,6 +416,65 @@ base_cfg = {
 configs_to_test = []
 
 
+
+# ! covariance ordering
+for space in ['harmonic', 'real']:
+    for split_gaussian_cov in [True, False]:
+        for cross_cov in [True, False]:
+            for ordering in [
+                'probe_scale_zpair',
+                'probe_zpair_scale',
+                'scale_probe_zpair',
+            ]:
+                for triu_tril in ['triu', 'tril']:
+                    for row_col in ['row-major', 'col-major']:
+                        if space == 'harmonic':
+                            for LL, GL, GC in product([True, False], repeat=3):
+                                if not any([LL, GL, GC]):
+                                    continue
+                                configs_to_test.append(
+                                    {
+                                        'probe_selection': {
+                                            'LL': LL,
+                                            'GL': GL,
+                                            'GG': GC,
+                                            'cross_cov': cross_cov,
+                                            'space': 'harmonic',
+                                        },
+                                        'covariance': {
+                                            'SSC': False,
+                                            'split_gaussian_cov': split_gaussian_cov,
+                                            'covariance_ordering_2D': ordering,
+                                            'triu_tril': triu_tril,
+                                            'row_col_major': row_col,
+                                        },
+                                    }
+                                )
+                        elif space == 'real':
+                            for xip, xim, gt, w in product([True, False], repeat=4):
+                                if not any([xip, xim, gt, w]):
+                                    continue
+                                configs_to_test.append(
+                                    {
+                                        'probe_selection': {
+                                            'LL': LL,
+                                            'GL': GL,
+                                            'GG': GC,
+                                            'cross_cov': cross_cov,
+                                            'space': 'harmonic',
+                                        },
+                                        'covariance': {
+                                            'SSC': False,
+                                            'split_gaussian_cov': split_gaussian_cov,
+                                            'covariance_ordering_2D': ordering,
+                                            'triu_tril': triu_tril,
+                                            'row_col_major': row_col,
+                                        },
+                                    }
+                                )
+
+
+
 # ! Bias models
 for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
     # for which_mag_bias in ['from_input', 'FS2_polynomial_fit']:
@@ -430,8 +490,8 @@ for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
         )
 
 # ! Power spectrum responses
-# for which_pk_responses in ['halo_model', 'separate_universe']:
-#     configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
+for which_pk_responses in ['halo_model', 'separate_universe']:
+    configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
 
 # ! RSD and magnification bias
 for has_IA in [True, False]:
@@ -468,19 +528,6 @@ for no_sampling_noise in [True, False]:
     configs_to_test.append({'covariance': {'no_sampling_noise': no_sampling_noise}})
 
 
-# ! covariance ordering
-for ordering in ['probe_scale_zpair', 'probe_zpair_scale', 'scale_probe_zpair']:
-    for triu_tril in ['triu', 'tril']:
-        for row_col in ['row-major', 'col-major']:
-            configs_to_test.append(
-                {
-                    'covariance': {
-                        'covariance_ordering_2D': ordering,
-                        'triu_tril': triu_tril,
-                        'row_col_major': row_col,
-                    }
-                }
-            )
 
 # ! SSC  variations
 for ke_approx in [True, False]:
@@ -504,47 +551,6 @@ for ke_approx in [True, False]:
 for ssc_code in ['Spaceborne', 'PyCCL']:
     configs_to_test.append({'covariance': {'SSC_code': ssc_code}})
 
-# ! HS probe combinations
-for LL, GL, GC in product([True, False], repeat=3):
-    for split_gaussian_cov in [True, False]:
-        for cross_cov in [True, False]:
-            if not any([LL, GL, GC]):
-                continue
-            configs_to_test.append(
-                {
-                    'probe_selection': {
-                        'LL': LL,
-                        'GL': GL,
-                        'GG': GC,
-                        'cross_cov': cross_cov,
-                        'space': 'harmonic',
-                    },
-                    'covariance': {'split_gaussian_cov': split_gaussian_cov},
-                }
-            )
-
-# ! RS probe combinations
-for xip, xim, gt, w in product([True, False], repeat=4):
-    for split_gaussian_cov in [True, False]:
-        for cross_cov in [True, False]:
-            if not any([xip, xim, gt, w]):
-                continue
-            configs_to_test.append(
-                {
-                    'probe_selection': {
-                        'xip': xip,
-                        'xim': xim,
-                        'gt': gt,
-                        'w': w,
-                        'cross_cov': cross_cov,
-                        'space': 'real',
-                    },
-                    'covariance': {
-                        'split_gaussian_cov': split_gaussian_cov,
-                        'SSC': False,
-                    },
-                }
-            )
 
 # ! nz variations
 for shift_nz in [True, False]:

@@ -220,7 +220,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
 # variables to play with
 ROOT = '/Users/davidesciotti/Documents/Work/Code'
-skip_existing = True  # Skip benchmarks that already exist
+skip_existing = False  # Skip benchmarks that already exist
 
 # set some paths
 bench_set_path = f'{ROOT}/Spaceborne_bench'
@@ -229,7 +229,6 @@ bench_set_output_path = f'{bench_set_path}/bench_set_output'
 output_path = f'{bench_set_output_path}/_sb_output'
 sb_root_path = f'{ROOT}/Spaceborne'
 
-skip_existing = True  # Skip benchmarks that already exist
 
 # ! DEFINE A BASIC CFG FILE TO START FROM
 base_cfg = {
@@ -416,8 +415,9 @@ base_cfg = {
 configs_to_test = []
 
 
-
 # ! covariance ordering
+triu_tril = 'triu'
+row_col = 'row-major'
 for space in ['harmonic', 'real']:
     for split_gaussian_cov in [True, False]:
         for cross_cov in [True, False]:
@@ -426,52 +426,53 @@ for space in ['harmonic', 'real']:
                 'probe_zpair_scale',
                 'scale_probe_zpair',
             ]:
-                for triu_tril in ['triu', 'tril']:
-                    for row_col in ['row-major', 'col-major']:
-                        if space == 'harmonic':
-                            for LL, GL, GC in product([True, False], repeat=3):
-                                if not any([LL, GL, GC]):
-                                    continue
-                                configs_to_test.append(
-                                    {
-                                        'probe_selection': {
-                                            'LL': LL,
-                                            'GL': GL,
-                                            'GG': GC,
-                                            'cross_cov': cross_cov,
-                                            'space': 'harmonic',
-                                        },
-                                        'covariance': {
-                                            'SSC': False,
-                                            'split_gaussian_cov': split_gaussian_cov,
-                                            'covariance_ordering_2D': ordering,
-                                            'triu_tril': triu_tril,
-                                            'row_col_major': row_col,
-                                        },
-                                    }
-                                )
-                        elif space == 'real':
-                            for xip, xim, gt, w in product([True, False], repeat=4):
-                                if not any([xip, xim, gt, w]):
-                                    continue
-                                configs_to_test.append(
-                                    {
-                                        'probe_selection': {
-                                            'LL': LL,
-                                            'GL': GL,
-                                            'GG': GC,
-                                            'cross_cov': cross_cov,
-                                            'space': 'harmonic',
-                                        },
-                                        'covariance': {
-                                            'SSC': False,
-                                            'split_gaussian_cov': split_gaussian_cov,
-                                            'covariance_ordering_2D': ordering,
-                                            'triu_tril': triu_tril,
-                                            'row_col_major': row_col,
-                                        },
-                                    }
-                                )
+                # for triu_tril in ['triu', 'tril']:
+                    # for row_col in ['row-major', 'col-major']:
+                if space == 'harmonic':
+                    for LL, GL, GC in product([True, False], repeat=3):
+                        if not any([LL, GL, GC]):
+                            continue
+                        configs_to_test.append(
+                            {
+                                'probe_selection': {
+                                    'LL': LL,
+                                    'GL': GL,
+                                    'GG': GC,
+                                    'cross_cov': cross_cov,
+                                    'space': 'harmonic',
+                                },
+                                'covariance': {
+                                    'SSC': False,
+                                    'split_gaussian_cov': split_gaussian_cov,
+                                    'covariance_ordering_2D': ordering,
+                                    'triu_tril': triu_tril,
+                                    'row_col_major': row_col,
+                                },
+                            }
+                        )
+                elif space == 'real':
+                    for xip, xim, gt, w in product([True, False], repeat=4):
+                        if not any([xip, xim, gt, w]):
+                            continue
+                        configs_to_test.append(
+                            {
+                                'probe_selection': {
+                                    'xip': xip,
+                                    'xim': xim,
+                                    'gt': gt,
+                                    'w': w,
+                                    'cross_cov': cross_cov,
+                                    'space': 'real',
+                                },
+                                'covariance': {
+                                    'SSC': False,
+                                    'split_gaussian_cov': split_gaussian_cov,
+                                    'covariance_ordering_2D': ordering,
+                                    'triu_tril': triu_tril,
+                                    'row_col_major': row_col,
+                                },
+                            }
+                        )
 
 
 

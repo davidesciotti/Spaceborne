@@ -2,13 +2,16 @@
 Branch TODO list:
 * update partial sky            [ok]
 * update real space             [ok]
-* adjust outputs for tests?     [done, generate new benchmarks also from develop, there was a bug]
-* rerun all tests
-* understand this issue:
+* adjust outputs for tests?     [ok]
+* understand this issue: [ok]
 Computing namaster workspaces and coupling matrices...
 /Users/davidesciotti/Documents/Work/Code/Spaceborne/spaceborne/sb_lib.py:3287: RuntimeWarning: divide by zero encountered in divide
   prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell) [ok]
 * remove unnecessary functions [ok]
+
+* rerun all tests with existing benchmarks [in prog.]
+* remove "cov_3x2pt 4d" functions!
+* rerun all tests with new benchmarks
 * update vademecum in sb_lib
 * restore True(s) in const.HS_SYMMETRIZE_OUTPUT_DICT
 """
@@ -1707,6 +1710,9 @@ if obs_space == 'real':
     
     # test new method:
     for term in cov_rs_obj.cov_dict:
+        if term == 'tot':
+            continue  # tot is built at the end, skip it
+
         cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
             cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
         )

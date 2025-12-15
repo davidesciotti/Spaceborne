@@ -9,10 +9,10 @@ Computing namaster workspaces and coupling matrices...
   prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell) [ok]
 * remove unnecessary functions [ok]
 
-* rerun all tests with existing benchmarks [in prog.]
+* rerun all tests with existing benchmarks [ok]
 * remove "cov_3x2pt 4d" functions!
 * rerun all tests with new benchmarks
-* update vademecum in sb_lib
+* update vademecum in sb_lib [almost done]
 * restore True(s) in const.HS_SYMMETRIZE_OUTPUT_DICT
 """
 
@@ -24,12 +24,6 @@ import os
 import sys
 
 import yaml
-
-# BOOKMARK 12 dec: 
-# - add real space in cov_ordering loops of the test_outputs section
-# - probe_*_* orderings seem to work, test them and decide what to do with the other 
-#   options (it's probably worth keeping the scale_probe_zpair since it's the one used
-#   by Vincenzo's codes...)
 
 
 def load_config(_config_path):
@@ -1707,7 +1701,7 @@ if obs_space == 'real':
     cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
     # construct 4d and 2d 3x2pt
     # cov_rs_obj._build_cov_3x2pt_4d_and_2d()
-    
+
     # test new method:
     for term in cov_rs_obj.cov_dict:
         if term == 'tot':
@@ -1716,8 +1710,6 @@ if obs_space == 'real':
         cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
             cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
         )
-        
-
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 

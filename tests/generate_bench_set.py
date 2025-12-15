@@ -413,185 +413,190 @@ base_cfg = {
 configs_to_test = []
 
 
-# ! Bias models
-for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
-    # for which_mag_bias in ['from_input', 'FS2_polynomial_fit']:
-    for which_b1g_in_resp in ['from_HOD', 'from_input']:
-        configs_to_test.append(
-            {
-                'C_ell': {
-                    'which_gal_bias': which_gal_bias
-                    # 'which_mag_bias': which_mag_bias,
-                },
-                'covariance': {'which_b1g_in_resp': which_b1g_in_resp},
-            }
-        )
-
-# ! Power spectrum responses
-# for which_pk_responses in ['halo_model', 'separate_universe']:
-#     configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
-
-# ! RSD and magnification bias
-for has_IA in [True, False]:
-    for has_rsd in [True, False]:
-        for has_magnification_bias in [True, False]:
-            configs_to_test.append(
-                {
-                    'C_ell': {
-                        'has_IA': has_IA,
-                        'has_rsd': has_rsd,
-                        'has_magnification_bias': has_magnification_bias,
-                    }
-                }
-            )
-
-
-# ! Intrinsic Alignment parameters (only when IA is enabled)
-for Aia in [0.16, 0.5, 1.0]:
-    for eIA in [1.66, 0.0]:
-        configs_to_test.append(
-            {'C_ell': {'has_IA': True}, 'intrinsic_alignment': {'Aia': Aia, 'eIA': eIA}}
-        )
-
-# ! Multiplicative shear bias
-for mult_shear_bias in [[0.0, 0.0, 0.0], [0.01, 0.01, 0.01], [-0.01, -0.01, -0.01]]:
-    configs_to_test.append({'C_ell': {'mult_shear_bias': mult_shear_bias}})
-
-# ! Input Cls vs computed
-for use_input_cls in [True, False]:
-    configs_to_test.append({'C_ell': {'use_input_cls': use_input_cls}})
-
-# ! No sampling noise
-for no_sampling_noise in [True, False]:
-    configs_to_test.append({'covariance': {'no_sampling_noise': no_sampling_noise}})
-
 
 # ! covariance ordering
-for ordering in ['probe_scale_zpair', 'probe_zpair_scale', 'scale_probe_zpair']:
-    for triu_tril in ['triu', 'tril']:
-        for row_col in ['row-major', 'col-major']:
-            configs_to_test.append(
-                {
-                    'covariance': {
-                        'covariance_ordering_2D': ordering,
-                        'triu_tril': triu_tril,
-                        'row_col_major': row_col,
-                    }
-                }
-            )
-
-# ! SSC  variations
-for ke_approx in [True, False]:
-    for include_b2g in [True, False]:
-        for include_terasawa in [True, False]:
-            configs_to_test.append(
-                {
-                    'covariance': {
-                        'use_KE_approximation': ke_approx,
-                        'include_b2g': include_b2g,
-                        'include_terasawa_terms': include_terasawa,
-                    }
-                }
-            )
-
-# ! cNG
-# for cng in [True, False]:
-#     configs_to_test.append({'covariance': {'cNG': cng}})
-
-# ! other codes [TODO add OneCov]
-for ssc_code in ['Spaceborne', 'PyCCL']:
-    configs_to_test.append({'covariance': {'SSC_code': ssc_code}})
-
-# ! HS probe combinations
-for LL, GL, GC in product([True, False], repeat=3):
+for space in ['harmonic', 'real']:
     for split_gaussian_cov in [True, False]:
         for cross_cov in [True, False]:
-            if not any([LL, GL, GC]):
-                continue
-            configs_to_test.append(
-                {
-                    'probe_selection': {
-                        'LL': LL,
-                        'GL': GL,
-                        'GG': GC,
-                        'cross_cov': cross_cov,
-                        'space': 'harmonic',
-                    },
-                    'covariance': {'split_gaussian_cov': split_gaussian_cov},
-                }
-            )
-
-# ! RS probe combinations
-for xip, xim, gt, w in product([True, False], repeat=4):
-    for split_gaussian_cov in [True, False]:
-        for cross_cov in [True, False]:
-            if not any([xip, xim, gt, w]):
-                continue
-            configs_to_test.append(
-                {
-                    'probe_selection': {
-                        'xip': xip,
-                        'xim': xim,
-                        'gt': gt,
-                        'w': w,
-                        'cross_cov': cross_cov,
-                        'space': 'real',
-                    },
-                    'covariance': {
-                        'split_gaussian_cov': split_gaussian_cov,
-                        'SSC': False,
-                    },
-                }
-            )
-
-# ! nz variations
-for shift_nz in [True, False]:
-    for smooth_nz in [True, False]:
-        configs_to_test.append({'nz': {'shift_nz': shift_nz, 'smooth_nz': smooth_nz}})
-
-# ! Mask variations
-for load_input_mask, generate_polar_cap in zip([True, False], [False, True]):
-    for nside in [512, 1024]:
-        configs_to_test.append(
-            {
-                'mask': {
-                    'generate_polar_cap': generate_polar_cap,
-                    'load_mask': load_input_mask,
-                    'nside': nside,
-                }
-            }
-        )
-
-# ! NAMASTER (test only G cov)
-for coupled_cov in [True, False]:
-    for spin0 in [True, False]:
-        for use_INKA in [True, False]:
-            for binning_type in ['log', 'lin', 'from_input']:
-                configs_to_test.append(
-                    {
-                        'covariance': {'SSC': False, 'coupled_cov': coupled_cov},
-                        'namaster': {
-                            'use_namaster': True,
-                            'spin0': spin0,
-                            'use_INKA': use_INKA,
-                        },
-                        'binning': {'binning_type': binning_type},
-                    }
-                )
+            for ordering in [
+                'probe_scale_zpair',
+                'probe_zpair_scale',
+                'scale_probe_zpair',
+            ]:
+                for triu_tril in ['triu', 'tril']:
+                    for row_col in ['row-major', 'col-major']:
+                        if space == 'harmonic':
+                            for LL, GL, GC in product([True, False], repeat=3):
+                                if not any([LL, GL, GC]):
+                                    continue
+                                configs_to_test.append(
+                                    {
+                                        'probe_selection': {
+                                            'LL': LL,
+                                            'GL': GL,
+                                            'GG': GC,
+                                            'cross_cov': cross_cov,
+                                            'space': 'harmonic',
+                                        },
+                                        'covariance': {
+                                            'SSC': False,
+                                            'split_gaussian_cov': split_gaussian_cov,
+                                            'covariance_ordering_2D': ordering,
+                                            'triu_tril': triu_tril,
+                                            'row_col_major': row_col,
+                                        },
+                                    }
+                                )
+                        elif space == 'real':
+                            for xip, xim, gt, w in product([True, False], repeat=4):
+                                if not any([xip, xim, gt, w]):
+                                    continue
+                                configs_to_test.append(
+                                    {
+                                        'probe_selection': {
+                                            'LL': LL,
+                                            'GL': GL,
+                                            'GG': GC,
+                                            'cross_cov': cross_cov,
+                                            'space': 'harmonic',
+                                        },
+                                        'covariance': {
+                                            'SSC': False,
+                                            'split_gaussian_cov': split_gaussian_cov,
+                                            'covariance_ordering_2D': ordering,
+                                            'triu_tril': triu_tril,
+                                            'row_col_major': row_col,
+                                        },
+                                    }
+                                )
 
 
-# ! BNT transform
-for cl_BNT_transform, cov_BNT_transform in zip(
-    [True, False], [False, True], strict=True
-):
-    configs_to_test.append(
-        {
-            'BNT': {
-                'cl_BNT_transform': cl_BNT_transform,
-                'cov_BNT_transform': cov_BNT_transform,
-            }
-        }
-    )
+
+# # ! Bias models
+# for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
+#     # for which_mag_bias in ['from_input', 'FS2_polynomial_fit']:
+#     for which_b1g_in_resp in ['from_HOD', 'from_input']:
+#         configs_to_test.append(
+#             {
+#                 'C_ell': {
+#                     'which_gal_bias': which_gal_bias
+#                     # 'which_mag_bias': which_mag_bias,
+#                 },
+#                 'covariance': {'which_b1g_in_resp': which_b1g_in_resp},
+#             }
+#         )
+
+# # ! Power spectrum responses
+# # for which_pk_responses in ['halo_model', 'separate_universe']:
+# #     configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
+
+# # ! RSD and magnification bias
+# for has_IA in [True, False]:
+#     for has_rsd in [True, False]:
+#         for has_magnification_bias in [True, False]:
+#             configs_to_test.append(
+#                 {
+#                     'C_ell': {
+#                         'has_IA': has_IA,
+#                         'has_rsd': has_rsd,
+#                         'has_magnification_bias': has_magnification_bias,
+#                     }
+#                 }
+#             )
+
+
+# # ! Intrinsic Alignment parameters (only when IA is enabled)
+# for Aia in [0.16, 0.5, 1.0]:
+#     for eIA in [1.66, 0.0]:
+#         configs_to_test.append(
+#             {'C_ell': {'has_IA': True}, 'intrinsic_alignment': {'Aia': Aia, 'eIA': eIA}}
+#         )
+
+# # ! Multiplicative shear bias
+# for mult_shear_bias in [[0.0, 0.0, 0.0], [0.01, 0.01, 0.01], [-0.01, -0.01, -0.01]]:
+#     configs_to_test.append({'C_ell': {'mult_shear_bias': mult_shear_bias}})
+
+# # ! Input Cls vs computed
+# for use_input_cls in [True, False]:
+#     configs_to_test.append({'C_ell': {'use_input_cls': use_input_cls}})
+
+# # ! No sampling noise
+# for no_sampling_noise in [True, False]:
+#     configs_to_test.append({'covariance': {'no_sampling_noise': no_sampling_noise}})
+
+
+
+# # ! SSC  variations
+# for ke_approx in [True, False]:
+#     for include_b2g in [True, False]:
+#         for include_terasawa in [True, False]:
+#             configs_to_test.append(
+#                 {
+#                     'covariance': {
+#                         'use_KE_approximation': ke_approx,
+#                         'include_b2g': include_b2g,
+#                         'include_terasawa_terms': include_terasawa,
+#                     }
+#                 }
+#             )
+
+# # ! cNG
+# # for cng in [True, False]:
+# #     configs_to_test.append({'covariance': {'cNG': cng}})
+
+# # ! other codes [TODO add OneCov]
+# for ssc_code in ['Spaceborne', 'PyCCL']:
+#     configs_to_test.append({'covariance': {'SSC_code': ssc_code}})
+
+
+# # ! nz variations
+# for shift_nz in [True, False]:
+#     for smooth_nz in [True, False]:
+#         configs_to_test.append({'nz': {'shift_nz': shift_nz, 'smooth_nz': smooth_nz}})
+
+# # ! Mask variations
+# for load_input_mask, generate_polar_cap in zip([True, False], [False, True]):
+#     for nside in [512, 1024]:
+#         configs_to_test.append(
+#             {
+#                 'mask': {
+#                     'generate_polar_cap': generate_polar_cap,
+#                     'load_mask': load_input_mask,
+#                     'nside': nside,
+#                 }
+#             }
+#         )
+
+# # ! NAMASTER (test only G cov)
+# for coupled_cov in [True, False]:
+#     for spin0 in [True, False]:
+#         for use_INKA in [True, False]:
+#             for binning_type in ['log', 'lin', 'from_input']:
+#                 configs_to_test.append(
+#                     {
+#                         'covariance': {'SSC': False, 'coupled_cov': coupled_cov},
+#                         'namaster': {
+#                             'use_namaster': True,
+#                             'spin0': spin0,
+#                             'use_INKA': use_INKA,
+#                         },
+#                         'binning': {'binning_type': binning_type},
+#                     }
+#                 )
+
+
+# # ! BNT transform
+# for cl_BNT_transform, cov_BNT_transform in zip(
+#     [True, False], [False, True], strict=True
+# ):
+#     configs_to_test.append(
+#         {
+#             'BNT': {
+#                 'cl_BNT_transform': cl_BNT_transform,
+#                 'cov_BNT_transform': cov_BNT_transform,
+#             }
+#         }
+#     )
 
 
 # Generate configurations

@@ -608,7 +608,13 @@ class SpaceborneCovariance:
         )
 
         # ! construct 3x2pt 4d and 2d covs (there is no 6d 3x2pt!)
+        # import ipdb
+
+        # ipdb.set_trace()
         for term in self.cov_dict:
+            if term == 'tot':
+                continue  # tot is built at the end, skip it
+
             self.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
                 self.cov_dict[term], self.cov_ordering_2d, obs_space='harmonic'
             )

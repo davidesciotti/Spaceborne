@@ -1,21 +1,3 @@
-"""
-Branch TODO list:
-* update partial sky            [ok]
-* update real space             [ok]
-* adjust outputs for tests?     [ok]
-* understand this issue: [ok]
-Computing namaster workspaces and coupling matrices...
-/Users/davidesciotti/Documents/Work/Code/Spaceborne/spaceborne/sb_lib.py:3287: RuntimeWarning: divide by zero encountered in divide
-  prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell) [ok]
-* remove unnecessary functions [ok]
-
-* rerun all tests with existing benchmarks [ok]
-* remove "cov_3x2pt 4d" functions!
-* rerun all tests with new benchmarks
-* update vademecum in sb_lib [almost done]
-* restore True(s) in const.HS_SYMMETRIZE_OUTPUT_DICT [ok]
-"""
-
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib

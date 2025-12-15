@@ -22,7 +22,11 @@ import sys
 
 import yaml
 
-# [BOOKMARK 10 dec: take a look at coderabbit review and move on]
+# BOOKMARK 12 dec: 
+# - add real space in cov_ordering loops of the test_outputs section
+# - probe_*_* orderings seem to work, test them and decide what to do with the other 
+#   options (it's probably worth keeping the scale_probe_zpair since it's the one used
+#   by Vincenzo's codes...)
 
 
 def load_config(_config_path):
@@ -57,9 +61,7 @@ def load_config(_config_path):
 
 cfg = load_config('config.yaml')
 # Set jax platform
-if cfg['misc']['jax_platform'] == 'auto':
-    pass
-else:
+if cfg['misc']['jax_platform'] != 'auto':
     os.environ['JAX_PLATFORMS'] = cfg['misc']['jax_platform']
 
 # if using the CPU, set the number of threads
@@ -670,6 +672,7 @@ pvt_cfg = {
     'probe_comb_idxs': unique_probe_combs_ix_hs,
     'req_probe_combs_hs_2d': req_probe_combs_hs_2d,
     'req_probe_combs_rs_2d': req_probe_combs_rs_2d,
+    'nonreq_probe_combs_hs': nonreq_probe_combs_hs,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
@@ -1700,7 +1703,15 @@ if obs_space == 'real':
     # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
     cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
     # construct 4d and 2d 3x2pt
-    cov_rs_obj._build_cov_3x2pt_4d_and_2d()
+    # cov_rs_obj._build_cov_3x2pt_4d_and_2d()
+    
+    # test new method:
+    for term in cov_rs_obj.cov_dict:
+        cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
+            cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
+        )
+        
+
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 

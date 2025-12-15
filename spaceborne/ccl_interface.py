@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from spaceborne import constants as const
 from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
+from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
 _UNSET = object()
@@ -399,59 +400,24 @@ class CCLInterface:
 
     # ! ================================================================================
 
-    # TODO deprecate this func
-    def set_sigma2_b_old(
-        self, z_grid, fsky, which_sigma2_b, nside_mask, mask_path=None
-    ):
-        self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
-        area_deg2 = fsky * 4 * np.pi * (180 / np.pi) ** 2
+    def set_cov_dict(self, pvt_cfg, ccl_ng_cov_terms_list):
+        """Instantiate the covariance dictionary with the required terms.
+        This is not done at initialization since this class does not exclusively handle
+        covariance calculations.
 
-        if which_sigma2_b == 'polar_cap_on_the_fly':
-            mask = mask_utils.generate_polar_cap_func(area_deg2, nside_mask)
+        Note: this class only computes
+          - non-gaussian terms required, also depending on SSC/cNG_code settings
+          - 4d dim
+        """
 
-        elif which_sigma2_b == 'from_input_mask':
-            mask = hp.read_map(mask_path)
+        _req_terms = [term.lower() for term in ccl_ng_cov_terms_list]
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space='harmonic')
+            for probe in pvt_cfg['req_probe_combs_hs_2d']
+        ]
+        _dims = ['4d']
 
-        # normalize the mask and pass it to sigma2_B_from_mask
-        if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
-            hp.mollview(
-                mask,
-                coord=['C', 'E'],
-                title='polar cap generated on-the fly',
-                cmap='inferno_r',
-            )
-            cl_mask = hp.anafast(mask)
-            ell_mask = np.arange(len(cl_mask))
-            cl_mask_norm = cl_mask * (2 * ell_mask + 1) / (4 * np.pi * fsky) ** 2
-
-            # quick check
-            fsky_mask = np.sqrt(cl_mask[0] / (4 * np.pi))
-            assert np.fabs(fsky_mask / fsky) < 1.01, (
-                'fsky_in is not the same as the fsky of the mask'
-            )
-
-            # normalization has been checked from
-            # https://github.com/tilmantroester/KiDS-1000xtSZ/blob/master/scripts/compute_SSC_mask_power.py
-            # and is the same as CSST paper https://zenodo.org/records/7813033
-            sigma2_b = ccl.covariances.sigma2_B_from_mask(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_mask_norm
-            )
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
-
-        elif which_sigma2_b == 'flat_sky':
-            sigma2_b = ccl.covariances.sigma2_B_disc(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky
-            )
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
-
-        elif which_sigma2_b is None:
-            self.sigma2_b_tuple = None
-
-        else:
-            raise ValueError(
-                'which_sigma2_b must be either "from_input_mask", '
-                '"polar_cap_on_the_fly" or None'
-            )
+        self.cov_dict = cd.create_cov_dict(_req_terms, _req_probe_combs_2d, dims=_dims)
 
     def set_sigma2_b(self, z_grid, which_sigma2_b, mask_obj):
         self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
@@ -499,44 +465,42 @@ class CCLInterface:
 
         # set relevant dictionaries with the different probe combinations as keys
         self.set_dicts_for_trisp()
-
         self.tkka_dict = {}
-        for probe_a, probe_b, probe_c, probe_d in unique_probe_combs:
-            start = time.perf_counter()
-            probe_str = probe_a + probe_b + probe_c + probe_d
 
-            print(
-                f'{comp_load_str} {which_ng_cov} trispectrum, '
-                f'probe combination {probe_str}'
-            )
+        print('')
 
-            # Attempt to load from cache, fall back to computing if necessary
-            tkka_abcd = None
-            if pyccl_cfg['load_cached_tkka']:
-                try:
-                    tkka_abcd = self._load_and_set_tkka(
-                        which_ng_cov, tkka_path, k_a_str, probe_str
+        for probe_abcd in unique_probe_combs:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+
+            with sl.timer(
+                f'{comp_load_str} {which_ng_cov} trispectrum, probe combination {probe_abcd}'
+            ):
+                # Attempt to load from cache, fall back to computing if necessary
+                tkka_abcd = None
+                if pyccl_cfg['load_cached_tkka']:
+                    try:
+                        tkka_abcd = self._load_and_set_tkka(
+                            which_ng_cov, tkka_path, k_a_str, probe_abcd
+                        )
+                    except FileNotFoundError as e:
+                        print(
+                            'No files found in the cache. '
+                            'Proceeding to compute the trispectrum term.\nError message:\n'
+                        )
+                        print(e)
+
+                if tkka_abcd is None:
+                    tkka_abcd = self._compute_and_save_tkka(
+                        which_ng_cov, tkka_path, k_a_str, probe_abcd, p_of_k_a=None
                     )
-                except FileNotFoundError as e:
-                    print(
-                        'No files found in the cache. '
-                        'Proceeding to compute the trispectrum term.\nError message:\n'
-                    )
-                    print(e)
 
-            if tkka_abcd is None:
-                tkka_abcd = self._compute_and_save_tkka(
-                    which_ng_cov, tkka_path, k_a_str, probe_str, p_of_k_a=None
-                )
-
-            self.tkka_dict[probe_a, probe_b, probe_c, probe_d] = tkka_abcd
-
-            print(f'done in {(time.perf_counter() - start) / 60:.2f} m')
+                self.tkka_dict[probe_ab, probe_cd] = tkka_abcd
 
     def _compute_and_save_tkka(
-        self, which_ng_cov, tkka_path, k_a_str, probe_block, p_of_k_a
+        self, which_ng_cov, tkka_path, k_a_str, probe_abcd, p_of_k_a
     ):
-        probe_a, probe_b, probe_c, probe_d = probe_block
+        probe_a, probe_b, probe_c, probe_d = probe_abcd
+
         tkka_func, additional_args = self.get_tkka_func(
             probe_a, probe_b, probe_c, probe_d, which_ng_cov
         )
@@ -556,10 +520,10 @@ class CCLInterface:
         np.save(f'{tkka_path}/lnk2_arr_{k_a_str}.npy', lk2_arr)
 
         if which_ng_cov == 'SSC':
-            np.save(f'{tkka_path}/pk1_arr_{probe_block}_{k_a_str}.npy', tk_arrays[0])
-            np.save(f'{tkka_path}/pk2_arr_{probe_block}_{k_a_str}.npy', tk_arrays[1])
+            np.save(f'{tkka_path}/pk1_arr_{probe_abcd}_{k_a_str}.npy', tk_arrays[0])
+            np.save(f'{tkka_path}/pk2_arr_{probe_abcd}_{k_a_str}.npy', tk_arrays[1])
         elif which_ng_cov == 'cNG':
-            np.save(f'{tkka_path}/trisp_{probe_block}_{k_a_str}.npy', tk_arrays[0])
+            np.save(f'{tkka_path}/trisp_{probe_abcd}_{k_a_str}.npy', tk_arrays[0])
 
         return tkka_abcd
 
@@ -599,8 +563,9 @@ class CCLInterface:
         # print info
         if a_grid is not None and logn_k_grid is not None:
             print(
-                f'{which_ng_cov} trispectrum: z points = {a_grid.size}, '
-                f'k points = {logn_k_grid.size}'
+                f'\n{which_ng_cov} trispectrum grid info:\n'
+                f'\tz points = {a_grid.size}'
+                f'\n\tk points = {logn_k_grid.size}'
             )
 
         # set string
@@ -708,7 +673,6 @@ class CCLInterface:
         zpairs_CD = ind_CD.shape[0]
         nbl = len(ell)
 
-        start_time = time.perf_counter()
         # switch between the two functions, which are identical except for the
         # sigma2_b argument
         if which_ng_cov == 'SSC':
@@ -761,139 +725,133 @@ class CCLInterface:
                         **sigma2_b_arg,
                     )
 
-        print(
-            f'{which_ng_cov} computed with pyccl in '
-            f'{(time.perf_counter() - start_time) / 60:.0f} min'
-        )
-
         return cov_ng_4D
 
     def compute_ng_cov_3x2pt(
-        self, which_ng_cov, ells, fsky, integration_method, unique_probe_combs, ind_dict
+        self,
+        which_ng_cov,
+        ells,
+        fsky,
+        integration_method,
+        unique_probe_combs,
+        nonreq_probe_combs,
+        ind_dict,
     ):
-        cov_ng_3x2pt_dict_8D = {}
+        """Compute the specified non-Gaussian covariance term (ssc or cng) for each
+        probe block.
+        The probe blocks are organised in several categories:
+         - unique_probe_combs: These are actually computed
+         - symm_probe_combs: The symmetric counterparts of the unique blocks,
+           filled by symmetry (can be an empty list if cross_cov=False)
+         - nonreq_probe_combs: Probe blocks that are not required and will be set to
+           zero. In the new cov_dict structure, these only include the blocks that
+           explicitly need to be set to 0, not the ones to be skipped entirely.
+           For example, if
+           {LL: True, GL: True, cross_cov: False}
+           then nonreq_probe_combs = [LLGL, GLLL]
+           as opposed to the above plus all the other probe combinations that are not
+           requested at all.
+        """
+        # key of cov_dict
+        ng_term = which_ng_cov.lower()
 
         kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
 
         # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
-        symm_probe_combs, nonreq_probe_combs = sl.get_probe_combs(
+        symm_probe_combs, _ = sl.get_probe_combs(
             unique_probe_combs=unique_probe_combs, space='harmonic'
         )
+        req_probe_combs_2d = list(self.cov_dict[ng_term].keys())
+        req_probe_combs_2d = [''.join(p) for p in req_probe_combs_2d]
 
+        print('')
         # * compute required blocks
-        for probe_str in unique_probe_combs:
-            probe_a, probe_b, probe_c, probe_d = probe_str
-            probe_tpl = (probe_a, probe_b, probe_c, probe_d)
+        for probe_abcd in unique_probe_combs:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            probe_2tpl = (probe_ab, probe_cd)
+            probe_a, probe_b, probe_c, probe_d = probe_abcd
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
-            print('CCL 3x2pt cov: computing probe combination ', probe_tpl)
 
-            cov_ng_3x2pt_dict_8D[probe_tpl] = self.compute_ng_cov_probe_block(
+            print(
+                f'CCL {which_ng_cov} cov: computing probe combination ',
+                probe_ab + probe_cd,
+            )
+
+            self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
                 which_ng_cov=which_ng_cov,
                 kernel_A=kernel_dict[probe_a],
                 kernel_B=kernel_dict[probe_b],
                 kernel_C=kernel_dict[probe_c],
                 kernel_D=kernel_dict[probe_d],
                 ell=ells,
-                tkka=self.tkka_dict[probe_a, probe_b, probe_c, probe_d],
+                tkka=self.tkka_dict[probe_ab, probe_cd],
                 fsky=fsky,
-                ind_AB=ind_dict[probe_a, probe_b],
-                ind_CD=ind_dict[probe_c, probe_d],
+                ind_AB=ind_dict[probe_ab],
+                ind_CD=ind_dict[probe_cd],
                 integration_method=integration_method,
                 symmetrize_zpairs=symmetrize_zpairs,
             )
 
         # * fill the symmetric counterparts of the required blocks
         # * (excluding diagonal blocks)
-        for probe_str in symm_probe_combs:
-            probe_a, probe_b, probe_c, probe_d = probe_str
-            probe_tpl_orig = (probe_a, probe_b, probe_c, probe_d)
-            probe_tpl_symm = (probe_c, probe_d, probe_a, probe_b)
-            print(f'CCL 3x2pt cov: filling probe combination {probe_tpl_orig} by symmetry')
+        for probe_abcd in symm_probe_combs:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            probe_2tpl_orig = (probe_ab, probe_cd)
+            probe_2tpl_symm = (probe_cd, probe_ab)
+            print(
+                f'CCL {which_ng_cov} cov: filling probe combination {probe_ab + probe_cd} by symmetry'
+            )
 
-            cov_ng_3x2pt_dict_8D[probe_tpl_orig] = (
-                cov_ng_3x2pt_dict_8D[probe_tpl_symm].transpose(1, 0, 3, 2)
+            self.cov_dict[ng_term][probe_2tpl_orig]['4d'] = (
+                self.cov_dict[ng_term][probe_2tpl_symm]['4d'].transpose(1, 0, 3, 2)
             ).copy()
 
-        # * if block is not required, set it to 0
-        for probe_str in nonreq_probe_combs:
-            probe_a, probe_b, probe_c, probe_d = probe_str
-            probe_tpl = (probe_a, probe_b, probe_c, probe_d)
-            print('CCL 3x2pt cov: skipping probe combination ', probe_tpl)
+        # # * if block is not required, set it to 0
+        for probe_abcd in nonreq_probe_combs:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            probe_2tpl = (probe_ab, probe_cd)
+            print(
+                f'CCL {which_ng_cov} cov: skipping probe combination {probe_ab + probe_cd}'
+            )
 
-            zpairs_ab = ind_dict[probe_a, probe_b].shape[0]
-            zpairs_cd = ind_dict[probe_c, probe_d].shape[0]
+            zpairs_ab = ind_dict[probe_ab].shape[0]
+            zpairs_cd = ind_dict[probe_cd].shape[0]
             nbl = len(ells)
-            cov_ng_3x2pt_dict_8D[probe_tpl] = np.zeros(
+            self.cov_dict[ng_term][probe_2tpl]['4d'] = np.zeros(
                 (nbl, nbl, zpairs_ab, zpairs_cd)
             )
 
-        self.cov_ng_3x2pt_dict_8D = cov_ng_3x2pt_dict_8D
-
-        if which_ng_cov == 'SSC':
-            self.cov_ssc_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
-        if which_ng_cov == 'cNG':
-            self.cov_cng_ccl_3x2pt_dict_8D = self.cov_ng_3x2pt_dict_8D
-
-        self.check_cov_blocks_simmetry()
-
-    def check_cov_blocks_simmetry(self):
+    def check_cov_blocks_symmetry(self):
         # Test if cov is symmetric in ell1, ell2 (only for the diagonal covariance
         # blocks: the off-diagonal need *not* to be symmetric in ell1, ell2)
-        for key in self.cov_ng_3x2pt_dict_8D:
-            probe_str = ''.join(key)
-            if probe_str in const.HS_DIAG_PROBE_COMBS:
-                try:
-                    cov_2d = sl.cov_4D_to_2D(
-                        self.cov_ng_3x2pt_dict_8D[key], block_index='ell'
-                    )
-                    atol, rtol = 0, 1e-1
-                    np.testing.assert_allclose(
-                        cov_2d,
-                        cov_2d.T,
-                        atol=atol,
-                        rtol=rtol,
-                        err_msg=f'cov_ng_2D {key} is not symmetric in ell1, ell2',
-                    )
-                    np.testing.assert_allclose(
-                        self.cov_ng_3x2pt_dict_8D[key],
-                        np.transpose(self.cov_ng_3x2pt_dict_8D[key], (1, 0, 3, 2)),
-                        atol=atol,
-                        rtol=rtol,
-                        err_msg=f'cov_ng_4D {key} is not symmetric in ell1, ell2',
-                    )
-                except AssertionError as error:
-                    print(f'Probe combination: {key}')
-                    print(error)
+        for term in self.cov_dict:
+            for probe_2tpl in self.cov_dict[term]:
+                probe_abcd = probe_2tpl[0] + probe_2tpl[1]
 
-    def save_cov_blocks(self, cov_path, cov_filename):
-        for probe_a, probe_b, probe_c, probe_d in self.cov_ng_3x2pt_dict_8D:
-            cov_filename_fmt = cov_filename.format(
-                probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d
-            )
-
-            np.savez_compressed(
-                f'{cov_path}/{cov_filename_fmt}',
-                self.cov_ng_3x2pt_dict_8D[probe_a, probe_b, probe_c, probe_d],
-            )
-
-    def load_cov_blocks(self, cov_path, cov_filename, unique_probe_combs):
-        self.cov_ng_3x2pt_dict_8D = {}
-
-        for probe_tuple in unique_probe_combs:
-            print(probe_tuple)
-            probe_a, probe_b, probe_c, probe_d = probe_tuple
-            probe_str = probe_a + probe_b + probe_c + probe_d
-
-            # * load the required blocks
-            cov_filename_fmt = cov_filename.format(
-                probe_a=probe_a, probe_b=probe_b, probe_c=probe_c, probe_d=probe_d
-            )
-            self.cov_ng_3x2pt_dict_8D[probe_tuple] = np.load(
-                f'{cov_path}/{cov_filename_fmt}'
-            )['arr_0']
-
-            # * fill the symmetric counterparts of the required blocks
-            if probe_str not in const.HS_DIAG_PROBE_COMBS:
-                self.cov_ng_3x2pt_dict_8D[probe_c, probe_d, probe_a, probe_b] = np.copy(
-                    self.cov_ng_3x2pt_dict_8D[probe_tuple].transpose(1, 0, 3, 2)
-                )
+                if probe_abcd in const.HS_DIAG_PROBE_COMBS:
+                    try:
+                        cov_2d = sl.cov_4D_to_2D(
+                            self.cov_dict[term][probe_2tpl]['4d'], block_index='ell'
+                        )
+                        atol, rtol = 0, 1e-1
+                        np.testing.assert_allclose(
+                            cov_2d,
+                            cov_2d.T,
+                            atol=atol,
+                            rtol=rtol,
+                            err_msg=f'cov {term} {probe_abcd} 2d is '
+                            'not symmetric in ell1, ell2',
+                        )
+                        np.testing.assert_allclose(
+                            self.cov_dict[term][probe_2tpl]['4d'],
+                            np.transpose(
+                                self.cov_dict[term][probe_2tpl]['4d'], (1, 0, 3, 2)
+                            ),
+                            atol=atol,
+                            rtol=rtol,
+                            err_msg=f'cov {term} {probe_abcd} 4d is '
+                            'is not symmetric in ell1, ell2',
+                        )
+                    except AssertionError as error:
+                        print(f'Probe combination: {term} {probe_abcd}')
+                        print(error)

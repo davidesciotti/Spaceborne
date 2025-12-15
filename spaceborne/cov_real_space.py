@@ -25,6 +25,7 @@ from scipy.integrate import simpson as simps
 from tqdm import tqdm
 
 from spaceborne import constants as const
+from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
 warnings.filterwarnings(
@@ -124,166 +125,6 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
 
 # ! __ = 'no longer used'
-def __project_ellspace_cov_vec_2d(
-    theta_1_l, theta_1_u, mu,
-    theta_2_l, theta_2_u, nu,
-    Amax, ell2_values, ell1_values, cov_ell
-):  # fmt: skip
-    """This version is fully vectorized"""
-
-    warnings.warn(
-        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
-    )
-
-    def integrand_func(ell1, ell2, cov_ell):
-        kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
-        knu = k_mu(ell2, theta_2_l, theta_2_u, nu)
-
-        # Broadcast to handle all combinations of ell1 and ell2
-        ell1_matrix, ell2_matrix = np.meshgrid(ell1, ell2)
-        kmu_matrix, knu_matrix = np.meshgrid(kmu, knu)
-
-        # Compute the integrand
-        part_product = ell1_matrix * ell2_matrix * kmu_matrix * knu_matrix
-        integrand = part_product[:, :, None, None, None, None] * cov_ell
-
-        return integrand
-
-    # Compute the integrand for all combinations of ell1 and ell2
-    integrand = integrand_func(ell1_values, ell2_values, cov_ell)
-
-    part_integral = simps(y=integrand, x=ell1_values, axis=0)
-    integral = simps(y=part_integral, x=ell2_values, axis=0)  # axis=1?
-
-    # Finally multiply the prefactor
-    cov_elem = integral / (4.0 * np.pi**2 * Amax)
-    return cov_elem
-
-
-def __project_ellspace_cov_vec_1d(
-    theta_1_l, theta_1_u, mu,
-    theta_2_l, theta_2_u, nu,
-    Amax, ell1_values, ell2_values, cov_ell_diag,
-):  # fmt: skip
-    """This version is vectorized anly along ell1"""
-
-    warnings.warn(
-        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
-    )
-
-    def integrand_func(ell1, ell2, cov_ell_diag):
-        # Vectorized computation of k_mu and k_nu
-        kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
-        knu = k_mu(ell2, theta_2_l, theta_2_u, nu)
-
-        # Compute the integrand
-        part_product = ell1 * ell2 * kmu * knu
-        integrand = part_product[:, None, None, None, None] * cov_ell_diag
-        return integrand
-
-    # Compute the integrand for all combinations of ell1 and ell2
-    integrand = integrand_func(ell1_values, ell2_values, cov_ell_diag)
-
-    integral = simps(y=integrand, x=ell1_values, axis=0)  # axis=1?
-
-    # Finally multiply the prefactor
-    cov_elem = integral / (4.0 * np.pi**2 * Amax)
-    return cov_elem
-
-
-def __project_hs_cov_simps(
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
-    zi, zj, zk, zl,
-    Amax, ell1_values, ell2_values, cov_ell,
-):  # fmt: skip
-    warnings.warn(
-        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
-    )
-    # def integrand_func(ell1, ell2, cov_ell):
-    #     kmu = k_mu(ell1, theta_1_l, theta_1_u, mu)
-    #     knu = k_mu(ell2, theta_2_l, theta_2_u, nu)
-
-    #     integrand = np.zeros_like(cov_ell)
-    #     for ell2_ix, ell2 in enumerate(ell2_values):
-    #         integrand[:, ell2_ix, zi, zj, zk, zl] = ell1 * kmu * ell2 * knu
-    # * cov_ell[:, ell2_ix, zi, zk, zk, zl]
-
-    #     return integrand
-
-    # # Compute the integrand for all combinations of ell1 and ell2
-    # integrand = integrand_func(ell1_values, ell2_values, cov_ell)
-
-    # part_integral = simps(y=integrand, x=ell1_values, axis=0)
-    # integral = simps(y=part_integral, x=ell2_values, axis=0)  # axis=1?
-
-    # old school:
-    inner_integral = np.zeros(len(ell1_values))
-
-    for ell1_ix, _ in enumerate(ell1_values):
-        inner_integrand = (
-            ell2_values
-            * k_mu(ell2_values, theta_2_l, theta_2_u, nu)
-            * cov_ell[ell1_ix, :, zi, zj, zk, zl]
-        )
-        inner_integral[ell1_ix] = simps(y=inner_integrand, x=ell2_values)
-
-    outer_integrand = (
-        ell1_values**2 * k_mu(ell1_values, theta_1_l, theta_1_u, mu) * inner_integral
-    )
-    outer_integral = simps(y=outer_integrand, x=ell1_values)
-
-    # Finally multiply the prefactor
-    cov_elem = outer_integral / (4.0 * np.pi**2 * Amax)
-    return cov_elem
-
-
-def __project_ellspace_cov_helper(    # fmt: skip
-    self, theta_1_ix, theta_2_ix, mu, nu,
-    zij, zkl, ind_ab, ind_cd,
-    Amax, ell1_values, ell2_values, cov_ell,
-):  # fmt: skip
-    # TODO unify helper funcs
-
-    warnings.warn(
-        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
-    )
-
-    theta_1_l = self.theta_edges_fine[theta_1_ix]
-    theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
-    theta_2_l = self.theta_edges_fine[theta_2_ix]
-    theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
-
-    zi, zj = ind_ab[zij, :]
-    zk, zl = ind_cd[zkl, :]
-
-    return (theta_1_ix, theta_2_ix, zi, zj, zk, zl,  # fmt: skip
-        __project_hs_cov_simps(
-            theta_1_l, theta_1_u, mu,
-            theta_2_l, theta_2_u, nu,
-            zi, zj, zk, zl,
-            Amax, ell1_values, ell2_values, cov_ell,
-        ),
-    )  # fmt: skip
-
-
-def __project_ellspace_cov_vec_helper(
-    self, theta_1_ix, theta_2_ix, mu, nu, Amax, ell1_values, ell2_values, cov_ell
-):
-    warnings.warn(
-        'This function is deprecated.', cathegory=DeprecationWarning, stacklevel=2
-    )
-    theta_1_l = self.theta_edges_fine[theta_1_ix]
-    theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
-    theta_2_l = self.theta_edges_fine[theta_2_ix]
-    theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
-
-    return (theta_1_ix, theta_2_ix,  # fmt: skip
-        __project_ellspace_cov_vec_1d(
-            theta_1_l, theta_1_u, mu,
-            theta_2_l, theta_2_u, nu,
-            Amax, ell1_values, ell2_values, cov_ell,
-        ),
-    )  # fmt: skip
 
 
 # ! ====================== COV RS W/ SIMPSON INTEGRATION ===============================
@@ -621,80 +462,6 @@ def levin_integrate_bessel_double_wrapper(
     return result_levin
 
 
-def stack_probe_blocks_old_deprecated(cov_2d_dict):
-    row_1 = np.hstack(
-        (
-            cov_2d_dict['gggg'],
-            cov_2d_dict['gggt'],
-            cov_2d_dict['ggxip'],
-            cov_2d_dict['ggxim'],
-        )
-    )
-    row_2 = np.hstack(
-        (
-            cov_2d_dict['gggt'].T,
-            cov_2d_dict['gtgt'],
-            cov_2d_dict['gtxip'],
-            cov_2d_dict['gtxim'],
-        )
-    )
-    row_3 = np.hstack(
-        (
-            cov_2d_dict['ggxip'].T,
-            cov_2d_dict['gtxip'].T,
-            cov_2d_dict['xipxip'],
-            cov_2d_dict['xipxim'],
-        )
-    )
-    row_4 = np.hstack(
-        (
-            cov_2d_dict['ggxim'].T,
-            cov_2d_dict['gtxim'].T,
-            cov_2d_dict['xipxim'].T,
-            cov_2d_dict['ximxim'],
-        )
-    )
-
-    return np.vstack((row_1, row_2, row_3, row_4))
-
-
-def stack_probe_blocks_deprecated(cov_2d_dict):
-    xip_row = np.hstack(
-        (
-            cov_2d_dict['xipxip'],
-            cov_2d_dict['xipxim'],
-            cov_2d_dict['xipgt'],
-            cov_2d_dict['xipgg'],
-        )
-    )
-    xim_row = np.hstack(
-        (
-            cov_2d_dict['xipxim'].T,
-            cov_2d_dict['ximxim'],
-            cov_2d_dict['ximgt'],
-            cov_2d_dict['ximgg'],
-        )
-    )
-    gt_row = np.hstack(
-        (
-            cov_2d_dict['xipgt'].T,
-            cov_2d_dict['ximgt'].T,
-            cov_2d_dict['gtgt'],
-            cov_2d_dict['gtgg'],
-        )
-    )
-    gg_row = np.hstack(
-        (
-            cov_2d_dict['xipgg'].T,
-            cov_2d_dict['ximgg'].T,
-            cov_2d_dict['gtgg'].T,
-            cov_2d_dict['gggg'],
-        )
-    )
-
-    return np.vstack((xip_row, xim_row, gt_row, gg_row))
-
-
 def twopcf_wrapper(
     cosmo, zi, zj, ell_grid, theta_grid, cl_3D, correlation_type, method
 ):
@@ -788,6 +555,25 @@ class CovRealSpace:
         self.ind_cross = pvt_cfg['ind_cross']
         self.ind_dict = pvt_cfg['ind_dict']
         self.cov_ordering_2d = self.cfg['covariance']['covariance_ordering_2D']
+        self.ind_dict = pvt_cfg['ind_dict']
+        self.ind_auto = pvt_cfg['ind_auto']
+        self.ind_cross = pvt_cfg['ind_cross']
+        self.zpairs_auto = pvt_cfg['zpairs_auto']
+        self.zpairs_cross = pvt_cfg['zpairs_cross']
+
+        # instantiate cov dict with the required terms and probe combinations
+        self.req_terms = pvt_cfg['req_terms']
+        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_rs_2d']
+        dims = ['6d', '4d', '2d']
+
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space='real')
+            for probe in self.req_probe_combs_2d
+        ]
+        _req_probe_combs_2d.append('3x2pt')
+        self.cov_dict = cd.create_cov_dict(
+            self.req_terms, _req_probe_combs_2d, dims=dims
+        )
 
         # setters
         self._set_survey_info()
@@ -815,7 +601,7 @@ class CovRealSpace:
         self.ells = _UNSET
         self.nbl = _UNSET
 
-    def set_cov_2d_ordering(self, req_probe_combs_2d):
+    def set_cov_2d_ordering(self):
         # settings for 2D covariance ordering
         if self.cov_ordering_2d == 'probe_scale_zpair':
             self.block_index = 'ell'
@@ -823,7 +609,7 @@ class CovRealSpace:
             self.cov_4D_to_2D_3x2pt_func_kw = {
                 'block_index': self.block_index,
                 'zbins': self.zbins,
-                'req_probe_combs_2d': req_probe_combs_2d,
+                'req_probe_combs_2d': self.req_probe_combs_2d,
             }
         elif self.cov_ordering_2d == 'probe_zpair_scale':
             self.block_index = 'zpair'
@@ -831,7 +617,7 @@ class CovRealSpace:
             self.cov_4D_to_2D_3x2pt_func_kw = {
                 'block_index': self.block_index,
                 'zbins': self.zbins,
-                'req_probe_combs_2d': req_probe_combs_2d,
+                'req_probe_combs_2d': self.req_probe_combs_2d,
             }
         elif self.cov_ordering_2d == 'scale_probe_zpair':
             self.block_index = 'ell'
@@ -926,7 +712,7 @@ class CovRealSpace:
         # for validation purposes
         self.probe_idx_dict_short_oc = {}
         for key in const.RS_PROBE_NAME_TO_IX_DICT:
-            probe_ab_str, probe_cd_str = sl.split_probe_name(key)
+            probe_ab_str, probe_cd_str = sl.split_probe_name(key, 'real')
             probe_ab_str_oc = 'gm' if probe_ab_str == 'gt' else probe_ab_str
             probe_cd_str_oc = 'gm' if probe_cd_str == 'gt' else probe_cd_str
             self.probe_idx_dict_short_oc[probe_ab_str_oc + probe_cd_str_oc] = (
@@ -1226,9 +1012,88 @@ class CovRealSpace:
             ),
         )  # fmt: skip
 
-    def combine_terms_and_probes(self, unique_probe_combs, req_probe_combs_2d):
-        """For the given term, constructs the 3x2pt (nx2pt, depending on the n required
-        probes) 2D cov, taking into account the required probe combinations
+    def _sum_split_g_terms_allprobeblocks_alldims(self) -> None:
+        # small sanity check probe combinations must match for terms (sva, sn, mix)
+        if not (
+            self.cov_dict['sva'].keys()
+            == self.cov_dict['sn'].keys()
+            == self.cov_dict['mix'].keys()
+        ):
+            raise ValueError(
+                'The probe combinations keys in the SVA, SN and MIX covariance '
+                'dictionaries do not match!'
+            )
+
+        # sanity check: all the probes must match
+        probes_sva = set(self.cov_dict['sva'].keys())
+        probes_sn = set(self.cov_dict['sn'].keys())
+        probes_mix = set(self.cov_dict['mix'].keys())
+        if not (probes_sva == probes_sn == probes_mix):
+            raise ValueError(
+                'The probe combinations in the SVA, SN and MIX covariance '
+                'dictionaries do not match!'
+            )
+
+        # now sum the terms to get the Gaussian, for all probe combinations and
+        # dimensions
+        for probe_2tpl in self.cov_dict['sva']:
+            if probe_2tpl == '3x2pt':
+                continue  # skip 3x2pt, built later
+
+            # sanity check: all the dimensions must match
+            dims_sva = set(self.cov_dict['sva'][probe_2tpl].keys())
+            dims_sn = set(self.cov_dict['sn'][probe_2tpl].keys())
+            dims_mix = set(self.cov_dict['mix'][probe_2tpl].keys())
+            if not (dims_sva == dims_sn == dims_mix):
+                raise ValueError(
+                    'The probe combinations in the SVA, SN and MIX covariance '
+                    'dictionaries do not match!'
+                )
+
+            # for each dim, perform the sum
+            for dim in ['2d', '4d', '6d']:
+                self.cov_dict['g'][probe_2tpl][dim] = (
+                    self.cov_dict['sva'][probe_2tpl][dim]
+                    + self.cov_dict['sn'][probe_2tpl][dim]
+                    + self.cov_dict['mix'][probe_2tpl][dim]
+                )
+
+    def _build_cov_3x2pt_4d_and_2d(self) -> None:
+        """For each covariance term, constructs the 4d and 2d 3x2pt covs from
+        the 6d probe-specific ones.
+
+        Note: remember that there is no 6d 3x2pt 6d or 10d cov!
+
+        Note: This exact same function is also defined in cov_harmonic_space.py
+        """
+
+        # TODO deprecate this func
+
+        for term in self.cov_dict:
+            if term == 'tot':
+                continue  # tot is built at the end, skip it
+
+            self.cov_dict[term]['3x2pt']['4d'] = (
+                sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
+                    self.cov_dict[term], obs_space='real'
+                )
+            )
+            self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
+                self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
+            )
+
+        # this function modifies the cov_dict in place, no need to reassign the result
+        # to self.cov_dict
+        sl.set_cov_tot_2d_and_6d(
+            cov_dict=self.cov_dict,
+            req_probe_combs_2d=self.req_probe_combs_2d,
+            space='real',
+        )
+
+    def combine_terms_and_probes(self, unique_probe_combs):
+        """For all the required terms, constructs the 3x2pt
+        (or nx2pt, depending on the n required probes) 2D cov,
+        taking into account the required probe combinations
         (this is taken care of by cov_4D_to_2DCLOE_3x2pt_rs).
         sack (join) probes into a single 2D cov (for each term) and store it in the
         object"""
@@ -1236,19 +1101,19 @@ class CovRealSpace:
         # ! construct 3x2pt 2D cov for each term and store them in the object
         for term in self.terms_toloop:
             # first construct the dict
-            cov_3x2pt_term_dict_4d = self.build_cov_3x2pt_8d_dict(
-                req_probe_combs_2d, term
+            cov_term_3x2pt_4d_dict = self.build_cov_3x2pt_8d_dict(
+                self.req_probe_combs_2d, term
             )
             # then turn to 4D array
-            cov_3x2pt_term_4d = sl.cov_3x2pt_8D_dict_to_4D(
-                cov_3x2pt_term_dict_4d, req_probe_combs_2d, space='real'
+            cov_term_3x2pt_4d_arr = sl.cov_3x2pt_8D_dict_to_4D(
+                cov_term_3x2pt_4d_dict, self.req_probe_combs_2d, space='real'
             )
-            # then to 2D
-            cov_3x2pt_term_2d = self.cov_4D_to_2D_3x2pt_func(
-                cov_3x2pt_term_4d, **self.cov_4D_to_2D_3x2pt_func_kw
+            # then to 2D array
+            cov_term_3x2pt_2d_arr = self.cov_4D_to_2D_3x2pt_func(
+                cov_term_3x2pt_4d_arr, **self.cov_4D_to_2D_3x2pt_func_kw
             )
             # set attribute
-            setattr(self, f'cov_3x2pt_{term}_2d', cov_3x2pt_term_2d)
+            setattr(self, f'cov_3x2pt_{term}_2d', cov_term_3x2pt_2d_arr)
 
         # ! sum terms to get G and TOT 2D 3x2pt covs and store them in the object
         self.cov_3x2pt_g_2d = sum(
@@ -1283,17 +1148,18 @@ class CovRealSpace:
             setattr(self, f'cov_{probe}_g_6d', cov_probe_g_6d)
             setattr(self, f'cov_{probe}_tot_6d', cov_probe_tot_6d)
 
-    def compute_realspace_cov(self, cov_hs_obj, probe, term):
+    def compute_rs_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
         """
-        Computes the real space covariance matrix for the terms (sva, mix, sn, ssc, cng)
-        and probes specfied
+        Computes the real space covariance matrix for the specified term
+        and probe combination, in 6d
         """
 
-        probe_ab, probe_cd = sl.split_probe_name(probe)
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+        probe_2tpl = (probe_ab, probe_cd)
 
         mu, nu = const.MU_DICT[probe_ab], const.MU_DICT[probe_cd]
         probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
-            probe
+            probe_abcd
         ]
 
         ind_ab = (
@@ -1308,7 +1174,7 @@ class CovRealSpace:
         zpairs_ab = self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
         zpairs_cd = self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
 
-        # jsut a sanity check
+        # just a sanity check
         assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
         assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
 
@@ -1327,7 +1193,7 @@ class CovRealSpace:
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
                 )  # fmt: skip
 
-        elif term == 'mix' and probe not in ['ggxim', 'ggxip']:
+        elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
             if self.integration_method == 'simps':
                 # cov_mix_simps also needs self, I pass it here directly by creating a
                 # partial function
@@ -1343,7 +1209,7 @@ class CovRealSpace:
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
                 )  # fmt: skip
 
-        elif term == 'mix' and probe in ['ggxim', 'ggxip']:
+        elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
             cov_out_6d = np.zeros(
                 (self.nbt_fine, self.nbt_fine,
                  self.zbins, self.zbins, self.zbins, self.zbins)
@@ -1376,16 +1242,14 @@ class CovRealSpace:
             # ! no delta_ell!!
             delta_ell = np.ones_like(self.ells + 1)
 
-            cov_sva_sb_hs_10d, _cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = (
-                sl.covariance_einsum(
-                    self.cl_3x2pt_5d,
-                    noise_5d,
-                    self.fsky,
-                    self.ells,
-                    delta_ell,
-                    split_terms=True,
-                    return_only_diagonal_ells=True,
-                )
+            cov_sva_sb_hs_10d, _cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = sl.compute_g_cov(
+                self.cl_3x2pt_5d,
+                noise_5d,
+                self.fsky,
+                self.ells,
+                delta_ell,
+                split_terms=True,
+                return_only_diagonal_ells=True,
             )
 
             # sum sva and mix in harmonic space ("svapmix" = "sva plus mix")
@@ -1517,58 +1381,123 @@ class CovRealSpace:
             cov_out_6d = cov_rs_6d_binned
 
         # ! reshape 6D to 2D and store this as well in the object
-        cov_out_4d = sl.cov_6D_to_4D_blocks(
-            cov_out_6d, self.nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-        )
-        # cov_out_2d = sl.cov_4D_to_2D(cov_out_4d, block_index=block_index, optimize=True)
 
-        setattr(self, f'cov_{probe}_{term}_6d', cov_out_6d)
+        # setattr(self, f'cov_{probe_abcd}_{term}_6d', cov_out_6d)
         # these are needed for 3x2pt 2D
-        setattr(self, f'cov_{probe}_{term}_4d', cov_out_4d)
+        # setattr(self, f'cov_{probe_abcd}_{term}_4d', cov_out_4d)
         # This is not necessary since I don't save the probe-specific 2D covs anymore
         # (see comment in combine_terms_and_probes)
         # setattr(self, f'cov_{probe}_{term}_2d', cov_out_2d)
 
-    def fill_remaining_probe_blocks(self, term, symm_probe_combs, nonreq_probe_combs):
+        self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
+
+    def fill_remaining_probe_blocks_6d(
+        self, term, symm_probe_combs, nonreq_probe_combs
+    ):
         """Fill the remaining probe combinations by symmetry or
         set them to 0 if not required."""
 
         # * fill the symmetric counterparts of the required blocks
         # * (excluding diagonal blocks)
         for probe_abcd in symm_probe_combs:
-            print(f'RS cov: filling probe combination {probe_abcd} by symmetry')
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+            print(f'RS cov: filling probe combination {probe_ab, probe_cd} by symmetry')
 
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
-            probe_cdab = probe_cd + probe_ab
+            cov_cdab = self.cov_dict[term][probe_cd, probe_ab]['6d']
+            cov = (cov_cdab.transpose(1, 0, 4, 5, 2, 3)).copy()
+            self.cov_dict[term][probe_ab, probe_cd]['6d'] = cov
 
-            cov_cdab = getattr(self, f'cov_{probe_cdab}_{term}_4d')
-            cov = (cov_cdab.transpose(1, 0, 3, 2)).copy()
-            setattr(self, f'cov_{probe_abcd}_{term}_4d', cov)
-
-        # * if block is not required, set it to 0
+        # # * if block is not required, set it to 0
         for probe_abcd in nonreq_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='real')
+            probe_2tpl = (probe_ab, probe_cd)
+
+            self.cov_dict[term][probe_2tpl]['6d'] = np.zeros(
+                (
+                    self.nbt_coarse,
+                    self.nbt_coarse,
+                    self.zbins,
+                    self.zbins,
+                    self.zbins,
+                    self.zbins,
+                )
+            )
+
+    def _cov_probeblocks_6d_to_4d_and_2d(self, term):
+        """
+        For the input term, transforms all 6d probe-blocks into 4d and 2d.
+        Note: this does not apply to 3x2pt!
+        """
+
+        for probe_2tpl in self.cov_dict[term]:
+            if probe_2tpl == '3x2pt':
+                continue  # skip 3x2pt, handled elsewhere
+
+            probe_abcd = probe_2tpl[0] + probe_2tpl[1]
+
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = (
                 const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd]
             )
+
+            ind_ab = (
+                self.ind_auto[:, 2:] if probe_a_ix == probe_b_ix
+                else self.ind_cross[:, 2:]
+            )  # fmt: skip
+            ind_cd = (
+                self.ind_auto[:, 2:] if probe_c_ix == probe_d_ix
+                else self.ind_cross[:, 2:]
+            )  # fmt: skip
+
             zpairs_ab = (
                 self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
             )
             zpairs_cd = (
                 self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
             )
-            cov = np.zeros((self.nbt_coarse, self.nbt_coarse, zpairs_ab, zpairs_cd))
-            setattr(self, f'cov_{probe_abcd}_{term}_4d', cov)
 
-    def build_cov_3x2pt_8d_dict(self, req_probe_combs_2d, term):
-        """Store the 4D blocks in a dictionary"""
-        cov_3x2pt_dict_4d = {}
+            # just a sanity check
+            assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
+            assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
 
-        # make each block 4D and store it with the right key
-        for probe in req_probe_combs_2d:
-            probe_ab, probe_cd = sl.split_probe_name(probe)
-            cov_3x2pt_dict_4d[probe_ab, probe_cd] = getattr(
-                self, f'cov_{probe}_{term}_4d'
+            cov_6d = self.cov_dict[term][probe_2tpl]['6d']
+            cov_4d = sl.cov_6D_to_4D_blocks(
+                cov_6d, self.nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
             )
+            cov_2d = sl.cov_4D_to_2D(
+                cov_4d, block_index=self.block_index, optimize=True
+            )
+            self.cov_dict[term][probe_2tpl]['4d'] = cov_4d
+            self.cov_dict[term][probe_2tpl]['2d'] = cov_2d
 
-        return cov_3x2pt_dict_4d
+    def fill_remaining_probe_blocks_4d(
+        self, term, symm_probe_combs, nonreq_probe_combs
+    ):
+        """Fill the remaining probe combinations by symmetry or
+        set them to 0 if not required."""
+
+        # * fill the symmetric counterparts of the required blocks
+        # * (excluding diagonal blocks)
+        for probe_abcd in symm_probe_combs:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+            print(f'RS cov: filling probe combination {probe_ab, probe_cd} by symmetry')
+
+            cov_cdab = self.cov_dict[term][probe_cd, probe_ab]['4d']
+            cov = (cov_cdab.transpose(1, 0, 3, 2)).copy()
+            self.cov_dict[term][probe_ab, probe_cd]['4d'] = cov
+
+        # TODO verify that commenting this doesn't break anything
+        # * if block is not required, set it to 0
+        # for probe_abcd in nonreq_probe_combs:
+        #     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+        #     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = (
+        #         const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd]
+        #     )
+        #     zpairs_ab = (
+        #         self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
+        #     )
+        #     zpairs_cd = (
+        #         self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
+        #     )
+        #     cov = np.zeros((self.nbt_coarse, self.nbt_coarse, zpairs_ab, zpairs_cd))
+        #     self.cov_dict[term][probe_ab, probe_cd]['4d'] = cov
+        # setattr(self, f'cov_{probe_abcd}_{term}_4d', cov)

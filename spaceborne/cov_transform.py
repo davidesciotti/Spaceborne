@@ -78,7 +78,7 @@ def cov_3x2pt_10d_to_4d(
 
 
 def split_probe_name(
-    full_probe_name: str, space: str = 'real', valid_probes=None
+    full_probe_name: str, space: str, valid_probes=None
 ) -> tuple[str, str]:
     """Splits a full probe name (e.g., 'gtxim') into two component probes."""
 
@@ -160,7 +160,7 @@ def cov_3x2pt_8d_dict_to_4d(cov_3x2pt_8d_dict, req_probe_combs_2d, space='harmon
         if space == 'harmonic':
             probe_tpl = tuple(probe)
         elif space == 'real':
-            probe_tpl = split_probe_name(probe)
+            probe_tpl = split_probe_name(probe, 'real')
 
         assert probe_tpl in cov_3x2pt_8d_dict, (
             f'Probe combination {probe_tpl} not found in the input dictionary'
@@ -197,7 +197,7 @@ def cov_3x2pt_8d_dict_to_4d(cov_3x2pt_8d_dict, req_probe_combs_2d, space='harmon
     elif space == 'real':
         row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
         for probe in req_probe_combs_2d:
-            probe_ab, probe_cd = split_probe_name(probe)
+            probe_ab, probe_cd = split_probe_name(probe, 'real')
             if probe_ab == 'xip':
                 row_xip_list.append(cov_3x2pt_8d_dict[probe_ab, probe_cd])
             elif probe_ab == 'xim':

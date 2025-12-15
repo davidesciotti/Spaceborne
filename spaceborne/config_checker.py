@@ -33,9 +33,13 @@ class SpaceborneConfigChecker:
                 'The BNT transform should be applied either to the Cls '
                 'or to the covariance.'
             )
+        if self.cfg['BNT']['cov_BNT_transform'] or self.cfg['BNT']['cl_BNT_transform']:
+            assert self.cfg['probe_selection']['space'] == 'harmonic', (
+                'The BNT transform can only be applied in harmonic space.'
+            )
 
         # def check_fsky(self) -> None:
-        _fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])
+        # _fsky_check = cosmo_lib.deg2_to_fsky(self.cfg['mask']['survey_area_deg2'])
         # assert np.abs(sl.percent_diff(self.cfg['mask']['fsky'], fsky_check)) < 1e-5, (
         #     'fsky does not match the survey area.'
         # )
@@ -263,8 +267,8 @@ class SpaceborneConfigChecker:
         assert isinstance(mask_cfg.get('nside'), (int, type(None))), (
             'mask: nside must be an int or None'
         )
-        assert isinstance(mask_cfg.get('survey_area_deg2'), int), (
-            'mask: survey_area_deg2 must be an int'
+        assert isinstance(mask_cfg.get('survey_area_deg2'), (int, float)), (
+            'mask: survey_area_deg2 must be an int or float'
         )
         assert isinstance(mask_cfg.get('apodize'), bool), (
             'mask: apodize must be a boolean'
@@ -449,7 +453,6 @@ class SpaceborneConfigChecker:
         )
 
         # PyCCL
-        # PyCCL
         assert isinstance(self.cfg.get('PyCCL'), dict), (
             "Section 'PyCCL' must be a dictionary"
         )
@@ -483,7 +486,6 @@ class SpaceborneConfigChecker:
             'PyCCL: gsl_params must be a dictionary or None'
         )
 
-        # precision
         # precision
         assert isinstance(self.cfg.get('precision'), dict), (
             "Section 'precision' must be a dictionary"
@@ -696,6 +698,14 @@ class SpaceborneConfigChecker:
             assert self.cfg['binning']['binning_type'] != 'ref_cut', (
                 'ref_cut case incompatible with nmt for the moment. '
                 'Please use a different binning type.'
+            )
+        if (
+            self.cfg['namaster']['use_namaster']
+            and self.cfg['covariance']['G_code'] != 'Spaceborne'
+        ):
+            raise ValueError(
+                'If computing the partial-sky covariance with NaMaster, '
+                '`covariance: G_code` should not be set (or set to "Spaceborne").'
             )
 
     def run_all_checks(self) -> None:

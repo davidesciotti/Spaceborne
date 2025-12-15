@@ -78,6 +78,7 @@ def load_cl_euclidlib(filename, key_a, key_b):
     # try:
     #     cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
     # except:
+        # cl_dict = el.photo.angular_power_spectra(filename)
     cl_dict = el.le3.pk_wl.angular_power_spectra(filename)
 
     # extract ells

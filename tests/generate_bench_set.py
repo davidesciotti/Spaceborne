@@ -475,7 +475,6 @@ for space in ['harmonic', 'real']:
                         )
 
 
-
 # ! Bias models
 for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
     # for which_mag_bias in ['from_input', 'FS2_polynomial_fit']:
@@ -529,7 +528,6 @@ for no_sampling_noise in [True, False]:
     configs_to_test.append({'covariance': {'no_sampling_noise': no_sampling_noise}})
 
 
-
 # ! SSC  variations
 for ke_approx in [True, False]:
     for include_b2g in [True, False]:
@@ -545,8 +543,8 @@ for ke_approx in [True, False]:
             )
 
 # ! cNG
-# for cng in [True, False]:
-#     configs_to_test.append({'covariance': {'cNG': cng}})
+for cng in [True, False]:
+    configs_to_test.append({'covariance': {'cNG': cng}})
 
 # ! other codes [TODO add OneCov]
 for ssc_code in ['Spaceborne', 'PyCCL']:
@@ -587,7 +585,6 @@ for coupled_cov in [True, False]:
                         'binning': {'binning_type': binning_type},
                     }
                 )
-
 
 # ! BNT transform
 for cl_BNT_transform, cov_BNT_transform in zip(

@@ -8,7 +8,7 @@
 # ROOTS:
 # pleiadi: /_u/dsciotti/code
 # thinkpad: /_home/davide/Documenti/Lavoro/Programmi
-# mac: /_/Users/davidesciotti/Documents/Work/Code
+# mac: /_Users/davidesciotti/Documents/Work/Code
 # melodie: /_home/cosmo/davide.sciotti/data
 
 cosmology:
@@ -55,10 +55,10 @@ halo_model:
 
 
 OneCovariance:
+    path_to_oc_env: '/opt/miniconda3/envs/cov20_env/bin/python'
     path_to_oc_executable: '../OneCovariance/covariance.py'
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
-
 
 
 probe_selection:
@@ -68,14 +68,14 @@ probe_selection:
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
-  GG: True # Type: bool. Whether to compute the photometric clustering ('GG') covariance
+  GG: False # Type: bool. Whether to compute the photometric clustering ('GG') covariance
   
   xip: True # Type: bool. Whether to compute \xi_+
-  xim: True # Type: bool. Whether to compute \xi_-
+  xim: False # Type: bool. Whether to compute \xi_-
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
   
-  cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
+  cross_cov: False # Type: bool. Whether to compute the cross-covariance between the selected probes
 
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.
@@ -109,7 +109,7 @@ binning:
   binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
   ell_min: 10 # Type: int. Minimum ell
-  ell_max: 200 # Type: int. Maximum ell
+  ell_max: 1500 # Type: int. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   ell_bins_filename: '../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt'
@@ -197,6 +197,8 @@ covariance:
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
+  SSC_code: Spaceborne 
+  
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 
   # Choose whether to use the upper ('triu') or lower ('tril') triangle
@@ -210,11 +212,11 @@ covariance:
   # Determines the ordering of the covariance matrix in 2D, with the outermost
   # loop corresponding to the leftmost index. 
   # `scale` = ell or theta, depending on the 'space' requested.
-  # Options: [scale_probe_zpair, probe_scale_zpair, probe_zpair_scale, zpair_probe_scale]
+  # Options: [scale_probe_zpair, probe_scale_zpair, probe_zpair_scale]
   # Examples:
-  # - scale_probe_zpair: Ordered by scale index (ell or theta), then probe type, then redshift pair.
-  # - probe_scale_zpair: Ordered by probe type, then scale (ell/theta), then redshift pair.
   # - probe_zpair_scale: Ordered by probe type, then redshift pair, then scale (ell/theta). This is the 2D ordering used by cloelike
+  # - probe_scale_zpair: Ordered by probe type, then scale (ell/theta), then redshift pair.
+  # - scale_probe_zpair: Ordered by scale index (ell or theta), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
@@ -265,8 +267,8 @@ covariance:
   use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
   # Name of the output covariance file.
-  cov_filename: cov_fsky # Type: str.
-  save_cov_fits: True # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module. 
+  cov_filename: cov_sb # Type: str.
+  save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module. 
 
 
 PyCCL:
@@ -299,7 +301,7 @@ PyCCL:
 
 namaster:
   use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
-  spin0: False # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but less accurate)
+  spin0: True # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but slightly less accurate)
   use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
   workspace_path: ... # Type: str. Path to the workspace, if already computed
 
@@ -321,12 +323,12 @@ sample_covariance:
 
 
 precision:
-  # ==================================== NaMaster ====================================
+  # ==================================== NaMaster ======================================
   # Number of iterations when computing the alms of the input map. See 
   # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
   n_iter_nmt: null # Type: None | int. 
 
-  # ===================================== pylevin ====================================
+  # ===================================== pylevin ======================================
   # Precision settings for pylevin. See the official documentation for more details:
   # https://levin-bessel.readthedocs.io/en/latest/index.html
   # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
@@ -336,7 +338,7 @@ precision:
   boost_bessel: True  # Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
   verbose: True  # Type: bool. Whether to display warnings
 
-  # ================================= real space cov =================================
+  # ================================= real space cov ===================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_rs: 2  # Type: int
@@ -352,7 +354,7 @@ misc:
   
   # jax-specific settings
   jax_platform: 'auto' # Type: str. 'auto', 'cpu' or 'gpu'
-  jax_enable_x64: true # Type: str. Whether to enable 64-bit precision for computations run on the GPU
+  jax_enable_x64: True # Type: bool. Whether to enable 64-bit precision for JAX computations
 
   # some sanity checks on the covariance matrix. These could take a while to run.
   test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv

@@ -6,12 +6,13 @@ from typing import TypedDict
 
 import healpy as hp
 import numpy as np
-import pyccl as ccl
 import pymaster as nmt
 from tqdm import tqdm
 
 from spaceborne import constants, ell_utils, mask_utils
 from spaceborne import sb_lib as sl
+from spaceborne import cov_dict as cd
+from spaceborne import constants as const
 
 _UNSET = object()
 
@@ -61,6 +62,7 @@ def bin_mcm(mbm_unbinned: np.ndarray, nmt_bin_obj) -> np.ndarray:
 
 
 def nmt_gaussian_cov(
+    cov_dict: dict,
     cl_tt: np.ndarray,
     cl_te: np.ndarray,
     cl_ee: np.ndarray,
@@ -115,8 +117,6 @@ def nmt_gaussian_cov(
         )
 
     nell = cl_tt.shape[0] if coupled else nbl
-
-    cov_nmt_10d_arr = np.zeros((2, 2, 2, 2, nbl, nbl, zbins, zbins, zbins, zbins))
 
     def cl_00_list(zi, zj):
         return [cl_tt[:, zi, zj]]
@@ -287,33 +287,45 @@ def nmt_gaussian_cov(
             covar_TT_TE = sl.bin_2d_array_vectorized(covar_TT_TE, **common_kw)
             covar_TT_TT = sl.bin_2d_array_vectorized(covar_TT_TT, **common_kw)
 
-        cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
-        cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_TE_EE
-        cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_TE_TE
-        cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = covar_TT_EE
-        cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = covar_TT_TE
-        cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = covar_TT_TT
+        cov_dict['g']['LL', 'LL']['6d'][:, :, zi, zj, zk, zl] = covar_EE_EE
+        cov_dict['g']['GL', 'LL']['6d'][:, :, zi, zj, zk, zl] = covar_TE_EE
+        cov_dict['g']['GL', 'GL']['6d'][:, :, zi, zj, zk, zl] = covar_TE_TE
+        cov_dict['g']['GG', 'LL']['6d'][:, :, zi, zj, zk, zl] = covar_TT_EE
+        cov_dict['g']['GG', 'GL']['6d'][:, :, zi, zj, zk, zl] = covar_TT_TE
+        cov_dict['g']['GG', 'GG']['6d'][:, :, zi, zj, zk, zl] = covar_TT_TT
         # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
-        cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = covar_TE_EE.T
-        cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_EE.T
-        cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_TE.T
+        cov_dict['g']['LL', 'GL']['6d'][:, :, zk, zl, zi, zj] = covar_TE_EE.T
+        cov_dict['g']['LL', 'GG']['6d'][:, :, zk, zl, zi, zj] = covar_TT_EE.T
+        cov_dict['g']['GL', 'GG']['6d'][:, :, zk, zl, zi, zj] = covar_TT_TE.T
 
-    return cov_nmt_10d_arr
+    return cov_dict
 
 
-def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
-                           w00, unique_probe_combs, coupled, ells_in, ells_out,
-                           ells_out_edges, which_binning, weights):  # fmt: skip
+def nmt_gaussian_cov_spin0(
+    cov_dict: dict,
+    cl_tt: np.ndarray,
+    cl_te: np.ndarray,
+    cl_ee: np.ndarray,
+    zbins: int,
+    nbl: int,
+    cw,
+    w00,
+    unique_probe_combs: list[str],
+    coupled: bool,
+    ells_in: np.ndarray,
+    ells_out: np.ndarray,
+    ells_out_edges: np.ndarray,
+    which_binning: str,
+    weights: np.ndarray | None,
+):
     cl_et = cl_te.transpose(0, 2, 1)
 
     nell = cl_tt.shape[0] if coupled else nbl
 
-    cov_nmt_10d_arr = np.zeros((2, 2, 2, 2, nbl, nbl, zbins, zbins, zbins, zbins))
-
     z_combinations = list(itertools.product(range(zbins), repeat=4))
     for zi, zj, zk, zl in tqdm(z_combinations):
         if 'GGGG' in unique_probe_combs:
-            covar_00_00 = nmt.gaussian_covariance(cw,  # fmt: skip
+            covar_00_00 = nmt.gaussian_covariance(cw,  
                                                 0, 0, 0, 0, 
                                                 [cl_tt[:, zi, zk]],  # TT
                                                 [cl_tt[:, zi, zl]],  # TT
@@ -330,7 +342,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
         # of the 3x2pt probe combination matrix, rather then the upper one as done in
         # the rest of the code)
         if 'GGGL' in unique_probe_combs or 'GLGG' in unique_probe_combs:
-            covar_00_02 = nmt.gaussian_covariance(cw,  # fmt: skip
+            covar_00_02 = nmt.gaussian_covariance(cw,  
                                                 0, 0, 0, 0, 
                                                 [cl_tt[:, zi, zk]],  # TT
                                                 [cl_te[:, zi, zl]],  # TE, TB
@@ -343,7 +355,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
             covar_TT_TE = np.zeros((nell, nell))
 
         if 'GLGL' in unique_probe_combs:
-            covar_02_02 = nmt.gaussian_covariance(cw,  # fmt: skip
+            covar_02_02 = nmt.gaussian_covariance(cw,  
                                                 0, 0, 0, 0, 
                                                 [cl_tt[:, zi, zk]],  # TT
                                                 [cl_te[:, zi, zl]],  # TE, TB
@@ -356,7 +368,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
             covar_TE_TE = np.zeros((nell, nell))
 
         if 'GGLL' in unique_probe_combs or 'LLGG' in unique_probe_combs:
-            covar_00_22 = nmt.gaussian_covariance(cw,  # fmt: skip
+            covar_00_22 = nmt.gaussian_covariance(cw,  
                                                 0, 0, 0, 0, 
                                                 [cl_te[:, zi, zk]],  # TE, TB
                                                 [cl_te[:, zi, zl]],  # TE, TB
@@ -369,7 +381,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
             covar_TT_EE = np.zeros((nell, nell))
 
         if 'GLLL' in unique_probe_combs or 'LLGL' in unique_probe_combs:
-            covar_02_22 = nmt.gaussian_covariance(cw,  # fmt: skip
+            covar_02_22 = nmt.gaussian_covariance(cw,  
                                                 0, 0, 0, 0, 
                                                 [cl_te[:, zi, zk]],  # TE, TB
                                                 [cl_te[:, zi, zl]],  # TE, TB
@@ -382,7 +394,7 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
             covar_TE_EE = np.zeros((nell, nell))
 
         if 'LLLL' in unique_probe_combs:
-            covar_22_22 = nmt.gaussian_covariance(cw,  # fmt: skip
+            covar_22_22 = nmt.gaussian_covariance(cw,  
                                                 0, 0, 0, 0, 
                                                 [cl_ee[:, zi, zk]],
                                                 [cl_ee[:, zi, zl]],
@@ -411,22 +423,23 @@ def nmt_gaussian_cov_spin0(cl_tt, cl_te, cl_ee, zbins, nbl, cw,
             covar_TT_TE = sl.bin_2d_array_vectorized(covar_TT_TE, **common_kw)
             covar_TT_TT = sl.bin_2d_array_vectorized(covar_TT_TT, **common_kw)
 
-        cov_nmt_10d_arr[0, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_EE_EE
-        cov_nmt_10d_arr[1, 0, 0, 0, :, :, zi, zj, zk, zl] = covar_TE_EE
-        cov_nmt_10d_arr[1, 0, 1, 0, :, :, zi, zj, zk, zl] = covar_TE_TE
-        cov_nmt_10d_arr[1, 1, 0, 0, :, :, zi, zj, zk, zl] = covar_TT_EE
-        cov_nmt_10d_arr[1, 1, 1, 0, :, :, zi, zj, zk, zl] = covar_TT_TE
-        cov_nmt_10d_arr[1, 1, 1, 1, :, :, zi, zj, zk, zl] = covar_TT_TT
+        cov_dict['g']['LL', 'LL']['6d'][:, :, zi, zj, zk, zl] = covar_EE_EE
+        cov_dict['g']['GL', 'LL']['6d'][:, :, zi, zj, zk, zl] = covar_TE_EE
+        cov_dict['g']['GL', 'GL']['6d'][:, :, zi, zj, zk, zl] = covar_TE_TE
+        cov_dict['g']['GG', 'LL']['6d'][:, :, zi, zj, zk, zl] = covar_TT_EE
+        cov_dict['g']['GG', 'GL']['6d'][:, :, zi, zj, zk, zl] = covar_TT_TE
+        cov_dict['g']['GG', 'GG']['6d'][:, :, zi, zj, zk, zl] = covar_TT_TT
         # the remaining blocks can be filled in by symmetry (with zi, zj <-> zk, zl)
-        cov_nmt_10d_arr[0, 0, 1, 0, :, :, zk, zl, zi, zj] = covar_TE_EE.T
-        cov_nmt_10d_arr[0, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_EE.T
-        cov_nmt_10d_arr[1, 0, 1, 1, :, :, zk, zl, zi, zj] = covar_TT_TE.T
+        cov_dict['g']['LL', 'GL']['6d'][:, :, zk, zl, zi, zj] = covar_TE_EE.T
+        cov_dict['g']['LL', 'GG']['6d'][:, :, zk, zl, zi, zj] = covar_TT_EE.T
+        cov_dict['g']['GL', 'GG']['6d'][:, :, zk, zl, zi, zj] = covar_TT_TE.T
 
-    return cov_nmt_10d_arr
+    return cov_dict
 
 
 def linear_lmin_binning(NSIDE, lmin, bw):
-    """Generate a linear binning scheme based on a minimum multipole 'lmin' and bin width 'bw'.
+    """Generate a linear binning scheme based on a minimum multipole 'lmin' and
+    bin width 'bw'.
 
     Parameters
     ----------
@@ -550,6 +563,7 @@ def sample_covariance( # fmt: skip
     nmt_field_kw = {'n_iter': n_iter, 'lite': lite, 'lmax': lmax}
 
     # TODO use only independent z pairs
+    # TODO update this too to the new dict structure
     cov_sim_10d = np.zeros(
         (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
     )
@@ -969,6 +983,24 @@ class NmtCov:
         self.coupled_cov = cfg['covariance']['coupled_cov']
         self.output_path = self.cfg['misc']['output_path']
 
+        # instantiate cov dict
+        # ! note that this class only computes
+        #   - g term
+        #   - g all hs probe combinations (no 3x2pt!!)
+        #   - 6d dim
+
+        self.req_terms = ['g']
+        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_hs_2d']
+        dims = ['6d']
+
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space='harmonic')
+            for probe in const.HS_ALL_PROBE_COMBS
+        ]
+        self.cov_dict = cd.create_cov_dict(
+            self.req_terms, _req_probe_combs_2d, dims=dims
+        )
+
         # check on lmax and NSIDE
         for probe in ('WL', 'GC'):
             _lmax = getattr(self.ell_obj, f'ell_max_{probe}')
@@ -1098,16 +1130,35 @@ class NmtCov:
             cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
 
         if nmt_cfg['use_namaster']:
+            # in this case, since I assign particular elements of the 6D arrays, I also
+            # have to allocate the shapes
+            for term in self.cov_dict:
+                for probe_2tpl in self.cov_dict[term]:
+                    for dim in self.cov_dict[term][probe_2tpl]:
+                        self.cov_dict[term][probe_2tpl][dim] = np.zeros(
+                            (
+                                nbl_eff,
+                                nbl_eff,
+                                self.zbins,
+                                self.zbins,
+                                self.zbins,
+                                self.zbins,
+                            )
+                        )
+
             coupled_str = 'coupled' if self.coupled_cov else 'decoupled'
             spin0_str = ' spin0' if nmt_cfg['spin0'] else ''
             start_time = time.perf_counter()
             print(
-                f'Computing {coupled_str}{spin0_str} partial-sky '
+                f'\nComputing {coupled_str}{spin0_str} partial-sky '
                 'Gaussian covariance with NaMaster...'
             )
 
+            # the nmt_gaussian_cov_spin0 and nmt_gaussian_cov functions modify
+            # cov_dict in-place, so no need to capture any return value
             if nmt_cfg['spin0']:
-                cov_10d_out = nmt_gaussian_cov_spin0(
+                nmt_gaussian_cov_spin0(
+                    cov_dict=self.cov_dict,
                     cl_tt=cl_tt_4covnmt,
                     cl_te=cl_te_4covnmt,
                     cl_ee=cl_ee_4covnmt,
@@ -1124,8 +1175,9 @@ class NmtCov:
                     which_binning='sum',
                 )
 
-            elif not nmt_cfg['spin0']:
-                cov_10d_out = nmt_gaussian_cov(
+            else:
+                nmt_gaussian_cov(
+                    cov_dict=self.cov_dict,
                     cl_tt=cl_tt_4covnmt,
                     cl_te=cl_te_4covnmt,
                     cl_ee=cl_ee_4covnmt,
@@ -1180,7 +1232,9 @@ class NmtCov:
                 n_iter=self.cfg['precision']['n_iter_nmt'],
                 lite=True,
             )
-
+            raise NotImplementedError(
+                'the sample_covariance case should also return a dict!!'
+            )
             cov_10d_out, self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
 
-        return cov_10d_out
+        return self.cov_dict

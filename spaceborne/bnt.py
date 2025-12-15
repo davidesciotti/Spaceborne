@@ -161,7 +161,7 @@ def cov_bnt_transform(
     return cov_bnt_6d
 
 
-def bnt_transform_whole_cov_dict(
+def bnt_transform_cov_dict(
     cov_dict: dict, bnt_matrix: np.ndarray, req_probe_combs_2d: list
 ) -> dict:
     """Wrapper function to apply the BNT transform to all the probes and terms in 

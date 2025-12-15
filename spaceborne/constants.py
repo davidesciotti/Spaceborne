@@ -53,7 +53,7 @@ HS_PROBE_IX_TO_NAME_DICT = {0: 'L', 1: 'G'}
 # the cov is again reduced to 4D or 2D.
 # Can be set to False for a significant speedup, but better to leave as-is for
 # safety.
-HS_SYMMETRIZE_OUTPUT_DICT = {'LL': False, 'GL': False, 'LG': False, 'GG': False}
+HS_SYMMETRIZE_OUTPUT_DICT = {'LL': True, 'GL': False, 'LG': False, 'GG': True}
 
 # bessel functions order for the different real space probes
 MU_DICT = {'gg': 0, 'gt': 2, 'xip': 0, 'xim': 4}

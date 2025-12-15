@@ -13,7 +13,7 @@ Computing namaster workspaces and coupling matrices...
 * remove "cov_3x2pt 4d" functions!
 * rerun all tests with new benchmarks
 * update vademecum in sb_lib [almost done]
-* restore True(s) in const.HS_SYMMETRIZE_OUTPUT_DICT
+* restore True(s) in const.HS_SYMMETRIZE_OUTPUT_DICT [ok]
 """
 
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)

@@ -75,7 +75,7 @@ probe_selection:
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
   
-  cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
+  cross_cov: False # Type: bool. Whether to compute the cross-covariance between the selected probes
 
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.
@@ -217,7 +217,7 @@ covariance:
   # - scale_probe_zpair: Ordered by scale index (ell or theta), then probe type, then redshift pair.
   # - probe_scale_zpair: Ordered by probe type, then scale (ell/theta), then redshift pair.
   # - probe_zpair_scale: Ordered by probe type, then redshift pair, then scale (ell/theta). This is the 2D ordering used by cloelike
-  covariance_ordering_2D: probe_zpair_scale # Type: str.
+  covariance_ordering_2D: zpair_probe_scale # Type: str.
 
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
   # The output will be a npz file for each term, containing arrays of shape
@@ -343,7 +343,7 @@ precision:
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_rs: 2  # Type: int
   ell_max_rs: 100000  # Type: int
-  ell_bins_rs: 10  # Type: int. Should be high to get accurate results with Simpson integration
+  ell_bins_rs: 100  # Type: int. Should be high to get accurate results with Simpson integration
   ell_bins_rs_nongauss: 100  # Type: int. Should be high to get accurate results with Simpson integration
   
 

@@ -317,6 +317,7 @@ def nmt_gaussian_cov_opt(
     w02,
     w22,
     unique_probe_combs: list[str],
+    nonreq_probe_combs: list[str],
     *,
     coupled: bool = False,
     ells_in: np.ndarray,
@@ -394,25 +395,46 @@ def nmt_gaussian_cov_opt(
         'interpolate': True,
     }
 
+    symm_probe_combs, _ = sl.get_probe_combs(
+        unique_probe_combs=unique_probe_combs, space='harmonic'
+    )
+    req_probe_combs_2d = list(cov_dict['g'].keys())
+    req_probe_combs_2d = [''.join(p) for p in req_probe_combs_2d]
+
+    common_msg = 'Namaster G cov:'
+
     for probe_abcd in tqdm(unique_probe_combs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
         probe_a, probe_b, probe_c, probe_d = list(probe_abcd)
+
+        print(f'{common_msg} computing probe combination {probe_ab + probe_cd}')
         is_auto_ab = probe_ab in const.HS_AUTO_PROBES
         is_auto_cd = probe_cd in const.HS_AUTO_PROBES
         is_diag = probe_abcd in const.HS_DIAG_PROBE_COMBS
+
         s1 = spin_dict[probe_a]
         s2 = spin_dict[probe_b]
         s3 = spin_dict[probe_c]
         s4 = spin_dict[probe_d]
         reshape_ab = s1 + s2 if s1 + s2 > 0 else 1
         reshape_cd = s3 + s4 if s3 + s4 > 0 else 1
+        zpairs_ab = ind_dict[probe_ab].shape[0]
+        zpairs_cd = ind_dict[probe_cd].shape[0]
 
-        for zij in zpairs_dict[probe_ab]:
-            for zkl in zpairs_dict[probe_cd]:
+        # allocate array, since I will fill it in pieces
+        cov_dict['g'][probe_ab, probe_cd]['4d'] = np.zeros(
+            (nbl, nbl, zpairs_ab, zpairs_cd)
+        )
+        cov_dict['g'][probe_cd, probe_ab]['4d'] = np.zeros(
+            (nbl, nbl, zpairs_cd, zpairs_ab)
+        )
+
+        for zij in range(zpairs_ab):
+            for zkl in range(zpairs_cd):
                 _, _, zi, zj = ind_dict[probe_ab][zij]
                 _, _, zk, zl = ind_dict[probe_cd][zkl]
 
-                cov_ijkl = nmt.gaussian_covariance(
+                cov_l1l2 = nmt.gaussian_covariance(
                     cw=cw,
                     spin_a1=s1,
                     spin_a2=s2,
@@ -430,19 +452,33 @@ def nmt_gaussian_cov_opt(
                 # ! important note: I always take the [:, 0, :, 0] slice because
                 # ! I'm never interested in the off-diagonal elements of the spin
                 # ! blocks, but this is not the most general case
-                cov_ijkl = cov_ijkl[:, 0, :, 0]
+                cov_l1l2 = cov_l1l2[:, 0, :, 0]
 
                 # in the coupled case, namaster returns unbinned covariance matrices
                 if coupled:
-                    cov_ijkl = sl.bin_2d_array_vectorized(cov_ijkl, **bin_cov_kw)
+                    cov_l1l2 = sl.bin_2d_array_vectorized(cov_l1l2, **bin_cov_kw)
 
-                cov_dict['g'][probe_ab, probe_cd]['6d'][:, :, zi, zj, zk, zl] = cov_ijkl
+                cov_dict['g'][probe_ab, probe_cd]['4d'][:, :, zij, zkl] = cov_l1l2
 
-                # fill symmetric probe block if not diagonal
-                if not is_diag:
-                    cov_dict['g'][probe_cd, probe_ab]['6d'][:, :, zk, zl, zi, zj] = (
-                        cov_ijkl.T
-                    )
+    for probe_abcd in symm_probe_combs:
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        probe_2tpl_orig = (probe_ab, probe_cd)
+        probe_2tpl_symm = (probe_cd, probe_ab)
+        print(
+            f'{common_msg} filling probe combination {probe_ab + probe_cd} by symmetry'
+        )
+
+        cov_dict['g'][probe_2tpl_orig]['4d'] = (
+            cov_dict['g'][probe_2tpl_symm]['4d'].transpose(1, 0, 3, 2)
+        ).copy()
+
+    # # * if block is not required, set it to 0
+    for probe_abcd in nonreq_probe_combs:
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        probe_2tpl = (probe_ab, probe_cd)
+        print(f'{common_msg} skipping probe combination {probe_ab + probe_cd}')
+
+        cov_dict['g'][probe_2tpl]['4d'] = np.zeros((nbl, nbl, zpairs_ab, zpairs_cd))
 
     return cov_dict
 
@@ -1127,6 +1163,8 @@ class NmtCov:
         self.zbins = pvt_cfg['zbins']
         self.n_probes = pvt_cfg['n_probes']
         self.zpairs_dict = pvt_cfg['zpairs_dict']
+        self.nonreq_probe_combs = pvt_cfg['nonreq_probe_combs_hs']
+        self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.ind_dict = pvt_cfg['ind_dict']
         self.coupled_cov = cfg['covariance']['coupled_cov']
         self.output_path = self.cfg['misc']['output_path']
@@ -1297,20 +1335,6 @@ class NmtCov:
                             )
                         )
 
-            for term in self.cov_dict_test:
-                for probe_2tpl in self.cov_dict_test[term]:
-                    for dim in ['6d']:
-                        self.cov_dict_test[term][probe_2tpl][dim] = np.zeros(
-                            (
-                                nbl_eff,
-                                nbl_eff,
-                                self.zbins,
-                                self.zbins,
-                                self.zbins,
-                                self.zbins,
-                            )
-                        )
-
             coupled_str = 'coupled' if self.coupled_cov else 'decoupled'
             spin0_str = ' spin0' if nmt_cfg['spin0'] else ''
             start_time = time.perf_counter()
@@ -1380,6 +1404,7 @@ class NmtCov:
                     w02=w02,
                     w22=w22,
                     unique_probe_combs=unique_probe_combs,
+                    nonreq_probe_combs=self.nonreq_probe_combs,
                     coupled=self.coupled_cov,
                     ells_in=ells_unb,
                     ells_out=ells_eff,
@@ -1388,9 +1413,39 @@ class NmtCov:
                     which_binning='sum',
                 )
 
-                import ipdb
+                # cov_dict_test now has only 4d covs, need to convert to 6d
+                for probe_2tpl in self.cov_dict_test['g']:
+                    if probe_2tpl == '3x2pt':
+                        continue
 
-                ipdb.set_trace()
+                    probe_ab, probe_cd = probe_2tpl
+
+                    # sanity check: no 6d covs should be assigned yet
+                    assert self.cov_dict_test['g'][probe_2tpl]['6d'] is None, (
+                        f'self.cov_dict_test[{"g"}][{probe_2tpl}][6d] is not None '
+                        'before assignment!'
+                    )
+
+                    self.cov_dict_test['g'][probe_2tpl]['6d'] = sl.cov_4D_to_6D_blocks(
+                        cov_4D=self.cov_dict_test['g'][probe_2tpl]['4d'],
+                        nbl=self.ell_obj.nbl_3x2pt,
+                        zbins=self.zbins,
+                        ind_ab=self.ind_dict[probe_ab],
+                        ind_cd=self.ind_dict[probe_cd],
+                        symmetrize_output_ab=self.symmetrize_output_dict[probe_ab],
+                        symmetrize_output_cd=self.symmetrize_output_dict[probe_cd],
+                    )
+
+                # now delete the 4d covs to avoid confusion
+                for probe_2tpl in self.cov_dict_test['g']:
+                    self.cov_dict_test['g'][probe_2tpl]['4d'] = None
+
+                # now the shapes should match, reprocess in the same way
+                self.ind_auto = self.pvt_cfg['ind_auto']
+                self.ind_cross = self.pvt_cfg['ind_cross']
+                self.zpairs_auto = self.pvt_cfg['zpairs_auto']
+                self.zpairs_cross = self.pvt_cfg['zpairs_cross']
+                self.block_index = 'ell'
 
                 sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
                     cov_dict=self.cov_dict,
@@ -1413,6 +1468,8 @@ class NmtCov:
                     block_index=self.block_index,
                 )
 
+                # [BOOKMARK] 16 Dec 2025: everything seems to work fine! now run
+                # more tests and tidy up
                 for term in self.cov_dict:
                     for probe_2tpl in self.cov_dict[term]:
                         for dim in self.cov_dict[term][probe_2tpl]:
@@ -1420,24 +1477,21 @@ class NmtCov:
                                 f'Validating term {term}, probe {probe_2tpl}, dim {dim}... '
                             )
 
-                            term = 'g'
-                            # probe_2tpl = ('LL', 'LL')
-                            dim = '6d'
-                            zi, zj, zk, zl = 0, 0, 0, 0
+                            # import ipdb
+                            # ipdb.set_trace()
 
-                            self.ind_auto = self.pvt_cfg['ind_auto']
-                            self.ind_cross = self.pvt_cfg['ind_cross']
-                            self.zpairs_auto = self.pvt_cfg['zpairs_auto']
-                            self.zpairs_cross = self.pvt_cfg['zpairs_cross']
-                            self.block_index = 'ell'
+                            # term = 'g'
+                            # # probe_2tpl = ('LL', 'LL')
+                            # dim = '6d'
+                            # zi, zj, zk, zl = 0, 0, 0, 0
 
-                            import matplotlib.pyplot as plt
+                            # import matplotlib.pyplot as plt
 
-                            sl.compare_arrays(
-                                self.cov_dict[term][probe_2tpl]['2d'],
-                                self.cov_dict_test[term][probe_2tpl]['2d'],
-                            )
-                            plt.savefig('debug.png')
+                            # sl.compare_arrays(
+                            #     self.cov_dict[term][probe_2tpl]['2d'],
+                            #     self.cov_dict_test[term][probe_2tpl]['2d'],
+                            # )
+                            # plt.savefig('debug.png')
 
                             try:
                                 np.testing.assert_allclose(

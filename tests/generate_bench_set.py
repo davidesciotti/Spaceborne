@@ -427,7 +427,7 @@ for space in ['harmonic', 'real']:
                 'scale_probe_zpair',
             ]:
                 # for triu_tril in ['triu', 'tril']:
-                    # for row_col in ['row-major', 'col-major']:
+                # for row_col in ['row-major', 'col-major']:
                 if space == 'harmonic':
                     for LL, GL, GC in product([True, False], repeat=3):
                         if not any([LL, GL, GC]):
@@ -576,6 +576,8 @@ for coupled_cov in [True, False]:
             for binning_type in ['log', 'lin', 'from_input']:
                 configs_to_test.append(
                     {
+                        # to speed up significantly Nmt
+                        'binning': {'ell_bins': 10, 'ell_max': 1000},
                         'covariance': {'SSC': False, 'coupled_cov': coupled_cov},
                         'namaster': {
                             'use_namaster': True,

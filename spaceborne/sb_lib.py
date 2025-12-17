@@ -112,6 +112,10 @@ def symmetrize_and_fill_probe_blocks(
     []
     """
 
+    # Validate dim parameter
+    if dim not in ('4d', '6d'):
+        raise ValueError(f"dim must be '4d' or '6d', got: {dim}")
+
     # obtain the probe combinations to be filled by symmetry
     symm_probe_combs, _ = get_probe_combs(
         unique_probe_combs=unique_probe_combs, space=obs_space

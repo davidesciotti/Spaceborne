@@ -1148,7 +1148,6 @@ class NmtCov:
 
         self.zbins = pvt_cfg['zbins']
         self.n_probes = pvt_cfg['n_probes']
-        self.zpairs_dict = pvt_cfg['zpairs_dict']
         self.nonreq_probe_combs = pvt_cfg['nonreq_probe_combs_hs']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.ind_dict = pvt_cfg['ind_dict']

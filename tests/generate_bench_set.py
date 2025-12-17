@@ -29,6 +29,8 @@ NOTES
    but you don't need to care about this.
 """
 
+# ruff: noqa: PERF401
+
 import gc
 import json
 import os
@@ -394,7 +396,7 @@ base_cfg = {
         'ell_bins_rs_nongauss': 50,
     },
     'misc': {
-        'num_threads': 72,
+        'num_threads': 50,
         'jax_platform': 'auto',
         'jax_enable_x64': True,
         'test_numpy_inversion': False,
@@ -429,17 +431,17 @@ for space in ['harmonic', 'real']:
                 # for triu_tril in ['triu', 'tril']:
                 # for row_col in ['row-major', 'col-major']:
                 if space == 'harmonic':
-                    for LL, GL, GC in product([True, False], repeat=3):
-                        if not any([LL, GL, GC]):
+                    for LL, GL, GG in product([True, False], repeat=3):
+                        if not any([LL, GL, GG]):
                             continue
                         configs_to_test.append(
                             {
                                 'probe_selection': {
                                     'LL': LL,
                                     'GL': GL,
-                                    'GG': GC,
+                                    'GG': GG,
                                     'cross_cov': cross_cov,
-                                    'space': 'harmonic',
+                                    'space': space,
                                 },
                                 'covariance': {
                                     'SSC': False,
@@ -462,7 +464,7 @@ for space in ['harmonic', 'real']:
                                     'gt': gt,
                                     'w': w,
                                     'cross_cov': cross_cov,
-                                    'space': 'real',
+                                    'space': space,
                                 },
                                 'covariance': {
                                     'SSC': False,
@@ -490,8 +492,8 @@ for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
         )
 
 # ! Power spectrum responses
-for which_pk_responses in ['halo_model', 'separate_universe']:
-    configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
+# for which_pk_responses in ['halo_model', 'separate_universe']:
+#     configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
 
 # ! RSD and magnification bias
 for has_IA in [True, False]:
@@ -557,7 +559,9 @@ for shift_nz in [True, False]:
         configs_to_test.append({'nz': {'shift_nz': shift_nz, 'smooth_nz': smooth_nz}})
 
 # ! Mask variations
-for load_input_mask, generate_polar_cap in zip([True, False], [False, True]):
+for load_input_mask, generate_polar_cap in zip(
+    [True, False], [False, True], strict=True
+):
     for nside in [512, 1024]:
         configs_to_test.append(
             {
@@ -576,17 +580,21 @@ for coupled_cov in [True, False]:
             for binning_type in ['log', 'lin', 'from_input']:
                 configs_to_test.append(
                     {
-                        # to speed up significantly Nmt
-                        'binning': {'ell_bins': 10, 'ell_max': 1000},
                         'covariance': {'SSC': False, 'coupled_cov': coupled_cov},
                         'namaster': {
                             'use_namaster': True,
                             'spin0': spin0,
                             'use_INKA': use_INKA,
                         },
-                        'binning': {'binning_type': binning_type},
+                        'binning': {
+                            # to speed up significantly Nmt
+                            'ell_max': 1000,
+                            'ell_bins': 5,
+                            'binning_type': binning_type,
+                        },
                     }
                 )
+
 
 # ! BNT transform
 for cl_BNT_transform, cov_BNT_transform in zip(

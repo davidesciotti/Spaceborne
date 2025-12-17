@@ -164,10 +164,10 @@ def cov_bnt_transform(
 def bnt_transform_cov_dict(
     cov_dict: dict, bnt_matrix: np.ndarray, req_probe_combs_2d: list
 ) -> dict:
-    """Wrapper function to apply the BNT transform to all the probes and terms in 
+    """Wrapper function to apply the BNT transform to all the probes and terms in
     the cov_dict.
-    
-    Note: cov_dict is modified in-place, so a return is not strictly needed, but I find 
+
+    Note: cov_dict is modified in-place, so a return is not strictly needed, but I find
     this to be a bit clearer
     """
     # BNT-transform 6D covs (for all terms and probe combinations)
@@ -176,6 +176,9 @@ def bnt_transform_cov_dict(
     x_dict = build_x_matrix_bnt(bnt_matrix)
     for term in cov_dict:
         for probe_abcd in req_probe_combs_2d:
+            if term == 'tot':
+                continue  # tot is built after all other terms are computed
+
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
             cov_dict[term][probe_ab, probe_cd]['6d'] = cov_bnt_transform(
                 cov_dict[term][probe_ab, probe_cd]['6d'],
@@ -184,4 +187,5 @@ def bnt_transform_cov_dict(
                 probe_cd,
                 optimize=True,
             )
+
     return cov_dict

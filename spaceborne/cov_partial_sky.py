@@ -1000,7 +1000,7 @@ class NmtCov:
                     symmetrize_output_cd=self.symmetrize_output_dict[probe_cd],
                 )
 
-            # now delete the 4d covs to avoid confusion
+            # now reset the 4d covs to avoid confusion
             for probe_2tpl in self.cov_dict['g']:
                 self.cov_dict['g'][probe_2tpl]['4d'] = None
 

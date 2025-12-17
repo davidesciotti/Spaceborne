@@ -88,6 +88,72 @@ Naming conventions (just to ease the notation):
 """
 
 
+def symmetrize_and_fill_probe_blocks(
+    cov_term_dict: dict,
+    dim: str,
+    unique_probe_combs: list[str],
+    nonreq_probe_combs: list[str],
+    obs_space: str,
+    nbx: int,
+    zbins: int,
+    ind_dict: dict,
+    msg: str,
+) -> dict:
+    """Function to symmetrize and fill 4d covariance matrices.
+    Say we want the LL, GG covariance blocks, plus their cross-covariance.
+
+    Then the unique probe combinations are (I display the list in this way for clarity,
+    it's actually a flat list [LLLL, LLGG, GGLL]):
+    [LLLL, LLGG,
+     -   , GGLL]
+    The smmetric probe combinations are:
+    [LLGG]
+    The non-required probe combinations are:
+    []
+    """
+
+    # obtain the probe combinations to be filled by symmetry
+    symm_probe_combs, _ = get_probe_combs(
+        unique_probe_combs=unique_probe_combs, space=obs_space
+    )
+
+    # fill by symmetry
+    for probe_abcd in symm_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=obs_space)
+        probe_2tpl_orig = (probe_ab, probe_cd)
+        probe_2tpl_symm = (probe_cd, probe_ab)
+        print(f'{msg} filling probe combination {probe_ab, probe_cd} by symmetry')
+
+        if dim == '4d':
+            transpose_axes = (1, 0, 3, 2)
+        elif dim == '6d':
+            transpose_axes = (1, 0, 4, 5, 2, 3)
+
+        cov_term_dict[probe_2tpl_orig][dim] = (
+            cov_term_dict[probe_2tpl_symm][dim].transpose(*transpose_axes)
+        ).copy()
+
+    # # * if block is not required, set it to 0
+    # set to 0 the non-required probe combinations (note that these are the blocks
+    # which appear in the final nx2pt 2d covariance matrix! the blocks which are not
+    # reuired at all, e.g. LLGL if we as for the LL, GG covariance)
+    for probe_abcd in nonreq_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=obs_space)
+        probe_2tpl = (probe_ab, probe_cd)
+        zpairs_ab = ind_dict[probe_ab].shape[0]
+        zpairs_cd = ind_dict[probe_cd].shape[0]
+        print(f'{msg} skipping probe combination {probe_ab, probe_cd}')
+
+        if dim == '4d':
+            shape = (nbx, nbx, zpairs_ab, zpairs_cd)
+        elif dim == '6d':
+            shape = (nbx, nbx, zbins, zbins, zbins, zbins)
+
+        cov_term_dict[probe_2tpl][dim] = np.zeros(shape)
+
+    return cov_term_dict
+
+
 def set_cov_tot_2d_and_6d(cov_dict: dict, req_probe_combs_2d: list, space: str) -> dict:
     """
     Sums G, SSC and cNG 2D covs to get the total covariance

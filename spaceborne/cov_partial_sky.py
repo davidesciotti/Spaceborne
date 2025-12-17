@@ -310,8 +310,8 @@ def nmt_gaussian_cov_opt(
     cl_eb: np.ndarray,
     cl_bb: np.ndarray,
     nbl: int,
+    zbins: int,
     ind_dict: dict,
-    zpairs_dict: dict,
     cw,
     w00,
     w02,
@@ -395,29 +395,22 @@ def nmt_gaussian_cov_opt(
         'interpolate': True,
     }
 
-    symm_probe_combs, _ = sl.get_probe_combs(
-        unique_probe_combs=unique_probe_combs, space='harmonic'
-    )
-    req_probe_combs_2d = list(cov_dict['g'].keys())
-    req_probe_combs_2d = [''.join(p) for p in req_probe_combs_2d]
-
-    common_msg = 'Namaster G cov:'
+    msg = 'Namaster G cov:'
 
     for probe_abcd in tqdm(unique_probe_combs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
         probe_a, probe_b, probe_c, probe_d = list(probe_abcd)
 
-        print(f'{common_msg} computing probe combination {probe_ab + probe_cd}')
-        is_auto_ab = probe_ab in const.HS_AUTO_PROBES
-        is_auto_cd = probe_cd in const.HS_AUTO_PROBES
-        is_diag = probe_abcd in const.HS_DIAG_PROBE_COMBS
+        tqdm.write(f'{msg} computing probe combination {probe_ab, probe_cd}')
 
         s1 = spin_dict[probe_a]
         s2 = spin_dict[probe_b]
         s3 = spin_dict[probe_c]
         s4 = spin_dict[probe_d]
+
         reshape_ab = s1 + s2 if s1 + s2 > 0 else 1
         reshape_cd = s3 + s4 if s3 + s4 > 0 else 1
+
         zpairs_ab = ind_dict[probe_ab].shape[0]
         zpairs_cd = ind_dict[probe_cd].shape[0]
 
@@ -460,25 +453,18 @@ def nmt_gaussian_cov_opt(
 
                 cov_dict['g'][probe_ab, probe_cd]['4d'][:, :, zij, zkl] = cov_l1l2
 
-    for probe_abcd in symm_probe_combs:
-        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-        probe_2tpl_orig = (probe_ab, probe_cd)
-        probe_2tpl_symm = (probe_cd, probe_ab)
-        print(
-            f'{common_msg} filling probe combination {probe_ab + probe_cd} by symmetry'
-        )
-
-        cov_dict['g'][probe_2tpl_orig]['4d'] = (
-            cov_dict['g'][probe_2tpl_symm]['4d'].transpose(1, 0, 3, 2)
-        ).copy()
-
-    # # * if block is not required, set it to 0
-    for probe_abcd in nonreq_probe_combs:
-        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-        probe_2tpl = (probe_ab, probe_cd)
-        print(f'{common_msg} skipping probe combination {probe_ab + probe_cd}')
-
-        cov_dict['g'][probe_2tpl]['4d'] = np.zeros((nbl, nbl, zpairs_ab, zpairs_cd))
+    # symemtrize and set to 0 the relavant probe blocks
+    sl.symmetrize_and_fill_probe_blocks(
+        cov_term_dict=cov_dict['g'],
+        dim='4d',
+        unique_probe_combs=unique_probe_combs,
+        nonreq_probe_combs=nonreq_probe_combs,
+        obs_space='harmonic',
+        nbx=nbl,
+        zbins=zbins,
+        ind_dict=ind_dict,
+        msg=msg,
+    )
 
     return cov_dict
 
@@ -1397,8 +1383,8 @@ class NmtCov:
                     cl_eb=cl_eb_4covnmt,
                     cl_bb=cl_bb_4covnmt,
                     nbl=nbl_eff,
+                    zbins=self.zbins,
                     ind_dict=self.ind_dict,
-                    zpairs_dict=self.zpairs_dict,
                     cw=cw,
                     w00=w00,
                     w02=w02,

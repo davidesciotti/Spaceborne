@@ -303,6 +303,7 @@ def nmt_gaussian_cov(
 
 def nmt_gaussian_cov_opt(
     cov_dict: dict,
+    spin0: bool,
     cl_tt: np.ndarray,
     cl_te: np.ndarray,
     cl_ee: np.ndarray,
@@ -365,26 +366,46 @@ def nmt_gaussian_cov_opt(
 
     nell = cl_tt.shape[0] if coupled else nbl
 
-    def cl_00_list(zi, zj):
-        return [cl_tt[:, zi, zj]]
+    def cl_00_list(zi, zj, spin0):
+        if spin0:
+            return [cl_tt[:, zi, zj]]
+        else:
+            return [cl_tt[:, zi, zj]]
 
-    def cl_02_list(zi, zj):
-        return [cl_te[:, zi, zj], cl_tb[:, zi, zj]]
+    def cl_02_list(zi, zj, spin0):
+        if spin0:
+            return [cl_te[:, zi, zj]]
+        else:
+            return [cl_te[:, zi, zj], cl_tb[:, zi, zj]]
 
-    def cl_20_list(zi, zj):
-        return [cl_et[:, zi, zj], cl_bt[:, zi, zj]]
+    def cl_20_list(zi, zj, spin0):
+        if spin0:
+            return [cl_et[:, zi, zj]]
+        else:
+            return [cl_et[:, zi, zj], cl_bt[:, zi, zj]]
 
-    def cl_22_list(zi, zj):
-        return [cl_ee[:, zi, zj], cl_eb[:, zi, zj], cl_be[:, zi, zj], cl_bb[:, zi, zj]]
+    def cl_22_list(zi, zj, spin0):
+        if spin0:
+            return [cl_ee[:, zi, zj]]
+        else:
+            return [
+                cl_ee[:, zi, zj],
+                cl_eb[:, zi, zj],
+                cl_be[:, zi, zj],
+                cl_bb[:, zi, zj],
+            ]
 
     spin_dict = {'G': 0, 'L': 2}
+
     cl_list_dict = {
         '00': cl_00_list,
         '02': cl_02_list,
         '20': cl_20_list,
         '22': cl_22_list,
     }
-    wsp_dict = {'00': w00, '02': w02, '22': w22}
+    wsp_spin2_dict = {'00': w00, '02': w02, '22': w22}
+    wsp_spin0_dict = {'00': w00, '02': w00, '22': w00}
+    wsp_dict = wsp_spin0_dict if spin0 else wsp_spin2_dict
 
     bin_cov_kw: Bin2DArrayKwargs = {
         'ells_in': ells_in,
@@ -396,7 +417,6 @@ def nmt_gaussian_cov_opt(
     }
 
     msg = 'Namaster G cov:'
-
     for probe_abcd in tqdm(unique_probe_combs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
         probe_a, probe_b, probe_c, probe_d = list(probe_abcd)
@@ -429,23 +449,26 @@ def nmt_gaussian_cov_opt(
 
                 cov_l1l2 = nmt.gaussian_covariance(
                     cw=cw,
-                    spin_a1=s1,
-                    spin_a2=s2,
-                    spin_b1=s3,
-                    spin_b2=s4,
-                    cla1b1=cl_list_dict[f'{s1}{s3}'](zi, zk),
-                    cla1b2=cl_list_dict[f'{s1}{s4}'](zi, zl),
-                    cla2b1=cl_list_dict[f'{s2}{s3}'](zj, zk),
-                    cla2b2=cl_list_dict[f'{s2}{s4}'](zj, zl),
+                    spin_a1=0 if spin0 else s1,
+                    spin_a2=0 if spin0 else s2,
+                    spin_b1=0 if spin0 else s3,
+                    spin_b2=0 if spin0 else s4,
+                    cla1b1=cl_list_dict[f'{s1}{s3}'](zi, zk, spin0),
+                    cla1b2=cl_list_dict[f'{s1}{s4}'](zi, zl, spin0),
+                    cla2b1=cl_list_dict[f'{s2}{s3}'](zj, zk, spin0),
+                    cla2b2=cl_list_dict[f'{s2}{s4}'](zj, zl, spin0),
                     coupled=coupled,
                     wa=wsp_dict[f'{s1}{s2}'],
                     wb=wsp_dict[f'{s3}{s4}'],
-                ).reshape([nell, reshape_ab, nell, reshape_cd])
+                )
 
-                # ! important note: I always take the [:, 0, :, 0] slice because
-                # ! I'm never interested in the off-diagonal elements of the spin
-                # ! blocks, but this is not the most general case
-                cov_l1l2 = cov_l1l2[:, 0, :, 0]
+                if not spin0:
+                    cov_l1l2 = cov_l1l2.reshape([nell, reshape_ab, nell, reshape_cd])
+
+                    # ! important note: I always take the [:, 0, :, 0] slice because
+                    # ! I'm never interested in the off-diagonal elements of the spin
+                    # ! blocks, but this is not the most general case
+                    cov_l1l2 = cov_l1l2[:, 0, :, 0]
 
                 # in the coupled case, namaster returns unbinned covariance matrices
                 if coupled:
@@ -1373,120 +1396,121 @@ class NmtCov:
                     which_binning='sum',
                 )
 
-                nmt_gaussian_cov_opt(
-                    cov_dict=self.cov_dict_test,
-                    cl_tt=cl_tt_4covnmt,
-                    cl_te=cl_te_4covnmt,
-                    cl_ee=cl_ee_4covnmt,
-                    cl_tb=cl_tb_4covnmt,
-                    cl_eb=cl_eb_4covnmt,
-                    cl_bb=cl_bb_4covnmt,
-                    nbl=nbl_eff,
+            nmt_gaussian_cov_opt(
+                cov_dict=self.cov_dict_test,
+                spin0=nmt_cfg['spin0'],
+                cl_tt=cl_tt_4covnmt,
+                cl_te=cl_te_4covnmt,
+                cl_ee=cl_ee_4covnmt,
+                cl_tb=cl_tb_4covnmt,
+                cl_eb=cl_eb_4covnmt,
+                cl_bb=cl_bb_4covnmt,
+                nbl=nbl_eff,
+                zbins=self.zbins,
+                ind_dict=self.ind_dict,
+                cw=cw,
+                w00=w00,
+                w02=w02,
+                w22=w22,
+                unique_probe_combs=unique_probe_combs,
+                nonreq_probe_combs=self.nonreq_probe_combs,
+                coupled=self.coupled_cov,
+                ells_in=ells_unb,
+                ells_out=ells_eff,
+                ells_out_edges=ells_eff_edges,
+                weights=None,
+                which_binning='sum',
+            )
+
+            # cov_dict_test now has only 4d covs, need to convert to 6d
+            for probe_2tpl in self.cov_dict_test['g']:
+                if probe_2tpl == '3x2pt':
+                    continue
+
+                probe_ab, probe_cd = probe_2tpl
+
+                # sanity check: no 6d covs should be assigned yet
+                assert self.cov_dict_test['g'][probe_2tpl]['6d'] is None, (
+                    f'self.cov_dict_test[{"g"}][{probe_2tpl}][6d] is not None '
+                    'before assignment!'
+                )
+
+                self.cov_dict_test['g'][probe_2tpl]['6d'] = sl.cov_4D_to_6D_blocks(
+                    cov_4D=self.cov_dict_test['g'][probe_2tpl]['4d'],
+                    nbl=self.ell_obj.nbl_3x2pt,
                     zbins=self.zbins,
-                    ind_dict=self.ind_dict,
-                    cw=cw,
-                    w00=w00,
-                    w02=w02,
-                    w22=w22,
-                    unique_probe_combs=unique_probe_combs,
-                    nonreq_probe_combs=self.nonreq_probe_combs,
-                    coupled=self.coupled_cov,
-                    ells_in=ells_unb,
-                    ells_out=ells_eff,
-                    ells_out_edges=ells_eff_edges,
-                    weights=None,
-                    which_binning='sum',
+                    ind_ab=self.ind_dict[probe_ab],
+                    ind_cd=self.ind_dict[probe_cd],
+                    symmetrize_output_ab=self.symmetrize_output_dict[probe_ab],
+                    symmetrize_output_cd=self.symmetrize_output_dict[probe_cd],
                 )
 
-                # cov_dict_test now has only 4d covs, need to convert to 6d
-                for probe_2tpl in self.cov_dict_test['g']:
-                    if probe_2tpl == '3x2pt':
-                        continue
+            # now delete the 4d covs to avoid confusion
+            for probe_2tpl in self.cov_dict_test['g']:
+                self.cov_dict_test['g'][probe_2tpl]['4d'] = None
 
-                    probe_ab, probe_cd = probe_2tpl
+            # now the shapes should match, reprocess in the same way
+            self.ind_auto = self.pvt_cfg['ind_auto']
+            self.ind_cross = self.pvt_cfg['ind_cross']
+            self.zpairs_auto = self.pvt_cfg['zpairs_auto']
+            self.zpairs_cross = self.pvt_cfg['zpairs_cross']
+            self.block_index = 'ell'
 
-                    # sanity check: no 6d covs should be assigned yet
-                    assert self.cov_dict_test['g'][probe_2tpl]['6d'] is None, (
-                        f'self.cov_dict_test[{"g"}][{probe_2tpl}][6d] is not None '
-                        'before assignment!'
-                    )
+            sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
+                cov_dict=self.cov_dict,
+                obs_space='harmonic',
+                nbx=self.ell_obj.nbl_3x2pt,
+                ind_auto=self.ind_auto,
+                ind_cross=self.ind_cross,
+                zpairs_auto=self.zpairs_auto,
+                zpairs_cross=self.zpairs_cross,
+                block_index=self.block_index,
+            )
+            sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
+                cov_dict=self.cov_dict_test,
+                obs_space='harmonic',
+                nbx=self.ell_obj.nbl_3x2pt,
+                ind_auto=self.ind_auto,
+                ind_cross=self.ind_cross,
+                zpairs_auto=self.zpairs_auto,
+                zpairs_cross=self.zpairs_cross,
+                block_index=self.block_index,
+            )
 
-                    self.cov_dict_test['g'][probe_2tpl]['6d'] = sl.cov_4D_to_6D_blocks(
-                        cov_4D=self.cov_dict_test['g'][probe_2tpl]['4d'],
-                        nbl=self.ell_obj.nbl_3x2pt,
-                        zbins=self.zbins,
-                        ind_ab=self.ind_dict[probe_ab],
-                        ind_cd=self.ind_dict[probe_cd],
-                        symmetrize_output_ab=self.symmetrize_output_dict[probe_ab],
-                        symmetrize_output_cd=self.symmetrize_output_dict[probe_cd],
-                    )
+            # [BOOKMARK] 16 Dec 2025: everything seems to work fine! now run
+            # more tests and tidy up
+            for term in self.cov_dict:
+                for probe_2tpl in self.cov_dict[term]:
+                    for dim in self.cov_dict[term][probe_2tpl]:
+                        print(
+                            f'Validating term {term}, probe {probe_2tpl}, dim {dim}... '
+                        )
 
-                # now delete the 4d covs to avoid confusion
-                for probe_2tpl in self.cov_dict_test['g']:
-                    self.cov_dict_test['g'][probe_2tpl]['4d'] = None
+                        # import ipdb
+                        # ipdb.set_trace()
 
-                # now the shapes should match, reprocess in the same way
-                self.ind_auto = self.pvt_cfg['ind_auto']
-                self.ind_cross = self.pvt_cfg['ind_cross']
-                self.zpairs_auto = self.pvt_cfg['zpairs_auto']
-                self.zpairs_cross = self.pvt_cfg['zpairs_cross']
-                self.block_index = 'ell'
+                        # term = 'g'
+                        # # probe_2tpl = ('LL', 'LL')
+                        # dim = '6d'
+                        # zi, zj, zk, zl = 0, 0, 0, 0
 
-                sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
-                    cov_dict=self.cov_dict,
-                    obs_space='harmonic',
-                    nbx=self.ell_obj.nbl_3x2pt,
-                    ind_auto=self.ind_auto,
-                    ind_cross=self.ind_cross,
-                    zpairs_auto=self.zpairs_auto,
-                    zpairs_cross=self.zpairs_cross,
-                    block_index=self.block_index,
-                )
-                sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
-                    cov_dict=self.cov_dict_test,
-                    obs_space='harmonic',
-                    nbx=self.ell_obj.nbl_3x2pt,
-                    ind_auto=self.ind_auto,
-                    ind_cross=self.ind_cross,
-                    zpairs_auto=self.zpairs_auto,
-                    zpairs_cross=self.zpairs_cross,
-                    block_index=self.block_index,
-                )
+                        # import matplotlib.pyplot as plt
 
-                # [BOOKMARK] 16 Dec 2025: everything seems to work fine! now run
-                # more tests and tidy up
-                for term in self.cov_dict:
-                    for probe_2tpl in self.cov_dict[term]:
-                        for dim in self.cov_dict[term][probe_2tpl]:
-                            print(
-                                f'Validating term {term}, probe {probe_2tpl}, dim {dim}... '
+                        # sl.compare_arrays(
+                        #     self.cov_dict[term][probe_2tpl]['2d'],
+                        #     self.cov_dict_test[term][probe_2tpl]['2d'],
+                        # )
+                        # plt.savefig('debug.png')
+
+                        try:
+                            np.testing.assert_allclose(
+                                self.cov_dict[term][probe_2tpl]['2d'],
+                                self.cov_dict_test[term][probe_2tpl]['2d'],
+                                rtol=1e-5,
+                                atol=0,
                             )
-
-                            # import ipdb
-                            # ipdb.set_trace()
-
-                            # term = 'g'
-                            # # probe_2tpl = ('LL', 'LL')
-                            # dim = '6d'
-                            # zi, zj, zk, zl = 0, 0, 0, 0
-
-                            # import matplotlib.pyplot as plt
-
-                            # sl.compare_arrays(
-                            #     self.cov_dict[term][probe_2tpl]['2d'],
-                            #     self.cov_dict_test[term][probe_2tpl]['2d'],
-                            # )
-                            # plt.savefig('debug.png')
-
-                            try:
-                                np.testing.assert_allclose(
-                                    self.cov_dict[term][probe_2tpl]['2d'],
-                                    self.cov_dict_test[term][probe_2tpl]['2d'],
-                                    rtol=1e-5,
-                                    atol=0,
-                                )
-                            except AssertionError as e:
-                                print(f'AssertionError: {e}')
+                        except AssertionError as e:
+                            print(f'AssertionError: {e}')
 
             print(f'...done in {(time.perf_counter() - start_time) / 60:.2f} m')
 

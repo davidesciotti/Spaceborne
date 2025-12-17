@@ -55,8 +55,10 @@ halo_model:
 
 
 OneCovariance:
+    # Path to Python executable in OneCovariance conda environment
+    # Update this to match your system's conda installation
     path_to_oc_env: '/opt/miniconda3/envs/cov20_env/bin/python'
-    path_to_oc_executable: '../OneCovariance/covariance.py'
+    path_to_oc_executable: '../OneCovariance/covariance.py'  # Relative path to OneCovariance executable from Spaceborne root
     consistency_checks: False
     oc_output_filename: 'cov_rcf_mergetest'
 

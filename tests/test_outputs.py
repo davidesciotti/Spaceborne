@@ -104,7 +104,7 @@ def test_main_script(test_cfg_path):
                 rtol=1e-5,
                 err_msg=f"{key} doesn't match the benchmark ❌",
             )
-            print(f'{key} matches the benchmark ✅')
+            print(f'{key:<30} matches the benchmark ✅')
         except ValueError as e:
             # Catch shape mismatches (e.g., one empty, one non-empty)
             print(f"Shape mismatch for '{key}': {e}")

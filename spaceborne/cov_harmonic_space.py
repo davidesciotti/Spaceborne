@@ -375,10 +375,10 @@ class SpaceborneCovariance:
 
     def _remove_split_terms_from_dict(self, split_gaussian_cov: bool):
         """Helper function to remove the SVA/SN/MIX parts of the G cov if
-        split_gaussian_cov is True.
+        split_gaussian_cov is False (i.e., when we don't need the split terms).
 
         Note: I already remove the sva, sn, mix terms when saving the covs at the end
-        of main.py, this is redundand."""
+        of main.py, so strictly speaking this is redundant."""
         if split_gaussian_cov:
             return
 

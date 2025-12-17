@@ -7,7 +7,7 @@ RS_DIAG_PROBES = ['xip', 'xim', 'gt', 'gg']
 
 
 def cov_10d_array_to_dict(cov_10d_array: np.ndarray) -> dict:
-    """Transforms a array of shape
+    """Transforms an array of shape
     (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
     to a dictionary of "shape"
     {(A, B, C, D): [nbl, nbl, zbins, zbins, zbins, zbins]}

@@ -761,8 +761,6 @@ class CCLInterface:
         symm_probe_combs, _ = sl.get_probe_combs(
             unique_probe_combs=unique_probe_combs, space='harmonic'
         )
-        req_probe_combs_2d = list(self.cov_dict[ng_term].keys())
-        req_probe_combs_2d = [''.join(p) for p in req_probe_combs_2d]
 
         print('')
         # * compute required blocks

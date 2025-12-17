@@ -140,7 +140,7 @@ def symmetrize_and_fill_probe_blocks(
     # # * if block is not required, set it to 0
     # set to 0 the non-required probe combinations (note that these are the blocks
     # which appear in the final nx2pt 2d covariance matrix! the blocks which are not
-    # reuired at all, e.g. LLGL if we as for the LL, GG covariance)
+    # required at all, e.g. LLGL if we as for the LL, GG covariance)
     for probe_abcd in nonreq_probe_combs:
         probe_ab, probe_cd = split_probe_name(probe_abcd, space=obs_space)
         probe_2tpl = (probe_ab, probe_cd)
@@ -3565,7 +3565,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
                     '("xip") or ("xim") or ("gt") or ("gg") '
                 )
         # concatenate the lists to make rows
-        # o(nly concatenate and include rows that have content)
+        # (only concatenate and include rows that have content)
         if row_xip_list:
             row_xip = np.concatenate(row_xip_list, axis=3)
             final_rows.append(row_xip)
@@ -3664,7 +3664,7 @@ def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: s
                     '("xip") or ("xim") or ("gt") or ("gg") '
                 )
         # concatenate the lists to make rows
-        # o(nly concatenate and include rows that have content)
+        # (only concatenate and include rows that have content)
         if row_xip_list:
             row_xip = np.concatenate(row_xip_list, axis=3)
             final_rows.append(row_xip)
@@ -4565,7 +4565,7 @@ def cov_4D_to_2DCLOE_3x2pt_old(cov_4D, zbins, req_probe_combs_2d, block_index='e
             )
 
     # concatenate the lists to make rows
-    # (o(nly concatenate and include rows that have content)
+    # (only concatenate and include rows that have content)
     final_rows = []
     if row_ll_list:
         row_ll = np.hstack(row_ll_list)

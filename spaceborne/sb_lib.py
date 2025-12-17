@@ -106,7 +106,7 @@ def symmetrize_and_fill_probe_blocks(
     it's actually a flat list [LLLL, LLGG, GGLL]):
     [LLLL, LLGG,
      -   , GGLL]
-    The smmetric probe combinations are:
+    The symmetric probe combinations are:
     [LLGG]
     The non-required probe combinations are:
     []

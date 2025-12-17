@@ -64,7 +64,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real'].
-  space: real # Type: str. 
+  space: harmonic # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -194,7 +194,7 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   SSC_code: Spaceborne 

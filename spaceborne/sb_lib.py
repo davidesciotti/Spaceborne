@@ -122,7 +122,7 @@ def symmetrize_and_fill_probe_blocks(
         probe_ab, probe_cd = split_probe_name(probe_abcd, space=obs_space)
         probe_2tpl_orig = (probe_ab, probe_cd)
         probe_2tpl_symm = (probe_cd, probe_ab)
-        print(f'{msg} filling probe combination {probe_ab, probe_cd} by symmetry')
+        print(f'{msg}filling probe combination {probe_ab, probe_cd} by symmetry')
 
         if dim == '4d':
             transpose_axes = (1, 0, 3, 2)
@@ -142,7 +142,7 @@ def symmetrize_and_fill_probe_blocks(
         probe_2tpl = (probe_ab, probe_cd)
         zpairs_ab = ind_dict[probe_ab].shape[0]
         zpairs_cd = ind_dict[probe_cd].shape[0]
-        print(f'{msg} skipping probe combination {probe_ab, probe_cd}')
+        print(f'{msg}skipping probe combination {probe_ab, probe_cd}')
 
         if dim == '4d':
             shape = (nbx, nbx, zpairs_ab, zpairs_cd)

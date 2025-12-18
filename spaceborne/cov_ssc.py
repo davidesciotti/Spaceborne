@@ -314,7 +314,7 @@ class SpaceborneSSC:
         for probe_abcd in unique_probe_combs_hs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
 
-            print('SB SSC cov: computing probe combination', probe_ab + probe_cd)
+            print(f'SSC: computing probe combination {probe_ab, probe_cd}')
             d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_ab)]
             d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_cd)]
 
@@ -333,10 +333,7 @@ class SpaceborneSSC:
         # * (excluding diagonal blocks)
         for probe_abcd in symm_probe_combs_hs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
-            print(
-                f'SB SSC cov: filling probe combination {probe_ab + probe_cd} '
-                'by symmetry'
-            )
+            print(f'SSC: filling probe combination {probe_ab, probe_cd} by symmetry')
 
             self.cov_dict['ssc'][probe_ab, probe_cd]['4d'] = (
                 self.cov_dict['ssc'][probe_cd, probe_ab]['4d'].transpose(1, 0, 3, 2)
@@ -346,7 +343,7 @@ class SpaceborneSSC:
         for probe_abcd in nonreq_probe_combs_hs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
             probe_2tpl = (probe_ab, probe_cd)
-            print(f'SB SSC cov: skipping probe combination {probe_ab + probe_cd}')
+            print(f'SSC: skipping probe combination {probe_ab, probe_cd}')
 
             zpairs_ab = self.ind_dict[probe_ab].shape[0]
             zpairs_cd = self.ind_dict[probe_cd].shape[0]

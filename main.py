@@ -1762,7 +1762,7 @@ if cfg['covariance']['save_cov_fits'] and obs_space != 'harmonic':
         'for the moment'
     )
 
-print(f'Covariance matrices saved in {output_path}\n')
+print(f'\nCovariance matrices saved in {output_path}\n')
 
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):

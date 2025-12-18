@@ -685,8 +685,8 @@ if shift_nz:
         interpolation_kind=shift_nz_interpolation_kind,
         bounds_error=False,
         fill_value=0,
-        clip_min=cfg['nz']['clip_zmin'],
-        clip_max=cfg['nz']['clip_zmax'],
+        # clip_min=cfg['nz']['clip_zmin'],
+        # clip_max=cfg['nz']['clip_zmax'],
         plt_title='$n_i(z)$ sources shifts',
     )
     nz_lns = wf_cl_lib.shift_nz(
@@ -698,8 +698,8 @@ if shift_nz:
         interpolation_kind=shift_nz_interpolation_kind,
         bounds_error=False,
         fill_value=0,
-        clip_min=cfg['nz']['clip_zmin'],
-        clip_max=cfg['nz']['clip_zmax'],
+        # clip_min=cfg['nz']['clip_zmin'],
+        # clip_max=cfg['nz']['clip_zmax'],
         plt_title='$n_i(z)$ lenses shifts',
     )
 
@@ -2002,18 +2002,24 @@ if cfg['misc']['save_output_as_benchmark']:
     covs_arrays_dict = {
         k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)
     }
+    
+    # import ipdb; ipdb.set_trace()
+    
     # remove the 'ind' arrays
     covs_arrays_dict.pop('ind')
     covs_arrays_dict.pop('ind_auto')
     covs_arrays_dict.pop('ind_cross')
+    
+    if 'cl_3x2pt_5d' in covs_arrays_dict:
+        covs_arrays_dict.pop('cl_3x2pt_5d')  # already saved separately
 
     # make the keys consistent with the old benchmark files
-    covs_arrays_dict_renamed = covs_arrays_dict.copy()
-    for key, cov in covs_arrays_dict.items():
-        # key_new = key.replace('_tot_', '_TOT_')
-        key_new = key.replace('_2d', '_2D')
-        covs_arrays_dict_renamed[key_new] = cov
-        covs_arrays_dict_renamed.pop(key)
+    # covs_arrays_dict_renamed = covs_arrays_dict.copy()
+    # for key, cov in covs_arrays_dict.items():
+    #     # key_new = key.replace('_tot_', '_TOT_')
+    #     key_new = key.replace('_2d', '_2D')
+    #     covs_arrays_dict_renamed[key_new] = cov
+    #     covs_arrays_dict_renamed.pop(key)
 
     np.savez_compressed(
         bench_filename,
@@ -2045,7 +2051,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
-        **covs_arrays_dict_renamed,
+        **covs_arrays_dict,
         metadata=metadata,
     )
 

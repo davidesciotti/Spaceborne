@@ -240,12 +240,12 @@ class SpaceborneConfigChecker:
                 'nz: All elements in dzGC must be floats'
             )
 
-        assert isinstance(nz_cfg.get('clip_zmin'), float), (
-            'nz: clip_zmin must be a float'
-        )
-        assert isinstance(nz_cfg.get('clip_zmax'), float), (
-            'nz: clip_zmax must be a float'
-        )
+        # assert isinstance(nz_cfg.get('clip_zmin'), (float, int)), (
+        #     f'nz: clip_zmin must be a float or an int, found {nz_cfg.get("clip_zmin")}'
+        # )
+        # assert isinstance(nz_cfg.get('clip_zmax'), (float, int)), (
+        #     f'nz: clip_zmax must be a float or an int, found {nz_cfg.get("clip_zmax")}'
+        # )
 
         # Mask
         assert isinstance(self.cfg.get('mask'), dict), (

@@ -230,6 +230,35 @@ def get_omega_nu0(m_nu, h, n_eff=3.046, neutrino_mass_fac=94.07):
     omega_nu0 = m_nu / (neutrino_mass_fac * g_factor**0.75 * h**2)
     return omega_nu0
 
+def get_omega_nu0_new(m_nu, h, neutrino_mass_fac=93.14):
+    """Compute present-day neutrino density parameter Ω_ν₀ (dimensionless).
+
+    Ω_ν₀ = Σ m_ν / (93.14 eV · h²)
+
+    See Eq. (19) of Lesgourgues & Pastor (2012, arXiv:1212.6154).
+    See also https://arxiv.org/pdf/2207.05766.pdf for a comment on the difference
+    between neutrino_mass_fac = 93.14eV and 94.07eV.
+
+    Note that this function returns the present-day neutrino density parameter
+    Ω_ν₀, *not* ω_ν = Ω_ν₀ · h²
+
+    Parameters
+    ----------
+    m_nu : float
+        Total neutrino mass in eV.
+    h : float
+        Dimensionless Hubble constant (H0 / 100 km/s/Mpc).
+    neutrino_mass_fac : float, optional
+        Conversion constant, default 93.14 eV.
+
+    Returns
+    -------
+    float
+        Ω_ν₀.
+    """
+    return m_nu / (neutrino_mass_fac * h**2)
+
+
 
 def get_omega_k0(omega_m0, omega_Lambda0):
     omega_k0 = 1 - omega_m0 - omega_Lambda0

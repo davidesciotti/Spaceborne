@@ -1,7 +1,8 @@
+import time
+
 import numpy as np
 import pyccl as ccl
 from scipy.interpolate import RegularGridInterpolator
-from tqdm import tqdm
 
 from spaceborne import cosmo_lib
 
@@ -351,7 +352,8 @@ class SpaceborneResponses:
         but it can be extended to allow user-defined profiles.
 
         """
-        print('Computing halo model probe responses...')
+        start_time = time.perf_counter()
+        print('\nComputing halo model probe responses...')
 
         # perform some checks on the input shapes
         assert which_b1g in ['from_HOD', 'from_input'], (
@@ -376,7 +378,7 @@ class SpaceborneResponses:
         prof_m = self.ccl_obj.halo_profile_dm
         prof_g = self.ccl_obj.halo_profile_hod
 
-        for a_idx, aa in tqdm(enumerate(a_grid)):
+        for a_idx, aa in enumerate(a_grid):
             # Linear power spectrum and its derivative
             pklin = pk2d(k_grid, aa)
             dpklin = pk2d(k_grid, aa, derivative=True)
@@ -567,3 +569,5 @@ class SpaceborneResponses:
         self.r1_mm_hm = self.dPmm_ddeltab_hm / self.pknlhm_mm
         self.r1_gm_hm = self.dPgm_ddeltab_hm / self.pknlhm_gm
         self.r1_gg_hm = self.dPgg_ddeltab_hm / self.pknlhm_gg
+
+        print(f'... done in {time.perf_counter() - start_time:.2f} seconds.\n')

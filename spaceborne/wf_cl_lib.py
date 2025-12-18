@@ -1,3 +1,5 @@
+import warnings
+
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
@@ -391,7 +393,7 @@ def cl_ccl(wf_a, wf_b, ells, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
 
     if is_auto_spectrum:
         cl_3d = np.zeros((nbl, zbins, zbins))
-        for zi, zj in zip(np.triu_indices(zbins)[0], np.triu_indices(zbins)[1]):
+        for zi, zj in zip(np.triu_indices(zbins)[0], np.triu_indices(zbins)[1], strict=False):
             cl_3d[:, zi, zj] = ccl.angular_cl(
                 cosmo, wf_a[zi], wf_b[zj], ells, p_of_k_a=p_of_k_a, **cl_ccl_kwargs
             )
@@ -479,24 +481,23 @@ def shift_nz(
     normalize,
     plot_nz=False,
     interpolation_kind='linear',
-    clip_min=0,
-    clip_max=3,
     bounds_error=False,
     fill_value=0,
     plt_title='',
 ):
-    print(f'Shifting n(z), clipping between redshifts {clip_min} and {clip_max}')
-
+    print('Shifting n(z)')
     zbins = nz_original.shape[1]
     assert len(dz_shifts) == zbins, (
         'dz_shifts must have the same length as the number of zbins'
     )
-    assert np.all(np.abs(dz_shifts) < 0.1), (
-        'dz_shifts must be small (this is a rough check)'
-    )
     assert nz_original.shape[0] == len(zgrid_nz), (
         'nz_original must have the same length as zgrid_nz'
     )
+    if not np.all(np.abs(dz_shifts) < 0.1):
+        warnings.warn(
+            'dz_shifts are quite large (> 0.1); make sure this is intended',
+            stacklevel=2,
+        )
 
     colors = cm.rainbow(np.linspace(0, 1, zbins))
 
@@ -511,8 +512,10 @@ def shift_nz(
             fill_value=fill_value,
         )
         z_grid_nz_shifted = zgrid_nz - dz_shifts[zi]
+        # Note: I commented out the clipping here, because it creates artifacts
+        # at the edges of the distribution
         # where < 0, set to 0; where > 3, set to 3
-        z_grid_nz_shifted = np.clip(z_grid_nz_shifted, clip_min, clip_max)
+        # z_grid_nz_shifted = np.clip(z_grid_nz_shifted, clip_min, clip_max)
         n_of_z_shifted[:, zi] = n_of_z_func(z_grid_nz_shifted)
 
     if normalize:

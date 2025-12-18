@@ -118,10 +118,10 @@ def test_main_script(test_cfg_path):
             try:
                 # Direct comparison (handles empty arrays automatically)
                 np.testing.assert_allclose(
-                    _dict[f'cov_{probe}_tot_2D'],
-                    _dict[f'cov_{probe}_g_2D']
-                    + _dict[f'cov_{probe}_ssc_2D']
-                    + _dict[f'cov_{probe}_cng_2D'],
+                    _dict[f'cov_{probe}_tot_2d'],
+                    _dict[f'cov_{probe}_g_2d']
+                    + _dict[f'cov_{probe}_ssc_2d']
+                    + _dict[f'cov_{probe}_cng_2d'],
                     atol=0,
                     rtol=1e-5,
                     err_msg=f'cov {probe} tot != G + SSC + cNG ❌',

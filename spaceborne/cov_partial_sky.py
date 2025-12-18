@@ -234,7 +234,7 @@ def nmt_gaussian_cov_opt(
 
                 cov_dict['g'][probe_ab, probe_cd]['4d'][:, :, zij, zkl] = cov_l1l2
 
-    # symmetrize and set to 0 the relevant probe blocks
+    # * symmetrize and set to 0 the remaining probe blocks
     sl.symmetrize_and_fill_probe_blocks(
         cov_term_dict=cov_dict['g'],
         dim='4d',

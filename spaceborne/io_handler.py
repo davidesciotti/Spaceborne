@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 
 from spaceborne import constants as const
+from spaceborne import sb_lib as sl
 
 
 def load_nz_euclidlib(nz_filename):
@@ -78,7 +79,7 @@ def load_cl_euclidlib(filename, key_a, key_b):
     # try:
     #     cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
     # except:
-        # cl_dict = el.photo.angular_power_spectra(filename)
+    # cl_dict = el.photo.angular_power_spectra(filename)
     cl_dict = el.le3.pk_wl.angular_power_spectra(filename)
 
     # extract ells
@@ -148,8 +149,9 @@ def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
         raise ValueError(f'Unexpected probe combination: {key_a}, {key_b}')
 
 
-def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
-    """SB = 'Spaceborne'
+def cov_sb_10d_to_heracles_dict(cov_term_dict, squeeze):
+    """
+    SB = 'Spaceborne'
     HC = 'Heracles'
 
     this dictionary specifies, within the 2 axes assigned to SHE, which ones
@@ -165,43 +167,60 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
 
     from heracles.result import Result
 
-    # sanity checks
-    assert cov_10d.ndim == 10, 'input covariance is not 10-dimensional'
-    assert (
-        cov_10d.shape[0] == cov_10d.shape[1] == cov_10d.shape[2] == cov_10d.shape[3]
-    ), "The dimensions of the first 4 axes don't match"
-    assert cov_10d.shape[4] == cov_10d.shape[5], (
-        "The dimensions of the first 5th and 6th axes don't match"
-    )
-    assert (
-        cov_10d.shape[6] == cov_10d.shape[7] == cov_10d.shape[8] == cov_10d.shape[9]
-    ), "The dimensions of the last 4 axes don't match"
+    cov_dict_out = {}
 
-    # prints
-    n_probes = cov_10d.shape[0]
-    zbins = cov_10d.shape[-1]
-    nbl = cov_10d.shape[4]
+    for probe_2tpl in cov_term_dict:
+        if probe_2tpl == '3x2pt':
+            continue  # skip the 3x2pt entry
 
-    cov_dict = {}
+        cov_6d = cov_term_dict[probe_2tpl]['6d']
 
-    for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(
-        range(n_probes), repeat=4
-    ):
+        # get nbl and zbins (no check is performed here on the homogeneity of these
+        # across different probe combinations)
+        zbins = cov_term_dict[probe_2tpl]['6d'].shape[-1]
+        nbl = cov_term_dict[probe_2tpl]['6d'].shape[0]
+
+        # some quick and dirty sanity checks
+        assert cov_6d.ndim == 6, 'input covariance is not 10-dimensional'
+        assert cov_6d.shape[0] == cov_6d.shape[1], (
+            "The dimensions of the first 2 axes don't match"
+        )
+        assert (
+            cov_6d.shape[2] == cov_6d.shape[3] == cov_6d.shape[4] == cov_6d.shape[5]
+        ), "The dimensions of the last 4 axes don't match"
+
+        # extract probe strings
+        probe_ab, probe_cd = probe_2tpl
+        probe_a, probe_b = probe_ab
+        probe_c, probe_d = probe_cd
+
+        # get probe index
+        probe_a_ix = const.HS_PROBE_NAME_TO_IX_DICT[probe_a]
+        probe_b_ix = const.HS_PROBE_NAME_TO_IX_DICT[probe_b]
+        probe_c_ix = const.HS_PROBE_NAME_TO_IX_DICT[probe_c]
+        probe_d_ix = const.HS_PROBE_NAME_TO_IX_DICT[probe_d]
+
+        # get probe name
+        probe_a_str_hc = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_a_ix]
+        probe_b_str_hc = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_b_ix]
+        probe_c_str_hc = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_c_ix]
+        probe_d_str_hc = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_d_ix]
+
+        # get probe dimensions
+        probe_a_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_a_str_hc]
+        probe_b_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_b_str_hc]
+        probe_c_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_c_str_hc]
+        probe_d_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_d_str_hc]
+
+        # create list of probe strings (with HC naming)
+        probe_str_list_hc = [
+            probe_a_str_hc,
+            probe_b_str_hc,
+            probe_c_str_hc,
+            probe_d_str_hc,
+        ]
+
         for zi, zj, zk, zl in itertools.product(range(zbins), repeat=4):
-            # get probe name
-            probe_a_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_a_ix]
-            probe_b_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_b_ix]
-            probe_c_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_c_ix]
-            probe_d_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_d_ix]
-
-            # get probe dimensions
-            probe_a_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_a_str]
-            probe_b_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_b_str]
-            probe_c_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_c_str]
-            probe_d_dims = const.HS_PROBE_DIMS_DICT_HERACLES[probe_d_str]
-
-            probe_str_list = [probe_a_str, probe_b_str, probe_c_str, probe_d_str]
-
             # instantiate array with the 4 additional axes for the spins
             arr_out = np.zeros(
                 shape=(probe_a_dims, probe_b_dims, probe_c_dims, probe_d_dims, nbl, nbl)
@@ -209,10 +228,7 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
 
             # since only SHE_B goes in the 1 index, all ell1, ell2 arrays are stored
             # in the 0 index
-            arr_out[0, 0, 0, 0, :, :] = cov_10d[
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                :, :, zi, zj, zk, zl,
-            ]  # fmt: skip
+            arr_out[0, 0, 0, 0, :, :] = cov_6d[:, :, zi, zj, zk, zl]
 
             if squeeze:
                 # Remove singleton dimensions if required
@@ -233,12 +249,12 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
                 # ('POS', 'SHE', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(3, 4)),
                 # ('SHE', 'SHE', 'SHE', 'SHE', 1, 1, 1, 1): Result(axis=(4, 5))}
 
-                ax1 = probe_str_list.count('SHE')
+                ax1 = probe_str_list_hc.count('SHE')
 
             else:
                 # If the singleton dimensions are not removed, the ell1, ell2
                 # axes are always the last two, after the 4 spin axes
-                ax1 = len(probe_str_list)
+                ax1 = len(probe_str_list_hc)
 
             ax2 = ax1 + 1
 
@@ -250,13 +266,13 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
             # ] = arr_out
 
             # new
-            cov_dict[
-                (probe_a_str, probe_b_str, 
-                probe_c_str, probe_d_str, 
+            cov_dict_out[
+                (probe_a_str_hc, probe_b_str_hc, 
+                probe_c_str_hc, probe_d_str_hc, 
                 zi, zj, zk, zl)
             ] = Result(arr_out, axis=(ax1, ax2))  # fmt: skip
 
-    return cov_dict
+    return cov_dict_out
 
 
 def first_element_of_leading_axes(arr: np.ndarray) -> np.ndarray:
@@ -485,19 +501,5 @@ class IOHandler:
 
         import heracles
 
-        if self.cfg['covariance']['G']:
-            save_term(cov_hs_obj.cov_3x2pt_g_10d, 'Gauss')
-
-        if self.cfg['covariance']['SSC']:
-            save_term(cov_hs_obj.cov_3x2pt_ssc_10d, 'SSC')
-
-        if self.cfg['covariance']['cNG']:
-            save_term(cov_hs_obj.cov_3x2pt_cng_10d, 'cNG')
-
-        if self.cfg['covariance']['split_gaussian_cov']:
-            save_term(cov_hs_obj.cov_3x2pt_sva_10d, 'SVA')
-            save_term(cov_hs_obj.cov_3x2pt_sn_10d, 'SN')
-            save_term(cov_hs_obj.cov_3x2pt_mix_10d, 'MIX')
-
-        if self.cfg['covariance']['cNG'] or self.cfg['covariance']['SSC']:
-            save_term(cov_hs_obj.cov_3x2pt_tot_10d, 'TOT')
+        for term in cov_hs_obj.cov_dict:
+            save_term(cov_hs_obj.cov_dict[term], term)

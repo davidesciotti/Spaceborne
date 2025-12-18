@@ -95,7 +95,7 @@ def symmetrize_and_fill_probe_blocks(
     nonreq_probe_combs: list[str],
     obs_space: str,
     nbx: int,
-    zbins: int,
+    zbins: int | None,
     ind_dict: dict,
     msg: str,
 ) -> dict:

@@ -314,7 +314,7 @@ class SpaceborneSSC:
         for probe_abcd in unique_probe_combs_hs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
 
-            print('SB SSC cov: computing probe combination', probe_ab + probe_cd)
+            print(f'SSC: computing probe combination {probe_ab, probe_cd}')
             d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_ab)]
             d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_cd)]
 
@@ -329,30 +329,18 @@ class SpaceborneSSC:
 
             self.cov_dict['ssc'][probe_ab, probe_cd]['4d'] = np.array(result)
 
-        # * fill the symmetric counterparts of the required blocks
-        # * (excluding diagonal blocks)
-        for probe_abcd in symm_probe_combs_hs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
-            print(
-                f'SB SSC cov: filling probe combination {probe_ab + probe_cd} '
-                'by symmetry'
-            )
-
-            self.cov_dict['ssc'][probe_ab, probe_cd]['4d'] = (
-                self.cov_dict['ssc'][probe_cd, probe_ab]['4d'].transpose(1, 0, 3, 2)
-            ).copy()
-
-        # * if block is not required, set it to 0
-        for probe_abcd in nonreq_probe_combs_hs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
-            probe_2tpl = (probe_ab, probe_cd)
-            print(f'SB SSC cov: skipping probe combination {probe_ab + probe_cd}')
-
-            zpairs_ab = self.ind_dict[probe_ab].shape[0]
-            zpairs_cd = self.ind_dict[probe_cd].shape[0]
-            self.cov_dict['ssc'][probe_2tpl]['4d'] = np.zeros(
-                (nbl, nbl, zpairs_ab, zpairs_cd)
-            )
+        # * symmetrize and set to 0 the remaning probe blocks
+        sl.symmetrize_and_fill_probe_blocks(
+            cov_term_dict=self.cov_dict['ssc'],
+            dim='4d',
+            unique_probe_combs=unique_probe_combs_hs,
+            nonreq_probe_combs=nonreq_probe_combs_hs,
+            obs_space='harmonic',
+            nbx=nbl,
+            zbins=None,
+            ind_dict=self.ind_dict,
+            msg='',
+        )
 
         print(f'...done in {(time.perf_counter() - start):.2f} s')
 

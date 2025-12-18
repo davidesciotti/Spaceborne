@@ -656,18 +656,18 @@ class CCLInterface:
 
     def compute_ng_cov_probe_block(
         self,
-        which_ng_cov,
-        kernel_A,
-        kernel_B,
-        kernel_C,
-        kernel_D,
-        ell,
+        which_ng_cov: str,
+        kernel_A: list,
+        kernel_B: list,
+        kernel_C: list,
+        kernel_D: list,
+        ell: np.ndarray,
         tkka,
-        fsky,
-        ind_AB,
-        ind_CD,
-        integration_method,
-        symmetrize_zpairs,
+        fsky: float,
+        ind_AB: np.ndarray,
+        ind_CD: np.ndarray,
+        integration_method: str,
+        symmetrize_zpairs: bool,
     ):
         zpairs_AB = ind_AB.shape[0]
         zpairs_CD = ind_CD.shape[0]
@@ -688,7 +688,7 @@ class CCLInterface:
 
         # Diagonal probe blocks case e.g. LLLL, GGGG, GLGL where (A,B) == (C,D)
         if symmetrize_zpairs:
-            for ij in tqdm(range(zpairs_AB)):
+            for ij in range(zpairs_AB):
                 for kl in range(ij, zpairs_CD):  # Note: loop starts from ij
                     res = ccl_ng_cov_func(
                         self.cosmo_ccl,
@@ -709,7 +709,7 @@ class CCLInterface:
 
         # Off-diagonal probe blocks case e.g. LLGL, LLGG, etc.
         else:
-            for ij in tqdm(range(zpairs_AB)):
+            for ij in range(zpairs_AB):
                 for kl in range(zpairs_CD):
                     cov_ng_4D[:, :, ij, kl] = ccl_ng_cov_func(
                         self.cosmo_ccl,
@@ -757,22 +757,16 @@ class CCLInterface:
 
         kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
 
-        # get probes to fill by symmetry and probes to exclude (i.e., set to 0)
-        symm_probe_combs, _ = sl.get_probe_combs(
-            unique_probe_combs=unique_probe_combs, space='harmonic'
-        )
-
         print('')
         # * compute required blocks
-        for probe_abcd in unique_probe_combs:
+        for probe_abcd in tqdm(unique_probe_combs):
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             probe_2tpl = (probe_ab, probe_cd)
             probe_a, probe_b, probe_c, probe_d = probe_abcd
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
 
-            print(
-                f'CCL {which_ng_cov} cov: computing probe combination ',
-                probe_ab + probe_cd,
+            tqdm.write(
+                f'CCL {which_ng_cov}: computing probe combination {probe_ab, probe_cd}'
             )
 
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
@@ -790,34 +784,18 @@ class CCLInterface:
                 symmetrize_zpairs=symmetrize_zpairs,
             )
 
-        # * fill the symmetric counterparts of the required blocks
-        # * (excluding diagonal blocks)
-        for probe_abcd in symm_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-            probe_2tpl_orig = (probe_ab, probe_cd)
-            probe_2tpl_symm = (probe_cd, probe_ab)
-            print(
-                f'CCL {which_ng_cov} cov: filling probe combination {probe_ab + probe_cd} by symmetry'
-            )
-
-            self.cov_dict[ng_term][probe_2tpl_orig]['4d'] = (
-                self.cov_dict[ng_term][probe_2tpl_symm]['4d'].transpose(1, 0, 3, 2)
-            ).copy()
-
-        # # * if block is not required, set it to 0
-        for probe_abcd in nonreq_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-            probe_2tpl = (probe_ab, probe_cd)
-            print(
-                f'CCL {which_ng_cov} cov: skipping probe combination {probe_ab + probe_cd}'
-            )
-
-            zpairs_ab = ind_dict[probe_ab].shape[0]
-            zpairs_cd = ind_dict[probe_cd].shape[0]
-            nbl = len(ells)
-            self.cov_dict[ng_term][probe_2tpl]['4d'] = np.zeros(
-                (nbl, nbl, zpairs_ab, zpairs_cd)
-            )
+        # * symmetrize and set to 0 the remaning probe blocks
+        sl.symmetrize_and_fill_probe_blocks(
+            cov_term_dict=self.cov_dict[ng_term],
+            dim='4d',
+            unique_probe_combs=unique_probe_combs,
+            nonreq_probe_combs=nonreq_probe_combs,
+            obs_space='harmonic',
+            nbx=len(ells),
+            zbins=None,
+            ind_dict=ind_dict,
+            msg=f'CCL {which_ng_cov}: ',
+        )
 
     def check_cov_blocks_symmetry(self):
         # Test if cov is symmetric in ell1, ell2 (only for the diagonal covariance

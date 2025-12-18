@@ -148,8 +148,9 @@ def _select_spin_component(cl_dict, key_a, key_b, ziplus1, zjplus1):
         raise ValueError(f'Unexpected probe combination: {key_a}, {key_b}')
 
 
-def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
-    """SB = 'Spaceborne'
+def cov_sb_10d_to_heracles_dict(cov_term_dict, squeeze):
+    """
+    SB = 'Spaceborne'
     HC = 'Heracles'
 
     this dictionary specifies, within the 2 axes assigned to SHE, which ones
@@ -187,6 +188,9 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
     for probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix in itertools.product(
         range(n_probes), repeat=4
     ):
+    for probe_2tpl in cov_term_dict:
+        probe_ab, probe_cd = sl.split_probe_
+        
         for zi, zj, zk, zl in itertools.product(range(zbins), repeat=4):
             # get probe name
             probe_a_str = const.HS_PROBE_IX_TO_NAME_DICT_HERACLES[probe_a_ix]
@@ -209,10 +213,9 @@ def cov_sb_10d_to_heracles_dict(cov_10d, squeeze):
 
             # since only SHE_B goes in the 1 index, all ell1, ell2 arrays are stored
             # in the 0 index
-            arr_out[0, 0, 0, 0, :, :] = cov_10d[
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                :, :, zi, zj, zk, zl,
-            ]  # fmt: skip
+            arr_out[0, 0, 0, 0, :, :] = cov_term_dict[probe_ab, probe_cd]['6d'][
+                :, :, zi, zj, zk, zl
+            ]
 
             if squeeze:
                 # Remove singleton dimensions if required
@@ -484,6 +487,9 @@ class IOHandler:
         )
 
         import heracles
+
+        for term in cov_hs_obj.cov_dict:
+            save_term(cov_hs_obj.cov_dict[term], term)
 
         if self.cfg['covariance']['G']:
             save_term(cov_hs_obj.cov_3x2pt_g_10d, 'Gauss')

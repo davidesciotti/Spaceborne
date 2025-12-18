@@ -271,7 +271,7 @@ covariance:
 
   # Name of the output covariance file.
   cov_filename: cov_sb # Type: str.
-  save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module. 
+  save_cov_fits: True # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module. 
 
 
 PyCCL:

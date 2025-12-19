@@ -130,9 +130,9 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
 # ! ====================== COV RS W/ SIMPSON INTEGRATION ===============================
 def cov_sva_simps(
-    theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
     zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-    cl_5d, Amax, ell_values
+    cl_5d, Amax, ells,
+    kernel_1_func: Callable, kernel_2_func: Callable, 
 ):  # fmt: skip
     """Computes a single entry of the real-space Gaussian SVA (sample variance)
     part of the covariance matrix.
@@ -142,91 +142,35 @@ def cov_sva_simps(
     c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
     c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
 
-    def integrand_func(ell):
-        kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
-        knu = k_mu(ell, theta_2_l, theta_2_u, nu)
-        return ell * kmu * knu * (c_ik * c_jl + c_il * c_jk)
+    def integrand_func(ells):
+        """This function is not strictly necessary, but I keep it to maintain the
+        possibility to use quad in the future."""
+        kmu = kernel_1_func(ells)
+        knu = kernel_2_func(ells)
+        return ells * kmu * knu * (c_ik * c_jl + c_il * c_jk)
 
-    integrand = integrand_func(ell_values)
-    integral = simps(y=integrand, x=ell_values)
+    integrand = integrand_func(ells)
+    integral = simps(y=integrand, x=ells)
 
     # integrate with quad and compare
-    # integral = quad_vec(integrand_func, ell_values[0], ell_values[-1])[0]
+    # integral = quad_vec(integrand_func, ells[0], ells[-1])[0]
 
     # Finally multiply the prefactor
     cov_elem = integral / (2.0 * np.pi * Amax)
     return cov_elem
 
 
-def cov_sva_simps_general(
-    kernel_1: Callable, kernel_2: Callable, 
-    zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-    cl_5d, Amax, ell_values
-):  # fmt: skip
-    """Computes a single entry of the real-space Gaussian SVA (sample variance)
-    part of the covariance matrix.
-    """
-    c_ik = cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-    c_jl = cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-    c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-    c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-
-    # I keep this wrapper to maintain the possibility to use quad
-    def integrand_func(ells):
-        k1 = kernel_1(ells)
-        k2 = kernel_2(ells)
-        return (1 / (2 * np.pi * Amax)) * ells * k1 * k2 * (c_ik * c_jl + c_il * c_jk)
-
-    integrand = integrand_func(ell_values)
-    integral = simps(y=integrand, x=ell_values)
-
-    # integrate with quad and compare
-    # integral = quad_vec(integrand_func, ell_values[0], ell_values[-1])[0]
-
-    cov_elem = integral
-    return cov_elem
-
-
-def cov_sva_simps_general(
-    kernel_1: Callable, kernel_2: Callable, 
-    zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-    cl_5d, Amax, ell_values
-):  # fmt: skip
-    """Computes a single entry of the real-space Gaussian SVA (sample variance)
-    part of the covariance matrix.
-    """
-    c_ik = cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-    c_jl = cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-    c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-    c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-
-    # I keep this wrapper to maintain the possibility to use quad
-    def integrand_func(ells):
-        k1 = kernel_1(ells)
-        k2 = kernel_2(ells)
-        return (1 / (2 * np.pi * Amax)) * ells * k1 * k2 * (c_ik * c_jl + c_il * c_jk)
-
-    integrand = integrand_func(ell_values)
-    integral = simps(y=integrand, x=ell_values)
-
-    # integrate with quad and compare
-    # integral = quad_vec(integrand_func, ell_values[0], ell_values[-1])[0]
-
-    cov_elem = integral
-    return cov_elem
-
-
 def cov_mix_simps(
-    self, theta_1_l, theta_1_u, mu, theta_2_l, theta_2_u, nu,
-    ell_values, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+    self, kernel_1_func: Callable, kernel_2_func: Callable,
+    ells, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
     zi, zj, zk, zl, Amax
 ):  # fmt: skip
     """This function accepts self as an argument, but it's not a class method"""
 
-    def integrand_func(ell, inner_integrand):
-        kmu = k_mu(ell, theta_1_l, theta_1_u, mu)
-        knu = k_mu(ell, theta_2_l, theta_2_u, nu)
-        return (1 / (2 * np.pi * Amax)) * ell * kmu * knu * inner_integrand
+    def integrand_func(ells, inner_integrand):
+        k1 = kernel_1_func(ells)
+        k2 = kernel_2_func(ells)
+        return (1 / (2 * np.pi * Amax)) * ells * k1 * k2 * inner_integrand
 
     def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
         prefac = (
@@ -241,7 +185,7 @@ def cov_mix_simps(
 
     # permutations should be performed as done in the SVA function
     integrand = integrand_func(
-        ell_values,
+        ells,
         cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
         * get_prefac(probe_b_ix, probe_d_ix, zj, zl)
         + cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
@@ -252,63 +196,7 @@ def cov_mix_simps(
         * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
     )
 
-    integral = simps(y=integrand, x=ell_values)
-
-    # elif integration_method == 'quad':
-
-    #     integral_1 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],))[0]
-    #     integral_2 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],))[0]
-    #     integral_3 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_a_ix, probe_d_ix, :, zi, zl],))[0]
-    #     integral_4 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],))[0]
-
-    # else:
-    # raise ValueError(f'integration_method {integration_method} '
-    # 'not recognized.')
-
-    return integral
-
-
-def cov_mix_simps_general(
-    self, 
-    kernel_1: Callable, kernel_2: Callable, 
-    ell_values, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-    zi, zj, zk, zl, Amax
-):  # fmt: skip
-    """This function accepts self as an argument, but it's not a class method"""
-
-    def integrand_func(ells, inner_integrand):
-        k1 = kernel_1(ells)
-        k2 = kernel_2(ells)
-        return (1 / (2 * np.pi * Amax)) * ells * k1 * k2 * inner_integrand
-
-    def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
-        prefac = (
-            self.get_delta_tomo(probe_a_ix, probe_b_ix)[zi, zj]
-            * t_mix(probe_a_ix, self.zbins, self.sigma_eps_i)[zi]
-            / (self.n_eff_2d[probe_a_ix, zi] * self.srtoarcmin2)
-        )
-        return prefac
-
-    # TODO generalize to different survey areas (max(Aij, Akl))
-
-    # permutations should be performed as done in the SVA function
-    integrand = integrand_func(
-        ell_values,
-        cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-        * get_prefac(probe_b_ix, probe_d_ix, zj, zl)
-        + cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-        * get_prefac(probe_a_ix, probe_c_ix, zi, zk)
-        + cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-        * get_prefac(probe_b_ix, probe_c_ix, zj, zk)
-        + cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-        * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
-    )
-
-    integral = simps(y=integrand, x=ell_values)
+    integral = simps(y=integrand, x=ells)
 
     # elif integration_method == 'quad':
 
@@ -651,83 +539,6 @@ def integrate_single_bessel_pair(
     return result_levin[0]
 
 
-def build_cov_3x2pt_8d_dict(cov_obj, req_probe_combs_2d, term):
-    """Store the 4D blocks in a dictionary"""
-    cov_3x2pt_dict_4d = {}
-
-    # make each block 4D and store it with the right key
-    for probe in req_probe_combs_2d:
-        probe_ab, probe_cd = sl.split_probe_name(probe)
-        cov_3x2pt_dict_4d[probe_ab, probe_cd] = getattr(
-            cov_obj, f'cov_{probe}_{term}_4d'
-        )
-
-    return cov_3x2pt_dict_4d
-
-
-def combine_terms_and_probes(
-    cov_obj: object,
-    unique_probe_combs: list,
-    req_probe_combs_2d: list,
-    cov_rs_obj: list,
-):
-    """For the given term, constructs the 3x2pt (nx2pt, depending on the n required
-    probes) 2D cov, taking into account the required probe combinations
-    (this is taken care of by cov_4D_to_2DCLOE_3x2pt_rs).
-    sack (join) probes into a single 2D cov (for each term) and store it in the
-    object"""
-
-    # ! construct 3x2pt 2D cov for each term and store them in the object
-    for term in cov_rs_obj.terms_toloop:
-        # first construct the dict
-        cov_3x2pt_term_dict_4d = build_cov_3x2pt_8d_dict(
-            cov_obj, req_probe_combs_2d, term
-        )
-        # then turn to 4D array
-        cov_3x2pt_term_4d = sl.cov_3x2pt_8D_dict_to_4D(
-            cov_3x2pt_term_dict_4d, req_probe_combs_2d, space='real'
-        )
-        # then to 2D
-        cov_3x2pt_term_2d = cov_rs_obj.cov_4D_to_2D_3x2pt_func(
-            cov_3x2pt_term_4d, **cov_rs_obj.cov_4D_to_2D_3x2pt_func_kw
-        )
-        # set attribute
-        setattr(cov_obj, f'cov_3x2pt_{term}_2d', cov_3x2pt_term_2d)
-
-    # ! sum terms to get G and TOT 2D 3x2pt covs and store them in the object
-    cov_obj.cov_3x2pt_g_2d = sum(
-        getattr(cov_obj, f'cov_3x2pt_{term}_2d') for term in ['sva', 'sn', 'mix']
-    )
-    cov_obj.cov_3x2pt_tot_2d = sum(
-        getattr(cov_obj, f'cov_3x2pt_{term}_2d') for term in cov_rs_obj.terms_toloop
-    )
-
-    for probe in unique_probe_combs:
-        # ! sum to get G and TOT 2D probe-specific covs and store them in the object
-        # ! (not needed in this new "approach" to the files I wish to save)
-        # cov_probe_g_2d = sum(
-        #     getattr(self, f'cov_{probe}_{term}_2d') for term in ['sva', 'sn', 'mix']
-        # )
-        # cov_probe_tot_2d = sum(
-        #     getattr(self, f'cov_{probe}_{term}_2d') for term in self.terms_toloop
-        # )
-        # setattr(self, f'cov_{probe}_g_2d', cov_probe_g_2d)
-        # setattr(self, f'cov_{probe}_tot_2d', cov_probe_tot_2d)
-
-        # ! sum terms to get, G, TOT 6D probe-specific covs
-        # ! and store them in the object (required if save_full_cov is True).
-        # ! note that the 6D covs are already computed and stored in the object
-        # ! in the compute_realspace_cov function
-        cov_probe_g_6d = sum(
-            getattr(cov_obj, f'cov_{probe}_{term}_6d') for term in ['sva', 'sn', 'mix']
-        )
-        cov_probe_tot_6d = sum(
-            getattr(cov_obj, f'cov_{probe}_{term}_6d') for term in cov_rs_obj.terms_toloop
-        )
-        setattr(cov_obj, f'cov_{probe}_g_6d', cov_probe_g_6d)
-        setattr(cov_obj, f'cov_{probe}_tot_6d', cov_probe_tot_6d)
-
-
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -974,7 +785,9 @@ class CovRealSpace:
 
     def cov_simps_wrapper(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, func
+        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, 
+        cov_simps_func: Callable, 
+        kernel_1_func: Callable, kernel_2_func: Callable
     ):  # fmt: skip
         """Helper to parallelize the cov_sva_simps and cov_mix_simps functions"""
         cov_rs_6d = np.zeros(self.cov_rs_6d_shape)
@@ -985,52 +798,17 @@ class CovRealSpace:
             'probe_c_ix': probe_c_ix,
             'probe_d_ix': probe_d_ix,
             'cl_5d': self.cl_3x2pt_5d,
-            'ell_values': self.ells,
+            'ells': self.ells,
             'Amax': self.amax,
+            'kernel_1_func': kernel_1_func,
+            'kernel_2_func': kernel_2_func,
         }
+
         results = Parallel(n_jobs=self.n_jobs)(
             delayed(self.cov_parallel_helper)(
                 theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
                 zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
-                func=func,
-                **kwargs,
-            )
-            for theta_1_ix in tqdm(range(self.nbt_fine))
-            for theta_2_ix in range(self.nbt_fine)
-            for zij in range(zpairs_ab)
-            for zkl in range(zpairs_cd)
-        )  # fmt: skip
-
-        for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            cov_rs_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
-
-        return cov_rs_6d
-
-    def cov_simps_wrapper_general(
-        self, 
-        k1_func: Callable, k2_func: Callable,
-        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, func
-    ):  # fmt: skip
-        """Helper to parallelize the cov_sva_simps and cov_mix_simps functions"""
-        cov_rs_6d = np.zeros(self.cov_rs_6d_shape)
-
-        kwargs = {
-            'probe_a_ix': probe_a_ix,
-            'probe_b_ix': probe_b_ix,
-            'probe_c_ix': probe_c_ix,
-            'probe_d_ix': probe_d_ix,
-            'cl_5d': self.cl_3x2pt_5d,
-            'ell_values': self.ells,
-            'Amax': self.amax,
-        }
-
-        results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.cov_parallel_helper_general)(
-                k1_func = k1_func, k2_func = k2_func,
-                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
-                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
-                func=func,
+                func=cov_simps_func,
                 **kwargs,
             )
             for theta_1_ix in tqdm(range(self.nbt_fine))
@@ -1224,6 +1002,9 @@ class CovRealSpace:
     def cov_parallel_helper(
         self, theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, func, **kwargs
     ):
+        """This is the function actually called in parallel with joblib. It essentially
+        extract the theta and z indices and calls the provided function to compute the
+        covariance value for those indices."""
         theta_1_l = self.theta_edges_fine[theta_1_ix]
         theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
         theta_2_l = self.theta_edges_fine[theta_2_ix]
@@ -1232,10 +1013,24 @@ class CovRealSpace:
         zi, zj = ind_ab[zij, :]
         zk, zl = ind_cd[zkl, :]
 
+        # TODO what happens if the kernel functions need more or less args
+        # take the full kernel functions, pass the theta and mu/nu args and make them
+        # partial functions of ell only
+        kernel_1_full = kwargs['kernel_1_func']
+        kernel_2_full = kwargs['kernel_2_func']
+
+        kernel_1_partial = partial(
+            kernel_1_full, thetal=theta_1_l, thetau=theta_1_u, mu=mu
+        )
+        kernel_2_partial = partial(
+            kernel_2_full, thetal=theta_2_l, thetau=theta_2_u, mu=nu
+        )
+
+        kwargs['kernel_1_func'] = kernel_1_partial
+        kwargs['kernel_2_func'] = kernel_2_partial
+
         return (
             theta_1_ix, theta_2_ix, zi, zj, zk, zl, func(
-                theta_1_l=theta_1_l, theta_1_u=theta_1_u, mu=mu,
-                theta_2_l=theta_2_l, theta_2_u=theta_2_u, nu=nu,
                 zi=zi, zj=zj, zk=zk, zl=zl,
                 **kwargs,
             ),
@@ -1413,16 +1208,10 @@ class CovRealSpace:
                 cov_out_6d = self.cov_simps_wrapper(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                    func=cov_sva_simps
+                    cov_simps_func=cov_sva_simps,
+                    kernel_1_func=k_mu,
+                    kernel_2_func=k_mu,
                 )  # fmt: skip
-
-                cov_out_6d_test = self.cov_simps_wrapper_general(
-                    k_mu, k_mu,
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                    func=cov_sva_simps_general
-                )  # fmt: skip
-                assert np.allclose(cov_out_6d, cov_out_6d_test, atol=0, rtol=1e-6)
 
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_sva_levin(
@@ -1437,15 +1226,10 @@ class CovRealSpace:
                 cov_out_6d = self.cov_simps_wrapper(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                    func=partial(cov_mix_simps, self=self)
+                    cov_simps_func=partial(cov_mix_simps, self=self),
+                    kernel_1_func=k_mu,
+                    kernel_2_func=k_mu,
                 )  # fmt: skip
-                cov_out_6d_test = self.cov_simps_wrapper_general(
-                    k_mu, k_mu,
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                    func=partial(cov_mix_simps_general, self=self)
-                )  # fmt: skip
-                assert np.allclose(cov_out_6d, cov_out_6d_test, atol=0, rtol=1e-6)
 
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_mix_levin(

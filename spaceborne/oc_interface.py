@@ -68,12 +68,8 @@ def oc_cov_dict_6d_to_array_10d(
         probe_abcd, term = key.split('_')
         if term != desired_term:
             continue
-        # probes = list(probe_abcd)
-        # probe_ixs = [probe_idx_dict[p] for p in probes]
-
-        # probes = sl.split_probe_name(probe_abcd)
-        probe_ixs = probe_idx_dict[probe_abcd]
-
+        probes = list(probe_abcd)
+        probe_ixs = [probe_idx_dict[p] for p in probes]
         cov_10d[*probe_ixs] = cov
         key_found = True
 

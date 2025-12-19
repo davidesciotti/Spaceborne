@@ -43,7 +43,7 @@ cfg = load_config('config.yaml')
 if cfg['misc']['jax_platform'] != 'auto':
     os.environ['JAX_PLATFORMS'] = cfg['misc']['jax_platform']
 
-# Set the number of threads
+# if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
 
 # Cap num_threads at logical CPU count to prevent oversubscription
@@ -264,6 +264,13 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
 # - flat_sky: use the flat-sky expression (valid for PyCCL only)
 #   has to be rescaled by fsky
 cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
+# Integration scheme used for the SSC survey covariance (sigma2_b) computation. Options:
+# - 'simps': uses simpson integration. This is faster but less accurate
+# - 'levin': uses levin integration. This is slower but more accurate
+cfg['covariance']['sigma2_b_int_method'] = 'fft'  # Type: str.
+# Whether to load the previously computed sigma2_b.
+# No need anymore since it's quite fast
+cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
 
 # How many integrals to compute at once for the  numerical integration of
 # the sigma^2_b(z_1, z_2) function with pylevin.
@@ -292,7 +299,7 @@ cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
 # Integration method for the covariance projection to real space. Options:
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
-cfg['precision']['cov_rs_int_method'] = 'levin'  # Type: str.
+cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
 # setting this to False makes the code resort to the less accurate bin averaging method
 # mentioned above
 cfg['precision']['levin_bin_avg'] = True  # Type: bool.
@@ -1321,7 +1328,6 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if obs_space == 'harmonic':
         _valid_probes_oc = const.HS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_hs_2d
-        _unique_probe_combs = unique_probe_combs_hs
         nbx = ell_obj.nbl_3x2pt
         probe_idx_dict = cov_oc_obj.probe_idx_dict_hs
         n_probes_oc = 2
@@ -1329,7 +1335,6 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     elif obs_space == 'real':
         _valid_probes_oc = const.RS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_rs_2d
-        _unique_probe_combs = unique_probe_combs_rs
         nbx = cov_rs_obj.nbt_coarse
         probe_idx_dict = cov_rs_obj.probe_idx_dict_short_oc
         n_probes_oc = 4
@@ -1654,44 +1659,7 @@ if obs_space == 'harmonic':
     )
 
 
-for key, cov_6d in oc_obj.cov_dict_6d.items():
-    updated_key = key.replace('gm', 'gt')
-    setattr(cov_rs_obj, f'cov_{updated_key}_6d', cov_6d)
-
-    probe_abcd = updated_key.split('_')[0]
-
-    # TODO check I'm not messing up anything here...
-    probe_ab, probe_cd = sl.split_probe_name(probe_abcd)
-
-    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
-        probe_abcd
-    ]
-
-    ind_ab = (
-        ind_auto[:, 2:] if probe_a_ix == probe_b_ix
-        else ind_cross[:, 2:]
-    )  # fmt: skip
-    ind_cd = (
-        ind_auto[:, 2:] if probe_c_ix == probe_d_ix
-        else ind_cross[:, 2:]
-    )  # fmt: skip
-
-    zpairs_ab = zpairs_auto if probe_a_ix == probe_b_ix else zpairs_cross
-    zpairs_cd = zpairs_auto if probe_c_ix == probe_d_ix else zpairs_cross
-
-    # jsut a sanity check
-    assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
-    assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
-
-    cov_4d = sl.cov_6D_to_4D_blocks(
-        cov_6d, cov_rs_obj.nbt_coarse, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-    )
-    setattr(cov_rs_obj, f'cov_{updated_key}_4d', cov_4d)
-
-    cov_2d = sl.cov_4D_to_2D(cov_4d, block_index=cov_rs_obj.block_index)
-    setattr(cov_rs_obj, f'cov_{updated_key}_2d', cov_2d)
-
-if obs_space == 'real':
+if obs_space == 'real_':
     print('\nComputing real-space covariance...')
     start_rs = time.perf_counter()
 
@@ -1701,6 +1669,68 @@ if obs_space == 'real':
     ):
         print(f'\n***** working on probe {_probe} - term {_term} *****')
         cov_rs_obj.compute_rs_cov_term_probe_6d(
+            cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
+        )
+
+    for term in cov_rs_obj.terms_toloop:
+        # fill the remaining probe blocks by symmetry (in 6d)
+        cov_rs_obj.fill_remaining_probe_blocks_6d(
+            term, symm_probe_combs_rs, nonreq_probe_combs_rs
+        )
+    for term in cov_rs_obj.terms_toloop:
+        # reshape all the probe blocks to 4d and 2d
+        cov_rs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
+
+    # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
+    cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
+    # construct 4d and 2d 3x2pt
+    # cov_rs_obj._build_cov_3x2pt_4d_and_2d()
+
+    # test new method:
+    for term in cov_rs_obj.cov_dict:
+        if term == 'tot':
+            continue  # tot is built at the end, skip it
+
+        cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
+            cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
+        )
+
+    print(f'...done in {time.perf_counter() - start_rs:.2f} s')
+
+
+if obs_space == 'real':
+    print('\nComputing real-space covariance...')
+    start_rs = time.perf_counter()
+
+    # precompute COSEBIs kernels W_n(ell)
+    theta_min = cfg['precision']['theta_min_arcmin_cosebis']
+    theta_max = cfg['precision']['theta_max_arcmin_cosebis']
+    theta_steps = cfg['precision']['theta_steps_cosebis']
+    n_modes = cfg['precision']['n_modes_cosebis']
+    n_threads = cfg['misc']['num_threads']
+    from cloelib.auxiliary import cosebi_helpers as ch
+
+    theta_grid_deg = np.geomspace(theta_min / 60, theta_max / 60, theta_steps + 1)
+    theta_grid_rad = np.deg2rad(theta_grid_deg)  # in radians
+
+    with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {n_modes} modes...'):
+        w_ells_dict = ch.get_W_ell(
+            thetagrid=theta_grid_rad,
+            Nmax=n_modes,
+            ells=cov_rs_obj.ells,
+            N_thread=n_threads,
+        )
+        # shape (n_modes, n_ells)
+    w_ells_arr = np.array([v for v in w_ells_dict.values()])
+    cov_rs_obj.w_ells_arr = w_ells_arr
+    cov_rs_obj.n_modes = n_modes
+
+    # TODO understand a bit better how to treat real-space SSC and cNG
+    for _probe, _term in itertools.product(
+        unique_probe_combs_rs, cov_rs_obj.terms_toloop
+    ):
+        print(f'\n***** working on probe {_probe} - term {_term} *****')
+        cov_rs_obj.compute_cosebis_cov_term_probe_6d(
             cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
         )
 

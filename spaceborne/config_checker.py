@@ -418,6 +418,12 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('include_terasawa_terms'), bool), (
             'covariance: include_terasawa_terms must be a boolean'
         )
+        assert isinstance(cov_cfg.get('sigma2_b_int_method'), str), (
+            'covariance: sigma2_b_int_method must be a string'
+        )
+        assert isinstance(cov_cfg.get('load_cached_sigma2_b'), bool), (
+            'covariance: load_cached_sigma2_b must be a boolean'
+        )
         assert isinstance(cov_cfg.get('log10_k_min'), float), (
             'covariance: log10_k_min must be a float'
         )

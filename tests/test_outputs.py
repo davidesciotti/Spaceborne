@@ -75,11 +75,17 @@ def test_main_script(test_cfg_path):
 
     keys_test = test_data.files
     keys_bench = bench_data.files
+
+    # print keys not in common
+    uncommon_keys = list(set(keys_test) ^ set(keys_bench))
+    for key in uncommon_keys:
+        key_in_test = '✅' if key in keys_test else '✖️'
+        key_in_bench = '✅' if key in keys_bench else '✖️'
+        print(f'{key:<15} \t\t in test: {key_in_test} \t in bench: {key_in_bench}')
+
+    # test keys in common
     common_keys = list(set(keys_test) & set(keys_bench))
     common_keys.sort()
-
-    print(f'Keys not in common: {set(keys_test) ^ set(keys_bench)}')
-
     print('\n')
     # Compare outputs
     for key in common_keys:
@@ -98,7 +104,7 @@ def test_main_script(test_cfg_path):
                 rtol=1e-5,
                 err_msg=f"{key} doesn't match the benchmark ❌",
             )
-            print(f'{key} matches the benchmark ✅')
+            print(f'{key:<30} matches the benchmark ✅')
         except ValueError as e:
             # Catch shape mismatches (e.g., one empty, one non-empty)
             print(f"Shape mismatch for '{key}': {e}")
@@ -112,10 +118,10 @@ def test_main_script(test_cfg_path):
             try:
                 # Direct comparison (handles empty arrays automatically)
                 np.testing.assert_allclose(
-                    _dict[f'cov_{probe}_tot_2D'],
-                    _dict[f'cov_{probe}_g_2D']
-                    + _dict[f'cov_{probe}_ssc_2D']
-                    + _dict[f'cov_{probe}_cng_2D'],
+                    _dict[f'cov_{probe}_tot_2d'],
+                    _dict[f'cov_{probe}_g_2d']
+                    + _dict[f'cov_{probe}_ssc_2d']
+                    + _dict[f'cov_{probe}_cng_2d'],
                     atol=0,
                     rtol=1e-5,
                     err_msg=f'cov {probe} tot != G + SSC + cNG ❌',
@@ -123,10 +129,18 @@ def test_main_script(test_cfg_path):
                 print(f'cov {probe} tot = G + SSC + cNG ✅')
             except ValueError as e:
                 # Catch shape mismatches (e.g., one empty, one non-empty)
-                print(f"Shape mismatch for '{key}': {e}")
+                print(f"Shape mismatch for '{probe}': {e}")
             except (TypeError, AssertionError) as e:
                 # Catch other errors (dtype mismatches, numerical differences)
-                print(f'Comparison failed for {key}: {e}')
+                print(f'Comparison failed for {probe}: {e}')
+            except KeyError as e:
+                # Catch missing keys
+                print(
+                    f'It looks like cov_{probe}_tot_2d or one of the other '
+                    'covariances is missing. This may be because of the probes '
+                    'selected in the config, and is not necessarily an error.'
+                )
+                print(f'Error: \n{e}\n')
 
     # example of the Note above
     # assert False, 'stop here'
@@ -134,8 +148,7 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/Users/davidesciotti/Documents/Work/Code'
-ROOT = '/u/dsciotti/code'
+ROOT = '/home/cosmo/davide.sciotti/data'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file
@@ -147,20 +160,20 @@ bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 bench_yaml_names.sort()
 
-slow_benchs = [
-    'config_0004',
-    'config_0005',
-    'config_0008',
-    'config_0009',
-    'config_0010',
-    'config_0013',
-    'config_0018',
-]
+# slow_benchs = [
+#     'config_0004',
+#     'config_0005',
+#     'config_0008',
+#     'config_0009',
+#     'config_0010',
+#     'config_0013',
+#     'config_0018',
+# ]
 
 # remove slow_benchs from bench_yaml_names
-for bench_name in slow_benchs:
-    if bench_name in bench_yaml_names:
-        bench_yaml_names.remove(bench_name)
+# for bench_name in slow_benchs:
+#     if bench_name in bench_yaml_names:
+#         bench_yaml_names.remove(bench_name)
 
 # ... or run specific tests
 # bench_yaml_names = [

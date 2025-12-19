@@ -13,6 +13,8 @@ SR_TO_ARCMIN2 = (180 / np.pi * 60) ** 2
 DR1_DATE = 9191.0
 SPEED_OF_LIGHT = 299792.458  # km/s
 
+ALL_COV_TERMS = ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
+
 # admittedly, these are not physical constants ^^
 HS_ALL_PROBE_COMBS = [
     'LLLL', 'LLGL', 'LLGG',
@@ -27,23 +29,31 @@ RS_ALL_PROBE_COMBS = [
     'ggxip',  'ggxim',  'gggt',  'gggg',
 ]  # fmt: skip
 
+# TODO use w for sb gggg?
 HS_DIAG_PROBE_COMBS = ['LLLL', 'GLGL', 'GGGG']
 RS_DIAG_PROBE_COMBS = ['xipxip', 'ximxim', 'gtgt', 'gggg']
-# not used for the moment
 HS_DIAG_PROBES = ['LL', 'GL', 'GG']
 RS_DIAG_PROBES = ['xip', 'xim', 'gt', 'gg']
 HS_DIAG_PROBES_OC = ['mm', 'gm', 'gg']
 RS_DIAG_PROBES_OC = ['xip', 'xim', 'gm', 'gg']
 
+HS_DIAG_PROBES_OC_TO_SB = {'mm': 'LL', 'gm': 'GL', 'gg': 'GG'}
+RS_DIAG_PROBES_OC_TO_SB = {'xip': 'xip', 'xim': 'xim', 'gm': 'gt', 'gg': 'gg'}
+
+# used for the reshaping logic
+HS_AUTO_PROBES = ['LL', 'GG']
+RS_AUTO_PROBES = ['xip', 'xim', 'gg']
+
 HS_PROBE_NAME_TO_IX_DICT = {'L': 0, 'G': 1}
 HS_PROBE_IX_TO_NAME_DICT = {0: 'L', 1: 'G'}
 
-HS_SYMMETRIZE_OUTPUT_DICT = {
-    ('L', 'L'): True,
-    ('G', 'L'): False,
-    ('L', 'G'): False,
-    ('G', 'G'): True,
-}
+# whether or not to symmetrize the covariance probe blocks when
+# reshaping it from 4D to 6D.
+# Useful if the 6D cov elements need to be accessed directly, whereas if
+# the cov is again reduced to 4D or 2D.
+# Can be set to False for a significant speedup, but better to leave as-is for
+# safety.
+HS_SYMMETRIZE_OUTPUT_DICT = {'LL': True, 'GL': False, 'LG': False, 'GG': True}
 
 # bessel functions order for the different real space probes
 MU_DICT = {'gg': 0, 'gt': 2, 'xip': 0, 'xim': 4}
@@ -126,7 +136,6 @@ labels_tex = {
     'omegam': '\\Omega_{\\rm m}',
     'omegab': '\\Omega_{\\rm b}',
     'HMCode_logT_AGN': '\\log{T_{\\rm AGN}}',
-    
     # new
     'H0': 'H_0',
     'h': 'h',

@@ -24,6 +24,459 @@ from scipy.special import jv
 
 import spaceborne.constants as const
 
+"""
+COVARIANCE DICTIONARY STRUCTURE AND FUNCTIONS USED TO RESHAPE IT
+This is a small vademecum for the structure of the covariance dictionary 
+used in Spaceborne and the functions used to reshape it.
+
+The dictionary is structured as follows:
+    cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray (6d, 4d or 2d)
+
+The possible keys are:
+    term:              ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
+    probe_ab/probe_cd: - one of const.HS_DIAG_PROBES or const.RS_DIAG_PROBES, 
+                         depending on the space ('harmonic' or 'real')
+                       - '3x2pt' (special case, see below)
+    dim:               ['2d', '4d', '6d']
+    
+An "exception" to this is the 3x2pt, for which the structure is:
+    cov_dict['3x2pt'][dim] = np.ndarray (2d)
+so beware that:
+- The probe key is not a 2-tuple
+- There are no 6d or 4d keys
+
+The general philosophy is the following:
+1. The covariance is computed for the individual probe blocks, trying to leverage 
+   symmetries for computational efficiency (e.g., if LL, GG and their cross-cov 
+   is required, only the LLLL, LLGG, GGGG blocks will acually be computed, and 
+   GGLL will be filled by symmetry).
+   The cov blocks will generally be computed in 4d (again, for efficiency reasons), 
+   with the exception of:
+   - the OneCovariance outputs (reshaped direcly in 6d) 
+   - the harmonic-space Gaussian covariance (the einsum function outputs a 10d array but 
+     computes everything at once, so it's quite convenient and we leave it as it is for 
+     the moment)
+2. The [sva, sn, mix, g, ssc, cng] terms are filled in this way (sva, sn mix) are 
+   deleted if the split-Gaussian cov is not required
+   
+
+
+
+To reshape the covariance *blocks*, you can use:
+6d -> 4d: 
+    cov_dict = cov_dict_6d_probe_blocks_to_4d_and_2d()
+
+
+[OLD]
+To create the 4d 3x2pt covariance, you can use (you have to loop over terms here!):
+
+cov_dict (4d) -> 3x2pt arr (4d): 
+    cov_dict[term]['3x2pt']['4d'] = cov_dict_4d_blocks_4d_3x2pt (returns an array)
+3x2pt arr (4d) -> 3x2pt arr (2d): 
+    cov_dict[term]['3x2pt']['2d'] = cov_hs_obj.cov_4D_to_2D_3x2pt_func(
+            cov_dict[term]['3x2pt']['4d'], **cov_hs_obj.cov_4D_to_2D_3x2pt_func_kw
+            )
+
+[NEW]
+The 3x2pt covariance is assembled directly in 2d, with the function 
+sl.build_cov_3x2pt_2d (returns an array)
+
+Naming conventions (just to ease the notation):
+- cov_term_dict = cov_dict[term]
+- cov_probe_dict = cov_dict[term][probe_ab, probe_cd]
+- cov_dim_dict = cov_dict[term][probe_ab, probe_cd][dim]
+"""
+
+
+def symmetrize_and_fill_probe_blocks(
+    cov_term_dict: dict,
+    dim: str,
+    unique_probe_combs: list[str],
+    nonreq_probe_combs: list[str],
+    obs_space: str,
+    nbx: int,
+    zbins: int | None,
+    ind_dict: dict,
+    msg: str,
+) -> dict:
+    """Function to symmetrize and fill 4d covariance matrices.
+    Say we want the LL, GG covariance blocks, plus their cross-covariance.
+
+    Then the unique probe combinations are (I display the list in this way for clarity,
+    it's actually a flat list [LLLL, LLGG, GGLL]):
+    [LLLL, LLGG,
+     -   , GGLL]
+    The symmetric probe combinations are:
+    [LLGG]
+    The non-required probe combinations are:
+    []
+    """
+
+    # Validate dim parameter
+    if dim not in ('4d', '6d'):
+        raise ValueError(f"dim must be '4d' or '6d', got: {dim}")
+
+    # obtain the probe combinations to be filled by symmetry
+    symm_probe_combs, _ = get_probe_combs(
+        unique_probe_combs=unique_probe_combs, space=obs_space
+    )
+
+    # fill by symmetry
+    for probe_abcd in symm_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=obs_space)
+        probe_2tpl_orig = (probe_ab, probe_cd)
+        probe_2tpl_symm = (probe_cd, probe_ab)
+        print(f'{msg}filling probe combination {probe_ab, probe_cd} by symmetry')
+
+        if dim == '4d':
+            transpose_axes = (1, 0, 3, 2)
+        elif dim == '6d':
+            transpose_axes = (1, 0, 4, 5, 2, 3)
+
+        cov_term_dict[probe_2tpl_orig][dim] = (
+            cov_term_dict[probe_2tpl_symm][dim].transpose(*transpose_axes)
+        ).copy()
+
+    # # * if block is not required, set it to 0
+    # set to 0 the non-required probe combinations (note that these are the blocks
+    # which appear in the final nx2pt 2d covariance matrix! the blocks which are not
+    # required at all, e.g. LLGL if we as for the LL, GG covariance)
+    for probe_abcd in nonreq_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=obs_space)
+        probe_2tpl = (probe_ab, probe_cd)
+        zpairs_ab = ind_dict[probe_ab].shape[0]
+        zpairs_cd = ind_dict[probe_cd].shape[0]
+        print(f'{msg}skipping probe combination {probe_ab, probe_cd}')
+
+        if dim == '4d':
+            shape = (nbx, nbx, zpairs_ab, zpairs_cd)
+        elif dim == '6d':
+            shape = (nbx, nbx, zbins, zbins, zbins, zbins)
+
+        cov_term_dict[probe_2tpl][dim] = np.zeros(shape)
+
+    return cov_term_dict
+
+
+def set_cov_tot_2d_and_6d(cov_dict: dict, req_probe_combs_2d: list, space: str) -> dict:
+    """
+    Sums G, SSC and cNG 2D covs to get the total covariance
+
+    Note: simply looping over terms would sum sva + sn + mix + g, resulting in
+    double counting of the Gaussian term.
+    """
+
+    # if neither ssc nor cng are present, no 'tot' term will be present either
+    if 'tot' not in cov_dict:
+        return cov_dict
+
+    for dim in ('2d', '6d'):
+        for probe_abcd in req_probe_combs_2d:
+            probe_2tpl = split_probe_name(probe_abcd, space=space)
+
+            # concise way to check that the key exists and the dict is not empty
+            ssc = cov_dict['ssc'][probe_2tpl][dim] if 'ssc' in cov_dict else 0
+            cng = cov_dict['cng'][probe_2tpl][dim] if 'cng' in cov_dict else 0
+
+            cov_dict['tot'][probe_2tpl][dim] = (
+                cov_dict['g'][probe_2tpl][dim] + ssc + cng
+            )
+
+    # do the same for 3x2pt (for which only 2d exists)
+    ssc = cov_dict['ssc']['3x2pt']['2d'] if 'ssc' in cov_dict else 0
+    cng = cov_dict['cng']['3x2pt']['2d'] if 'cng' in cov_dict else 0
+
+    cov_dict['tot']['3x2pt']['2d'] = cov_dict['g']['3x2pt']['2d'] + ssc + cng
+
+    return cov_dict
+
+
+def get_cov_dict_memory_footprint(cov_dict: dict):
+    """Returns the size of the covariance dictionary in MB."""
+    dim_b = sum(
+        arr.nbytes
+        for term in cov_dict.values()
+        for probe in term.values()
+        for arr in probe.values()
+    )
+
+    dim_mb = dim_b / (1024**2)
+    return dim_mb
+
+
+def print_cov_dict_info(cov_dict: dict, show_array_info: bool = True):
+    """
+    Print the structure of a nested covariance dictionary in a tree format.
+
+    Structure: cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
+
+    Parameters
+    ----------
+    cov_dict : dict
+        Nested covariance dictionary
+    show_array_info : bool
+        If True, shows array shapes and dtypes
+    """
+
+    print('cov_dict info:')
+    print('=' * 60)
+
+    # Iterate through terms (level 1)
+    for term_idx, (term, cov_probe_dict) in enumerate(cov_dict.items(), 1):
+        is_last_term = term_idx == len(cov_dict)
+        term_prefix = '└──' if is_last_term else '├──'
+
+        print(
+            f"{term_prefix} Term: '{term}' ({len(cov_probe_dict)} probe combinations)"
+        )
+
+        # Iterate through probe tuples (level 2)
+        for probe_idx, (probe_tpl, cov_dim_dict) in enumerate(
+            cov_probe_dict.items(), 1
+        ):
+            is_last_probe = probe_idx == len(cov_probe_dict)
+
+            # Formatting for tree structure
+            if is_last_term:
+                probe_prefix = '    └──'
+                dim_parent_prefix = '        '
+            else:
+                probe_prefix = '│   └──' if is_last_probe else '│   ├──'
+                dim_parent_prefix = '│       ' if is_last_probe else '│   │   '
+
+            if isinstance(probe_tpl, tuple) and len(probe_tpl) == 2:
+                probe_ab, probe_cd = probe_tpl
+                probe_str = f'({probe_ab}, {probe_cd})'
+            else:
+                probe_str = str(probe_tpl)
+            print(
+                f'{probe_prefix} Probe combination: '
+                f'{probe_str} - {len(cov_dim_dict)} dimensions'
+            )
+
+            # Iterate through dimensions (level 3)
+            for dim_idx, (dim, array) in enumerate(cov_dim_dict.items(), 1):
+                is_last_dim = dim_idx == len(cov_dim_dict)
+                dim_prefix = '└──' if is_last_dim else '├──'
+
+                if show_array_info and array is not None:
+                    array_info = f'shape={array.shape}, dtype={array.dtype}'
+                    print(
+                        f"{dim_parent_prefix}{dim_prefix} Dim: '{dim}' ({array_info})"
+                    )
+                elif show_array_info and array is None:
+                    print(f"{dim_parent_prefix}{dim_prefix} Dim: '{dim}' (None)")
+                elif not show_array_info:
+                    print(f"{dim_parent_prefix}{dim_prefix} Dim: '{dim}'")
+
+    print('=' * 60)
+
+
+def compare_cov_dicts(
+    cov_dict1: dict, cov_dict2: dict, rtol: float = 1e-7, atol: float = 0
+) -> bool:
+    """
+    Compare two nested covariance dictionaries with structure:
+    cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
+
+    Parameters
+    ----------
+    cov_dict1, cov_dict2 : dict
+        Nested dictionaries to compare
+    rtol : float
+        Relative tolerance for numpy array comparison
+    atol : float
+        Absolute tolerance for numpy array comparison
+
+    Returns
+    -------
+    bool
+        True if dictionaries are identical, False otherwise
+
+    Raises
+    ------
+    AssertionError
+        If dictionaries differ, with detailed error message
+    """
+    # Check if both dicts have same terms (outermost keys)
+    terms1 = set(cov_dict1.keys())
+    terms2 = set(cov_dict2.keys())
+
+    if terms1 != terms2:
+        missing_in_2 = terms1 - terms2
+        missing_in_1 = terms2 - terms1
+        raise AssertionError(
+            f'Terms mismatch. Missing in dict2: {missing_in_2}. '
+            f'Missing in dict1: {missing_in_1}'
+        )
+
+    # Iterate through each term
+    for term in terms1:
+        cov_probe_dict1 = cov_dict1[term]
+        cov_probe_dict2 = cov_dict2[term]
+
+        # Check if both cov_probe_dicts have same probe tuples
+        probes1 = set(cov_probe_dict1.keys())
+        probes2 = set(cov_probe_dict2.keys())
+
+        if probes1 != probes2:
+            missing_in_2 = probes1 - probes2
+            missing_in_1 = probes2 - probes1
+            raise AssertionError(
+                f"Probe tuples mismatch in term '{term}'. "
+                f'Missing in dict2: {missing_in_2}. '
+                f'Missing in dict1: {missing_in_1}'
+            )
+
+        # Iterate through each probe tuple
+        for probe_tpl in probes1:
+            cov_dim_dict1 = cov_probe_dict1[probe_tpl]
+            cov_dim_dict2 = cov_probe_dict2[probe_tpl]
+
+            # Check if both cov_dim_dicts have same dimensions
+            dims1 = set(cov_dim_dict1.keys())
+            dims2 = set(cov_dim_dict2.keys())
+
+            if dims1 != dims2:
+                missing_in_2 = dims1 - dims2
+                missing_in_1 = dims2 - dims1
+                raise AssertionError(
+                    f"Dimension keys mismatch in term '{term}', probe {probe_tpl}. "
+                    f'Missing in dict2: {missing_in_2}. '
+                    f'Missing in dict1: {missing_in_1}'
+                )
+
+            # Compare arrays for each dimension
+            for dim in dims1:
+                arr1 = cov_dim_dict1[dim]
+                arr2 = cov_dim_dict2[dim]
+
+                # Check array shapes match
+                if arr1.shape != arr2.shape:
+                    raise AssertionError(
+                        f"Shape mismatch in term '{term}', "
+                        f"probe {probe_tpl}, dim '{dim}'. "
+                        f'Shape1: {arr1.shape}, Shape2: {arr2.shape}'
+                    )
+
+                # Check array values are close
+                if not np.allclose(arr1, arr2, rtol=rtol, atol=atol):
+                    max_diff = np.max(np.abs(arr1 - arr2))
+                    raise AssertionError(
+                        f"Array values differ in term '{term}', "
+                        f"probe {probe_tpl}, dim '{dim}'. "
+                        f'Max absolute difference: {max_diff}'
+                    )
+
+    return True
+
+
+def symmetrize_probe_cov_dict_6d(cov_dict: dict):
+    """Fills the symmetric 6D probe combinations (e.g., given gggt, fills gtgg)"""
+
+    # iterate through the different terms and shorten the name of the dict
+    for probe_cov_dict in cov_dict.values():
+        # Create a list of keys to avoid modifying dict during iteration
+        existing_probe_2tpl = list(probe_cov_dict.keys())
+
+        # if present, remove "3x2pt" from the list
+        existing_probe_2tpl = [
+            probe for probe in existing_probe_2tpl if '3x2pt' not in probe
+        ]
+
+        # Validate that all keys are 2-tuples
+        for _probe in existing_probe_2tpl:
+            if not isinstance(_probe, tuple) or len(_probe) != 2:
+                raise ValueError(
+                    f'Expected 2-tuple key, got {type(_probe)} with value {_probe}'
+                )
+
+        for probe_ab, probe_cd in existing_probe_2tpl:
+            # Only add symmetric if it doesn't already exist and it's
+            # not auto-correlation
+            if (probe_cd, probe_ab) not in probe_cov_dict and probe_ab != probe_cd:
+                cov = (
+                    probe_cov_dict[probe_ab, probe_cd]['6d']
+                    .transpose(1, 0, 4, 5, 2, 3)
+                    .copy()
+                )
+                probe_cov_dict[probe_cd, probe_ab] = {'6d': cov}
+
+    return cov_dict
+
+
+def validate_cov_dict_structure(cov_dict: dict, obs_space: str):
+    """
+    Validates that cov_dict follows the structure:
+    cov_dict[term][probe_ab, probe_cd][dim] = np.ndarray
+
+    Additionally, the function checks that the term, probe_ab, probe_cd, and dim
+    keys have one of the expected values (among all the possible ones!)
+
+    Args:
+        cov_dict: Dictionary to validate
+        obs_space: 'harmonic' or 'real'
+        expected_probes: Optional list of expected probe tuples
+        expected_dims: Optional list of expected dimensions (e.g., ['6d', '8d'])
+    """
+    expected_terms = ['sva', 'sn', 'mix', 'g', 'ssc', 'cng', 'tot']
+    expected_dims = ['2d', '4d', '6d']
+    if obs_space == 'harmonic':
+        expected_probes_ab = const.HS_DIAG_PROBES
+    elif obs_space == 'real':
+        expected_probes_ab = const.RS_DIAG_PROBES
+    else:
+        raise ValueError('`obs_space` must be in ["harmonic", "real"]')
+
+    if not isinstance(cov_dict, dict):
+        raise ValueError('cov_dict must be a dictionary')
+
+    for term, cov_probe_dict in cov_dict.items():
+        if term not in expected_terms:
+            raise ValueError(
+                f'Unexpected term: {term}, expected one of {expected_terms}'
+            )
+        if not isinstance(cov_probe_dict, dict):
+            raise ValueError(
+                f"Term '{term}' must contain a dictionary, got {type(cov_probe_dict)}"
+            )
+
+        for probe_2tpl, cov_dim_dict in cov_probe_dict.items():
+            # check the probe names
+            if probe_2tpl[0] not in expected_probes_ab:
+                raise ValueError(
+                    f'Unexpected probe_ab: {probe_2tpl[0]}, expected one of '
+                    f'{expected_probes_ab}'
+                )
+            if probe_2tpl[1] not in expected_probes_ab:
+                raise ValueError(
+                    f'Unexpected probe_ab: {probe_2tpl[1]}, expected one of '
+                    f'{expected_probes_ab}'
+                )
+            # Validate probe key is a tuple of 2 elements
+            if not isinstance(probe_2tpl, tuple) or len(probe_2tpl) != 2:
+                raise ValueError(
+                    f"Probe key {probe_2tpl} in term '{term}' must be "
+                    'a tuple of 2 elements'
+                )
+            if not isinstance(cov_dim_dict, dict):
+                raise ValueError(
+                    f"Probe {probe_2tpl} in term '{term}' must contain "
+                    f'a dictionary, got {type(cov_dim_dict)}'
+                )
+
+            for dim, value in cov_dim_dict.items():
+                if dim not in expected_dims:
+                    raise ValueError(
+                        f"Unexpected dimension '{dim}' for probe {probe_2tpl} in term "
+                        f"'{term}', expected one of {expected_dims}"
+                    )
+                if not isinstance(value, np.ndarray):
+                    raise ValueError(
+                        f"Value for dim '{dim}' of probe {probe_2tpl} in term "
+                        f"'{term}' must be a numpy array, got {type(value)}"
+                    )
+
 
 def matshow_custom_bins(data_array, bin_edges):
     """
@@ -88,7 +541,7 @@ def matshow_custom_bins(data_array, bin_edges):
 
 
 def split_probe_name(
-    full_probe_name: str, space: str = 'real', valid_probes: Sequence[str] | None = None
+    full_probe_name: str, space: str, valid_probes: Sequence[str] | None = None
 ) -> tuple[str, str]:
     """Splits a full probe name (e.g., 'gtxim') into two component probes."""
 
@@ -237,7 +690,7 @@ def get_probe_combs(unique_probe_combs, space):
         if space == 'harmonic':
             probe_ab, probe_cd = probe[:2], probe[2:]
         elif space == 'real':
-            probe_ab, probe_cd = split_probe_name(probe)
+            probe_ab, probe_cd = split_probe_name(probe, 'real')
 
         symm_probe_combs.append(probe_cd + probe_ab)
 
@@ -271,12 +724,13 @@ def is_main_branch():
 
 @contextlib.contextmanager
 def timer(msg):
+    print(msg, flush=True)
     start = time.perf_counter()
     try:
         yield
     finally:
         stop = time.perf_counter()
-        print(f'{msg} done in {stop - start:.2f} s', flush=True)
+        print(f'...done in {stop - start:.2f} s', flush=True)
 
 
 def bin_2d_array(
@@ -311,7 +765,7 @@ def bin_2d_array(
         'weights_in must be the same length as ells_in'
     )
 
-    assert type(interpolate) is bool, 'interpolate must be a boolean'
+    assert isinstance(interpolate, bool), 'interpolate must be a boolean'
 
     # Loop over the output bins
     for ell1_idx, _ in enumerate(ells_out):
@@ -376,6 +830,179 @@ def bin_2d_array(
                 norm2 = simps(y=weights2_fine, x=ell2_fine)
 
             binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
+
+    return binned_cov
+
+
+def bin_2d_array_vectorized(
+    cov: np.ndarray,
+    ells_in: np.ndarray,
+    ells_out: np.ndarray,
+    ells_out_edges: np.ndarray,
+    weights_in: np.ndarray | None,
+    which_binning: str = 'sum',
+    interpolate: bool = True,
+):
+    """Vectorized version of bin_2d_array with pre-computed masks.
+
+    Optimizations:
+    - Pre-computes all bin masks once (for 'sum' binning mode)
+    - Uses direct array slicing for better cache locality
+    - Skips empty bins
+    - Removes redundant meshgrid operations
+    """
+    assert cov.shape[0] == cov.shape[1] == len(ells_in), (
+        'ells_in must be the same length as the covariance matrix'
+    )
+    assert len(ells_out) == len(ells_out_edges) - 1, (
+        'ells_out must be the same length as the number of edges - 1'
+    )
+    assert which_binning in ['sum', 'integral'], (
+        'which_binning must be either "sum" or "integral"'
+    )
+
+    if weights_in is None:
+        weights_in = np.ones_like(ells_in)
+
+    assert len(weights_in) == len(ells_in), (
+        'weights_in must be the same length as ells_in'
+    )
+    assert type(interpolate) is bool, 'interpolate must be a boolean'
+
+    n_bins = len(ells_out)
+    binned_cov = np.zeros((n_bins, n_bins))
+
+    if which_binning == 'sum':
+        # Pre-compute bin masks and norms for all bins
+        bin_masks = []
+        bin_weights = []
+        bin_norms = []
+
+        for i in range(n_bins):
+            mask = (ells_in >= ells_out_edges[i]) & (ells_in < ells_out_edges[i + 1])
+            weights = weights_in[mask]
+            bin_masks.append(mask)
+            bin_weights.append(weights)
+            bin_norms.append(np.sum(weights))
+
+        # Vectorized binning
+        for i in range(n_bins):
+            mask_i = bin_masks[i]
+            w_i = bin_weights[i]
+            norm_i = bin_norms[i]
+
+            if norm_i == 0:
+                continue
+
+            # Extract rows corresponding to bin i
+            cov_rows = cov[mask_i, :]
+
+            for j in range(n_bins):
+                mask_j = bin_masks[j]
+                w_j = bin_weights[j]
+                norm_j = bin_norms[j]
+
+                if norm_j == 0:
+                    continue
+
+                # Extract the block
+                cov_block = cov_rows[:, mask_j]
+
+                # Weighted sum using outer product
+                total = np.sum(cov_block * w_i[:, None] * w_j[None, :])
+                binned_cov[i, j] = total / (norm_i * norm_j)
+
+    elif which_binning == 'integral' and not interpolate:
+        # Vectorized integral version without interpolation
+        ells_edges_low = ells_out_edges[:-1]
+        ells_edges_high = ells_out_edges[1:]
+
+        for ell1_idx in range(n_bins):
+            ell1_min = ells_edges_low[ell1_idx]
+            ell1_max = ells_edges_high[ell1_idx]
+
+            mask1 = (ells_in >= ell1_min) & (ells_in < ell1_max)
+            ell1_in = ells_in[mask1]
+            weights1_in = weights_in[mask1]
+
+            if len(ell1_in) == 0:
+                continue
+
+            norm1 = simps(y=weights1_in, x=ell1_in)
+            cov_rows = cov[mask1, :]
+
+            for ell2_idx in range(n_bins):
+                ell2_min = ells_edges_low[ell2_idx]
+                ell2_max = ells_edges_high[ell2_idx]
+
+                mask2 = (ells_in >= ell2_min) & (ells_in < ell2_max)
+                ell2_in = ells_in[mask2]
+                weights2_in = weights_in[mask2]
+
+                if len(ell2_in) == 0:
+                    continue
+
+                cov_block = cov_rows[:, mask2]
+                norm2 = simps(y=weights2_in, x=ell2_in)
+
+                # Double integral
+                weights2_in_yy = weights2_in[None, :]
+                weights1_in_xx = weights1_in[:, None]
+                partial_integral = simps(
+                    y=cov_block * weights1_in_xx * weights2_in_yy, x=ell2_in, axis=1
+                )
+                total = simps(y=partial_integral, x=ell1_in, axis=0)
+
+                binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
+
+    elif which_binning == 'integral' and interpolate:
+        # Use original implementation with spline for interpolated integral
+        cov_interp_func = RectBivariateSpline(ells_in, ells_in, cov)
+        ells_edges_low = ells_out_edges[:-1]
+        ells_edges_high = ells_out_edges[1:]
+
+        for ell1_idx in range(n_bins):
+            ell1_min = ells_edges_low[ell1_idx]
+            ell1_max = ells_edges_high[ell1_idx]
+
+            mask1 = (ells_in >= ell1_min) & (ells_in < ell1_max)
+            ell1_in = ells_in[mask1]
+            weights1_in = weights_in[mask1]
+
+            if len(ell1_in) == 0:
+                continue
+
+            for ell2_idx in range(n_bins):
+                ell2_min = ells_edges_low[ell2_idx]
+                ell2_max = ells_edges_high[ell2_idx]
+
+                mask2 = (ells_in >= ell2_min) & (ells_in < ell2_max)
+                ell2_in = ells_in[mask2]
+                weights2_in = weights_in[mask2]
+
+                if len(ell2_in) == 0:
+                    continue
+
+                # Interpolate to fine grid
+                ell1_fine = np.linspace(ell1_min, ell1_max, num=100)
+                ell2_fine = np.linspace(ell2_min, ell2_max, num=100)
+                cov_interp = cov_interp_func(ell1_fine, ell2_fine)
+
+                # Interpolate weights
+                weights1_fine = np.interp(ell1_fine, ell1_in, weights1_in)
+                weights2_fine = np.interp(ell2_fine, ell2_in, weights2_in)
+
+                # Double integral
+                partial_integral = simps(
+                    y=cov_interp * weights1_fine[:, None] * weights2_fine[None, :],
+                    x=ell2_fine,
+                    axis=1,
+                )
+                total = simps(y=partial_integral, x=ell1_fine, axis=0)
+                norm1 = simps(y=weights1_fine, x=ell1_fine)
+                norm2 = simps(y=weights2_fine, x=ell2_fine)
+
+                binned_cov[ell1_idx, ell2_idx] = total / (norm1 * norm2)
 
     return binned_cov
 
@@ -960,7 +1587,7 @@ def compare_fm_constraints(
                     normalize=True,
                 )[:nparams_toplot]
                 for masked_fm_dict, masked_fid_pars_dict in zip(
-                    masked_fm_dict_list, masked_fid_pars_dict_list
+                    masked_fm_dict_list, masked_fid_pars_dict_list, strict=False
                 )
             ]
         )
@@ -1117,7 +1744,7 @@ def contour_FoM_calculator(sample, param1, param2, sigma_level=1):
             xy = path.vertices
             x = xy[:, 0]
             y = xy[:, 1]
-            contour_coords[ii] = list(zip(x, y))
+            contour_coords[ii] = list(zip(x, y, strict=False))
     sigma_lvls = {3: 0, 2: 1, 1: 2}
     poly = Polygon(
         contour_coords[sigma_lvls[sigma_level]]
@@ -1314,7 +1941,7 @@ def table_to_3d_array(file_path, is_auto_spectrum):
 
     cl_3d = np.zeros((nbl, zbins, zbins))
     for ell_idx in range(nbl):
-        for zpair_idx, (zi, zj) in enumerate(zip(ind[:, 0], ind[:, 1])):
+        for zpair_idx, (zi, zj) in enumerate(zip(ind[:, 0], ind[:, 1], strict=False)):
             cl_3d[ell_idx, zi, zj] = cl_2d[ell_idx, zpair_idx]
 
     if is_auto_spectrum:
@@ -2282,26 +2909,6 @@ def build_full_ind(triu_tril, row_col_major, size):
     return ind
 
 
-def build_ind_dict(triu_tril, row_col_major, size, GL_OR_LG):
-    ind = build_full_ind(triu_tril, row_col_major, size)
-    zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(size)
-
-    ind_dict = {}
-    ind_dict['L', 'L'] = ind[:zpairs_auto, :]
-    ind_dict['G', 'G'] = ind[(zpairs_auto + zpairs_cross) :, :]
-
-    if GL_OR_LG == 'LG':
-        ind_dict['L', 'G'] = ind[zpairs_auto : (zpairs_auto + zpairs_cross), :]
-        ind_dict['G', 'L'] = ind_dict['L', 'G'].copy()  # copy and switch columns
-        ind_dict['G', 'L'][:, [2, 3]] = ind_dict['G', 'L'][:, [3, 2]]
-    elif GL_OR_LG == 'GL':
-        ind_dict['G', 'L'] = ind[zpairs_auto : (zpairs_auto + zpairs_cross), :]
-        ind_dict['L', 'G'] = ind_dict['G', 'L'].copy()  # copy and switch columns
-        ind_dict['L', 'G'][:, [2, 3]] = ind_dict['L', 'G'][:, [3, 2]]
-
-    return ind_dict
-
-
 # CHECK FOR DUPLICATES
 def cl_2D_to_3D_symmetric(Cl_2D, nbl, zpairs, zbins):
     """Reshape from (nbl, zpairs) to (nbl, zbins, zbins) according to upper
@@ -2594,17 +3201,17 @@ def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_diagonal_ells):
     return cov
 
 
-def covariance_einsum(
-    cl_5d,
-    noise_5d,
-    fsky,
-    ell_values,
-    delta_ell,
-    split_terms,
-    return_only_diagonal_ells=False,
+def compute_g_cov(
+    cl_5d: np.ndarray,
+    noise_5d: np.ndarray,
+    fsky: float,
+    ell_values: np.ndarray,
+    delta_ell: np.ndarray,
+    split_terms: bool,
+    return_only_diagonal_ells: bool = False,
 ):
-    """Optimized version to avoid repeated code in the covariance
-    calculation.
+    """Computes the Gaussian (1/fsky) covariance term, splitting into SVA, SN and MIX
+    terms if required.
     """
     assert cl_5d.shape[0] in [1, 2], 'This function only works with 1 or 2 probes'
     assert cl_5d.shape[0] == cl_5d.shape[1], (
@@ -2810,56 +3417,78 @@ def cov_3x2pt_10D_to_4D(
     return cov_3x2pt_4D
 
 
-def cov_3x2pt_dict_6d_to_arr_4d(
-    cov_3x2pt_dict_6d: dict,
+def cov_dict_6d_probe_blocks_to_4d_and_2d(
+    cov_dict: dict,
+    obs_space: str,
     nbx: int,
-    zbins: int,
-    ind: np.ndarray,
-    req_probe_combs_2d: list,
-    space: str,
+    ind_auto: np.ndarray,
+    ind_cross: np.ndarray,
+    zpairs_auto: int,
+    zpairs_cross: int,
+    block_index: str,
 ):
-    """Takes the cov_3x2pt_10D dictionary, reshapes each A, B, C, D block
-    separately in 4D, then stacks the blocks in the right order to output
-    cov_3x2pt_4D (which is not a dictionary but a numpy array)
+    """
+    Takes the cov dictionary, validates its structure, and for each term reshapes each
+    [ab, cd] probe block separately to 4d and 2d.
 
-    probe_ordering: e.g. ['L', 'L'], ['G', 'L'], ['G', 'G']]
+    Note: This is the updated version of cov_3x2pt_10D_to_4D.
     """
 
-    # get ind and zpairs
-    ind = ind.copy()  # just to ensure the input ind file is not changed
-    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
+    if obs_space == 'harmonic':
+        auto_probes = const.HS_AUTO_PROBES
+    elif obs_space == 'real':
+        auto_probes = const.RS_AUTO_PROBES
+    else:
+        raise ValueError('`space` must be in ["harmonic", "real"]')
 
-    # construct the ind dict
-    ind_dict = {}
-    ind_dict['LL'] = ind[:zpairs_auto, :]
-    ind_dict['GG'] = ind[(zpairs_auto + zpairs_cross) :, :]
-    ind_dict['GL'] = ind[zpairs_auto : (zpairs_auto + zpairs_cross), :]
+    # reshape the probe-specific 6d arrays to 4d and 2d
+    for term in cov_dict:  # noqa: PLC0206
+        for probe_2tpl in cov_dict[term]:
+            # skip the 3x2pt key, this function only reshapes probe blocks
+            if probe_2tpl == '3x2pt':
+                continue
 
-    # construct the npairs dict
-    zpairs_dict = {}
-    zpairs_dict['LL'] = zpairs_auto
-    zpairs_dict['GL'] = zpairs_cross
-    zpairs_dict['GG'] = zpairs_auto
+            probe_ab, probe_cd = probe_2tpl
 
-    # initialize the 4D dictionary and list of probe combinations
-    cov_3x2pt_dict_4D = {}
+            # additional check: the input dictionary should only contain the '6d' dim
+            for dim in ['4d', '2d']:
+                assert cov_dict[term][probe_ab, probe_cd][dim] is None, (
+                    f'In term {term}, probe combination {probe_ab, probe_cd}, '
+                    f'dimension {dim} is already set to a non-None value. '
+                    f'Please provide only the 6d array in the input dictionary.'
+                )
 
-    # make each block 4D and store it with the right 'A', 'B', 'C, 'D' key
-    for probe_abcd in req_probe_combs_2d:
-        probe_ab, probe_cd = split_probe_name(probe_abcd, space)
-        cov_3x2pt_dict_4D[probe_ab, probe_cd] = cov_6D_to_4D_blocks(
-            cov_3x2pt_dict_6d[probe_ab, probe_cd],
-            nbx,
-            zpairs_dict[probe_ab],
-            zpairs_dict[probe_cd],
-            ind_dict[probe_ab],
-            ind_dict[probe_cd],
-        )
+            # extract array
+            cov_6d = cov_dict[term][probe_2tpl]['6d']
 
-    # concatenate the rows to construct the final matrix
-    cov_3x2pt_4D = cov_3x2pt_8D_dict_to_4D(cov_3x2pt_dict_4D, req_probe_combs_2d)
+            # reshape to 4d, then to 2d
+            if cov_6d is None:
+                cov_dict[term][probe_2tpl]['4d'] = None
+                cov_dict[term][probe_2tpl]['2d'] = None
+            else:
+                # prepare ind and zpairs
+                ind_ab = ind_auto if probe_ab in auto_probes else ind_cross
+                ind_cd = ind_auto if probe_cd in auto_probes else ind_cross
+                zpairs_ab = zpairs_auto if probe_ab in auto_probes else zpairs_cross
+                zpairs_cd = zpairs_auto if probe_cd in auto_probes else zpairs_cross
 
-    return cov_3x2pt_4D
+                # reshape
+                cov_dict[term][probe_ab, probe_cd]['4d'] = cov_6D_to_4D_blocks(
+                    cov_6D=cov_6d,
+                    nbl=nbx,
+                    npairs_AB=zpairs_ab,
+                    npairs_CD=zpairs_cd,
+                    ind_AB=ind_ab,
+                    ind_CD=ind_cd,
+                )
+
+                cov_dict[term][probe_ab, probe_cd]['2d'] = cov_4D_to_2D(
+                    cov_4D=cov_dict[term][probe_ab, probe_cd]['4d'],
+                    block_index=block_index,
+                    optimize=True,
+                )
+
+    return cov_dict
 
 
 def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmonic'):
@@ -2884,7 +3513,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
         if space == 'harmonic':
             probe_tpl = tuple(probe)
         elif space == 'real':
-            probe_tpl = split_probe_name(probe)
+            probe_tpl = split_probe_name(probe, 'real')
 
         assert probe_tpl in cov_3x2pt_8D_dict, (
             f'Probe combination {probe_tpl} not found in the input dictionary'
@@ -2921,7 +3550,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
     elif space == 'real':
         row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
         for probe in req_probe_combs_2d:
-            probe_ab, probe_cd = split_probe_name(probe)
+            probe_ab, probe_cd = split_probe_name(probe, 'real')
             if (probe_ab) == 'xip':
                 row_xip_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
             elif (probe_ab) == ('xim'):
@@ -2936,7 +3565,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
                     '("xip") or ("xim") or ("gt") or ("gg") '
                 )
         # concatenate the lists to make rows
-        # o(nly concatenate and include rows that have content)
+        # (only concatenate and include rows that have content)
         if row_xip_list:
             row_xip = np.concatenate(row_xip_list, axis=3)
             final_rows.append(row_xip)
@@ -2963,72 +3592,103 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
     return cov_3x2pt_4D
 
 
-def cov_3x2pt_4d_to_10d_dict(
-    cov_3x2pt_4d, zbins, probe_ordering, nbl, ind_copy, optimize=False
-):
-    zpairs_auto, zpairs_cross, _ = get_zpairs(zbins)
+def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: str):
+    """Convert a dictionary of 4D blocks into a single 4D array.
 
-    ind_copy = ind_copy.copy()  # just to ensure the input ind file is not changed
+    This is the same code as
+    in the last part of the function above.
+    :param cov_dict: dictionary of 4D covariance blocks
+    :param obs_space: observables space ("harmonic" or "real")
+    :return: 3x2pt 4D covariance array
+    """
 
-    ind_auto = ind_copy[:zpairs_auto, :]
-    ind_cross = ind_copy[zpairs_auto : zpairs_cross + zpairs_auto, :]
-    ind_dict = {('L', 'L'): ind_auto, ('G', 'L'): ind_cross, ('G', 'G'): ind_auto}
+    # make sure that the dict contains 4d arrays
+    for probe_2tpl in cov_probe_dict:  # noqa: PLC0206
+        dims = set(cov_probe_dict[probe_2tpl].keys())
+        if '4d' not in dims:
+            raise ValueError(f"Expected '4d' dimension, got {dims}")
 
-    assert probe_ordering == (('L', 'L'), ('G', 'L'), ('G', 'G')), (
-        'more elaborate probe_ordering not implemented yet'
-    )
+    final_rows = []
 
-    # slice the 4d cov to be able to use cov_4D_to_6D_blocks on the nine separate blocks
-    zpairs_sum = zpairs_auto + zpairs_cross
-    cov_3x2pt_8d_dict = {}
-    cov_3x2pt_8d_dict['L', 'L', 'L', 'L'] = cov_3x2pt_4d[
-        :, :, :zpairs_auto, :zpairs_auto
-    ]
-    cov_3x2pt_8d_dict['L', 'L', 'G', 'L'] = cov_3x2pt_4d[
-        :, :, :zpairs_auto, zpairs_auto:zpairs_sum
-    ]
-    cov_3x2pt_8d_dict['L', 'L', 'G', 'G'] = cov_3x2pt_4d[
-        :, :, :zpairs_auto, zpairs_sum:
-    ]
+    if obs_space == 'harmonic':
+        row_ll_list, row_gl_list, row_gg_list = [], [], []
 
-    cov_3x2pt_8d_dict['G', 'L', 'L', 'L'] = cov_3x2pt_4d[
-        :, :, zpairs_auto:zpairs_sum, :zpairs_auto
-    ]
-    cov_3x2pt_8d_dict['G', 'L', 'G', 'L'] = cov_3x2pt_4d[
-        :, :, zpairs_auto:zpairs_sum, zpairs_auto:zpairs_sum
-    ]
-    cov_3x2pt_8d_dict['G', 'L', 'G', 'G'] = cov_3x2pt_4d[
-        :, :, zpairs_auto:zpairs_sum, zpairs_sum:
-    ]
+        for probe_2tpl in cov_probe_dict:
+            if probe_2tpl == '3x2pt':
+                continue
+            probe_ab, probe_cd = probe_2tpl
 
-    cov_3x2pt_8d_dict['G', 'G', 'L', 'L'] = cov_3x2pt_4d[
-        :, :, zpairs_sum:, :zpairs_auto
-    ]
-    cov_3x2pt_8d_dict['G', 'G', 'G', 'L'] = cov_3x2pt_4d[
-        :, :, zpairs_sum:, zpairs_auto:zpairs_sum
-    ]
-    cov_3x2pt_8d_dict['G', 'G', 'G', 'G'] = cov_3x2pt_4d[:, :, zpairs_sum:, zpairs_sum:]
+            if probe_ab == 'LL':
+                row_ll_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'GL':
+                row_gl_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'GG':
+                row_gg_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            else:
+                raise ValueError(
+                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    '("LL") or ("GL") or ("GG") '
+                )
 
-    if optimize:
-        # this version is only marginally faster, it seems
-        cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks_opt
+        # concatenate the lists to make rows
+        # (only concatenate and include rows that have content)
+        if row_ll_list:
+            row_ll = np.concatenate(row_ll_list, axis=3)
+            final_rows.append(row_ll)
+        if row_gl_list:
+            row_gl = np.concatenate(row_gl_list, axis=3)
+            final_rows.append(row_gl)
+        if row_gg_list:
+            row_gg = np.concatenate(row_gg_list, axis=3)
+            final_rows.append(row_gg)
+
+    elif obs_space == 'real':
+        row_xip_list, row_xim_list, row_gt_list, row_gg_list = [], [], [], []
+
+        for probe_2tpl in cov_probe_dict:
+            if probe_2tpl == '3x2pt':
+                continue
+            probe_ab, probe_cd = probe_2tpl
+
+            if probe_ab == 'xip':
+                row_xip_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'xim':
+                row_xim_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'gt':
+                row_gt_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            elif probe_ab == 'gg':
+                row_gg_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
+            else:
+                raise ValueError(
+                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    '("xip") or ("xim") or ("gt") or ("gg") '
+                )
+        # concatenate the lists to make rows
+        # (only concatenate and include rows that have content)
+        if row_xip_list:
+            row_xip = np.concatenate(row_xip_list, axis=3)
+            final_rows.append(row_xip)
+        if row_xim_list:
+            row_xim = np.concatenate(row_xim_list, axis=3)
+            final_rows.append(row_xim)
+        if row_gt_list:
+            row_gt = np.concatenate(row_gt_list, axis=3)
+            final_rows.append(row_gt)
+        if row_gg_list:
+            row_gg = np.concatenate(row_gg_list, axis=3)
+            final_rows.append(row_gg)
+
     else:
-        # safer, default value
-        cov_4D_to_6D_blocks_func = cov_4D_to_6D_blocks
+        raise ValueError(f'space must me "harmonic" or "real", not: {obs_space}')
 
-    cov_3x2pt_10d_dict = {}
-    for key, cov in cov_3x2pt_8d_dict.items():
-        cov_3x2pt_10d_dict[key] = cov_4D_to_6D_blocks_func(
-            cov,
-            nbl,
-            zbins,
-            ind_dict[key[0], key[1]],
-            ind_dict[key[2], key[3]],
-            const.HS_SYMMETRIZE_OUTPUT_DICT[key[0], key[1]],
-            const.HS_SYMMETRIZE_OUTPUT_DICT[key[2], key[3]],
-        )
+    # concatenate the rows to construct the final matrix
+    if final_rows:
+        cov_3x2pt_4d = np.concatenate(final_rows, axis=2)
+    else:
+        # If no rows at all, return empty array with appropriate shape
+        raise ValueError('No valid probe combinations found!')
 
-    return cov_3x2pt_10d_dict
+    return cov_3x2pt_4d
 
 
 # @njit
@@ -3092,9 +3752,8 @@ def cov_6D_to_4D(cov_6D, nbl, zpairs, ind):
     )
     cov_4D = np.zeros((nbl, nbl, zpairs, zpairs))
 
-    for ell2 in range(
-        nbl
-    ):  # added this loop in the latest version, before it was vectorized
+    # added this loop in the latest version, before it was vectorized
+    for ell2 in range(nbl):
         for ij in range(zpairs):
             for kl in range(zpairs):
                 # rename for better readability
@@ -3595,6 +4254,109 @@ def _cov_4D_to_2D_assembler(cov_4D, zbins, probe_order, probe_sizes, block_index
     return np.vstack(rows)
 
 
+def build_cov_3x2pt_2d(
+    cov_term_dict: dict, cov_ordering_2d: str, obs_space: str
+) -> np.ndarray:
+    """
+    Constructs the 3x2pt covariance matrix in 2D, starting from the individual probe
+    blocks stored in cov_term_dict (that is, the dictionary passed to this function)
+    is cov_term_dict = cov_dict[term].
+
+    This allows to skip entirely the cov 3x2pt 4d format, which is
+    rather cumbersome and unnecessary.
+
+    Note: the zpair_probe_scale ordering is not currently implemnted, but it should
+    simply be a matter of replicating the second
+
+    """
+    assert cov_ordering_2d in [
+        'scale_probe_zpair',
+        'probe_scale_zpair',
+        'probe_zpair_scale',
+    ], (
+        'cov_ordering_2d must be one of '
+        '"scale_probe_zpair", "probe_scale_zpair", "probe_zpair_scale"'
+    )
+
+    # I loop like the diagonal probe blocks instead of taking directly the cov
+    # dict keys to enforce probe ordering to be LL, GL, GG (or xip, xim, gt, w)
+    if obs_space == 'real':
+        diag_probes = const.RS_DIAG_PROBES
+    elif obs_space == 'harmonic':
+        diag_probes = const.HS_DIAG_PROBES
+    else:
+        raise ValueError(f'obs_space must be "real" or "harmonic", not: {obs_space}')
+
+    # grab the number of ell bins
+    probe_blocks = [k for k in cov_term_dict if cov_term_dict[k] is not None]
+    first_block = probe_blocks[0]
+    nbx = cov_term_dict[first_block]['4d'].shape[0]
+
+    # make sure it's consistent across all probes and dimensions
+    # (# ell bins = # ell^prime bins)
+    for probe_2tpl in probe_blocks:
+        if probe_2tpl == '3x2pt':
+            continue
+        _nbx = cov_term_dict[probe_2tpl]['4d'].shape[0]
+        assert _nbx == cov_term_dict[probe_2tpl]['4d'].shape[1], (
+            'axes lengths must match'
+        )
+        assert nbx == _nbx, 'axes lengths must match'
+
+    if cov_ordering_2d in ['probe_scale_zpair', 'probe_zpair_scale']:
+        rows = []
+        for probe_ab in diag_probes:
+            row_blocks = []
+            for probe_cd in diag_probes:
+                if (probe_ab, probe_cd) not in cov_term_dict:
+                    continue
+
+                row_blocks.append(cov_term_dict[probe_ab, probe_cd]['2d'])
+
+            if row_blocks:
+                rows.append(np.hstack(row_blocks))
+
+        if rows:
+            cov_3x2pt_2d = np.vstack(rows)
+        else:
+            raise ValueError('No valid probe combinations found!')
+
+    # For scale_probe_zpair: outer loop is scale/ell, then probe, then zpair
+    # Work directly with 4D arrays and extract zpair slices for each ell pair
+    elif cov_ordering_2d == 'scale_probe_zpair':
+        rows = []
+        for ell1 in range(nbx):
+            row_blocks = []
+            for ell2 in range(nbx):
+                # For this ell pair, stack all probe combinations
+                probe_rows = []
+                for probe_ab in diag_probes:
+                    probe_cols = []
+                    for probe_cd in diag_probes:
+                        if (probe_ab, probe_cd) not in cov_term_dict:
+                            continue
+
+                        cov_4d = cov_term_dict[probe_ab, probe_cd]['4d']
+                        # Extract the zpair × zpair slice for this ell pair
+                        probe_cols.append(cov_4d[ell1, ell2, :, :])
+
+                    if probe_cols:
+                        probe_rows.append(np.hstack(probe_cols))
+
+                if probe_rows:
+                    row_blocks.append(np.vstack(probe_rows))
+
+            if row_blocks:
+                rows.append(np.hstack(row_blocks))
+
+        if rows:
+            cov_3x2pt_2d = np.vstack(rows)
+        else:
+            raise ValueError('No valid probe combinations found!')
+
+    return cov_3x2pt_2d
+
+
 def cov_4D_to_2DCLOE_3x2pt_hs(cov_4D, zbins, req_probe_combs_2d, block_index='ell'):
     """Reshape according to the "multi-diagonal", non-square blocks 2D_CLOE
     ordering for harmonic space 3x2pt probes.
@@ -3803,7 +4565,7 @@ def cov_4D_to_2DCLOE_3x2pt_old(cov_4D, zbins, req_probe_combs_2d, block_index='e
             )
 
     # concatenate the lists to make rows
-    # (o(nly concatenate and include rows that have content)
+    # (only concatenate and include rows that have content)
     final_rows = []
     if row_ll_list:
         row_ll = np.hstack(row_ll_list)
@@ -3976,7 +4738,7 @@ def build_noise(
 
     """
     # assert appropriate inputs are list, tuple or np.ndarray
-    for var, name in zip([ng_shear, ng_clust], ['ng_shear', 'ng_clust']):
+    for var, name in zip([ng_shear, ng_clust], ['ng_shear', 'ng_clust'], strict=False):
         #     [ng_shear, ng_clust, sigma_eps2],
         #     ['ng_shear', 'ng_clust', 'sigma_eps2'],
         # ):

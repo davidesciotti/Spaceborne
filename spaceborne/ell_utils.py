@@ -17,6 +17,27 @@ def nmt_linear_binning(lmin, lmax, bw, w=None):
 
 
 def nmt_log_binning(lmin, lmax, nbl, w=None):
+    """
+    Define a logarithmic ell binning scheme with optional weights.
+    Function written by Sylvain Gouyou Beauchamps.
+
+    Parameters
+    ----------
+    lmin : int
+        Minimum ell value for the binning.
+    lmax : int
+        Maximum ell value for the binning.
+    nbl : int
+        Number of bins.
+    w : array-like, optional
+        Weights for the ell values.
+
+    Returns
+    -------
+    b : nmt.NmtBin
+        NaMaster binning object with logarithmic bins.
+    """
+
     import pymaster as nmt
 
     op = np.log10
@@ -27,8 +48,9 @@ def nmt_log_binning(lmin, lmax, nbl, w=None):
     bins = inv(np.linspace(op(lmin), op(lmax + 1), nbl + 1))
     ell = np.arange(lmin, lmax + 1)
     i = np.digitize(ell, bins) - 1
+    if w is None:
+        w = np.ones(ell.size)
     b = nmt.NmtBin(bpws=i, ells=ell, weights=w, lmax=lmax)
-
     return b
 
 
@@ -178,8 +200,8 @@ class EllBinning:
 
         # Only load filenames if using 'from_input' binning type
         if self.binning_type == 'from_input':
-            self.wl_bins_filename = cfg['binning']['WL_bins_filename']
-            self.gc_bins_filename = cfg['binning']['GC_bins_filename']
+            self.wl_bins_filename = cfg['binning']['ell_bins_filename']
+            self.gc_bins_filename = cfg['binning']['ell_bins_filename']
         else:
             self.wl_bins_filename = None
             self.gc_bins_filename = None
@@ -190,17 +212,13 @@ class EllBinning:
         self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
     def set_ell_min_max_from_cfg(self, cfg):
-        self.ell_min_WL = cfg['binning']['ell_min_WL']
-        self.ell_max_WL = cfg['binning']['ell_max_WL']
-        self.nbl_WL = cfg['binning']['ell_bins_WL']
+        self.ell_min_WL = cfg['binning']['ell_min']
+        self.ell_max_WL = cfg['binning']['ell_max']
+        self.nbl_WL = cfg['binning']['ell_bins']
 
-        self.ell_min_GC = cfg['binning']['ell_min_GC']
-        self.ell_max_GC = cfg['binning']['ell_max_GC']
-        self.nbl_GC = cfg['binning']['ell_bins_GC']
-
-        self.ell_min_ref = cfg['binning']['ell_min_ref']
-        self.ell_max_ref = cfg['binning']['ell_max_ref']
-        self.nbl_ref = cfg['binning']['ell_bins_ref']
+        self.ell_min_GC = cfg['binning']['ell_min']
+        self.ell_max_GC = cfg['binning']['ell_max']
+        self.nbl_GC = cfg['binning']['ell_bins']
 
     def build_ell_bins(self):
         """Builds ell bins based on the specified configuration."""
@@ -265,6 +283,14 @@ class EllBinning:
             ell_edges_hi_WL = wl_bins_in[:, 3]
             ell_edges_hi_GC = gc_bins_in[:, 3]
 
+            # assign nbl, ell_min and ell_max
+            self.nbl_WL = len(self.ells_WL)
+            self.nbl_GC = len(self.ells_GC)
+            self.ell_min_WL = ell_edges_lo_WL[0]
+            self.ell_min_GC = ell_edges_lo_GC[0]
+            self.ell_max_WL = ell_edges_hi_WL[-1]
+            self.ell_max_GC = ell_edges_hi_GC[-1]
+
             # sanity check
             if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
                 raise ValueError('All WL bin lower edges must be less than upper edges')
@@ -287,10 +313,15 @@ class EllBinning:
 
         elif self.binning_type == 'ref_cut':
             # TODO this is only done for backwards-compatibility reasons
+
+            ell_min_ref = self.cfg['binning']['ell_min_ref']
+            ell_max_ref = self.cfg['binning']['ell_max_ref']
+            nbl_ref = self.cfg['binning']['ell_bins_ref']
+
             self.ells_ref, self.delta_l_ref, self.ell_edges_ref = compute_ells(
-                nbl=self.nbl_ref,
-                ell_min=self.ell_min_ref,
-                ell_max=self.ell_max_ref,
+                nbl=nbl_ref,
+                ell_min=ell_min_ref,
+                ell_max=ell_max_ref,
                 recipe='ISTF',
                 output_ell_bin_edges=True,
             )

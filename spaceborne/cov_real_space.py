@@ -1030,11 +1030,134 @@ class CovRealSpace:
         kwargs['kernel_2_func'] = kernel_2_partial
 
         return (
-            theta_1_ix, theta_2_ix, zi, zj, zk, zl, func(
-                zi=zi, zj=zj, zk=zk, zl=zl,
+            theta_1_ix,
+            theta_2_ix,
+            zi,
+            zj,
+            zk,
+            zl,
+            func(zi=zi, zj=zj, zk=zk, zl=zl),
+        )
+
+    def cov_cosebis_parallel_helper(
+        self, mode_n, mode_m, zij, zkl, ind_ab, ind_cd, func, w_ells_arr, **kwargs
+    ):
+        """Parallel helper for COSEBIs - no theta dependence, just mode indices.
+
+        Parameters
+        ----------
+        mode_n : int
+            First COSEBIs mode index
+        mode_m : int
+            Second COSEBIs mode index
+        zij : int
+            Index for first tomographic bin pair
+        zkl : int
+            Index for second tomographic bin pair
+        ind_ab : np.ndarray
+            Array of tomographic indices for first probe pair
+        ind_cd : np.ndarray
+            Array of tomographic indices for second probe pair
+        func : callable
+            Covariance function to call (e.g., cov_sva_simps)
+        w_ells_arr : np.ndarray
+            Array of W_n(ell) arrays, shape (n_modes, n_ells)
+        **kwargs : dict
+            Additional arguments to pass to func
+        """
+        zi, zj = ind_ab[zij, :]
+        zk, zl = ind_cd[zkl, :]
+
+        # Create mode-specific kernel callables (no theta dependence!)
+        # w_ells_arr[mode_n] should already be evaluated on self.ells grid
+        kernel_n = lambda ell: w_ells_arr[mode_n]
+        kernel_m = lambda ell: w_ells_arr[mode_m]
+
+        kwargs['kernel_1_func'] = kernel_n
+        kwargs['kernel_2_func'] = kernel_m
+
+        return (
+            mode_n,
+            mode_m,
+            zi,
+            zj,
+            zk,
+            zl,
+            func(zi=zi, zj=zj, zk=zk, zl=zl, **kwargs),
+        )
+
+    def cov_cosebis_wrapper(
+        self,
+        probe_a_ix,
+        probe_b_ix,
+        probe_c_ix,
+        probe_d_ix,
+        zpairs_ab,
+        zpairs_cd,
+        ind_ab,
+        ind_cd,
+        w_ells_arr: np.ndarray,
+        n_modes,
+        cov_func,
+    ):
+        """Wrapper for COSEBIs covariance - loops over modes instead of theta bins.
+
+        Parameters
+        ----------
+        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix : int
+            Probe indices (0 for shear, 1 for galaxy clustering)
+        zpairs_ab : int
+            Number of tomographic pairs for first probe combination
+        zpairs_cd : int
+            Number of tomographic pairs for second probe combination
+        ind_ab : np.ndarray
+            Array of tomographic indices for first probe pair
+        ind_cd : np.ndarray
+            Array of tomographic indices for second probe pair
+        w_ells_arr : np.ndarray
+            Array of W_n(ell) arrays, shape (n_modes, n_ells)
+        n_modes : int
+            Number of COSEBIs modes
+        cov_func : callable
+            Covariance function to compute (e.g., cov_sva_simps)
+
+        Returns
+        -------
+        cov_cosebis_6d : np.ndarray
+            Covariance array with shape (n_modes, n_modes, zbins, zbins, zbins, zbins)
+        """
+        cov_cosebis_6d = np.zeros(
+            (n_modes, n_modes, self.zbins, self.zbins, self.zbins, self.zbins)
+        )
+
+        kwargs = {
+            'probe_a_ix': probe_a_ix,
+            'probe_b_ix': probe_b_ix,
+            'probe_c_ix': probe_c_ix,
+            'probe_d_ix': probe_d_ix,
+            'cl_5d': self.cl_3x2pt_5d,
+            'ells': self.ells,
+            'Amax': self.amax,
+            'w_ells_arr': w_ells_arr,
+        }
+
+        results = Parallel(n_jobs=self.n_jobs)(
+            delayed(self.cov_cosebis_parallel_helper)(
+                mode_n=mode_n, mode_m=mode_m,
+                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
+                func=cov_func,
                 **kwargs,
-            ),
+            )
+            for mode_n in tqdm(range(n_modes), desc='COSEBIs modes')
+            for mode_m in range(n_modes)
+            for zij in range(zpairs_ab)
+            for zkl in range(zpairs_cd)
         )  # fmt: skip
+
+        for mode_n, mode_m, zi, zj, zk, zl, cov_value in results:
+            cov_cosebis_6d[mode_n, mode_m, zi, zj, zk, zl] = cov_value
+
+        return cov_cosebis_6d
 
     def _sum_split_g_terms_allprobeblocks_alldims(self) -> None:
         # small sanity check probe combinations must match for terms (sva, sn, mix)
@@ -1418,6 +1541,104 @@ class CovRealSpace:
         # setattr(self, f'cov_{probe}_{term}_2d', cov_out_2d)
 
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
+
+    def compute_cosebis_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
+        """
+        Computes the COSEBIs covariance matrix for the specified term and probe combination.
+
+        Parameters
+        ----------
+        probe_abcd : str
+            Probe combination string (e.g., 'xipxip')
+        term : str
+            Covariance term to compute ('sva', 'mix', 'sn')
+        theta_min : float
+            Minimum angular separation in arcmin
+        theta_max : float
+            Maximum angular separation in arcmin
+        n_modes : int
+            Number of COSEBIs modes to compute
+        n_threads : int, optional
+            Number of threads for pylevin integration (default: 1)
+
+        Returns
+        -------
+        cov_cosebis_6d : np.ndarray
+            COSEBIs covariance with shape (n_modes, n_modes, zbins, zbins, zbins, zbins)
+        """
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+        probe_2tpl = (probe_ab, probe_cd)
+
+        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
+            probe_abcd
+        ]
+
+        ind_ab = (
+            self.ind_auto[:, 2:] if probe_a_ix == probe_b_ix else self.ind_cross[:, 2:]
+        )
+        ind_cd = (
+            self.ind_auto[:, 2:] if probe_c_ix == probe_d_ix else self.ind_cross[:, 2:]
+        )
+
+        zpairs_ab = self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
+        zpairs_cd = self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
+
+        # Create a theta grid for computing the Hankel transform
+        # You may want to use a finer grid than self.theta_centers_fine
+
+        # Compute covariance based on term
+        if term == 'sva':
+            cov_cosebis_6d = self.cov_cosebis_wrapper(
+                probe_a_ix,
+                probe_b_ix,
+                probe_c_ix,
+                probe_d_ix,
+                zpairs_ab,
+                zpairs_cd,
+                ind_ab,
+                ind_cd,
+                w_ells_arr=self.w_ells_arr,
+                n_modes=self.n_modes,
+                cov_func=cov_sva_simps,
+            )
+
+        elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
+            cov_cosebis_6d = self.cov_cosebis_wrapper(
+                probe_a_ix,
+                probe_b_ix,
+                probe_c_ix,
+                probe_d_ix,
+                zpairs_ab,
+                zpairs_cd,
+                ind_ab,
+                ind_cd,
+                w_ells_arr=self.w_ells_arr,
+                n_modes=self.n_modes,
+                cov_func=partial(cov_mix_simps, self=self),
+            )
+
+        elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
+            cov_cosebis_6d = np.zeros(
+                (self.n_modes, self.n_modes, self.zbins, self.zbins, self.zbins, self.zbins)
+            )
+
+        elif term == 'sn':
+            # For COSEBIs, SN term needs special treatment
+            # It should be diagonal in mode space
+            # TODO: Implement proper COSEBIs shot noise term
+            print(
+                'Warning: COSEBIs shot noise term not yet implemented, returning zeros'
+            )
+            cov_cosebis_6d = np.zeros(
+                (self.n_modes, self.n_modes, self.zbins, self.zbins, self.zbins, self.zbins)
+            )
+
+        else:
+            raise ValueError(
+                f'Term {term} not recognized or not implemented for COSEBIs'
+            )
+
+        return cov_cosebis_6d
 
     def fill_remaining_probe_blocks_6d(
         self, term, symm_probe_combs, nonreq_probe_combs

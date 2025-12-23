@@ -209,19 +209,21 @@ def process_cov_from_list_file(
 
     # Determine scale type
     if 'theta1' in column_names:
-        theta_or_ell = 'theta'
+        scale_ix_name = 'theta'
     elif 'ell1' in column_names:
-        theta_or_ell = 'ell'
+        scale_ix_name = 'ell'
+    elif 'n1' in column_names:
+        scale_ix_name = 'n'
     else:
         raise ValueError('OneCov column names not recognised')
 
-    usecols = ['#obs', 'tomoi', f'{theta_or_ell}1']
+    usecols = ['#obs', 'tomoi', f'{scale_ix_name}1']
 
     # partial (much quicker) import of the .list file, to get info about thetas, probes
     # and to perform checks on the tomo bin idxs
     data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep=r'\s+')
 
-    scales_oc_load = data[f'{theta_or_ell}1'].unique()
+    scales_oc_load = data[f'{scale_ix_name}1'].unique()
     cov_scale_indices = {scale: idx for idx, scale in enumerate(scales_oc_load)}
     nbx_oc = len(scales_oc_load)  # 'nbx' = nbt or nbl
 
@@ -233,13 +235,17 @@ def process_cov_from_list_file(
     if obs_space == 'harmonic':
         valid_probes = const.HS_DIAG_PROBES_OC
         probe_transl_dict = const.HS_DIAG_PROBES_OC_TO_SB
-        assert theta_or_ell == 'ell', 'theta_or_ell must be "ell" for harmonic space'
+        assert scale_ix_name == 'ell', 'scale_ix_name must be "ell" for harmonic space'
     elif obs_space == 'real':
         valid_probes = const.RS_DIAG_PROBES_OC
         probe_transl_dict = const.RS_DIAG_PROBES_OC_TO_SB
-        assert theta_or_ell == 'theta', 'theta_or_ell must be "theta" for real space'
+        assert scale_ix_name == 'theta', 'scale_ix_name must be "theta" for real space'
+    elif obs_space == 'cosebis':
+        valid_probes = const.RS_DIAG_PROBES_OC
+        probe_transl_dict = const.RS_DIAG_PROBES_OC_TO_SB
+        assert scale_ix_name == 'n', 'scale_ix_name must be "n" for cosebis space'
     else:
-        raise ValueError('obs_space must be either "harmonic" or "real"')
+        raise ValueError('obs_space must be either "harmonic", "real" or "cosebis"')
 
     print(f'Loading OneCovariance output from {oc_output_covlist_fname} file...')
 
@@ -278,8 +284,8 @@ def process_cov_from_list_file(
             probe_2tpl = (probe_ab, probe_cd)
 
             # Pre-compute indices once
-            theta1_idx = subdf[f'{theta_or_ell}1'].map(cov_scale_indices).values
-            theta2_idx = subdf[f'{theta_or_ell}2'].map(cov_scale_indices).values
+            theta1_idx = subdf[f'{scale_ix_name}1'].map(cov_scale_indices).values
+            theta2_idx = subdf[f'{scale_ix_name}2'].map(cov_scale_indices).values
 
             if subtract_one_from_z_ix:
                 z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
@@ -417,6 +423,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings'] = {}
         cfg_oc_ini['covELLspace settings'] = {}
         cfg_oc_ini['covTHETAspace settings'] = {}  # For real space case
+        cfg_oc_ini['covCOSEBI settings'] = {}  # For COSEBIs case
         cfg_oc_ini['survey specs'] = {}
         cfg_oc_ini['redshift'] = {}
         cfg_oc_ini['cosmo'] = {}
@@ -440,18 +447,38 @@ class OneCovarianceInterface:
             est_shear = 'C_ell'
             est_ggl = 'C_ell'
             est_clust = 'C_ell'
+
+            cosmic_shear = self.cfg['probe_selection']['LL']
+            ggl = self.cfg['probe_selection']['GL']
+            clustering = self.cfg['probe_selection']['GG']
+
         elif self.obs_space == 'real':
             est_shear = 'xi_pm'
             est_ggl = 'gamma_t'
             est_clust = 'w'
+
+            cosmic_shear = (
+                self.cfg['probe_selection']['xip'] or self.cfg['probe_selection']['xim']
+            )
+            ggl = self.cfg['probe_selection']['gm']
+            clustering = self.cfg['probe_selection']['gg']
+
+        elif self.obs_space == 'cosebis':
+            est_shear = est_ggl = est_clust = 'cosebi'
+
+            cosmic_shear = (
+                self.cfg['probe_selection']['En'] or self.cfg['probe_selection']['Bn']
+            )
+            ggl = self.cfg['probe_selection']['Psigl']
+            clustering = self.cfg['probe_selection']['Psigg']
         else:
             raise ValueError('self.which_obs must he "harmonic" or "real"')
 
-        cfg_oc_ini['observables']['cosmic_shear'] = str(True)
+        cfg_oc_ini['observables']['cosmic_shear'] = str(cosmic_shear)
         cfg_oc_ini['observables']['est_shear'] = est_shear
-        cfg_oc_ini['observables']['ggl'] = str(True)
+        cfg_oc_ini['observables']['ggl'] = str(ggl)
         cfg_oc_ini['observables']['est_ggl'] = est_ggl
-        cfg_oc_ini['observables']['clustering'] = str(True)
+        cfg_oc_ini['observables']['clustering'] = str(clustering)
         cfg_oc_ini['observables']['est_clust'] = est_clust
         cfg_oc_ini['observables']['cstellar_mf'] = str(False)
         cfg_oc_ini['observables']['cross_terms'] = str(True)
@@ -654,6 +681,21 @@ class OneCovarianceInterface:
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
             cfg_oc_ini['covTHETAspace settings']['integration_intervals'] = str(40)
 
+        # ! [covTHETAspace settings]
+        if self.obs_space == 'cosebis':
+            cfg_oc_ini['covCOSEBI settings']['En_modes'] = str(
+                self.cfg['precision']['n_modes_cosebis']
+            )
+            cfg_oc_ini['covCOSEBI settings']['theta_min'] = str(
+                self.cfg['precision']['theta_min_arcmin_cosebis']
+            )
+            cfg_oc_ini['covCOSEBI settings']['theta_max'] = str(
+                self.cfg['precision']['theta_max_arcmin_cosebis']
+            )
+            cfg_oc_ini['covCOSEBI settings']['En_accuracy'] = str(
+                self.cfg['precision']['theta_steps_cosebis']
+            )
+
         # ! [halomodel evaluation]
         if ('Tinker10' not in self.cfg['halo_model']['mass_function']) or (
             'Tinker10' not in self.cfg['halo_model']['halo_bias']
@@ -743,7 +785,7 @@ class OneCovarianceInterface:
             # Set MPLBACKEND to prevent display errors in subprocess
             env = os.environ.copy()
             env['MPLBACKEND'] = 'Agg'
-            
+
             subprocess.run(
                 [
                     self.path_to_oc_env,
@@ -1069,7 +1111,6 @@ class OneCovarianceInterface:
         cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
 
         return cov_llglgg_2d
-
 
     def find_optimal_ellmax_oc(self, target_ell_array):
         upper_lim = self.ells_sb[-1] + 300

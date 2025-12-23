@@ -217,6 +217,7 @@ def cov_mix_simps(
 
 
 def _get_t_munu(mu, nu, sigma_eps_tot):
+    # TODO delete this function?
     if mu == nu == 0 or mu == nu == 4:
         return sigma_eps_tot**4
     elif mu == nu == 2:
@@ -230,6 +231,7 @@ def _get_t_munu(mu, nu, sigma_eps_tot):
 
 
 def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
+    # TODO move from probe indices to probe names!
     t_munu = np.zeros((zbins, zbins))
 
     for zi in range(zbins):
@@ -550,14 +552,14 @@ class CovRealSpace:
         self.pvt_cfg = pvt_cfg
         self.mask_obj = mask_obj
 
-        self.zbins = self.pvt_cfg['zbins']
+        self.zbins = pvt_cfg['zbins']
         self.zpairs_auto = pvt_cfg['zpairs_auto']
         self.zpairs_cross = pvt_cfg['zpairs_cross']
         self.zpairs_3x2pt = pvt_cfg['zpairs_3x2pt']
         self.ind_auto = pvt_cfg['ind_auto']
         self.ind_cross = pvt_cfg['ind_cross']
         self.ind_dict = pvt_cfg['ind_dict']
-        self.cov_ordering_2d = self.cfg['covariance']['covariance_ordering_2D']
+        self.cov_ordering_2d = pvt_cfg['cov_ordering_2d']
         self.ind_dict = pvt_cfg['ind_dict']
         self.ind_auto = pvt_cfg['ind_auto']
         self.ind_cross = pvt_cfg['ind_cross']
@@ -1301,6 +1303,9 @@ class CovRealSpace:
         and probe combination, in 6d
         """
 
+        if term not in const.ALL_COV_TERMS:
+            raise ValueError(f'Covariance term {term} not recognized!')
+
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
         probe_2tpl = (probe_ab, probe_cd)
 
@@ -1335,6 +1340,8 @@ class CovRealSpace:
                     kernel_1_func=k_mu,
                     kernel_2_func=k_mu,
                 )  # fmt: skip
+
+
 
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_sva_levin(
@@ -1542,103 +1549,6 @@ class CovRealSpace:
 
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
 
-    def compute_cosebis_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
-        """
-        Computes the COSEBIs covariance matrix for the specified term and probe combination.
-
-        Parameters
-        ----------
-        probe_abcd : str
-            Probe combination string (e.g., 'xipxip')
-        term : str
-            Covariance term to compute ('sva', 'mix', 'sn')
-        theta_min : float
-            Minimum angular separation in arcmin
-        theta_max : float
-            Maximum angular separation in arcmin
-        n_modes : int
-            Number of COSEBIs modes to compute
-        n_threads : int, optional
-            Number of threads for pylevin integration (default: 1)
-
-        Returns
-        -------
-        cov_cosebis_6d : np.ndarray
-            COSEBIs covariance with shape (n_modes, n_modes, zbins, zbins, zbins, zbins)
-        """
-        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
-        probe_2tpl = (probe_ab, probe_cd)
-
-        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
-            probe_abcd
-        ]
-
-        ind_ab = (
-            self.ind_auto[:, 2:] if probe_a_ix == probe_b_ix else self.ind_cross[:, 2:]
-        )
-        ind_cd = (
-            self.ind_auto[:, 2:] if probe_c_ix == probe_d_ix else self.ind_cross[:, 2:]
-        )
-
-        zpairs_ab = self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
-        zpairs_cd = self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
-
-        # Create a theta grid for computing the Hankel transform
-        # You may want to use a finer grid than self.theta_centers_fine
-
-        # Compute covariance based on term
-        if term == 'sva':
-            cov_cosebis_6d = self.cov_cosebis_wrapper(
-                probe_a_ix,
-                probe_b_ix,
-                probe_c_ix,
-                probe_d_ix,
-                zpairs_ab,
-                zpairs_cd,
-                ind_ab,
-                ind_cd,
-                w_ells_arr=self.w_ells_arr,
-                n_modes=self.n_modes,
-                cov_func=cov_sva_simps,
-            )
-
-        elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
-            cov_cosebis_6d = self.cov_cosebis_wrapper(
-                probe_a_ix,
-                probe_b_ix,
-                probe_c_ix,
-                probe_d_ix,
-                zpairs_ab,
-                zpairs_cd,
-                ind_ab,
-                ind_cd,
-                w_ells_arr=self.w_ells_arr,
-                n_modes=self.n_modes,
-                cov_func=partial(cov_mix_simps, self=self),
-            )
-
-        elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
-            cov_cosebis_6d = np.zeros(
-                (self.n_modes, self.n_modes, self.zbins, self.zbins, self.zbins, self.zbins)
-            )
-
-        elif term == 'sn':
-            # For COSEBIs, SN term needs special treatment
-            # It should be diagonal in mode space
-            # TODO: Implement proper COSEBIs shot noise term
-            print(
-                'Warning: COSEBIs shot noise term not yet implemented, returning zeros'
-            )
-            cov_cosebis_6d = np.zeros(
-                (self.n_modes, self.n_modes, self.zbins, self.zbins, self.zbins, self.zbins)
-            )
-
-        else:
-            raise ValueError(
-                f'Term {term} not recognized or not implemented for COSEBIs'
-            )
-
-        return cov_cosebis_6d
 
     def fill_remaining_probe_blocks_6d(
         self, term, symm_probe_combs, nonreq_probe_combs

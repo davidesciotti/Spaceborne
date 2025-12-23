@@ -12,21 +12,17 @@ mix = mixed term
 # TODO the NG cov needs a smaller number of ell bins for the simpson integration! It's
 # TODO unpractical to compute it in 1000 ell values
 
-import itertools
 import warnings
 from collections.abc import Callable
 from functools import partial
 
 import numpy as np
-import pyccl as ccl
-
-# import pylevin as levin
 from joblib import Parallel, delayed
-from scipy.integrate import simpson as simps
 from tqdm import tqdm
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
+from spaceborne import cov_real_space as crs
 from spaceborne import sb_lib as sl
 
 warnings.filterwarnings(
@@ -56,15 +52,11 @@ class CovCOSEBIs:
         self.ind_cross = pvt_cfg['ind_cross']
         self.ind_dict = pvt_cfg['ind_dict']
         self.cov_ordering_2d = pvt_cfg['cov_ordering_2d']
-        self.ind_dict = pvt_cfg['ind_dict']
-        self.ind_auto = pvt_cfg['ind_auto']
-        self.ind_cross = pvt_cfg['ind_cross']
-        self.zpairs_auto = pvt_cfg['zpairs_auto']
-        self.zpairs_cross = pvt_cfg['zpairs_cross']
+        self.n_modes = cfg['precision']['n_modes_cosebis']
 
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
-        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_rs_2d']
+        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_cs_2d']
         dims = ['6d', '4d', '2d']
 
         _req_probe_combs_2d = [
@@ -80,21 +72,19 @@ class CovCOSEBIs:
         self._set_survey_info()
         self._set_theta_binning()
         self._set_neff_and_sigma_eps()
-        self._set_levin_bessel_precision()
-        self._set_probe_names_idxs()
+        # self._set_probe_names_idxs()
         self._set_terms_toloop()
 
         # other miscellaneous settings
         self.n_jobs = self.cfg['misc']['num_threads']
         self.integration_method = self.cfg['precision']['cov_rs_int_method']
-        self.levin_bin_avg = self.cfg['precision']['levin_bin_avg']
 
         assert self.integration_method in ['simps', 'levin'], (
             'integration method not implemented'
         )
 
-        self.cov_rs_6d_shape = (
-            self.nbt_fine, self.nbt_fine, self.zbins, self.zbins, self.zbins, self.zbins
+        self.cov_cs_6d_shape = (
+            self.n_modes, self.n_modes, self.zbins, self.zbins, self.zbins, self.zbins
             )  # fmt: skip
 
         # attributes set at runtime
@@ -185,40 +175,16 @@ class CovCOSEBIs:
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
         self.sigma_eps_tot = self.sigma_eps_i * np.sqrt(2)
 
-    def _set_levin_bessel_precision(self):
-        self.levin_prec_kw = {
-            # hardcoded
-            'verbose': self.cfg['precision']['verbose'],
-            'logx': True,
-            'logy': True,
-            'diagonal': False,
-            # from the cfg file
-            'n_sub': self.cfg['precision']['n_sub'],
-            'n_bisec_max': self.cfg['precision']['n_bisec_max'],
-            'rel_acc': self.cfg['precision']['rel_acc'],
-            'boost_bessel': self.cfg['precision']['boost_bessel'],
-        }
-
     def _set_probe_names_idxs(self):
-        self.munu_vals = (0, 2, 4)
-        self.n_probes_rs = 4  # real space
-        self.n_probes_hs = 2  # harmonic space
-        self.n_split_terms = 3
-
-        # this is only needed to be able to construct the full Gauss cov from the sum
-        # of the
-        # SVA, SN and MIX covs. No particular reason behind the choice of the indices.
-        self.split_g_dict = {'sva': 0, 'sn': 1, 'mix': 2}
-
         # for validation purposes
         self.probe_idx_dict_short_oc = {}
-        for key in const.RS_PROBE_NAME_TO_IX_DICT:
-            probe_ab_str, probe_cd_str = sl.split_probe_name(key, 'real')
-            probe_ab_str_oc = 'gm' if probe_ab_str == 'gt' else probe_ab_str
-            probe_cd_str_oc = 'gm' if probe_cd_str == 'gt' else probe_cd_str
+        for key in const.CS_PROBE_NAME_TO_IX_DICT:
+            probe_ab_str, probe_cd_str = sl.split_probe_name(key, space='cosebis')
+            probe_ab_str_oc = const.CS_DIAG_PROBES_SB_TO_OC[probe_ab_str]
+            probe_cd_str_oc = const.CS_DIAG_PROBES_SB_TO_OC[probe_cd_str]
             self.probe_idx_dict_short_oc[probe_ab_str_oc + probe_cd_str_oc] = (
-                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab_str],
-                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd_str],
+                const.CS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab_str],
+                const.CS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd_str],
             )
 
     def _set_terms_toloop(self):
@@ -239,7 +205,7 @@ class CovCOSEBIs:
                 for zj in range(self.zbins):
                     theta_1_l = self.theta_edges_fine[theta_ix]
                     theta_1_u = self.theta_edges_fine[theta_ix + 1]
-                    npair_arr[theta_ix, zi, zj] = get_npair(
+                    npair_arr[theta_ix, zi, zj] = crs.get_npair(
                         theta_1_u,
                         theta_1_l,
                         self.survey_area_sr,
@@ -249,7 +215,7 @@ class CovCOSEBIs:
 
         delta_mu_nu = 1.0 if (mu == nu) else 0.0
         delta_theta = np.eye(self.nbt_fine)
-        t_arr = t_sn(
+        t_arr = crs.t_sn(
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, self.zbins, self.sigma_eps_i
         )
 
@@ -320,183 +286,6 @@ class CovCOSEBIs:
             cov_rs_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
 
         return cov_rs_6d
-
-    def cov_sva_levin(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-    ):  # fmt: skip
-        a = np.einsum(
-            'Lik,Ljl->Lijkl',
-            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
-        )
-        b = np.einsum(
-            'Lil,Ljk->Lijkl',
-            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
-        )
-        integrand_5d = a + b
-
-        cov_sva_rs_6d = self.cov_levin_wrapper(
-            integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-        )
-
-        return cov_sva_rs_6d
-
-    def cov_mix_levin(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-    ):  # fmt: skip
-        def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
-            prefac = (
-                self.get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl]
-                * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
-                / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
-            )
-            return prefac
-
-        prefac = np.zeros((self.n_probes_hs, self.n_probes_hs, self.zbins, self.zbins))
-        for _probe_a_ix in range(self.n_probes_hs):
-            for _probe_b_ix in range(self.n_probes_hs):
-                for _zi in range(self.zbins):
-                    for _zj in range(self.zbins):
-                        prefac[_probe_a_ix, _probe_b_ix, _zi, _zj] = _get_mix_prefac(
-                            _probe_a_ix, _probe_b_ix, _zi, _zj
-                        )
-
-        a = np.einsum(
-            'jl,Lik->Lijkl',
-            prefac[probe_b_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
-        )
-        b = np.einsum(
-            'ik,Ljl->Lijkl',
-            prefac[probe_a_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
-        )
-        c = np.einsum(
-            'jk,Lil->Lijkl',
-            prefac[probe_b_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
-        )
-        d = np.einsum(
-            'il,Ljk->Lijkl',
-            prefac[probe_a_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
-        )
-        integrand_5d = a + b + c + d
-
-        # compress integrand selecting only unique zpairs
-        assert ind_ab.shape[1] == 2, (
-            "ind_ab must have two columns, maybe you didn't cut it"
-        )
-        assert ind_cd.shape[1] == 2, (
-            "ind_cd must have two columns, maybe you didn't cut it"
-        )
-
-        cov_mix_rs_6d = self.cov_levin_wrapper(
-            integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-        )
-
-        return cov_mix_rs_6d
-
-    def cov_levin_wrapper(
-        self, integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-    ):
-        """This function abstracts the reshaping of the integral before and after the
-        integration, as well as encapsulating the two different functions to call
-        depending on the levin_bin_avg value"""
-        integrand_3d = sl.cov_6D_to_4D_blocks(
-            cov_6D=integrand_5d,
-            nbl=self.nbl,
-            npairs_AB=zpairs_ab,
-            npairs_CD=zpairs_cd,
-            ind_AB=ind_ab,
-            ind_CD=ind_cd,
-        )
-        assert integrand_3d.shape[1:] == (zpairs_ab, zpairs_cd), 'shape mismatch'
-
-        integrand_2d = integrand_3d.reshape(self.nbl, -1)
-        integrand_2d *= self.ells[:, None]
-        integrand_2d /= 2.0 * np.pi * self.amax
-
-        if self.levin_bin_avg:
-            cov_rs_4d = self.levin_binavg_helper(
-                integrand_2d, mu, nu, zpairs_ab, zpairs_cd
-            )
-        else:
-            result_levin = levin_integrate_bessel_double_wrapper(
-                integrand_2d,
-                x_values=self.ells,
-                bessel_args=self.theta_centers_fine,
-                bessel_type=3,
-                ell_1=mu,
-                ell_2=nu,
-                n_jobs=self.n_jobs,
-                **self.levin_prec_kw,
-            )
-
-            cov_rs_4d = result_levin.reshape(
-                self.nbt_fine, self.nbt_fine, zpairs_ab, zpairs_cd
-            )
-
-        cov_rs_6d = sl.cov_4D_to_6D_blocks(
-            cov_rs_4d,
-            nbl=self.nbt_fine,
-            zbins=self.zbins,
-            ind_ab=ind_ab,
-            ind_cd=ind_cd,
-            symmetrize_output_ab=False,
-            symmetrize_output_cd=False,
-        )
-
-        return cov_rs_6d
-
-    def levin_binavg_helper(self, integrand_2d, mu, nu, zpairs_ab, zpairs_cd):
-        """Takes care of looping over and assembling the different terms needed for
-        the bin-averaged Levin integral. This is used both in the SVA and MIX terms
-        """
-        result_shape = (zpairs_ab, zpairs_cd)
-        cov_rs_4d = np.zeros((self.nbt_fine, self.nbt_fine, *result_shape))
-
-        for p in tqdm(range(self.nbt_fine)):
-            for q in range(self.nbt_fine):
-                theta_p_lower = self.theta_edges_fine[p]
-                theta_p_upper = self.theta_edges_fine[p + 1]
-                theta_q_lower = self.theta_edges_fine[q]
-                theta_q_upper = self.theta_edges_fine[q + 1]
-
-                k_mu_terms = k_mu_nobessel(self.ells, theta_p_lower, theta_p_upper, mu)
-                k_nu_terms = k_mu_nobessel(self.ells, theta_q_lower, theta_q_upper, nu)
-                product_expansion = kmuknu_nobessel(k_mu_terms, k_nu_terms)
-
-                cov_pq_element = np.zeros(result_shape)
-
-                # Loop over each term in the kernel expansion
-                for term in product_expansion:
-                    const_coeff, n1, theta1, n2, theta2 = term
-
-                    # Apply the constant coefficient from the kernel expansion
-                    term_integrand_for_bessel = integrand_2d * const_coeff[:, None]
-
-                    # Integrate this term using the new single bessel pair function
-                    result_levin_1d = integrate_single_bessel_pair(
-                        term_integrand_for_bessel,
-                        x_values=self.ells,
-                        ord_bes_1=n1,
-                        theta1=theta1,
-                        ord_bes_2=n2,
-                        theta2=theta2,
-                        bessel_type=3,
-                        n_jobs=self.n_jobs,
-                        **self.levin_prec_kw,
-                    )
-
-                    cov_pq_element += result_levin_1d.reshape(result_shape)
-
-                cov_rs_4d[p, q] = cov_pq_element
-
-        return cov_rs_4d
 
     def cov_parallel_helper(
         self, theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, func, **kwargs
@@ -794,267 +583,7 @@ class CovCOSEBIs:
             setattr(self, f'cov_{probe}_g_6d', cov_probe_g_6d)
             setattr(self, f'cov_{probe}_tot_6d', cov_probe_tot_6d)
 
-    def compute_rs_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
-        """
-        Computes the real space covariance matrix for the specified term
-        and probe combination, in 6d
-        """
-
-        if term not in const.ALL_COV_TERMS:
-            raise ValueError(f'Covariance term {term} not recognized!')
-
-        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
-        probe_2tpl = (probe_ab, probe_cd)
-
-        mu, nu = const.MU_DICT[probe_ab], const.MU_DICT[probe_cd]
-        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
-            probe_abcd
-        ]
-
-        ind_ab = (
-            self.ind_auto[:, 2:] if probe_a_ix == probe_b_ix
-            else self.ind_cross[:, 2:]
-        )  # fmt: skip
-        ind_cd = (
-            self.ind_auto[:, 2:] if probe_c_ix == probe_d_ix
-            else self.ind_cross[:, 2:]
-        )  # fmt: skip
-
-        zpairs_ab = self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
-        zpairs_cd = self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
-
-        # just a sanity check
-        assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
-        assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
-
-        # Compute covariance:
-        if term == 'sva':
-            if self.integration_method in ['simps', 'quad']:
-                # TODO restore
-                # cov_out_6d = self.cov_simps_wrapper(
-                #     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                #     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                #     cov_simps_func=cov_sva_simps,
-                #     kernel_1_func=k_mu,
-                #     kernel_2_func=k_mu,
-                # )  # fmt: skip
-
-                # TODO delete
-                cov_out_6d = self.cov_cosebis_wrapper(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd,
-                    w_ells_arr=self.w_ells_arr,
-                    n_modes=self.n_modes,
-                    cov_func=cov_sva_simps,
-                )  # fmt: skip
-
-            elif self.integration_method == 'levin':
-                cov_out_6d = self.cov_sva_levin(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-                )  # fmt: skip
-
-        elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
-            if self.integration_method == 'simps':
-                # cov_mix_simps also needs self, I pass it here directly by creating a
-                # partial function
-                cov_out_6d = self.cov_simps_wrapper(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                    cov_simps_func=partial(cov_mix_simps, self=self),
-                    kernel_1_func=k_mu,
-                    kernel_2_func=k_mu,
-                )  # fmt: skip
-
-            elif self.integration_method == 'levin':
-                cov_out_6d = self.cov_mix_levin(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-                )  # fmt: skip
-
-        elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
-            cov_out_6d = np.zeros(
-                (self.nbt_fine, self.nbt_fine,
-                 self.zbins, self.zbins, self.zbins, self.zbins)
-            )  # fmt: skip
-
-        elif term == 'sn':
-            # this is 0 for
-            # ['xipxim', 'gtxim', 'gtxip', 'ggxim', 'gggt', 'ggxip']
-            # but is very fast to compute so I don't skip these terms
-            cov_out_6d = self.cov_sn_rs(
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
-            )
-
-        elif term == 'gauss_ell':
-            print('Projecting ell-space Gaussian covariance...')
-
-            # ! Compute HS G SVA, MIX and SN (not used), then project them to RS
-            # build noise vector
-            noise_3x2pt_4D = sl.build_noise(
-                self.zbins,
-                n_probes=self.n_probes_hs,
-                sigma_eps2=(self.sigma_eps_i * np.sqrt(2)) ** 2,
-                ng_shear=self.n_eff_src,
-                ng_clust=self.n_eff_lens,
-            )
-
-            # expand the noise array along the ell axis
-            noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], self.nbl, axis=2)
-
-            # ! no delta_ell!!
-            delta_ell = np.ones_like(self.ells + 1)
-
-            cov_sva_sb_hs_10d, _cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = sl.compute_g_cov(
-                self.cl_3x2pt_5d,
-                noise_5d,
-                self.fsky,
-                self.ells,
-                delta_ell,
-                split_terms=True,
-                return_only_diagonal_ells=True,
-            )
-
-            # sum sva and mix in harmonic space ("svapmix" = "sva plus mix")
-            cov_svapmix_hs_6d = (
-                cov_sva_sb_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-                + cov_mix_sb_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-            )
-
-            self.cov_svapmix_rs_6d = levin_integrate_bessel_double_wrapper(
-                integrand=cov_svapmix_hs_6d.reshape(self.nbl, -1)
-                * self.ells[:, None]
-                * self.ells[:, None],
-                x_values=self.ells,
-                bessel_args=self.theta_centers_fine,
-                bessel_type=3,
-                ell_1=mu,
-                ell_2=nu,
-                n_jobs=self.n_jobs,
-                **self.levin_prec_kw,
-            )
-            self.cov_svapmix_rs_6d = self.cov_svapmix_rs_6d.reshape(
-                self.nbt_fine, self.nbt_fine,
-                self.zbins, self.zbins, self.zbins, self.zbins,
-            )  # fmt: skip
-
-            norm = 4 * np.pi**2
-            self.cov_svapmix_rs_6d /= norm
-
-            # add sn - projection is numerically unstable,
-            # I compute it in real space directly
-            self.cov_sn_rs_6d = self.cov_sn_rs(
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
-            )
-            # diagonal is noise-dominated, you won't see much of a diff
-            cov_gauss_ell_rs_6d = self.cov_svapmix_rs_6d + self.cov_sn_rs_6d
-
-            cov_out_6d = cov_gauss_ell_rs_6d
-
-        # elif term in ['ssc', 'cng']:
-        # warnings.warn('HS covs loaded from file', stacklevel=2)
-        # get OC SSC in ell space
-        # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
-        # (
-        #     cov_sva_oc_3x2pt_10d,
-        #     cov_mix_oc_3x2pt_10d,
-        #     cov_sn_oc_3x2pt_10d,
-        #     cov_g_oc_3x2pt_10d,
-        #     cov_ssc_oc_3x2pt_10d,
-        # ) = covs_oc_hs
-
-        # np.savez(
-        #     f'{covs_path}/covs_oc_10d.npz',
-        #     cov_sva_oc_3x2pt_10d=cov_sva_oc_3x2pt_10d,
-        #     cov_mix_oc_3x2pt_10d=cov_mix_oc_3x2pt_10d,
-        #     cov_sn_oc_3x2pt_10d=cov_sn_oc_3x2pt_10d,
-        #     cov_g_oc_3x2pt_10d=cov_g_oc_3x2pt_10d,
-        #     cov_ssc_oc_3x2pt_10d=cov_ssc_oc_3x2pt_10d,
-        # )
-
-        # covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10d.npz')
-        # cov_ssc_oc_3x2pt_10d = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10d']
-        # cov_cng_oc_3x2pt_10d = covs_oc_hs_npz['cov_ng_oc_3x2pt_10d']
-
-        elif term in ['ssc', 'cng']:
-            # TODO this is yet to be checked
-            # TODO this has to be computed on a sufficiently fine ell grid, may pose
-            # TODO memory issues?
-
-            # set normalization depending on the term
-            norm = 4 * np.pi**2
-            if term == 'cng':
-                norm *= self.amax
-
-            cov_ng_hs_10d = getattr(cov_hs_obj, f'cov_3x2pt_{term}_10d')
-
-            # project hs non-gaussian cov to real space using pylevin
-            cov_ng_hs_6d = cov_ng_hs_10d[
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
-            ]
-
-            cov_ng_rs_6d = dl1dl2_bessel_wrapper(
-                cov_hs=cov_ng_hs_6d,
-                mu=mu,
-                nu=nu,
-                ells=self.ells,
-                thetas=self.theta_centers_fine,
-                zbins=self.zbins,
-                n_jobs=self.n_jobs,
-                levin_prec_kw=self.levin_prec_kw,
-            )
-            cov_ng_rs_6d /= norm
-
-            cov_out_6d = cov_ng_rs_6d
-
-        # ! bin sb cov 2d
-        if self.nbt_coarse != self.nbt_fine:
-            print(
-                f'Re-binning real space covariance from {self.nbt_fine} to '
-                f'{self.nbt_coarse} theta bins'
-            )
-
-            cov_rs_6d_unbinned = getattr(self, f'cov_{term}_rs_6d')
-            cov_rs_6d_binned = np.zeros(
-                (self.nbt_coarse, self.nbt_coarse,
-                 self.zbins, self.zbins, self.zbins, self.zbins)
-            )  # fmt: skip
-
-            # cast to list to avoid problems due do "recycling" the generator
-            zijkl_comb = list(itertools.product(range(self.zbins), repeat=4))
-
-            bin_2d_array_kw = {
-                'ells_in': self.theta_centers_fine,
-                'ells_out': self.theta_centers_coarse,
-                'ells_out_edges': self.theta_edges_coarse,
-                'weights_in': None,
-                'which_binning': 'sum',
-                'interpolate': True,
-            }
-
-            results = Parallel(n_jobs=self.n_jobs, backend='loky')(
-                delayed(sl.bin_2d_array)(
-                    cov_rs_6d_unbinned[:, :, zi, zj, zk, zl], **bin_2d_array_kw
-                )
-                for zi, zj, zk, zl in zijkl_comb
-            )
-            for (zi, zj, zk, zl), cov in zip(zijkl_comb, results, strict=True):
-                cov_rs_6d_binned[:, :, zi, zj, zk, zl] = cov
-
-            cov_out_6d = cov_rs_6d_binned
-
-        # ! reshape 6D to 2D and store this as well in the object
-
-        # setattr(self, f'cov_{probe_abcd}_{term}_6d', cov_out_6d)
-        # these are needed for 3x2pt 2D
-        # setattr(self, f'cov_{probe_abcd}_{term}_4d', cov_out_4d)
-        # This is not necessary since I don't save the probe-specific 2D covs anymore
-        # (see comment in combine_terms_and_probes)
-        # setattr(self, f'cov_{probe}_{term}_2d', cov_out_2d)
-
-        self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
-
-    def compute_cosebis_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
+    def compute_cs_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
         """
         Computes the COSEBIs covariance matrix for the specified term and probe combination.
 
@@ -1078,10 +607,10 @@ class CovCOSEBIs:
         cov_cosebis_6d : np.ndarray
             COSEBIs covariance with shape (n_modes, n_modes, zbins, zbins, zbins, zbins)
         """
-        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'cosebis')
         probe_2tpl = (probe_ab, probe_cd)
 
-        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.RS_PROBE_NAME_TO_IX_DICT[
+        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = const.CS_PROBE_NAME_TO_IX_DICT[
             probe_abcd
         ]
 
@@ -1111,7 +640,7 @@ class CovCOSEBIs:
                 ind_cd,
                 w_ells_arr=self.w_ells_arr,
                 n_modes=self.n_modes,
-                cov_func=cov_sva_simps,
+                cov_func=crs.cov_sva_simps,
             )
 
         elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
@@ -1126,7 +655,7 @@ class CovCOSEBIs:
                 ind_cd,
                 w_ells_arr=self.w_ells_arr,
                 n_modes=self.n_modes,
-                cov_func=partial(cov_mix_simps, self=self),
+                cov_func=partial(crs.cov_mix_simps, self=self),
             )
 
         elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
@@ -1164,12 +693,10 @@ class CovCOSEBIs:
                 f'Term {term} not recognized or not implemented for COSEBIs'
             )
 
-        breakpoint()
-
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
 
     def fill_remaining_probe_blocks_6d(
-        self, term, symm_probe_combs, nonreq_probe_combs
+        self, term, symm_probe_combs, nonreq_probe_combs, space
     ):
         """Fill the remaining probe combinations by symmetry or
         set them to 0 if not required."""
@@ -1177,7 +704,7 @@ class CovCOSEBIs:
         # * fill the symmetric counterparts of the required blocks
         # * (excluding diagonal blocks)
         for probe_abcd in symm_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space=space)
             print(f'RS cov: filling probe combination {probe_ab, probe_cd} by symmetry')
 
             cov_cdab = self.cov_dict[term][probe_cd, probe_ab]['6d']
@@ -1186,7 +713,7 @@ class CovCOSEBIs:
 
         # # * if block is not required, set it to 0
         for probe_abcd in nonreq_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='real')
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space=space)
             probe_2tpl = (probe_ab, probe_cd)
 
             self.cov_dict[term][probe_2tpl]['6d'] = np.zeros(
@@ -1213,7 +740,7 @@ class CovCOSEBIs:
             probe_abcd = probe_2tpl[0] + probe_2tpl[1]
 
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = (
-                const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd]
+                const.CS_PROBE_NAME_TO_IX_DICT[probe_abcd]
             )
 
             ind_ab = (
@@ -1267,7 +794,7 @@ class CovCOSEBIs:
         # for probe_abcd in nonreq_probe_combs:
         #     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
         #     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = (
-        #         const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd]
+        #         const.CS_PROBE_NAME_TO_IX_DICT[probe_abcd]
         #     )
         #     zpairs_ab = (
         #         self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross

@@ -4,6 +4,9 @@ Branch TODOs:
     3x2pt ant tot covs...) should be centralised, I already should have space-agnostic
     routines
 []  lock_index must only be taken from the main (in pvt_cfg)
+[]  remove hardcoded compute_oc_g = True
+[]  restore     # cov_oc_obj.call_oc_from_bash()
+
 """
 
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
@@ -91,6 +94,7 @@ from spaceborne import (
     ccl_interface,
     config_checker,
     cosmo_lib,
+    cov_cosebis,
     cov_harmonic_space,
     ell_utils,
     io_handler,
@@ -675,6 +679,7 @@ pvt_cfg = {
     'req_terms': req_terms,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
+    'cov_ordering_2d': cov_ordering_2d,
     'unique_probe_combs': unique_probe_combs_hs,
     'probe_comb_idxs': unique_probe_combs_ix_hs,
     'req_probe_combs_hs_2d': req_probe_combs_hs_2d,
@@ -1193,7 +1198,6 @@ if obs_space == 'real':
     ell_obj.compute_ells_3x2pt_rs()
     cov_rs_obj.ells = ell_obj.ells_3x2pt_rs
     cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_rs)
-    cov_rs_obj.space = 'real'  # TODO delete this
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:
@@ -1213,6 +1217,36 @@ if obs_space == 'real':
     # ...and store them in the cov_rs object
     cov_rs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_rs
 
+# TODO this could probably be done with super.__init__() where super is the
+# cov projector class
+if obs_space == 'cosebis':
+    from spaceborne import cov_cosebis
+
+    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
+    cov_cs_obj.set_cov_2d_ordering()
+    ell_obj.compute_ells_3x2pt_rs()
+
+    # ell grid used for the integrals
+    cov_cs_obj.ells = ell_obj.ells_3x2pt_rs
+    cov_cs_obj.nbl = len(ell_obj.ells_3x2pt_rs)
+
+    # set 3x2pt cls: recompute cls on the finer ell grid...
+    if cfg['C_ell']['use_input_cls']:
+        cl_ll_3d_for_cs = cl_ll_3d_spline(cov_cs_obj.ells)
+        cl_gl_3d_for_cs = cl_gl_3d_spline(cov_cs_obj.ells)
+        cl_gg_3d_for_cs = cl_gg_3d_spline(cov_cs_obj.ells)
+
+    else:
+        cl_3x2pt_5d_for_cs = ccl_interface.compute_cl_3x2pt_5d(
+            ccl_obj,
+            ells=cov_cs_obj.ells,
+            zbins=zbins,
+            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+            cl_ccl_kwargs=cl_ccl_kwargs,
+            n_probes_hs=cfg['covariance']['n_probes'],
+        )
+    # ...and store them in the cov_cs object
+    cov_cs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_cs
 
 # !  =============================== Build Gaussian covs ===============================
 if obs_space == 'harmonic':
@@ -1228,6 +1262,8 @@ else:
 # initialize object
 cov_oc_obj = None
 
+# TODO remove this
+compute_oc_g = True
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1338,14 +1374,15 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
 
     # compute covs
-    cov_oc_obj.call_oc_from_bash()
+    # TODO restore this
+    # cov_oc_obj.call_oc_from_bash()
 
     # load output .list file (maybe the .mat format would be better, actually...)
     # and store it into a 6d dictionary
     oc_output_covlist_fname = (
         f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
     )
-    cov_oc_obj.cov_dict = oc_interface.process_cov_from_list_file(
+    oc_interface.process_cov_from_list_file(
         cov_dict=cov_oc_obj.cov_dict,
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
@@ -1357,28 +1394,19 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     ps = cfg['probe_selection']
     full_cov = False  # True if all probes + the cross-covariance are required
     if obs_space == 'harmonic':
-        _valid_probes_oc = const.HS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_hs_2d
         nbx = ell_obj.nbl_3x2pt
         # TODO I think these can be deleted!
-        probe_idx_dict = cov_oc_obj.probe_idx_dict_hs
-        n_probes_oc = 2
         full_cov = (ps['LL'] + ps['GL'] + ps['GG']) == 3 and ps['cross_cov'] is True
     elif obs_space == 'real':
-        _valid_probes_oc = const.RS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_rs_2d
         nbx = cov_rs_obj.nbt_coarse
-        probe_idx_dict = cov_rs_obj.probe_idx_dict_short_oc
-        n_probes_oc = 4
         full_cov = (ps['xip'] + ps['xim'] + ps['gt'] + ps['w']) == 4 and ps[
             'cross_cov'
         ] is True
     elif obs_space == 'cosebis':
-        _valid_probes_oc = const.CS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_cs_2d
         nbx = cfg['precision']['n_modes_cosebis']
-        probe_idx_dict = None
-        n_probes_oc = 4
         full_cov = (ps['En'] + ps['Bn'] + ps['Psigl'] + ps['Psigg']) == 4 and ps[
             'cross_cov'
         ] is True
@@ -1449,25 +1477,20 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
             rtol=1e-3,
         )
 
-    # ! reshape probe-specific 6d covs to 4d and 2d
-    sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
+    # # ! reshape probe-specific 6d covs to 4d and 2d and
+    # # ! construct 3x2pt 2d covs (there is no 6d nor 4d 3x2pt!)
+    sl.postprocess_cov_dict(
         cov_dict=cov_oc_obj.cov_dict,
-        obs_space=obs_space,
-        nbx=ell_obj.nbl_3x2pt,
-        ind_auto=pvt_cfg['ind_auto'],
-        ind_cross=pvt_cfg['ind_cross'],
-        zpairs_auto=pvt_cfg['zpairs_auto'],
-        zpairs_cross=pvt_cfg['zpairs_cross'],
-        block_index=pvt_cfg['block_index'],
+        obs_space='cosebis',
+        nbx=nbx,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        block_index=block_index,
+        cov_ordering_2d=cov_ordering_2d,
+        req_probe_combs_2d=req_probe_combs_2d,
     )
-
-    # ! construct 3x2pt 2d covs (there is no 6d nor 4d 3x2pt!)
-    for term in cov_oc_obj.cov_dict:
-        if term == 'tot':
-            continue  # tot is built at the end, skip it
-        cov_oc_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
-            cov_oc_obj.cov_dict[term], cov_oc_obj.cov_ordering_2d, obs_space=obs_space
-        )
 
     print(f'Time taken to compute OC: {(time.perf_counter() - start_time) / 60:.2f} m')
 
@@ -1722,52 +1745,70 @@ if obs_space == 'harmonic':
 
 if obs_space == 'cosebis':
     print('\nComputing COSEBIs covariance...')
+
     start_rs = time.perf_counter()
 
     # precompute COSEBIs kernels W_n(ell)
+    # TODO move this to cov_cosebis.py
+    from cloelib.auxiliary import cosebi_helpers as ch
+
     theta_min = cfg['precision']['theta_min_arcmin_cosebis']
     theta_max = cfg['precision']['theta_max_arcmin_cosebis']
     theta_steps = cfg['precision']['theta_steps_cosebis']
-    n_modes = cfg['precision']['n_modes_cosebis']
     n_threads = cfg['misc']['num_threads']
-    from cloelib.auxiliary import cosebi_helpers as ch
 
     theta_grid_deg = np.geomspace(theta_min / 60, theta_max / 60, theta_steps + 1)
     theta_grid_rad = np.deg2rad(theta_grid_deg)  # in radians
-
-    with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {n_modes} modes...'):
+    with sl.timer(
+        f'Computing COSEBIs W_n(ell) kernels for {cov_cs_obj.n_modes} modes...'
+    ):
         w_ells_dict = ch.get_W_ell(
             thetagrid=theta_grid_rad,
-            Nmax=n_modes,
-            ells=cov_rs_obj.ells,
+            Nmax=cov_cs_obj.n_modes,
+            ells=cov_cs_obj.ells,
             N_thread=n_threads,
         )
-        # shape (n_modes, n_ells)
+
+    # turn to array of shape (n_modes, n_ells) and assign to object
     w_ells_arr = np.array(list(w_ells_dict.values()))
-    cov_rs_obj.w_ells_arr = w_ells_arr
-    cov_rs_obj.n_modes = n_modes
+    cov_cs_obj.w_ells_arr = w_ells_arr
 
     # TODO understand a bit better how to treat real-space SSC and cNG
     for _probe, _term in itertools.product(
-        unique_probe_combs_rs, cov_rs_obj.terms_toloop
+        unique_probe_combs_cs, cov_cs_obj.terms_toloop
     ):
         print(f'\n***** working on probe {_probe} - term {_term} *****')
-        cov_rs_obj.compute_rs_cov_term_probe_6d(
+        cov_cs_obj.compute_cs_cov_term_probe_6d(
             cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
         )
 
-    for term in cov_rs_obj.terms_toloop:
+    for term in cov_cs_obj.terms_toloop:
         # fill the remaining probe blocks by symmetry (in 6d)
-        cov_rs_obj.fill_remaining_probe_blocks_6d(
-            term, symm_probe_combs_rs, nonreq_probe_combs_rs
+        cov_cs_obj.fill_remaining_probe_blocks_6d(
+            term, symm_probe_combs_cs, nonreq_probe_combs_cs, space='cosebis'
         )
-    for term in cov_rs_obj.terms_toloop:
-        # reshape all the probe blocks to 4d and 2d
-        cov_rs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
 
-    cov_cs_test_2d = cov_rs_obj.cov_dict['sva']['xip', 'xip']['2d']
+    sl.postprocess_cov_dict(
+        cov_dict=cov_cs_obj.cov_dict,
+        obs_space='cosebis',
+        nbx=cov_cs_obj.n_modes,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        block_index=block_index,
+        cov_ordering_2d=cov_ordering_2d,
+        req_probe_combs_2d=req_probe_combs_2d,
+    )
 
-    sl.matshow(cov_cs_test_2d, title='cov_cs_test_2d')
+    # for term in cov_cs_obj.terms_toloop:
+    #     # reshape all the probe blocks to 4d and 2d
+    #     cov_cs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
+
+    cov_cs_test_2d = cov_cs_obj.cov_dict['sva']['3x2pt']['2d']
+    cov_oc_test_2d = cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
+
+    sl.compare_arrays(cov_cs_test_2d, cov_oc_test_2d)
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 6))
     ax[0].matshow(np.log10(cov_cs_test_2d))
@@ -1808,7 +1849,7 @@ if obs_space == 'real':
     for term in cov_rs_obj.terms_toloop:
         # fill the remaining probe blocks by symmetry (in 6d)
         cov_rs_obj.fill_remaining_probe_blocks_6d(
-            term, symm_probe_combs_rs, nonreq_probe_combs_rs
+            term, symm_probe_combs_rs, nonreq_probe_combs_rs, space='real'
         )
     for term in cov_rs_obj.terms_toloop:
         # reshape all the probe blocks to 4d and 2d

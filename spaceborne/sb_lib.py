@@ -2413,6 +2413,7 @@ def compare_arrays(
     white_where_zero=True,
     plot_diff_hist=False,
     matshow_arr_kw=None,
+    early_return=True,
     title='',
 ):
     fontsize = 25
@@ -2422,7 +2423,8 @@ def compare_arrays(
 
     if np.array_equal(A, B):
         print(f'{name_A} and {name_B} are equal ✅')
-        return
+        if early_return:
+            return
 
     for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
         if np.allclose(A, B, rtol=rtol, atol=0):
@@ -2430,6 +2432,7 @@ def compare_arrays(
                 f'{name_A} and {name_B} are close within relative tolerance '
                 f'of {rtol * 100}% ✅'
             )
+        if early_return:
             return
 
     diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)

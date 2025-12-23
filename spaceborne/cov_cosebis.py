@@ -72,7 +72,6 @@ class CovCOSEBIs:
         self._set_survey_info()
         self._set_theta_binning()
         self._set_neff_and_sigma_eps()
-        # self._set_probe_names_idxs()
         self._set_terms_toloop()
 
         # other miscellaneous settings
@@ -175,22 +174,10 @@ class CovCOSEBIs:
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
         self.sigma_eps_tot = self.sigma_eps_i * np.sqrt(2)
 
-    def _set_probe_names_idxs(self):
-        # for validation purposes
-        self.probe_idx_dict_short_oc = {}
-        for key in const.CS_PROBE_NAME_TO_IX_DICT:
-            probe_ab_str, probe_cd_str = sl.split_probe_name(key, space='cosebis')
-            probe_ab_str_oc = const.CS_DIAG_PROBES_SB_TO_OC[probe_ab_str]
-            probe_cd_str_oc = const.CS_DIAG_PROBES_SB_TO_OC[probe_cd_str]
-            self.probe_idx_dict_short_oc[probe_ab_str_oc + probe_cd_str_oc] = (
-                const.CS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab_str],
-                const.CS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd_str],
-            )
-
     def _set_terms_toloop(self):
         self.terms_toloop = []
         if self.cfg['covariance']['G']:
-            self.terms_toloop.extend(('sva',))  # TODO restore
+            self.terms_toloop.extend(('mix',))  # TODO restore
             # self.terms_toloop.extend(('sva', 'sn', 'mix'))
         if self.cfg['covariance']['SSC']:
             self.terms_toloop.append('ssc')
@@ -629,46 +616,45 @@ class CovCOSEBIs:
 
         # Compute covariance based on term
         if term == 'sva':
-            cov_out_6d = self.cov_cosebis_wrapper(
-                probe_a_ix,
-                probe_b_ix,
-                probe_c_ix,
-                probe_d_ix,
-                zpairs_ab,
-                zpairs_cd,
-                ind_ab,
-                ind_cd,
-                w_ells_arr=self.w_ells_arr,
-                n_modes=self.n_modes,
-                cov_func=crs.cov_sva_simps,
-            )
+            if 'Bn' in probe_2tpl:
+                cov_out_6d = np.zeros(self.cov_cs_6d_shape)
+            else:
+                cov_out_6d = self.cov_cosebis_wrapper(
+                    probe_a_ix,
+                    probe_b_ix,
+                    probe_c_ix,
+                    probe_d_ix,
+                    zpairs_ab,
+                    zpairs_cd,
+                    ind_ab,
+                    ind_cd,
+                    w_ells_arr=self.w_ells_arr,
+                    n_modes=self.n_modes,
+                    cov_func=crs.cov_sva_simps,
+                )
 
-        elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
-            cov_out_6d = self.cov_cosebis_wrapper(
-                probe_a_ix,
-                probe_b_ix,
-                probe_c_ix,
-                probe_d_ix,
-                zpairs_ab,
-                zpairs_cd,
-                ind_ab,
-                ind_cd,
-                w_ells_arr=self.w_ells_arr,
-                n_modes=self.n_modes,
-                cov_func=partial(crs.cov_mix_simps, self=self),
-            )
+        # TODO understand this
+        # elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
+        elif term == 'mix':
+            if 'Bn' in probe_2tpl:
+                cov_out_6d = np.zeros(self.cov_cs_6d_shape)
+            else:
+                cov_out_6d = self.cov_cosebis_wrapper(
+                    probe_a_ix,
+                    probe_b_ix,
+                    probe_c_ix,
+                    probe_d_ix,
+                    zpairs_ab,
+                    zpairs_cd,
+                    ind_ab,
+                    ind_cd,
+                    w_ells_arr=self.w_ells_arr,
+                    n_modes=self.n_modes,
+                    cov_func=partial(crs.cov_mix_simps, self=self),
+                )
 
         elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
-            cov_out_6d = np.zeros(
-                (
-                    self.n_modes,
-                    self.n_modes,
-                    self.zbins,
-                    self.zbins,
-                    self.zbins,
-                    self.zbins,
-                )
-            )
+            cov_out_6d = np.zeros(self.cov_cs_6d_shape)
 
         elif term == 'sn':
             # For COSEBIs, SN term needs special treatment
@@ -677,16 +663,7 @@ class CovCOSEBIs:
             print(
                 'Warning: COSEBIs shot noise term not yet implemented, returning zeros'
             )
-            cov_out_6d = np.zeros(
-                (
-                    self.n_modes,
-                    self.n_modes,
-                    self.zbins,
-                    self.zbins,
-                    self.zbins,
-                    self.zbins,
-                )
-            )
+            cov_out_6d = np.zeros(self.cov_cs_6d_shape)
 
         else:
             raise ValueError(

@@ -623,7 +623,7 @@ class SpaceborneCovariance:
             space='harmonic',
         )
 
-        # ! clean upd dictionaries:
+        # ! clean up dictionaries:
         self._remove_split_terms_from_dict(split_gaussian_cov)
 
         # ! perform ell cuts on the 2D covs

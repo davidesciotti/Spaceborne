@@ -17,65 +17,20 @@ Key Features:
 """
 
 import configparser
-from copy import deepcopy
 import os
 import subprocess
 from collections import defaultdict
+from copy import deepcopy
 
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.optimize import minimize_scalar
 
 from spaceborne import constants as const
+from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
 _UNSET = object()
-
-
-def oc_cov_dict_6d_to_array_10d(
-    cov_dict_6d: dict,
-    desired_term: str,
-    n_probes: int,
-    nbx: int,
-    zbins: int,
-    probe_idx_dict: dict,
-):
-    """Turns a dict of 6D arrays with keys {probe}_{term} into a 10D array"""
-
-    cov_10d = np.zeros(
-        (n_probes, n_probes, n_probes, n_probes, nbx, nbx, zbins, zbins, zbins, zbins)
-    )
-    for cov in cov_dict_6d.values():
-        assert cov.shape == (nbx, nbx, zbins, zbins, zbins, zbins), (
-            'cov shape should be '
-            f'({nbx}, {nbx}, {zbins}, {zbins}, {zbins}, {zbins}), got '
-            f'{cov.shape} instead'
-        )
-
-    # for key, cov in cov_dict_6d.items():
-    #     # go from e.g. 'gggg_sva' to ['g', 'g', 'g', 'g']
-    #     probe_abcd, term = key.split('_')
-    #     probe_abcd = list(probe_abcd)
-    #     if term == desired_term:
-    #         probe_ixs = [probe_idx_dict[probe] for probe in probe_abcd]
-    #         cov_10d[*probe_ixs] = cov
-
-    if not cov_dict_6d:
-        raise ValueError('cov_dict_6d is empty')
-
-    key_found = False
-    for key, cov in cov_dict_6d.items():
-        probe_abcd, term = key.split('_')
-        if term != desired_term:
-            continue
-        probes = list(probe_abcd)
-        probe_ixs = [probe_idx_dict[p] for p in probes]
-        cov_10d[*probe_ixs] = cov
-        key_found = True
-
-    if not key_found:
-        raise KeyError(f"No keys with term '{desired_term}' found in cov_dict_6d.")
-    return cov_10d
 
 
 def compare_sb_cov_to_oc_list(
@@ -191,7 +146,7 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
 
 
 def process_cov_from_list_file(
-    oc_output_covlist_fname, zbins, obs_space, df_chunk_size=5_000_000
+    cov_dict, oc_output_covlist_fname, zbins, obs_space, df_chunk_size=5_000_000
 ):
     import re
 
@@ -241,8 +196,8 @@ def process_cov_from_list_file(
         probe_transl_dict = const.RS_DIAG_PROBES_OC_TO_SB
         assert scale_ix_name == 'theta', 'scale_ix_name must be "theta" for real space'
     elif obs_space == 'cosebis':
-        valid_probes = const.RS_DIAG_PROBES_OC
-        probe_transl_dict = const.RS_DIAG_PROBES_OC_TO_SB
+        valid_probes = const.CS_DIAG_PROBES_OC
+        probe_transl_dict = const.CS_DIAG_PROBES_OC_TO_SB
         assert scale_ix_name == 'n', 'scale_ix_name must be "n" for cosebis space'
     else:
         raise ValueError('obs_space must be either "harmonic", "real" or "cosebis"')
@@ -250,7 +205,8 @@ def process_cov_from_list_file(
     print(f'Loading OneCovariance output from {oc_output_covlist_fname} file...')
 
     # Initialize arrays
-    cov_dict = defaultdict(lambda: defaultdict(dict))
+    # in this case it's necessary to preallocate the 6D shapes, since the arrays
+    # are filled partially at each iteration of the for loop
     temp_cov_arrays = defaultdict(
         lambda: defaultdict(
             lambda: np.zeros((nbx_oc, nbx_oc, zbins, zbins, zbins, zbins))
@@ -318,13 +274,13 @@ def process_cov_from_list_file(
                 + temp_cov_arrays['cng'][probe_2tpl][index_tuple]
             )
 
-    # Transfer to final structure
-    for term, probe_dict in temp_cov_arrays.items():
-        for probe_2tpl, array_data in probe_dict.items():
-            cov_dict[term][probe_2tpl]['6d'] = array_data
+    # store in cov_dict
+    for term in cov_dict:
+        for probe_2tpl in cov_dict[term]:
+            if probe_2tpl != '3x2pt':
+                cov_dict[term][probe_2tpl]['6d'] = temp_cov_arrays[term][probe_2tpl]
 
     print('...done')
-    return cov_dict
 
 
 class OneCovarianceInterface:
@@ -373,20 +329,38 @@ class OneCovarianceInterface:
 
         self.obs_space = self.cfg['probe_selection']['space']
 
+        if self.obs_space == 'harmonic':
+            prefix = 'hs'
+        elif self.obs_space == 'real':
+            prefix = 'rs'
+        elif self.obs_space == 'cosebis':
+            prefix = 'cs'
+        else:
+            raise ValueError('self.obs_space must be "harmonic", "real" or "cosebis"')
+
+        # instantiate cov dict with the required terms and probe combinations
+        self.req_terms = pvt_cfg['req_terms']
+        self.req_probe_combs_2d = pvt_cfg[f'req_probe_combs_{prefix}_2d']
+        self.nonreq_probe_combs = pvt_cfg[f'nonreq_probe_combs_{prefix}']
+        dims = ['6d', '4d', '2d']
+
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space=self.obs_space)
+            for probe in self.req_probe_combs_2d
+        ]
+        _req_probe_combs_2d.append('3x2pt')
+        self.cov_dict = cd.create_cov_dict(
+            self.req_terms, _req_probe_combs_2d, dims=dims
+        )
+
         # paths and filenems
         self.path_to_oc_env = cfg['OneCovariance']['path_to_oc_env']
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
-
-        self.probe_idx_dict_hs = {
-            'm': const.HS_PROBE_NAME_TO_IX_DICT['L'],
-            'g': const.HS_PROBE_NAME_TO_IX_DICT['G'],
-        }
 
         self.oc_path: str = _UNSET
         self.z_grid_trisp_sb: np.ndarray = _UNSET
         self.path_to_config_oc_ini: str = _UNSET
         self.ells_sb: np.ndarray = _UNSET
-        self.cov_dict: dict = _UNSET
         self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
         self.cov_3x2pt_sn_10d: np.ndarray = _UNSET
         self.cov_3x2pt_mix_10d: np.ndarray = _UNSET

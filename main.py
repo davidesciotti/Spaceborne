@@ -1805,10 +1805,10 @@ if obs_space == 'cosebis':
     #     # reshape all the probe blocks to 4d and 2d
     #     cov_cs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
 
-    cov_cs_test_2d = cov_cs_obj.cov_dict['sva']['3x2pt']['2d']
-    cov_oc_test_2d = cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
+    cov_cs_test_2d = cov_cs_obj.cov_dict['mix']['3x2pt']['2d']
+    cov_oc_test_2d = cov_oc_obj.cov_dict['mix']['3x2pt']['2d']
 
-    sl.compare_arrays(cov_cs_test_2d, cov_oc_test_2d)
+    sl.compare_arrays(cov_cs_test_2d, cov_oc_test_2d, abs_val=True, early_return=False)
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 6))
     ax[0].matshow(np.log10(cov_cs_test_2d))

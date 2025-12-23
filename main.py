@@ -332,23 +332,11 @@ which_sigma2_b = cfg['covariance']['which_sigma2_b']
 # nonreq_probe_combs = {'GGGG', 'GGGL', 'GGLL', 'GLGG', 'GLLL', 'LLGG', 'LLGL'}
 # req_probe_combs_2d = ['LLLL', 'LLGL', 'GLLL', 'GLGL']
 
-unique_probe_names_hs = []
-if cfg['probe_selection']['LL']:
-    unique_probe_names_hs.append('LL')
-if cfg['probe_selection']['GL']:
-    unique_probe_names_hs.append('GL')
-if cfg['probe_selection']['GG']:
-    unique_probe_names_hs.append('GG')
 
-unique_probe_names_rs = []
-if cfg['probe_selection']['xip']:
-    unique_probe_names_rs.append('xip')
-if cfg['probe_selection']['xim']:
-    unique_probe_names_rs.append('xim')
-if cfg['probe_selection']['gt']:
-    unique_probe_names_rs.append('gt')
-if cfg['probe_selection']['w']:
-    unique_probe_names_rs.append('gg')  # TODO CHANGE TO w!
+unique_probe_names_hs = [p for p in const.HS_DIAG_PROBES if cfg['probe_selection'][p]]
+unique_probe_names_rs = [p for p in const.RS_DIAG_PROBES if cfg['probe_selection'][p]]
+unique_probe_names_cs = [p for p in const.CS_DIAG_PROBES if cfg['probe_selection'][p]]
+
 
 # add cross terms if requested
 unique_probe_combs_hs = sl.build_probe_list(
@@ -357,6 +345,9 @@ unique_probe_combs_hs = sl.build_probe_list(
 unique_probe_combs_rs = sl.build_probe_list(
     unique_probe_names_rs, include_cross_terms=cfg['probe_selection']['cross_cov']
 )
+unique_probe_combs_cs = sl.build_probe_list(
+    unique_probe_names_cs, include_cross_terms=cfg['probe_selection']['cross_cov']
+)
 
 # probe combinations to be filled by symmetry or to exclude altogether
 symm_probe_combs_hs, nonreq_probe_combs_hs = sl.get_probe_combs(
@@ -364,6 +355,9 @@ symm_probe_combs_hs, nonreq_probe_combs_hs = sl.get_probe_combs(
 )
 symm_probe_combs_rs, nonreq_probe_combs_rs = sl.get_probe_combs(
     unique_probe_combs_rs, space='real'
+)
+symm_probe_combs_cs, nonreq_probe_combs_cs = sl.get_probe_combs(
+    unique_probe_combs_cs, space='cosebis'
 )
 
 
@@ -1659,47 +1653,8 @@ if obs_space == 'harmonic':
     )
 
 
-if obs_space == 'real_':
-    print('\nComputing real-space covariance...')
-    start_rs = time.perf_counter()
-
-    # TODO understand a bit better how to treat real-space SSC and cNG
-    for _probe, _term in itertools.product(
-        unique_probe_combs_rs, cov_rs_obj.terms_toloop
-    ):
-        print(f'\n***** working on probe {_probe} - term {_term} *****')
-        cov_rs_obj.compute_rs_cov_term_probe_6d(
-            cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
-        )
-
-    for term in cov_rs_obj.terms_toloop:
-        # fill the remaining probe blocks by symmetry (in 6d)
-        cov_rs_obj.fill_remaining_probe_blocks_6d(
-            term, symm_probe_combs_rs, nonreq_probe_combs_rs
-        )
-    for term in cov_rs_obj.terms_toloop:
-        # reshape all the probe blocks to 4d and 2d
-        cov_rs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
-
-    # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
-    cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
-    # construct 4d and 2d 3x2pt
-    # cov_rs_obj._build_cov_3x2pt_4d_and_2d()
-
-    # test new method:
-    for term in cov_rs_obj.cov_dict:
-        if term == 'tot':
-            continue  # tot is built at the end, skip it
-
-        cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
-            cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
-        )
-
-    print(f'...done in {time.perf_counter() - start_rs:.2f} s')
-
-
-if obs_space == 'real':
-    print('\nComputing real-space covariance...')
+if obs_space == 'cosebis':
+    print('\nComputing COSEBIs covariance...')
     start_rs = time.perf_counter()
 
     # precompute COSEBIs kernels W_n(ell)
@@ -1721,9 +1676,58 @@ if obs_space == 'real':
             N_thread=n_threads,
         )
         # shape (n_modes, n_ells)
-    w_ells_arr = np.array([v for v in w_ells_dict.values()])
+    w_ells_arr = np.array(list(w_ells_dict.values()))
     cov_rs_obj.w_ells_arr = w_ells_arr
     cov_rs_obj.n_modes = n_modes
+
+    # TODO understand a bit better how to treat real-space SSC and cNG
+    for _probe, _term in itertools.product(
+        unique_probe_combs_rs, cov_rs_obj.terms_toloop
+    ):
+        print(f'\n***** working on probe {_probe} - term {_term} *****')
+        cov_rs_obj.compute_rs_cov_term_probe_6d(
+            cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
+        )
+
+    for term in cov_rs_obj.terms_toloop:
+        # fill the remaining probe blocks by symmetry (in 6d)
+        cov_rs_obj.fill_remaining_probe_blocks_6d(
+            term, symm_probe_combs_rs, nonreq_probe_combs_rs
+        )
+    for term in cov_rs_obj.terms_toloop:
+        # reshape all the probe blocks to 4d and 2d
+        cov_rs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
+
+    cov_cs_test_2d = cov_rs_obj.cov_dict['sva']['xip', 'xip']['2d']
+
+    sl.matshow(cov_cs_test_2d, title='cov_cs_test_2d')
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 6))
+    ax[0].matshow(np.log10(cov_cs_test_2d))
+    ax[1].matshow(sl.cov2corr(cov_cs_test_2d), vmin=-1, vmax=1, cmap='RdBu_r')
+
+    assert False, 'stop here'
+
+    # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
+    cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
+    # construct 4d and 2d 3x2pt
+    # cov_rs_obj._build_cov_3x2pt_4d_and_2d()
+
+    # test new method:
+    for term in cov_rs_obj.cov_dict:
+        if term == 'tot':
+            continue  # tot is built at the end, skip it
+
+        cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
+            cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
+        )
+
+    print(f'...done in {time.perf_counter() - start_rs:.2f} s')
+
+
+if obs_space == 'real':
+    print('\nComputing real-space covariance...')
+    start_rs = time.perf_counter()
 
     # TODO understand a bit better how to treat real-space SSC and cNG
     for _probe, _term in itertools.product(

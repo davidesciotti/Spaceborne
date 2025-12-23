@@ -1,3 +1,11 @@
+"""
+Branch TODOs:
+[]  the covariance objects postprocessing (reshaping blocks to 4d and 2d, assembling
+    3x2pt ant tot covs...) should be centralised, I already should have space-agnostic
+    routines
+[]  lock_index must only be taken from the main (in pvt_cfg)
+"""
+
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
@@ -369,27 +377,37 @@ _req_probe_combs_hs_2d = sl.build_probe_list(
 _req_probe_combs_rs_2d = sl.build_probe_list(
     unique_probe_names_rs, include_cross_terms=True
 )
+_req_probe_combs_cs_2d = sl.build_probe_list(
+    unique_probe_names_cs, include_cross_terms=True
+)
 # as req_probe_combs_2d still only contains the upper triangle,
 # add the symemtric blocks
 symm_probe_combs_hs_2d, _ = sl.get_probe_combs(_req_probe_combs_hs_2d, space='harmonic')
 symm_probe_combs_rs_2d, _ = sl.get_probe_combs(_req_probe_combs_rs_2d, space='real')
+symm_probe_combs_cs_2d, _ = sl.get_probe_combs(_req_probe_combs_cs_2d, space='cosebis')
 _req_probe_combs_hs_2d += symm_probe_combs_hs_2d
 _req_probe_combs_rs_2d += symm_probe_combs_rs_2d
+_req_probe_combs_cs_2d += symm_probe_combs_cs_2d
 
 # reorder!
 req_probe_combs_hs_2d = []
+req_probe_combs_rs_2d = []
+req_probe_combs_cs_2d = []
 for probe in const.HS_ALL_PROBE_COMBS:
     if probe in _req_probe_combs_hs_2d:
         req_probe_combs_hs_2d.append(probe)
-req_probe_combs_rs_2d = []
 for probe in const.RS_ALL_PROBE_COMBS:
     if probe in _req_probe_combs_rs_2d:
         req_probe_combs_rs_2d.append(probe)
+for probe in const.CS_ALL_PROBE_COMBS:
+    if probe in _req_probe_combs_cs_2d:
+        req_probe_combs_cs_2d.append(probe)
 
 nonreq_probe_combs_hs = [p for p in nonreq_probe_combs_hs if p in req_probe_combs_hs_2d]
 nonreq_probe_combs_rs = [p for p in nonreq_probe_combs_rs if p in req_probe_combs_rs_2d]
+nonreq_probe_combs_cs = [p for p in nonreq_probe_combs_cs if p in req_probe_combs_cs_2d]
 
-
+# TODO are these necessary??
 unique_probe_combs_ix_hs = [
     [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
     for comb in unique_probe_combs_hs
@@ -407,6 +425,10 @@ if obs_space == 'harmonic':
     req_probe_combs_2d = req_probe_combs_hs_2d
 elif obs_space == 'real':
     req_probe_combs_2d = req_probe_combs_rs_2d
+elif obs_space == 'cosebis':
+    req_probe_combs_2d = req_probe_combs_cs_2d
+else:
+    raise ValueError(f'Unknown observables space: {obs_space:s}')
 
 
 # ! set non-gaussian cov terms to compute
@@ -627,6 +649,16 @@ ind_auto = ind[:zpairs_auto, :].copy()
 ind_cross = ind[zpairs_auto : zpairs_cross + zpairs_auto, :].copy()
 ind_dict = {'LL': ind_auto, 'GL': ind_cross, 'GG': ind_auto}
 
+# TODO block_index must only be taken from here!
+cov_ordering_2d = cfg['covariance']['covariance_ordering_2D']
+if cov_ordering_2d in ['probe_scale_zpair', 'scale_probe_zpair']:
+    block_index = 'ell'
+elif cov_ordering_2d == 'probe_zpair_scale':
+    block_index = 'zpair'
+else:
+    raise ValueError(f'Unknown covariance_ordering_2D: {cov_ordering_2d:s}')
+
+
 # private cfg dictionary. This serves a couple different purposeses:
 # 1. To store and pass hardcoded parameters in a convenient way
 # 2. To make the .format() more compact
@@ -639,6 +671,7 @@ pvt_cfg = {
     'zpairs_auto': zpairs_auto,
     'zpairs_cross': zpairs_cross,
     'zpairs_3x2pt': zpairs_3x2pt,
+    'block_index': block_index,
     'req_terms': req_terms,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
@@ -646,7 +679,10 @@ pvt_cfg = {
     'probe_comb_idxs': unique_probe_combs_ix_hs,
     'req_probe_combs_hs_2d': req_probe_combs_hs_2d,
     'req_probe_combs_rs_2d': req_probe_combs_rs_2d,
+    'req_probe_combs_cs_2d': req_probe_combs_cs_2d,
     'nonreq_probe_combs_hs': nonreq_probe_combs_hs,
+    'nonreq_probe_combs_rs': nonreq_probe_combs_rs,
+    'nonreq_probe_combs_cs': nonreq_probe_combs_cs,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
     'GL_OR_LG': GL_OR_LG,
@@ -1310,6 +1346,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat'
     )
     cov_oc_obj.cov_dict = oc_interface.process_cov_from_list_file(
+        cov_dict=cov_oc_obj.cov_dict,
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
         obs_space=obs_space,
@@ -1323,6 +1360,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         _valid_probes_oc = const.HS_DIAG_PROBES_OC
         _req_probe_combs_2d = req_probe_combs_hs_2d
         nbx = ell_obj.nbl_3x2pt
+        # TODO I think these can be deleted!
         probe_idx_dict = cov_oc_obj.probe_idx_dict_hs
         n_probes_oc = 2
         full_cov = (ps['LL'] + ps['GL'] + ps['GG']) == 3 and ps['cross_cov'] is True
@@ -1333,6 +1371,15 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         probe_idx_dict = cov_rs_obj.probe_idx_dict_short_oc
         n_probes_oc = 4
         full_cov = (ps['xip'] + ps['xim'] + ps['gt'] + ps['w']) == 4 and ps[
+            'cross_cov'
+        ] is True
+    elif obs_space == 'cosebis':
+        _valid_probes_oc = const.CS_DIAG_PROBES_OC
+        _req_probe_combs_2d = req_probe_combs_cs_2d
+        nbx = cfg['precision']['n_modes_cosebis']
+        probe_idx_dict = None
+        n_probes_oc = 4
+        full_cov = (ps['En'] + ps['Bn'] + ps['Psigl'] + ps['Psigg']) == 4 and ps[
             'cross_cov'
         ] is True
 
@@ -1400,6 +1447,26 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
             cov_oc_obj.cov_cng_oc_3x2pt_10D,
             atol=0,
             rtol=1e-3,
+        )
+
+    # ! reshape probe-specific 6d covs to 4d and 2d
+    sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
+        cov_dict=cov_oc_obj.cov_dict,
+        obs_space=obs_space,
+        nbx=ell_obj.nbl_3x2pt,
+        ind_auto=pvt_cfg['ind_auto'],
+        ind_cross=pvt_cfg['ind_cross'],
+        zpairs_auto=pvt_cfg['zpairs_auto'],
+        zpairs_cross=pvt_cfg['zpairs_cross'],
+        block_index=pvt_cfg['block_index'],
+    )
+
+    # ! construct 3x2pt 2d covs (there is no 6d nor 4d 3x2pt!)
+    for term in cov_oc_obj.cov_dict:
+        if term == 'tot':
+            continue  # tot is built at the end, skip it
+        cov_oc_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
+            cov_oc_obj.cov_dict[term], cov_oc_obj.cov_ordering_2d, obs_space=obs_space
         )
 
     print(f'Time taken to compute OC: {(time.perf_counter() - start_time) / 60:.2f} m')

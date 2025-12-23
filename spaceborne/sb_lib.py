@@ -88,6 +88,59 @@ Naming conventions (just to ease the notation):
 """
 
 
+def postprocess_cov_dict(
+    cov_dict,
+    obs_space,
+    nbx,
+    ind_auto,
+    ind_cross,
+    zpairs_auto,
+    zpairs_cross,
+    block_index,
+    cov_ordering_2d,
+    req_probe_combs_2d,
+):
+    """
+    Space-agnostic postprocessing:
+    1. Reshape individual probe blocks from 6d to 4d and 2d, for each term
+    2. Build 3x2pt based on the required probe combinations
+    3. Sum g, ssc and cng to get tot term
+    """
+
+    # Step 1: Reshape probe-specific 6d → 4d → 2d
+    cov_dict_6d_probe_blocks_to_4d_and_2d(
+        cov_dict=cov_dict,
+        obs_space=obs_space,
+        nbx=nbx,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        block_index=block_index,
+    )
+
+    # Step 2: Build 3x2pt 2d covs
+    for term in cov_dict:
+        probe_list = cov_dict[term].keys()
+        all_none = all(
+            cov_dict[term][probe_2tpl]['4d'] is None for probe_2tpl in probe_list
+        )
+
+        if term != 'tot' and not all_none:
+            cov_dict[term]['3x2pt']['2d'] = build_cov_3x2pt_2d(
+                cov_term_dict=cov_dict[term],
+                cov_ordering_2d=cov_ordering_2d,
+                obs_space=obs_space,
+            )
+
+    # Step 3: Sum to get 'tot'
+    set_cov_tot_2d_and_6d(
+        cov_dict=cov_dict, req_probe_combs_2d=req_probe_combs_2d, space=obs_space
+    )
+
+    return cov_dict
+
+
 def symmetrize_and_fill_probe_blocks(
     cov_term_dict: dict,
     dim: str,
@@ -3438,11 +3491,15 @@ def cov_dict_6d_probe_blocks_to_4d_and_2d(
     """
 
     if obs_space == 'harmonic':
-        auto_probes = const.HS_AUTO_PROBES
+        prefix = 'HS'
     elif obs_space == 'real':
-        auto_probes = const.RS_AUTO_PROBES
+        prefix = 'RS'
+    elif obs_space == 'cosebis':
+        prefix = 'CS'
     else:
-        raise ValueError('`space` must be in ["harmonic", "real"]')
+        raise ValueError('`space` must be in ["harmonic", "real", "cosebis"]')
+
+    auto_probes = const.__getattribute__(f'{prefix}_AUTO_PROBES')
 
     # reshape the probe-specific 6d arrays to 4d and 2d
     for term in cov_dict:  # noqa: PLC0206
@@ -4283,12 +4340,16 @@ def build_cov_3x2pt_2d(
 
     # I loop like the diagonal probe blocks instead of taking directly the cov
     # dict keys to enforce probe ordering to be LL, GL, GG (or xip, xim, gt, w)
-    if obs_space == 'real':
-        diag_probes = const.RS_DIAG_PROBES
-    elif obs_space == 'harmonic':
-        diag_probes = const.HS_DIAG_PROBES
+    if obs_space == 'harmonic':
+        prefix = 'HS'
+    elif obs_space == 'real':
+        prefix = 'RS'
+    elif obs_space == 'cosebis':
+        prefix = 'CS'
     else:
         raise ValueError(f'obs_space must be "real" or "harmonic", not: {obs_space}')
+
+    diag_probes = const.__getattribute__(f'{prefix}_DIAG_PROBES')
 
     # grab the number of ell bins
     probe_blocks = [k for k in cov_term_dict if cov_term_dict[k] is not None]

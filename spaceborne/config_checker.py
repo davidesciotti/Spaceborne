@@ -645,7 +645,21 @@ class SpaceborneConfigChecker:
         ), 'Only one of `use_namaster` and `compute_sample_cov` can be True — not both.'
 
     def check_probe_selection(self) -> None:
-        allowed_keys = ['space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gt', 'w', 'cross_cov']
+        allowed_keys = [
+            'space',
+            'LL',
+            'GL',
+            'GG',
+            'xip',
+            'xim',
+            'gt',
+            'w',
+            'En',
+            'Bn',
+            'Psigl',
+            'Psigg',
+            'cross_cov',
+        ]
 
         for key in self.cfg['probe_selection']:
             assert key in allowed_keys, f'Probe selection key {key} is not valid. '
@@ -678,10 +692,21 @@ class SpaceborneConfigChecker:
                 'At least one of LL, GL, or GG must be selected for '
                 'harmonic space covariance'
             )
+        elif self.cfg['probe_selection']['space'] == 'cosebis':
+            assert (
+                self.cfg['probe_selection']['En']
+                + self.cfg['probe_selection']['Bn']
+                + self.cfg['probe_selection']['Psigl']
+                + self.cfg['probe_selection']['Psigg']
+            ) > 0, (
+                'At least one of En, Bn, Psigl, or Psigg must be selected for '
+                'cosebis space covariance'
+            )
+
         else:
             raise ValueError(
-                'probe_selection: "space" must be either "real" or '
-                f'"harmonic", got {self.cfg["probe_selection"]["space"]}'
+                'probe_selection: "space" must be either "real", '
+                f'"harmonic", or "cosebis" got {self.cfg["probe_selection"]["space"]}'
             )
 
     def check_nmt(self) -> None:

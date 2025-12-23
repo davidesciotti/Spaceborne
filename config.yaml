@@ -65,8 +65,8 @@ OneCovariance:
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
-  # Options: ['harmonic', 'real'].
-  space: real # Type: str. 
+  # Options: ['harmonic', 'real', 'cosebis'].
+  space: cosebis # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -76,6 +76,11 @@ probe_selection:
   xim: False # Type: bool. Whether to compute \xi_-
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
+
+  En: True # Type: bool. Whether to compute En
+  Bn: True # Type: bool. Whether to compute Bn
+  Psigl: False # Type: bool. Whether to compute Psigl
+  Psigg: False # Type: bool. Whether to compute Psigg
   
   cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
 
@@ -199,8 +204,8 @@ covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
-  G_code: OneCovariance
-
+  
+  G_code: Spaceborne
   SSC_code: Spaceborne 
   
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
@@ -218,9 +223,9 @@ covariance:
   # `scale` = ell or theta, depending on the 'space' requested.
   # Options: [scale_probe_zpair, probe_scale_zpair, probe_zpair_scale]
   # Examples:
-  # - probe_zpair_scale: Ordered by probe type, then redshift pair, then scale (ell/theta). This is the 2D ordering used by cloelike
-  # - probe_scale_zpair: Ordered by probe type, then scale (ell/theta), then redshift pair.
-  # - scale_probe_zpair: Ordered by scale index (ell or theta), then probe type, then redshift pair.
+  # - probe_zpair_scale: Ordered by probe type, then redshift pair, then scale (ell/theta/n). This is the 2D ordering used by cloelike
+  # - probe_scale_zpair: Ordered by probe type, then scale (ell/theta/n), then redshift pair.
+  # - scale_probe_zpair: Ordered by scale index (ell/theta/n), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
@@ -272,7 +277,7 @@ covariance:
 
   # Name of the output covariance file.
   cov_filename: cov_sb # Type: str.
-  save_cov_fits: True # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module. 
+  save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module. 
 
 
 PyCCL:
@@ -349,6 +354,12 @@ precision:
   ell_max_rs: 100000  # Type: int
   ell_bins_rs: 500  # Type: int. Should be high to get accurate results with Simpson integration
   ell_bins_rs_nongauss: 100  # Type: int. Should be high to get accurate results with Simpson integration
+  
+  
+  n_modes_cosebis: 3  # Type: int. Number of modes to use for the COSEBIs covariance
+  theta_min_arcmin_cosebis: 0.5  # Type: int | float
+  theta_max_arcmin_cosebis: 300  # Type: int | float
+  theta_steps_cosebis: 1000  # Type: int. Number of steps for theta in COSEBIs
   
 
 misc:

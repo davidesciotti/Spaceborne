@@ -548,18 +548,21 @@ def split_probe_name(
     # this is the default: use hardcoded probe names
     if valid_probes is None:
         if space == 'harmonic':
-            valid_probes = const.HS_DIAG_PROBES
+            prefix = 'HS'
         elif space == 'real':
-            valid_probes = const.RS_DIAG_PROBES
+            prefix = 'RS'
+        elif space == 'cosebis':
+            prefix = 'CS'
         else:
             raise ValueError(
                 f'`space` needs to be one of `harmonic` or `real`, got {space}'
             )
+        valid_probes = const.__getattribute__(f'{prefix}_DIAG_PROBES')
     else:
         assert isinstance(valid_probes, (list, tuple)), 'valid_probes must be a list'
 
     # Try splitting at each possible position
-    for i in range(2, len(full_probe_name)):
+    for i in range(1, len(full_probe_name)):
         probe_ab, probe_cd = full_probe_name[:i], full_probe_name[i:]
         if probe_ab in valid_probes and probe_cd in valid_probes:
             return probe_ab, probe_cd
@@ -664,14 +667,18 @@ def get_probe_combs(unique_probe_combs, space):
     """Given the desired probe combinations, builds a list the ones to be filled by
     symmetry and the ones fo be skipped"""
 
-    assert space in ['harmonic', 'real'], 'Invalid space specified'
+    assert space in ['harmonic', 'real', 'cosebis'], 'Invalid space specified'
 
+    # get probe combinations' names
     if space == 'harmonic':
-        ALL_PROBE_COMBS = const.HS_ALL_PROBE_COMBS
-        DIAG_PROBE_COMBS = const.HS_DIAG_PROBE_COMBS
+        prefix = 'HS'
     elif space == 'real':
-        ALL_PROBE_COMBS = const.RS_ALL_PROBE_COMBS
-        DIAG_PROBE_COMBS = const.RS_DIAG_PROBE_COMBS
+        prefix = 'RS'
+    elif space == 'cosebis':
+        prefix = 'CS'
+
+    ALL_PROBE_COMBS = const.__getattribute__(f'{prefix}_ALL_PROBE_COMBS')
+    DIAG_PROBE_COMBS = const.__getattribute__(f'{prefix}_DIAG_PROBE_COMBS')
 
     # sanity checks
     for probe in unique_probe_combs:
@@ -687,11 +694,7 @@ def get_probe_combs(unique_probe_combs, space):
     # invert probe_a, probe_b <-> probe_c, probe_d
     symm_probe_combs = []
     for probe in _symm_probe_combs:
-        if space == 'harmonic':
-            probe_ab, probe_cd = probe[:2], probe[2:]
-        elif space == 'real':
-            probe_ab, probe_cd = split_probe_name(probe, 'real')
-
+        probe_ab, probe_cd = split_probe_name(probe, space)
         symm_probe_combs.append(probe_cd + probe_ab)
 
     # lastly, find the remaining (non required) probe combinations

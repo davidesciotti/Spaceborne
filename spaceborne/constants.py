@@ -52,12 +52,16 @@ CS_DIAG_PROBES_OC = ['Emm', 'Bmm', 'Psigm', 'Psigg']
 HS_DIAG_PROBES_OC_TO_SB = {'mm': 'LL', 'gm': 'GL', 'gg': 'GG'}
 RS_DIAG_PROBES_OC_TO_SB = {'xip': 'xip', 'xim': 'xim', 'gm': 'gt', 'gg': 'w'}
 CS_DIAG_PROBES_OC_TO_SB = {'Emm': 'En', 'Bmm': 'Bn', 'Psigm': 'Psigl', 'Psigg': 'Psigg'}
+HS_DIAG_PROBES_SB_TO_OC = {v: k for k, v in HS_DIAG_PROBES_OC_TO_SB.items()}
+RS_DIAG_PROBES_SB_TO_OC = {v: k for k, v in RS_DIAG_PROBES_OC_TO_SB.items()}
+CS_DIAG_PROBES_SB_TO_OC = {v: k for k, v in CS_DIAG_PROBES_OC_TO_SB.items()}
+
 
 # used for the reshaping logic
 HS_AUTO_PROBES = ['LL', 'GG']
 RS_AUTO_PROBES = ['xip', 'xim', 'w']
 CS_AUTO_PROBES = ['En', 'Bn', 'Psigg']
-    
+
 HS_PROBE_NAME_TO_IX_DICT = {'L': 0, 'G': 1}
 HS_PROBE_IX_TO_NAME_DICT = {0: 'L', 1: 'G'}
 
@@ -78,22 +82,44 @@ RS_PROBE_NAME_TO_IX_DICT = {
     'xipxip': (0, 0, 0, 0),
     'xipxim': (0, 0, 0, 0),
     'xipgt':  (0, 0, 1, 0),
-    'xipw':  (0, 0, 1, 1),
+    'xipw':   (0, 0, 1, 1),
 
     'ximxip': (0, 0, 0, 0),
     'ximxim': (0, 0, 0, 0),
     'ximgt':  (0, 0, 1, 0),
-    'ximw':  (0, 0, 1, 1),
+    'ximw':   (0, 0, 1, 1),
 
     'gtxip':  (1, 0, 0, 0),
     'gtxim':  (1, 0, 0, 0),
     'gtgt':   (1, 0, 1, 0),
-    'gtw':   (1, 0, 1, 1),
+    'gtw':    (1, 0, 1, 1),
 
     'wxip':  (1, 1, 0, 0),
     'wxim':  (1, 1, 0, 0),
     'wgt':   (1, 1, 1, 0),
-    'ww':   (1, 1, 1, 1),
+    'ww':    (1, 1, 1, 1),
+}  # fmt: skip
+
+CS_PROBE_NAME_TO_IX_DICT = {
+    'EnEn':       (0, 0, 0, 0),
+    'EnBn':       (0, 0, 0, 0),
+    'EnPsigl':    (0, 0, 1, 0),
+    'EnPsigg':    (0, 0, 1, 1),
+
+    'BnEn':       (0, 0, 0, 0),
+    'BnBn':       (0, 0, 0, 0),
+    'BnPsigl':    (0, 0, 1, 0),
+    'BnPsigg':    (0, 0, 1, 1),
+
+    'PsiglEn':    (1, 0, 0, 0),
+    'PsiglBn':    (1, 0, 0, 0),
+    'PsiglPsigl': (1, 0, 1, 0),
+    'PsiglPsigg': (1, 0, 1, 1),
+
+    'PsiggEn':    (1, 1, 0, 0),
+    'PsiggBn':    (1, 1, 0, 0),
+    'PsiggPsigl': (1, 1, 1, 0),
+    'PsiggPsigg': (1, 1, 1, 1),
 }  # fmt: skip
 
 # TODO delete this after you finish OC checks

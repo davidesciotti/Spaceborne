@@ -560,11 +560,6 @@ class CovRealSpace:
         self.ind_cross = pvt_cfg['ind_cross']
         self.ind_dict = pvt_cfg['ind_dict']
         self.cov_ordering_2d = pvt_cfg['cov_ordering_2d']
-        self.ind_dict = pvt_cfg['ind_dict']
-        self.ind_auto = pvt_cfg['ind_auto']
-        self.ind_cross = pvt_cfg['ind_cross']
-        self.zpairs_auto = pvt_cfg['zpairs_auto']
-        self.zpairs_cross = pvt_cfg['zpairs_cross']
 
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
@@ -1341,8 +1336,6 @@ class CovRealSpace:
                     kernel_2_func=k_mu,
                 )  # fmt: skip
 
-
-
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_sva_levin(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
@@ -1548,7 +1541,6 @@ class CovRealSpace:
         # setattr(self, f'cov_{probe}_{term}_2d', cov_out_2d)
 
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
-
 
     def fill_remaining_probe_blocks_6d(
         self, term, symm_probe_combs, nonreq_probe_combs

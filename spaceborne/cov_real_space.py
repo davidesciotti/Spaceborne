@@ -1542,37 +1542,6 @@ class CovRealSpace:
 
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
 
-    def fill_remaining_probe_blocks_6d(
-        self, term, symm_probe_combs, nonreq_probe_combs
-    ):
-        """Fill the remaining probe combinations by symmetry or
-        set them to 0 if not required."""
-
-        # * fill the symmetric counterparts of the required blocks
-        # * (excluding diagonal blocks)
-        for probe_abcd in symm_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
-            print(f'RS cov: filling probe combination {probe_ab, probe_cd} by symmetry')
-
-            cov_cdab = self.cov_dict[term][probe_cd, probe_ab]['6d']
-            cov = (cov_cdab.transpose(1, 0, 4, 5, 2, 3)).copy()
-            self.cov_dict[term][probe_ab, probe_cd]['6d'] = cov
-
-        # # * if block is not required, set it to 0
-        for probe_abcd in nonreq_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='real')
-            probe_2tpl = (probe_ab, probe_cd)
-
-            self.cov_dict[term][probe_2tpl]['6d'] = np.zeros(
-                (
-                    self.nbt_coarse,
-                    self.nbt_coarse,
-                    self.zbins,
-                    self.zbins,
-                    self.zbins,
-                    self.zbins,
-                )
-            )
 
     def _cov_probeblocks_6d_to_4d_and_2d(self, term):
         """
@@ -1619,36 +1588,3 @@ class CovRealSpace:
             )
             self.cov_dict[term][probe_2tpl]['4d'] = cov_4d
             self.cov_dict[term][probe_2tpl]['2d'] = cov_2d
-
-    def fill_remaining_probe_blocks_4d(
-        self, term, symm_probe_combs, nonreq_probe_combs
-    ):
-        """Fill the remaining probe combinations by symmetry or
-        set them to 0 if not required."""
-
-        # * fill the symmetric counterparts of the required blocks
-        # * (excluding diagonal blocks)
-        for probe_abcd in symm_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
-            print(f'RS cov: filling probe combination {probe_ab, probe_cd} by symmetry')
-
-            cov_cdab = self.cov_dict[term][probe_cd, probe_ab]['4d']
-            cov = (cov_cdab.transpose(1, 0, 3, 2)).copy()
-            self.cov_dict[term][probe_ab, probe_cd]['4d'] = cov
-
-        # TODO verify that commenting this doesn't break anything
-        # * if block is not required, set it to 0
-        # for probe_abcd in nonreq_probe_combs:
-        #     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
-        #     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = (
-        #         const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd]
-        #     )
-        #     zpairs_ab = (
-        #         self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
-        #     )
-        #     zpairs_cd = (
-        #         self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
-        #     )
-        #     cov = np.zeros((self.nbt_coarse, self.nbt_coarse, zpairs_ab, zpairs_cd))
-        #     self.cov_dict[term][probe_ab, probe_cd]['4d'] = cov
-        # setattr(self, f'cov_{probe_abcd}_{term}_4d', cov)

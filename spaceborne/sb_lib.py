@@ -88,6 +88,32 @@ Naming conventions (just to ease the notation):
 """
 
 
+def fill_remaining_probe_blocks_6d(
+    cov_dict, term, symm_probe_combs, nonreq_probe_combs, space, nbx, zbins
+):
+    """Fill the remaining probe combinations by symmetry or
+    set them to 0 if not required."""
+
+    # * fill the symmetric counterparts of the required blocks
+    # * (excluding diagonal blocks)
+    for probe_abcd in symm_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
+        print(f'RS cov: filling probe combination {probe_ab, probe_cd} by symmetry')
+
+        cov_cdab = cov_dict[term][probe_cd, probe_ab]['6d']
+        cov = (cov_cdab.transpose(1, 0, 4, 5, 2, 3)).copy()
+        cov_dict[term][probe_ab, probe_cd]['6d'] = cov
+
+    # * if block is not required, set it to 0
+    for probe_abcd in nonreq_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
+        probe_2tpl = (probe_ab, probe_cd)
+
+        cov_dict[term][probe_2tpl]['6d'] = np.zeros(
+            (nbx, nbx, zbins, zbins, zbins, zbins)
+        )
+
+
 def postprocess_cov_dict(
     cov_dict,
     obs_space,

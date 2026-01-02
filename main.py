@@ -3,9 +3,9 @@ Branch TODOs:
 []  the covariance objects postprocessing (reshaping blocks to 4d and 2d, assembling
     3x2pt ant tot covs...) should be centralised, I already should have space-agnostic
     routines
-[]  lock_index must only be taken from the main (in pvt_cfg)
+[]  block_index must only be taken from the main (in pvt_cfg)
 []  remove hardcoded compute_oc_g = True
-[]  restore     # cov_oc_obj.call_oc_from_bash()
+[]  restore cov_oc_obj.call_oc_from_bash()
 
 """
 
@@ -1783,9 +1783,14 @@ if obs_space == 'cosebis':
         )
 
     for term in cov_cs_obj.terms_toloop:
-        # fill the remaining probe blocks by symmetry (in 6d)
-        cov_cs_obj.fill_remaining_probe_blocks_6d(
-            term, symm_probe_combs_cs, nonreq_probe_combs_cs, space='cosebis'
+        sl.fill_remaining_probe_blocks_6d(
+            cov_dict=cov_cs_obj.cov_dict,
+            term=term,
+            symm_probe_combs=symm_probe_combs_cs,
+            nonreq_probe_combs=nonreq_probe_combs_cs,
+            space='cosebis',
+            nbx=cov_cs_obj.n_modes,
+            zbins=zbins,
         )
 
     sl.postprocess_cov_dict(
@@ -1842,15 +1847,23 @@ if obs_space == 'real':
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
         print(f'\n***** working on probe {_probe} - term {_term} *****')
-        cov_rs_obj.compute_cosebis_cov_term_probe_6d(
+        cov_rs_obj.compute_rs_cov_term_probe_6d(
             cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
         )
 
     for term in cov_rs_obj.terms_toloop:
-        # fill the remaining probe blocks by symmetry (in 6d)
-        cov_rs_obj.fill_remaining_probe_blocks_6d(
-            term, symm_probe_combs_rs, nonreq_probe_combs_rs, space='real'
+        sl.fill_remaining_probe_blocks_6d(
+            cov_dict=cov_rs_obj.cov_dict,
+            term=term,
+            symm_probe_combs=symm_probe_combs_rs,
+            nonreq_probe_combs=nonreq_probe_combs_rs,
+            space='real',
+            nbx=cov_rs_obj.nbt_coarse,
+            zbins=zbins,
         )
+
+    # TODO All of the following should have been superseeded by postprocess_cov_dict
+    """
     for term in cov_rs_obj.terms_toloop:
         # reshape all the probe blocks to 4d and 2d
         cov_rs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
@@ -1868,6 +1881,20 @@ if obs_space == 'real':
         cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
             cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
         )
+    """
+
+    sl.postprocess_cov_dict(
+        cov_dict=cov_cs_obj.cov_dict,
+        obs_space='cosebis',
+        nbx=cov_cs_obj.n_modes,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        block_index=block_index,
+        cov_ordering_2d=cov_ordering_2d,
+        req_probe_combs_2d=req_probe_combs_2d,
+    )
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 

@@ -88,6 +88,49 @@ Naming conventions (just to ease the notation):
 """
 
 
+def sum_split_g_terms_allprobeblocks_alldims(cov_dict) -> None:
+    # small sanity check probe combinations must match for terms (sva, sn, mix)
+    if not (cov_dict['sva'].keys() == cov_dict['sn'].keys() == cov_dict['mix'].keys()):
+        raise ValueError(
+            'The probe combinations keys in the SVA, SN and MIX covariance '
+            'dictionaries do not match!'
+        )
+
+    # sanity check: all the probes must match
+    probes_sva = set(cov_dict['sva'].keys())
+    probes_sn = set(cov_dict['sn'].keys())
+    probes_mix = set(cov_dict['mix'].keys())
+    if not (probes_sva == probes_sn == probes_mix):
+        raise ValueError(
+            'The probe combinations in the SVA, SN and MIX covariance '
+            'dictionaries do not match!'
+        )
+
+    # now sum the terms to get the Gaussian, for all probe combinations and
+    # dimensions
+    for probe_2tpl in cov_dict['sva']:
+        if probe_2tpl == '3x2pt':
+            continue  # skip 3x2pt, built later
+
+        # sanity check: all the dimensions must match
+        dims_sva = set(cov_dict['sva'][probe_2tpl].keys())
+        dims_sn = set(cov_dict['sn'][probe_2tpl].keys())
+        dims_mix = set(cov_dict['mix'][probe_2tpl].keys())
+        if not (dims_sva == dims_sn == dims_mix):
+            raise ValueError(
+                'The probe combinations in the SVA, SN and MIX covariance '
+                'dictionaries do not match!'
+            )
+
+        # for each dim, perform the sum
+        for dim in ['2d', '4d', '6d']:
+            cov_dict['g'][probe_2tpl][dim] = (
+                cov_dict['sva'][probe_2tpl][dim]
+                + cov_dict['sn'][probe_2tpl][dim]
+                + cov_dict['mix'][probe_2tpl][dim]
+            )
+
+
 def fill_remaining_probe_blocks_6d(
     cov_dict, term, symm_probe_combs, nonreq_probe_combs, space, nbx, zbins
 ):

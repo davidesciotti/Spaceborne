@@ -434,8 +434,8 @@ class OneCovarianceInterface:
             cosmic_shear = (
                 self.cfg['probe_selection']['xip'] or self.cfg['probe_selection']['xim']
             )
-            ggl = self.cfg['probe_selection']['gm']
-            clustering = self.cfg['probe_selection']['gg']
+            ggl = self.cfg['probe_selection']['gt']
+            clustering = self.cfg['probe_selection']['w']
 
         elif self.obs_space == 'cosebis':
             est_shear = est_ggl = est_clust = 'cosebi'

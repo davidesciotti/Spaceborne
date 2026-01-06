@@ -6,6 +6,11 @@ Branch TODOs:
 []  block_index must only be taken from the main (in pvt_cfg)
 []  remove hardcoded compute_oc_g = True
 []  restore cov_oc_obj.call_oc_from_bash()
+[]  perform different tests against OC for RS and cosebis, for different ngals between sources & lenses
+    e.g. solve the:         # TODO IMPORTANT: nz src or lens below?
+[] understand why setting theta_min_cosebis_arcmin = 50 (!=0.5) causes the discrepancy with OC
+[] do not instantiate the theta grid for cosebis in the main nor in the cov_sn function, 
+    do it in the init or elsewhere in the class. use the existing theta_steps_cosebis!
 
 """
 
@@ -1373,9 +1378,9 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     cov_oc_obj.ells_sb = ell_obj.ells_3x2pt
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
 
-    # compute covs
+    # compute cov
     # TODO restore this
-    # cov_oc_obj.call_oc_from_bash()
+    cov_oc_obj.call_oc_from_bash()
 
     # load output .list file (maybe the .mat format would be better, actually...)
     # and store it into a 6d dictionary
@@ -1810,19 +1815,25 @@ if obs_space == 'cosebis':
     #     # reshape all the probe blocks to 4d and 2d
     #     cov_cs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
 
-    cov_cs_test_2d = cov_cs_obj.cov_dict['mix']['3x2pt']['2d']
-    cov_oc_test_2d = cov_oc_obj.cov_dict['mix']['3x2pt']['2d']
+    cov_sb_test_2d = cov_cs_obj.cov_dict['sn']['3x2pt']['2d']
+    cov_oc_test_2d = cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
 
-    sl.compare_arrays(cov_cs_test_2d, cov_oc_test_2d, abs_val=True, early_return=False)
+    sl.compare_arrays(cov_sb_test_2d, cov_oc_test_2d, abs_val=True, early_return=False)
+    sl.compare_2d_covs(cov_sb_test_2d, cov_oc_test_2d, 'SB', 'OC', 'cov SN', 1e-5)
 
     fig, ax = plt.subplots(1, 2, figsize=(10, 6))
-    ax[0].matshow(np.log10(cov_cs_test_2d))
-    ax[1].matshow(sl.cov2corr(cov_cs_test_2d), vmin=-1, vmax=1, cmap='RdBu_r')
+    ax[0].matshow(np.log10(cov_sb_test_2d))
+    ax[1].matshow(sl.cov2corr(cov_sb_test_2d), vmin=-1, vmax=1, cmap='RdBu_r')
 
-    assert False, 'stop here'
+    assert False, 'stop here, now code up SN term and compute all three'
 
     # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
-    cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
+    # old
+    # cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
+
+    # new
+    sl.sum_split_g_terms_allprobeblocks_alldims(cov_cs_obj.cov_dict)
+
     # construct 4d and 2d 3x2pt
     # cov_rs_obj._build_cov_3x2pt_4d_and_2d()
 

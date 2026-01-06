@@ -16,8 +16,10 @@ import warnings
 from collections.abc import Callable
 from functools import partial
 
+import cloelib.auxiliary.cosebi_helpers as ch
 import numpy as np
 from joblib import Parallel, delayed
+from scipy.integrate import simps
 from tqdm import tqdm
 
 from spaceborne import constants as const
@@ -53,6 +55,8 @@ class CovCOSEBIs:
         self.ind_dict = pvt_cfg['ind_dict']
         self.cov_ordering_2d = pvt_cfg['cov_ordering_2d']
         self.n_modes = cfg['precision']['n_modes_cosebis']
+        # TODO decide where to put this: is it used elsewhere?
+        self.theta_bins_sn = 1000
 
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
@@ -177,57 +181,102 @@ class CovCOSEBIs:
     def _set_terms_toloop(self):
         self.terms_toloop = []
         if self.cfg['covariance']['G']:
-            self.terms_toloop.extend(('mix',))  # TODO restore
+            self.terms_toloop.extend(('sn',))  # TODO restore
             # self.terms_toloop.extend(('sva', 'sn', 'mix'))
         if self.cfg['covariance']['SSC']:
             self.terms_toloop.append('ssc')
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
 
-    def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
-        # TODO generalize to different n(z)
-        npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
-        for theta_ix in range(self.nbt_fine):
+    def cov_sn_cs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
+        # import ipdb
+
+        # ipdb.set_trace()
+
+        # firstly, construct the prefactor outside of the \theta integral
+        first_term = np.einsum('i,j->ij', self.sigma_eps_i**2, self.sigma_eps_i**2) / 2
+        kron = np.eye(self.zbins)
+        second_term = np.einsum('ik,jl->ijkl', kron, kron) + np.einsum(
+            'il,jk->ijkl', kron, kron
+        )
+        prefactor = first_term[:, :, None, None] * second_term
+
+        # Compute T_minus and T_plus
+        # 1. create integration grid in theta (use fine grid)
+        theta_edges_deg = np.geomspace(
+            self.theta_min_arcmin / 60,
+            self.theta_max_arcmin / 60,
+            self.theta_bins_sn + 1,
+        )
+        theta_edges_rad = np.deg2rad(theta_edges_deg)  # in radians
+        theta_centers_rad = (theta_edges_rad[:-1] + theta_edges_rad[1:]) / 2.0
+
+        assert np.diff(theta_centers_rad).min() > 0, 'theta grid not sorted!'
+        theta_min_rad = theta_edges_rad[0]
+        theta_max_rad = theta_edges_rad[-1]
+        thetas = theta_centers_rad
+
+        # 2. compute the T terms
+        rn, nn, coeff_j = ch.get_roots_and_norms(
+            theta_max_rad, theta_min_rad, self.n_modes
+        )
+
+        t_minus = np.zeros((len(thetas), self.n_modes))
+        t_plus = np.zeros((len(thetas), self.n_modes))
+        for n in range(self.n_modes):
+            t_minus[:, n] = ch.tm(
+                n=n + 1, t=thetas, tmin=theta_min_rad, nn=nn, coeff_j=coeff_j
+            )
+            # convert the mp.math object to normal floats
+            t_minus[:, n] = np.array([float(x) for x in t_minus[:, n]])
+
+            # Evaluate T_n^+ on integration grid
+            t_plus[:, n] = ch.tp(n=n + 1, t=thetas, tmin=theta_min_rad, nn=nn, rn=rn)
+            t_plus[:, n] = np.array([float(x) for x in t_plus[:, n]])
+
+        # construct term in square brackets: [𝑇+𝑎(𝜃)𝑇+𝑏(𝜃) + 𝑇−𝑎(𝜃)𝑇−𝑏(𝜃)]
+        # t is the theta index, a and b the mode indices
+        t_term_1 = np.einsum('ta, tb -> tab', t_plus, t_plus)
+        t_term_2 = np.einsum('ta, tb -> tab', t_minus, t_minus)
+        t_term = t_term_1 + t_term_2  # shape (len(thetas), n_modes, n_modes)
+
+        # 3. Compute npair
+        # TODO IMPORTANT: nz src or lens below?
+        npair_arr = np.zeros((self.theta_bins_sn, self.zbins, self.zbins))
+        for theta_ix in range(self.theta_bins_sn):
             for zi in range(self.zbins):
                 for zj in range(self.zbins):
-                    theta_1_l = self.theta_edges_fine[theta_ix]
-                    theta_1_u = self.theta_edges_fine[theta_ix + 1]
+                    theta_1_l = theta_edges_rad[theta_ix]
+                    theta_1_u = theta_edges_rad[theta_ix + 1]
                     npair_arr[theta_ix, zi, zj] = crs.get_npair(
                         theta_1_u,
                         theta_1_l,
                         self.survey_area_sr,
-                        self.n_eff_lens[zi],
-                        self.n_eff_lens[zj],
+                        self.n_eff_src[zi],
+                        self.n_eff_src[zj],
                     )
 
-        delta_mu_nu = 1.0 if (mu == nu) else 0.0
-        delta_theta = np.eye(self.nbt_fine)
-        t_arr = crs.t_sn(
-            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, self.zbins, self.sigma_eps_i
+        # 1. Calculate bin widths (dtheta) in RADIANS
+        # Assuming theta_edges_rad defines the bins for your npair counts
+        dtheta = np.diff(theta_edges_rad)
+
+        # 3. Convert Counts (N) to Density (n)
+        # n_pair(theta) = N_count / dtheta
+        npair_arr /= dtheta[:, None, None]
+
+        # import ipdb; ipdb.set_trace()
+
+        # 4. Broadcast shapes, construct integrand and integrate
+        integrand = (
+            thetas[:, None, None, None, None] ** 2
+            * t_term[:, :, :, None, None]
+            / npair_arr[:, None, None, :, :]
         )
 
-        cov_sn_rs_6d = (
-            delta_mu_nu
-            * delta_theta[:, :, None, None, None, None]
-            * (
-                self.get_delta_tomo(probe_a_ix, probe_c_ix)[
-                    None, None, :, None, :, None
-                ]
-                * self.get_delta_tomo(probe_b_ix, probe_d_ix)[
-                    None, None, None, :, None, :
-                ]
-                + self.get_delta_tomo(probe_a_ix, probe_d_ix)[
-                    None, None, :, None, None, :
-                ]
-                * self.get_delta_tomo(probe_b_ix, probe_c_ix)[
-                    None, None, None, :, :, None
-                ]
-            )
-            * t_arr[None, None, :, None, :, None]
-            / npair_arr[None, :, :, :, None, None]
-        )
+        integral = simps(y=integrand, x=thetas, axis=0)
 
-        return cov_sn_rs_6d
+        # overall shape is (n_modes, n_modes, zbins, zbins, zbins, zbins)
+        return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]
 
     def get_delta_tomo(self, probe_a_ix, probe_b_ix):
         if probe_a_ix == probe_b_ix:
@@ -656,13 +705,10 @@ class CovCOSEBIs:
         elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
             cov_out_6d = np.zeros(self.cov_cs_6d_shape)
 
-        elif term == 'sn':
-            # For COSEBIs, SN term needs special treatment
-            # It should be diagonal in mode space
-            # TODO: Implement proper COSEBIs shot noise term
-            print(
-                'Warning: COSEBIs shot noise term not yet implemented, returning zeros'
-            )
+        elif term == 'sn' and probe_ab == probe_cd:
+            cov_out_6d = self.cov_sn_cs(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix)
+        # TODO these ifs are not very nice...
+        elif term == 'sn' and probe_ab != probe_cd:
             cov_out_6d = np.zeros(self.cov_cs_6d_shape)
 
         else:
@@ -671,7 +717,6 @@ class CovCOSEBIs:
             )
 
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
-
 
     def _cov_probeblocks_6d_to_4d_and_2d(self, term):
         """

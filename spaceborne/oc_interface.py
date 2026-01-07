@@ -661,19 +661,15 @@ class OneCovarianceInterface:
                 cfg_oc_ini['covCOSEBI settings'][f'En_modes{_probe}'] = str(
                     self.cfg['precision']['n_modes_cosebis']
                 )
-            cfg_oc_ini['covCOSEBI settings']['En_accuracy'] = str(1e-4)
-
-            for _probe in ['', '_clustering', '_lensing']:
                 for _type in ['_min', '_max']:
-                    # print(f'theta{_type}{_probe}', f'theta{_type}_arcmin_cosebis')
                     cfg_oc_ini['covCOSEBI settings'][f'theta{_type}{_probe}'] = str(
                         self.cfg['precision'][f'theta{_type}_arcmin_cosebis']
                     )
 
+            cfg_oc_ini['covCOSEBI settings']['En_accuracy'] = str(1e-4)
             cfg_oc_ini['covCOSEBI settings']['wn_style'] = 'log'
             cfg_oc_ini['covCOSEBI settings']['wn_accuracy'] = str(1e-6)
             cfg_oc_ini['covCOSEBI settings']['dimensionless_cosebi'] = str(False)
-                    
 
         # ! [halomodel evaluation]
         if ('Tinker10' not in self.cfg['halo_model']['mass_function']) or (

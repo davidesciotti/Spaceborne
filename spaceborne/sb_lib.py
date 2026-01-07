@@ -2311,7 +2311,6 @@ def read_yaml(filename):
     return config
 
 
-# @njit
 def percent_diff(array_1, array_2, abs_value=False):
     array_1 = np.atleast_1d(array_1)  # Ensure array-like behavior
     array_2 = np.atleast_1d(array_2)
@@ -2330,7 +2329,6 @@ def percent_diff(array_1, array_2, abs_value=False):
         return diff.item() if diff.size == 1 else diff
 
 
-# @njit
 def percent_diff_mean(array_1, array_2):
     """Result is in "percent" units."""
     mean = (array_1 + array_2) / 2.0
@@ -2338,7 +2336,6 @@ def percent_diff_mean(array_1, array_2):
     return diff
 
 
-# @njit
 def _percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     if eraseNaN:
         diff = np.where(array_1 == array_2, 0, percent_diff(array_1, array_2))
@@ -2490,35 +2487,30 @@ def compare_arrays(
     if matshow_arr_kw is None:
         matshow_arr_kw = {}
 
-    if np.array_equal(A, B):
-        print(f'{name_A} and {name_B} are equal ✅')
-        if early_return:
-            return
-
-    for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
+    rtols = [0, 1e-3, 1e-2, 5e-2]
+    for rtol in rtols:
         if np.allclose(A, B, rtol=rtol, atol=0):
             print(
-                f'{name_A} and {name_B} are close within relative tolerance '
-                f'of {rtol * 100}% ✅'
+                f'{name_A} and {name_B} are close within '
+                f'relative tolerance of {rtol * 100}% ✅'
             )
-        if early_return:
-            return
-
-    diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
-    higher_rtol = plot_diff_threshold or 5.0
-    max_diff = np.max(diff_AB)
-    result_emoji = '❌' if max_diff > higher_rtol or np.isnan(max_diff) else '✅'
-    no_outliers = np.sum(diff_AB > higher_rtol)
-    additional_info = (
-        f'\nMax discrepancy: {max_diff:.2f}%;'
-        f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}'
-        f'\nFraction of elements with discrepancy > {higher_rtol}%: '
-        f'{no_outliers / diff_AB.size:.5f}'
-    )
-    print(
-        f'Are {name_A} and {name_B} different by less than {higher_rtol}%? '
-        f'{result_emoji} {additional_info}'
-    )
+            if early_return:
+                return
+            break
+    else:
+        # runs only if the loop never 'break'-s (i.e., not close at any rtol)
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
+        higher_rtol = rtols[-1] * 100  # in percent
+        max_diff = np.max(diff_AB)
+        no_outliers = np.sum(diff_AB > higher_rtol)
+        additional_info = (
+            f'\nMax discrepancy: {max_diff:.2f}%;'
+            f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}'
+            f'\nFraction of elements with discrepancy > {higher_rtol}%: '
+            f'{no_outliers / diff_AB.size:.5f}'
+        )
+        print(f'{name_A} and {name_B} differ by more than {higher_rtol}% ❌:'
+              f'{additional_info}')
 
     # Check that arrays are 2D if any plotting is requested.
     if plot_diff or plot_array:

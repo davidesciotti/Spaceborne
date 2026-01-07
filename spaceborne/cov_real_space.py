@@ -274,9 +274,22 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
 
 
 def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
+    """Compute total (ideal) number of pairs in a theta bin, i.e., N(theta).
+    N(θ) = π (θ_u^2 - θ_l^2) × A × n_i × n_j
+         = \int_{θ_l}^{θ_u} dθ (dN(θ)/dθ)
+    """
     n_eff_i *= const.SR_TO_ARCMIN2
     n_eff_j *= const.SR_TO_ARCMIN2
     return np.pi * (theta_1_u**2 - theta_1_l**2) * survey_area_sr * n_eff_i * n_eff_j
+
+
+def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
+    """Compute differential (ideal) number of pairs, i.e. dN(theta)/dtheta.
+    dN(θ)/dθ = 2π θ × A × n_i × n_j
+    """
+    n_eff_i *= const.SR_TO_ARCMIN2
+    n_eff_j *= const.SR_TO_ARCMIN2
+    return 2 * np.pi * theta * survey_area_sr * n_eff_i * n_eff_j
 
 
 def split_probe_ix(probe_ix):
@@ -1541,7 +1554,6 @@ class CovRealSpace:
         # setattr(self, f'cov_{probe}_{term}_2d', cov_out_2d)
 
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
-
 
     def _cov_probeblocks_6d_to_4d_and_2d(self, term):
         """

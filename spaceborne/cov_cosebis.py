@@ -12,6 +12,7 @@ mix = mixed term
 # TODO the NG cov needs a smaller number of ell bins for the simpson integration! It's
 # TODO unpractical to compute it in 1000 ell values
 
+import itertools
 import warnings
 from collections.abc import Callable
 from functools import partial
@@ -140,34 +141,28 @@ class CovCOSEBIs:
         self.amax = max((self.survey_area_sr, self.survey_area_sr))
 
     def _set_theta_binning(self):
-        self.theta_min_arcmin = self.cfg['binning']['theta_min_arcmin']
-        self.theta_max_arcmin = self.cfg['binning']['theta_max_arcmin']
-        self.nbt_coarse = self.cfg['binning']['theta_bins']
-        self.nbt_fine = self.nbt_coarse
+        """Set the theta binning for the COSEBIs SN term integral."""
+        self.theta_min_arcmin = self.cfg['precision']['theta_min_arcmin_cosebis']
+        self.theta_max_arcmin = self.cfg['precision']['theta_max_arcmin_cosebis']
+        self.nbt = self.cfg['precision']['theta_steps_cosebis']
 
-        # TODO this should probably go in the ell_binning class (which should be
-        # TODO renamed)
-        if self.cfg['binning']['binning_type'] == 'log':
-            _binning_func = np.geomspace
-        elif self.cfg['binning']['binning_type'] == 'lin':
-            _binning_func = np.linspace
-        else:
-            raise ValueError(
-                f'Binning type: {self.cfg["binning"]["binning_type"]} '
-                'not supported for real-space covariance'
-            )
+        # ! new
+        self.theta_min_arcmin = self.cfg['precision']['theta_min_arcmin_cosebis']
+        self.theta_max_arcmin = self.cfg['precision']['theta_max_arcmin_cosebis']
+        self.nbt = self.cfg['precision']['theta_steps_cosebis']
 
-        # Use a loop to set up fine and coarse theta binning
-        for bin_type in ['fine', 'coarse']:
-            nbt = getattr(self, f'nbt_{bin_type}')
-            theta_edges_deg = _binning_func(
-                self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, nbt + 1
-            )
-            theta_edges = np.deg2rad(theta_edges_deg)  # in radians
-            theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
-            setattr(self, f'theta_edges_{bin_type}', theta_edges)
-            setattr(self, f'theta_centers_{bin_type}', theta_centers)
-            assert len(theta_centers) == nbt, 'theta_centers length mismatch'
+        # Convert to radians
+        self.theta_min_rad = np.deg2rad(self.theta_min_arcmin / 60)
+        self.theta_max_rad = np.deg2rad(self.theta_max_arcmin / 60)
+
+        # No need for bin edges in this case, I can directly do this:
+        self.theta_grid_rad = np.geomspace(
+            self.theta_min_rad, self.theta_max_rad, self.nbt
+        )
+
+        # sanity checks
+        assert len(self.theta_grid_rad) == self.nbt, 'theta_grid_rad length mismatch'
+        assert np.min(np.diff(self.theta_grid_rad)) > 0, 'theta_grid_rad not sorted!'
 
     def _set_neff_and_sigma_eps(self):
         self.n_eff_lens = self.cfg['nz']['ngal_lenses']
@@ -188,7 +183,30 @@ class CovCOSEBIs:
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
 
+    def set_w_ells(self):
+        """
+        Compute and set the COSEBIs W_n(ell) kernels for all modes and ells.
+
+        Sets:
+            self.w_ells_arr (np.ndarray): Array of shape (n_modes, n_ells) containing
+                the computed W_n(ell) kernel values.
+        """
+
+        with sl.timer(
+            f'Computing COSEBIs W_n(ell) kernels for {self.n_modes} modes...'
+        ):
+            w_ells_dict = ch.get_W_ell(
+                thetagrid=self.theta_grid_rad,
+                Nmax=self.n_modes,
+                ells=self.ells,
+                N_thread=self.n_jobs,
+            )
+
+        # turn to array of shape (n_modes, n_ells) and assign to self
+        self.w_ells_arr = np.array(list(w_ells_dict.values()))
+
     def cov_sn_cs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
+        # TODO delete probe indices
         # import ipdb
 
         # ipdb.set_trace()
@@ -201,79 +219,70 @@ class CovCOSEBIs:
         )
         prefactor = first_term[:, :, None, None] * second_term
 
-        # Compute T_minus and T_plus
-        # 1. create integration grid in theta (use fine grid)
-        theta_edges_deg = np.geomspace(
-            self.theta_min_arcmin / 60,
-            self.theta_max_arcmin / 60,
-            self.theta_bins_sn + 1,
-        )
-        theta_edges_rad = np.deg2rad(theta_edges_deg)  # in radians
-        theta_centers_rad = (theta_edges_rad[:-1] + theta_edges_rad[1:]) / 2.0
+        # 1. Compute T_minus and T_plus
+        t_minus = np.zeros((self.nbt, self.n_modes))
+        t_plus = np.zeros((self.nbt, self.n_modes))
 
-        assert np.diff(theta_centers_rad).min() > 0, 'theta grid not sorted!'
-        theta_min_rad = theta_edges_rad[0]
-        theta_max_rad = theta_edges_rad[-1]
-        thetas = theta_centers_rad
-
-        # 2. compute the T terms
         rn, nn, coeff_j = ch.get_roots_and_norms(
-            theta_max_rad, theta_min_rad, self.n_modes
+            self.theta_max_rad, self.theta_min_rad, self.n_modes
         )
 
-        t_minus = np.zeros((len(thetas), self.n_modes))
-        t_plus = np.zeros((len(thetas), self.n_modes))
         for n in range(self.n_modes):
             t_minus[:, n] = ch.tm(
-                n=n + 1, t=thetas, tmin=theta_min_rad, nn=nn, coeff_j=coeff_j
+                n=n + 1,
+                t=self.theta_grid_rad,
+                tmin=self.theta_min_rad,
+                nn=nn,
+                coeff_j=coeff_j,
+            )
+            t_plus[:, n] = ch.tp(
+                n=n + 1, t=self.theta_grid_rad, tmin=self.theta_min_rad, nn=nn, rn=rn
             )
             # convert the mp.math object to normal floats
             t_minus[:, n] = np.array([float(x) for x in t_minus[:, n]])
-
-            # Evaluate T_n^+ on integration grid
-            t_plus[:, n] = ch.tp(n=n + 1, t=thetas, tmin=theta_min_rad, nn=nn, rn=rn)
             t_plus[:, n] = np.array([float(x) for x in t_plus[:, n]])
 
         # construct term in square brackets: [𝑇+𝑎(𝜃)𝑇+𝑏(𝜃) + 𝑇−𝑎(𝜃)𝑇−𝑏(𝜃)]
         # t is the theta index, a and b the mode indices
         t_term_1 = np.einsum('ta, tb -> tab', t_plus, t_plus)
         t_term_2 = np.einsum('ta, tb -> tab', t_minus, t_minus)
-        t_term = t_term_1 + t_term_2  # shape (len(thetas), n_modes, n_modes)
+        t_term = t_term_1 + t_term_2  # shape (self.nbt, n_modes, n_modes)
 
-        # 3. Compute npair
+        # 3. Compute dnpair (differential pairs per unit angle)
         # TODO IMPORTANT: nz src or lens below?
-        npair_arr = np.zeros((self.theta_bins_sn, self.zbins, self.zbins))
-        for theta_ix in range(self.theta_bins_sn):
-            for zi in range(self.zbins):
-                for zj in range(self.zbins):
-                    theta_1_l = theta_edges_rad[theta_ix]
-                    theta_1_u = theta_edges_rad[theta_ix + 1]
-                    npair_arr[theta_ix, zi, zj] = crs.get_npair(
-                        theta_1_u,
-                        theta_1_l,
-                        self.survey_area_sr,
-                        self.n_eff_src[zi],
-                        self.n_eff_src[zj],
-                    )
+        npair_arr = np.zeros((self.nbt, self.zbins, self.zbins))
+        for theta_ix, zi, zj in itertools.product(
+            range(self.nbt), range(self.zbins), range(self.zbins)
+        ):
+            npair_arr[theta_ix, zi, zj] = crs.get_dnpair(
+                theta=self.theta_grid_rad[theta_ix],
+                survey_area_sr=self.survey_area_sr,
+                n_eff_i=self.n_eff_src[zi],
+                n_eff_j=self.n_eff_src[zj],
+            )
 
-        # 1. Calculate bin widths (dtheta) in RADIANS
-        # Assuming theta_edges_rad defines the bins for your npair counts
-        dtheta = np.diff(theta_edges_rad)
-
-        # 3. Convert Counts (N) to Density (n)
-        # n_pair(theta) = N_count / dtheta
-        npair_arr /= dtheta[:, None, None]
-
-        # import ipdb; ipdb.set_trace()
+        # * alternatively, you can do
+        # for theta_ix, zi, zj in itertools.product(
+        #     range(self.nbt), range(self.zbins), range(self.zbins)
+        # ):
+        #     npair_arr[theta_ix, zi, zj] = crs.get_npair(
+        #         theta_1_u=self.theta_edges_rad[theta_ix],
+        #         theta_1_l=self.theta_edges_rad[theta_ix + 1],
+        #         survey_area_sr=self.survey_area_sr,
+        #         n_eff_i=self.n_eff_src[zi],
+        #         n_eff_j=self.n_eff_src[zj],
+        #     )
+        # dtheta = np.diff(self.theta_edges_rad)
+        # npair_arr /= dtheta[:, None, None]
 
         # 4. Broadcast shapes, construct integrand and integrate
         integrand = (
-            thetas[:, None, None, None, None] ** 2
+            self.theta_grid_rad[:, None, None, None, None] ** 2
             * t_term[:, :, :, None, None]
             / npair_arr[:, None, None, :, :]
         )
 
-        integral = simps(y=integrand, x=thetas, axis=0)
+        integral = simps(y=integrand, x=self.theta_grid_rad, axis=0)
 
         # overall shape is (n_modes, n_modes, zbins, zbins, zbins, zbins)
         return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]

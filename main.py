@@ -9,9 +9,11 @@ Branch TODOs:
 []  perform different tests against OC for RS and cosebis, for different ngals between sources & lenses
     e.g. solve the:         # TODO IMPORTANT: nz src or lens below?
 [] understand why setting theta_min_cosebis_arcmin = 50 (!=0.5) causes the discrepancy with OC
-[] do not instantiate the theta grid for cosebis in the main nor in the cov_sn function, 
+[] do not instantiate the theta grid for cosebis in the main nor in the cov_sn function,
     do it in the init or elsewhere in the class. use the existing theta_steps_cosebis!
-
+[] find a nicer solution for:
+    # TODO these ifs are not very nice...
+        elif term == 'sn' and probe_ab != probe_cd:
 """
 
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
@@ -1380,7 +1382,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # compute cov
     # TODO restore this
-    cov_oc_obj.call_oc_from_bash()
+    # cov_oc_obj.call_oc_from_bash()
 
     # load output .list file (maybe the .mat format would be better, actually...)
     # and store it into a 6d dictionary
@@ -1754,29 +1756,7 @@ if obs_space == 'cosebis':
     start_rs = time.perf_counter()
 
     # precompute COSEBIs kernels W_n(ell)
-    # TODO move this to cov_cosebis.py
-    from cloelib.auxiliary import cosebi_helpers as ch
-
-    theta_min = cfg['precision']['theta_min_arcmin_cosebis']
-    theta_max = cfg['precision']['theta_max_arcmin_cosebis']
-    theta_steps = cfg['precision']['theta_steps_cosebis']
-    n_threads = cfg['misc']['num_threads']
-
-    theta_grid_deg = np.geomspace(theta_min / 60, theta_max / 60, theta_steps + 1)
-    theta_grid_rad = np.deg2rad(theta_grid_deg)  # in radians
-    with sl.timer(
-        f'Computing COSEBIs W_n(ell) kernels for {cov_cs_obj.n_modes} modes...'
-    ):
-        w_ells_dict = ch.get_W_ell(
-            thetagrid=theta_grid_rad,
-            Nmax=cov_cs_obj.n_modes,
-            ells=cov_cs_obj.ells,
-            N_thread=n_threads,
-        )
-
-    # turn to array of shape (n_modes, n_ells) and assign to object
-    w_ells_arr = np.array(list(w_ells_dict.values()))
-    cov_cs_obj.w_ells_arr = w_ells_arr
+    cov_cs_obj.set_w_ells()
 
     # TODO understand a bit better how to treat real-space SSC and cNG
     for _probe, _term in itertools.product(

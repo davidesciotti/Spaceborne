@@ -27,6 +27,7 @@ from tqdm import tqdm
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
+from spaceborne import cov_projector as cp
 from spaceborne import sb_lib as sl
 
 warnings.filterwarnings(
@@ -273,23 +274,6 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
     return t_munu
 
 
-def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
-    """Compute total (ideal) number of pairs in a theta bin, i.e., N(theta).
-    N(θ) = π (θ_u^2 - θ_l^2) × A × n_i × n_j
-         = \int_{θ_l}^{θ_u} dθ (dN(θ)/dθ)
-    """
-    n_eff_i *= const.SR_TO_ARCMIN2
-    n_eff_j *= const.SR_TO_ARCMIN2
-    return np.pi * (theta_1_u**2 - theta_1_l**2) * survey_area_sr * n_eff_i * n_eff_j
-
-
-def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
-    """Compute differential (ideal) number of pairs, i.e. dN(theta)/dtheta.
-    dN(θ)/dθ = 2π θ × A × n_i × n_j
-    """
-    n_eff_i *= const.SR_TO_ARCMIN2
-    n_eff_j *= const.SR_TO_ARCMIN2
-    return 2 * np.pi * theta * survey_area_sr * n_eff_i * n_eff_j
 
 
 def split_probe_ix(probe_ix):
@@ -594,7 +578,6 @@ class CovRealSpace:
         self._set_neff_and_sigma_eps()
         self._set_levin_bessel_precision()
         self._set_probe_names_idxs()
-        self._set_terms_toloop()
 
         # other miscellaneous settings
         self.n_jobs = self.cfg['misc']['num_threads']
@@ -701,14 +684,7 @@ class CovRealSpace:
                 const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd_str],
             )
 
-    def _set_terms_toloop(self):
-        self.terms_toloop = []
-        if self.cfg['covariance']['G']:
-            self.terms_toloop.extend(('sva', 'sn', 'mix'))
-        if self.cfg['covariance']['SSC']:
-            self.terms_toloop.append('ssc')
-        if self.cfg['covariance']['cNG']:
-            self.terms_toloop.append('cng')
+
 
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         # TODO generalize to different n(z)
@@ -718,7 +694,7 @@ class CovRealSpace:
                 for zj in range(self.zbins):
                     theta_1_l = self.theta_edges_fine[theta_ix]
                     theta_1_u = self.theta_edges_fine[theta_ix + 1]
-                    npair_arr[theta_ix, zi, zj] = get_npair(
+                    npair_arr[theta_ix, zi, zj] = cp.get_npair(
                         theta_1_u,
                         theta_1_l,
                         self.survey_area_sr,

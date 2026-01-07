@@ -1,13 +1,3 @@
-"""
-This module contains functions to compute the covariance matrix in real space.
-Nomenclature of the functions/variables:
-hs = harmonic space
-rs = real space
-sva = sample variance
-sn = sampling noise
-mix = mixed term
-"""
-
 # TODO the NG cov has not been re-tested against OC
 # TODO the NG cov needs a smaller number of ell bins for the simpson integration! It's
 # TODO unpractical to compute it in 1000 ell values
@@ -25,8 +15,10 @@ from tqdm import tqdm
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
+from spaceborne import cov_projector as cp
 from spaceborne import cov_real_space as crs
 from spaceborne import sb_lib as sl
+from spaceborne.cov_projector import CovarianceProjector
 
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
@@ -41,20 +33,10 @@ warnings.filterwarnings(
 _UNSET = object()
 
 
-class CovCOSEBIs:
+class CovCOSEBIs(CovarianceProjector):
     def __init__(self, cfg, pvt_cfg, mask_obj):
-        self.cfg = cfg
-        self.pvt_cfg = pvt_cfg
-        self.mask_obj = mask_obj
+        super().__init__(cfg, pvt_cfg, mask_obj)
 
-        self.zbins = pvt_cfg['zbins']
-        self.zpairs_auto = pvt_cfg['zpairs_auto']
-        self.zpairs_cross = pvt_cfg['zpairs_cross']
-        self.zpairs_3x2pt = pvt_cfg['zpairs_3x2pt']
-        self.ind_auto = pvt_cfg['ind_auto']
-        self.ind_cross = pvt_cfg['ind_cross']
-        self.ind_dict = pvt_cfg['ind_dict']
-        self.cov_ordering_2d = pvt_cfg['cov_ordering_2d']
         self.n_modes = cfg['binning']['n_modes_cosebis']
 
         # instantiate cov dict with the required terms and probe combinations
@@ -72,10 +54,9 @@ class CovCOSEBIs:
         )
 
         # setters
-        self._set_survey_info()
-        self._set_theta_binning()
+        # self._set_survey_info()
+        # self._set_theta_binning()
         self._set_neff_and_sigma_eps()
-        self._set_terms_toloop()
 
         # other miscellaneous settings
         self.n_jobs = self.cfg['misc']['num_threads']
@@ -136,15 +117,6 @@ class CovCOSEBIs:
         self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_src, self.n_eff_lns))
 
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
-
-    def _set_terms_toloop(self):
-        self.terms_toloop = []
-        if self.cfg['covariance']['G']:
-            self.terms_toloop.extend(('sva', 'sn', 'mix'))
-        if self.cfg['covariance']['SSC']:
-            self.terms_toloop.append('ssc')
-        if self.cfg['covariance']['cNG']:
-            self.terms_toloop.append('cng')
 
     def set_w_ells(self):
         """
@@ -214,7 +186,7 @@ class CovCOSEBIs:
         for theta_ix, zi, zj in itertools.product(
             range(self.nbt), range(self.zbins), range(self.zbins)
         ):
-            npair_arr[theta_ix, zi, zj] = crs.get_dnpair(
+            npair_arr[theta_ix, zi, zj] = cp.get_dnpair(
                 theta=self.theta_grid_rad[theta_ix],
                 survey_area_sr=self.survey_area_sr,
                 n_eff_i=self.n_eff_src[zi],
@@ -225,7 +197,7 @@ class CovCOSEBIs:
         # for theta_ix, zi, zj in itertools.product(
         #     range(self.nbt), range(self.zbins), range(self.zbins)
         # ):
-        #     npair_arr[theta_ix, zi, zj] = crs.get_npair(
+        #     npair_arr[theta_ix, zi, zj] = cp.get_npair(
         #         theta_1_u=self.theta_edges_rad[theta_ix],
         #         theta_1_l=self.theta_edges_rad[theta_ix + 1],
         #         survey_area_sr=self.survey_area_sr,

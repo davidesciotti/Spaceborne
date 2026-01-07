@@ -724,6 +724,7 @@ def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
         abs_val=True,
         plot_diff_threshold=diff_threshold,
         title=title,
+        early_return=False,
     )
 
     # compare correlation
@@ -741,6 +742,7 @@ def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
         plot_diff_hist=False,
         plot_diff_threshold=diff_threshold,
         title=title,
+        early_return=False,
     )
 
     # compare cov diag

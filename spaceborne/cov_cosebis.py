@@ -56,8 +56,6 @@ class CovCOSEBIs:
         self.ind_dict = pvt_cfg['ind_dict']
         self.cov_ordering_2d = pvt_cfg['cov_ordering_2d']
         self.n_modes = cfg['precision']['n_modes_cosebis']
-        # TODO decide where to put this: is it used elsewhere?
-        self.theta_bins_sn = 1000
 
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
@@ -176,8 +174,7 @@ class CovCOSEBIs:
     def _set_terms_toloop(self):
         self.terms_toloop = []
         if self.cfg['covariance']['G']:
-            self.terms_toloop.extend(('sn',))  # TODO restore
-            # self.terms_toloop.extend(('sva', 'sn', 'mix'))
+            self.terms_toloop.extend(('sva', 'sn', 'mix'))
         if self.cfg['covariance']['SSC']:
             self.terms_toloop.append('ssc')
         if self.cfg['covariance']['cNG']:
@@ -205,12 +202,9 @@ class CovCOSEBIs:
         # turn to array of shape (n_modes, n_ells) and assign to self
         self.w_ells_arr = np.array(list(w_ells_dict.values()))
 
-    def cov_sn_cs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
-        # TODO delete probe indices
-        # import ipdb
-
-        # ipdb.set_trace()
-
+    def cov_sn_cs(self):
+        """Compute the COSEBIs shape noise covariance term."""
+        
         # firstly, construct the prefactor outside of the \theta integral
         first_term = np.einsum('i,j->ij', self.sigma_eps_i**2, self.sigma_eps_i**2) / 2
         kron = np.eye(self.zbins)
@@ -224,7 +218,7 @@ class CovCOSEBIs:
         t_plus = np.zeros((self.nbt, self.n_modes))
 
         rn, nn, coeff_j = ch.get_roots_and_norms(
-            self.theta_max_rad, self.theta_min_rad, self.n_modes
+            tmax=self.theta_max_rad, tmin=self.theta_min_rad, Nmax=self.n_modes
         )
 
         for n in range(self.n_modes):
@@ -715,7 +709,7 @@ class CovCOSEBIs:
             cov_out_6d = np.zeros(self.cov_cs_6d_shape)
 
         elif term == 'sn' and probe_ab == probe_cd:
-            cov_out_6d = self.cov_sn_cs(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix)
+            cov_out_6d = self.cov_sn_cs()
         # TODO these ifs are not very nice...
         elif term == 'sn' and probe_ab != probe_cd:
             cov_out_6d = np.zeros(self.cov_cs_6d_shape)

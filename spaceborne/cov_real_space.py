@@ -274,8 +274,6 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
     return t_munu
 
 
-
-
 def split_probe_ix(probe_ix):
     if probe_ix in (0, 1):
         return 0, 0
@@ -573,7 +571,6 @@ class CovRealSpace:
         )
 
         # setters
-        self._set_survey_info()
         self._set_theta_binning()
         self._set_neff_and_sigma_eps()
         self._set_levin_bessel_precision()
@@ -596,15 +593,6 @@ class CovRealSpace:
         self.cl_3x2pt_5d = _UNSET
         self.ells = _UNSET
         self.nbl = _UNSET
-
-    def _set_survey_info(self):
-        self.survey_area_deg2 = self.mask_obj.survey_area_deg2
-        self.survey_area_sr = self.mask_obj.survey_area_sr
-        self.fsky = self.mask_obj.fsky
-        self.srtoarcmin2 = const.SR_TO_ARCMIN2
-        # maximum survey area in sr
-        # TODO generalise to multiple survey areas
-        self.amax = max((self.survey_area_sr, self.survey_area_sr))
 
     def _set_theta_binning(self):
         self.theta_min_arcmin = self.cfg['binning']['theta_min_arcmin']
@@ -684,8 +672,6 @@ class CovRealSpace:
                 const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd_str],
             )
 
-
-
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         # TODO generalize to different n(z)
         npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
@@ -730,12 +716,6 @@ class CovRealSpace:
         )
 
         return cov_sn_rs_6d
-
-    def get_delta_tomo(self, probe_a_ix, probe_b_ix):
-        if probe_a_ix == probe_b_ix:
-            return np.eye(self.zbins)
-        else:
-            return np.zeros((self.zbins, self.zbins))
 
     def cov_simps_wrapper(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,

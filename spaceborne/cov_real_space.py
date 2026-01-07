@@ -689,10 +689,13 @@ class CovRealSpace:
             assert len(theta_centers) == nbt, 'theta_centers length mismatch'
 
     def _set_neff_and_sigma_eps(self):
-        self.n_eff_lens = self.cfg['nz']['ngal_lenses']
+        self.n_eff_lns = self.cfg['nz']['ngal_lenses']
         self.n_eff_src = self.cfg['nz']['ngal_sources']
         # in this way the indices correspond to xip, xim, g
-        self.n_eff_2d = np.row_stack((self.n_eff_lens, self.n_eff_lens, self.n_eff_src))
+        # ! old
+        self.n_eff_2d = np.row_stack((self.n_eff_lns, self.n_eff_lns, self.n_eff_src))
+        # ! new
+        # self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_src, self.n_eff_lns))
 
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
         self.sigma_eps_tot = self.sigma_eps_i * np.sqrt(2)
@@ -754,8 +757,8 @@ class CovRealSpace:
                         theta_1_u,
                         theta_1_l,
                         self.survey_area_sr,
-                        self.n_eff_lens[zi],
-                        self.n_eff_lens[zj],
+                        self.n_eff_lns[zi],
+                        self.n_eff_lns[zj],
                     )
 
         delta_mu_nu = 1.0 if (mu == nu) else 0.0
@@ -1046,7 +1049,7 @@ class CovRealSpace:
             zj,
             zk,
             zl,
-            func(zi=zi, zj=zj, zk=zk, zl=zl),
+            func(zi=zi, zj=zj, zk=zk, zl=zl, **kwargs),
         )
 
     def cov_cosebis_parallel_helper(
@@ -1168,84 +1171,6 @@ class CovRealSpace:
             cov_cosebis_6d[mode_n, mode_m, zi, zj, zk, zl] = cov_value
 
         return cov_cosebis_6d
-
-    def _sum_split_g_terms_allprobeblocks_alldims(self) -> None:
-        # small sanity check probe combinations must match for terms (sva, sn, mix)
-        if not (
-            self.cov_dict['sva'].keys()
-            == self.cov_dict['sn'].keys()
-            == self.cov_dict['mix'].keys()
-        ):
-            raise ValueError(
-                'The probe combinations keys in the SVA, SN and MIX covariance '
-                'dictionaries do not match!'
-            )
-
-        # sanity check: all the probes must match
-        probes_sva = set(self.cov_dict['sva'].keys())
-        probes_sn = set(self.cov_dict['sn'].keys())
-        probes_mix = set(self.cov_dict['mix'].keys())
-        if not (probes_sva == probes_sn == probes_mix):
-            raise ValueError(
-                'The probe combinations in the SVA, SN and MIX covariance '
-                'dictionaries do not match!'
-            )
-
-        # now sum the terms to get the Gaussian, for all probe combinations and
-        # dimensions
-        for probe_2tpl in self.cov_dict['sva']:
-            if probe_2tpl == '3x2pt':
-                continue  # skip 3x2pt, built later
-
-            # sanity check: all the dimensions must match
-            dims_sva = set(self.cov_dict['sva'][probe_2tpl].keys())
-            dims_sn = set(self.cov_dict['sn'][probe_2tpl].keys())
-            dims_mix = set(self.cov_dict['mix'][probe_2tpl].keys())
-            if not (dims_sva == dims_sn == dims_mix):
-                raise ValueError(
-                    'The probe combinations in the SVA, SN and MIX covariance '
-                    'dictionaries do not match!'
-                )
-
-            # for each dim, perform the sum
-            for dim in ['2d', '4d', '6d']:
-                self.cov_dict['g'][probe_2tpl][dim] = (
-                    self.cov_dict['sva'][probe_2tpl][dim]
-                    + self.cov_dict['sn'][probe_2tpl][dim]
-                    + self.cov_dict['mix'][probe_2tpl][dim]
-                )
-
-    def _build_cov_3x2pt_4d_and_2d(self) -> None:
-        """For each covariance term, constructs the 4d and 2d 3x2pt covs from
-        the 6d probe-specific ones.
-
-        Note: remember that there is no 6d 3x2pt 6d or 10d cov!
-
-        Note: This exact same function is also defined in cov_harmonic_space.py
-        """
-
-        # TODO deprecate this func
-
-        for term in self.cov_dict:
-            if term == 'tot':
-                continue  # tot is built at the end, skip it
-
-            self.cov_dict[term]['3x2pt']['4d'] = (
-                sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
-                    self.cov_dict[term], obs_space='real'
-                )
-            )
-            self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
-                self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
-            )
-
-        # this function modifies the cov_dict in place, no need to reassign the result
-        # to self.cov_dict
-        sl.set_cov_tot_2d_and_6d(
-            cov_dict=self.cov_dict,
-            req_probe_combs_2d=self.req_probe_combs_2d,
-            space='real',
-        )
 
     def combine_terms_and_probes(self, unique_probe_combs):
         """For all the required terms, constructs the 3x2pt
@@ -1397,7 +1322,7 @@ class CovRealSpace:
                 n_probes=self.n_probes_hs,
                 sigma_eps2=(self.sigma_eps_i * np.sqrt(2)) ** 2,
                 ng_shear=self.n_eff_src,
-                ng_clust=self.n_eff_lens,
+                ng_clust=self.n_eff_lns,
             )
 
             # expand the noise array along the ell axis

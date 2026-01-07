@@ -113,3 +113,8 @@ class CovarianceProjector:
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
             
+    def get_delta_tomo(self, probe_a_ix, probe_b_ix):
+        if probe_a_ix == probe_b_ix:
+            return np.eye(self.zbins)
+        else:
+            return np.zeros((self.zbins, self.zbins))

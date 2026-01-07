@@ -124,6 +124,23 @@ def sum_split_g_terms_allprobeblocks_alldims(cov_dict) -> None:
 
         # for each dim, perform the sum
         for dim in ['2d', '4d', '6d']:
+            sva = cov_dict['sva'][probe_2tpl][dim]
+            sn = cov_dict['sn'][probe_2tpl][dim]
+            mix = cov_dict['mix'][probe_2tpl][dim]
+
+            # Check consistency: either all None or all not None
+            none_count = sum([sva is None, sn is None, mix is None])
+            if none_count not in {0, 3}:
+                raise ValueError(
+                    f'For probe {probe_2tpl} and dim {dim}, '
+                    f'SVA, SN, and MIX must all be None or all be non-None. '
+                    f'Found: SVA={sva is not None}, SN={sn is not None}, '
+                    f'MIX={mix is not None}'
+                )
+
+            if none_count == 3:
+                continue
+
             cov_dict['g'][probe_2tpl][dim] = (
                 cov_dict['sva'][probe_2tpl][dim]
                 + cov_dict['sn'][probe_2tpl][dim]
@@ -2509,8 +2526,10 @@ def compare_arrays(
             f'\nFraction of elements with discrepancy > {higher_rtol}%: '
             f'{no_outliers / diff_AB.size:.5f}'
         )
-        print(f'{name_A} and {name_B} differ by more than {higher_rtol}% ❌:'
-              f'{additional_info}')
+        print(
+            f'{name_A} and {name_B} differ by more than {higher_rtol}% ❌:'
+            f'{additional_info}'
+        )
 
     # Check that arrays are 2D if any plotting is requested.
     if plot_diff or plot_array:

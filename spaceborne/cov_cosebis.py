@@ -94,41 +94,6 @@ class CovCOSEBIs:
         self.ells = _UNSET
         self.nbl = _UNSET
 
-    def set_cov_2d_ordering(self):
-        # settings for 2D covariance ordering
-        if self.cov_ordering_2d == 'probe_scale_zpair':
-            self.block_index = 'ell'
-            self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
-            self.cov_4D_to_2D_3x2pt_func_kw = {
-                'block_index': self.block_index,
-                'zbins': self.zbins,
-                'req_probe_combs_2d': self.req_probe_combs_2d,
-            }
-        elif self.cov_ordering_2d == 'probe_zpair_scale':
-            self.block_index = 'zpair'
-            self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
-            self.cov_4D_to_2D_3x2pt_func_kw = {
-                'block_index': self.block_index,
-                'zbins': self.zbins,
-                'req_probe_combs_2d': self.req_probe_combs_2d,
-            }
-        elif self.cov_ordering_2d == 'scale_probe_zpair':
-            self.block_index = 'ell'
-            self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2D
-            self.cov_4D_to_2D_3x2pt_func_kw = {
-                'block_index': self.block_index,
-                'optimize': True,
-            }
-        elif self.cov_ordering_2d == 'zpair_probe_scale':
-            self.block_index = 'zpair'
-            self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2D
-            self.cov_4D_to_2D_3x2pt_func_kw = {
-                'block_index': self.block_index,
-                'optimize': True,
-            }
-        else:
-            raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
-
     def _set_survey_info(self):
         self.survey_area_deg2 = self.mask_obj.survey_area_deg2
         self.survey_area_sr = self.mask_obj.survey_area_sr
@@ -205,7 +170,7 @@ class CovCOSEBIs:
 
     def cov_sn_cs(self):
         """Compute the COSEBIs shape noise covariance term."""
-        
+
         # firstly, construct the prefactor outside of the \theta integral
         first_term = np.einsum('i,j->ij', self.sigma_eps_i**2, self.sigma_eps_i**2) / 2
         kron = np.eye(self.zbins)
@@ -486,65 +451,6 @@ class CovCOSEBIs:
             cov_cosebis_6d[mode_n, mode_m, zi, zj, zk, zl] = cov_value
 
         return cov_cosebis_6d
-
-
-    def combine_terms_and_probes(self, unique_probe_combs):
-        """For all the required terms, constructs the 3x2pt
-        (or nx2pt, depending on the n required probes) 2D cov,
-        taking into account the required probe combinations
-        (this is taken care of by cov_4D_to_2DCLOE_3x2pt_rs).
-        sack (join) probes into a single 2D cov (for each term) and store it in the
-        object"""
-
-        # ! construct 3x2pt 2D cov for each term and store them in the object
-        for term in self.terms_toloop:
-            # first construct the dict
-            cov_term_3x2pt_4d_dict = self.build_cov_3x2pt_8d_dict(
-                self.req_probe_combs_2d, term
-            )
-            # then turn to 4D array
-            cov_term_3x2pt_4d_arr = sl.cov_3x2pt_8D_dict_to_4D(
-                cov_term_3x2pt_4d_dict, self.req_probe_combs_2d, space='real'
-            )
-            # then to 2D array
-            cov_term_3x2pt_2d_arr = self.cov_4D_to_2D_3x2pt_func(
-                cov_term_3x2pt_4d_arr, **self.cov_4D_to_2D_3x2pt_func_kw
-            )
-            # set attribute
-            setattr(self, f'cov_3x2pt_{term}_2d', cov_term_3x2pt_2d_arr)
-
-        # ! sum terms to get G and TOT 2D 3x2pt covs and store them in the object
-        self.cov_3x2pt_g_2d = sum(
-            getattr(self, f'cov_3x2pt_{term}_2d') for term in ['sva', 'sn', 'mix']
-        )
-        self.cov_3x2pt_tot_2d = sum(
-            getattr(self, f'cov_3x2pt_{term}_2d') for term in self.terms_toloop
-        )
-
-        for probe in unique_probe_combs:
-            # ! sum to get G and TOT 2D probe-specific covs and store them in the object
-            # ! (not needed in this new "approach" to the files I wish to save)
-            # cov_probe_g_2d = sum(
-            #     getattr(self, f'cov_{probe}_{term}_2d') for term in ['sva', 'sn', 'mix']
-            # )
-            # cov_probe_tot_2d = sum(
-            #     getattr(self, f'cov_{probe}_{term}_2d') for term in self.terms_toloop
-            # )
-            # setattr(self, f'cov_{probe}_g_2d', cov_probe_g_2d)
-            # setattr(self, f'cov_{probe}_tot_2d', cov_probe_tot_2d)
-
-            # ! sum terms to get, G, TOT 6D probe-specific covs
-            # ! and store them in the object (required if save_full_cov is True).
-            # ! note that the 6D covs are already computed and stored in the object
-            # ! in the compute_realspace_cov function
-            cov_probe_g_6d = sum(
-                getattr(self, f'cov_{probe}_{term}_6d') for term in ['sva', 'sn', 'mix']
-            )
-            cov_probe_tot_6d = sum(
-                getattr(self, f'cov_{probe}_{term}_6d') for term in self.terms_toloop
-            )
-            setattr(self, f'cov_{probe}_g_6d', cov_probe_g_6d)
-            setattr(self, f'cov_{probe}_tot_6d', cov_probe_tot_6d)
 
     def compute_cs_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
         """

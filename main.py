@@ -1382,7 +1382,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # compute cov
     # TODO restore this
-    # cov_oc_obj.call_oc_from_bash()
+    cov_oc_obj.call_oc_from_bash()
 
     # load output .list file (maybe the .mat format would be better, actually...)
     # and store it into a 6d dictionary
@@ -1795,15 +1795,29 @@ if obs_space == 'cosebis':
     #     # reshape all the probe blocks to 4d and 2d
     #     cov_cs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
 
-    cov_sb_test_2d = cov_cs_obj.cov_dict['sn']['3x2pt']['2d']
-    cov_oc_test_2d = cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
+    for term in ['sva', 'sn', 'mix']:
+        cov_sb_test_2d = cov_cs_obj.cov_dict[term]['3x2pt']['2d']
+        cov_oc_test_2d = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-    sl.compare_arrays(cov_sb_test_2d, cov_oc_test_2d, abs_val=True, early_return=False)
-    sl.compare_2d_covs(cov_sb_test_2d, cov_oc_test_2d, 'SB', 'OC', 'cov SN', 1e-5)
+        sl.compare_arrays(
+            cov_sb_test_2d,
+            cov_oc_test_2d+1,
+            name_A=f'SB {term}',
+            name_B=f'OC {term}',
+            abs_val=True,
+            early_return=False,
+        )
+        sl.compare_2d_covs(
+            np.abs(cov_sb_test_2d),
+            np.abs(cov_oc_test_2d),
+            'SB',
+            'OC',
+            f'cov {term}',
+            1e-5,
+        )
 
-    fig, ax = plt.subplots(1, 2, figsize=(10, 6))
-    ax[0].matshow(np.log10(cov_sb_test_2d))
-    ax[1].matshow(sl.cov2corr(cov_sb_test_2d), vmin=-1, vmax=1, cmap='RdBu_r')
+        print('=' * 70)
+        print('')
 
     assert False, 'stop here, now code up SN term and compute all three'
 

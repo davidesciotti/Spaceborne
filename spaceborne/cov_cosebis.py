@@ -10,7 +10,7 @@ from functools import partial
 import cloelib.auxiliary.cosebi_helpers as ch
 import numpy as np
 from joblib import Parallel, delayed
-from scipy.integrate import simps
+from scipy.integrate import simpson as simps
 from tqdm import tqdm
 
 from spaceborne import constants as const

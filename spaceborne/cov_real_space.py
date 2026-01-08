@@ -126,10 +126,6 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
     return product_terms
 
-
-# ! __ = 'no longer used'
-
-
 # ! ====================== COV RS W/ SIMPSON INTEGRATION ===============================
 def cov_sva_simps(
     zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
@@ -176,7 +172,7 @@ def cov_mix_simps(
 
     def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
         prefac = (
-            self.get_delta_tomo(probe_a_ix, probe_b_ix)[zi, zj]
+            cp.get_delta_tomo(probe_a_ix, probe_b_ix, self.zbins)[zi, zj]
             * t_mix(probe_a_ix, self.zbins, self.sigma_eps_i)[zi]
             / (self.n_eff_2d[probe_a_ix, zi] * self.srtoarcmin2)
         )
@@ -673,16 +669,16 @@ class CovRealSpace(CovarianceProjector):
             delta_mu_nu
             * delta_theta[:, :, None, None, None, None]
             * (
-                self.get_delta_tomo(probe_a_ix, probe_c_ix)[
+                cp.get_delta_tomo(probe_a_ix, probe_c_ix, self.zbins)[
                     None, None, :, None, :, None
                 ]
-                * self.get_delta_tomo(probe_b_ix, probe_d_ix)[
+                * cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[
                     None, None, None, :, None, :
                 ]
-                + self.get_delta_tomo(probe_a_ix, probe_d_ix)[
+                + cp.get_delta_tomo(probe_a_ix, probe_d_ix, self.zbins)[
                     None, None, :, None, None, :
                 ]
-                * self.get_delta_tomo(probe_b_ix, probe_c_ix)[
+                * cp.get_delta_tomo(probe_b_ix, probe_c_ix, self.zbins)[
                     None, None, None, :, :, None
                 ]
             )
@@ -759,7 +755,7 @@ class CovRealSpace(CovarianceProjector):
     ):  # fmt: skip
         def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
             prefac = (
-                self.get_delta_tomo(probe_b_ix, probe_d_ix)[zj, zl]
+                cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
                 * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
                 / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
             )

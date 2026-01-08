@@ -51,6 +51,10 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
     return t_munu
 
 
+def get_delta_tomo(probe_a_ix: int, probe_b_ix: int, zbins: int) -> np.ndarray:
+    return np.eye(zbins) if probe_a_ix == probe_b_ix else np.zeros((zbins, zbins))
+
+
 class CovarianceProjector:
     """
     Base class for all projected covariance computations.
@@ -112,9 +116,3 @@ class CovarianceProjector:
             self.terms_toloop.append('ssc')
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
-            
-    def get_delta_tomo(self, probe_a_ix, probe_b_ix):
-        if probe_a_ix == probe_b_ix:
-            return np.eye(self.zbins)
-        else:
-            return np.zeros((self.zbins, self.zbins))

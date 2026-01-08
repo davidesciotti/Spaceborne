@@ -9,6 +9,7 @@ The key insight is that different statistics share the same integrand building
 """
 
 import numpy as np
+from scipy.integrate import simpson as simps
 
 from spaceborne import constants as const
 
@@ -55,6 +56,104 @@ def get_delta_tomo(probe_a_ix: int, probe_b_ix: int, zbins: int) -> np.ndarray:
     return np.eye(zbins) if probe_a_ix == probe_b_ix else np.zeros((zbins, zbins))
 
 
+def build_cov_sva_integrand_5d(cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
+    """
+    Build the SVA (sample variance) integrand in harmonic space.
+
+    This integrand is UNIVERSAL - it's the same for all projection methods
+    (real space, COSEBIs, band powers, etc.). The formula comes from the
+    Gaussian covariance of C_ℓ:
+
+    Cov[C_ab, C_cd] ∝ C_ac * C_bd + C_ad * C_bc
+
+    Parameters
+    ----------
+    cl_5d : np.ndarray
+        Power spectra array with shape (n_probes, n_probes, n_ell, zbins, zbins)
+    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix : int
+        Probe indices (0 for shear, 1 for galaxy clustering)
+
+    Returns
+    -------
+    integrand_5d : np.ndarray
+        Shape (n_ell, zbins, zbins, zbins, zbins)
+        The harmonic-space integrand before projection
+    """
+    a = np.einsum(
+        'Lik,Ljl->Lijkl', cl_5d[probe_a_ix, probe_c_ix], cl_5d[probe_b_ix, probe_d_ix]
+    )
+    b = np.einsum(
+        'Lil,Ljk->Lijkl', cl_5d[probe_a_ix, probe_d_ix], cl_5d[probe_b_ix, probe_c_ix]
+    )
+    return a + b
+
+
+def cov_sva_simps(
+    ells,
+    cl_5d,
+    probe_a_ix,
+    probe_b_ix,
+    probe_c_ix,
+    probe_d_ix,
+    zi,
+    zj,
+    zk,
+    zl,
+    Amax,
+    kernel_1_func,
+    kernel_2_func,
+):
+    """
+    Universal Simpson integrator for SVA covariance - projection kernel agnostic.
+
+    This function computes a single matrix element of the SVA covariance by:
+    1. Selecting the relevant C_ℓ spectra for the given tomographic bins
+    2. Evaluating projection kernels (e.g., k_mu for real space, W_n for COSEBIs)
+    3. Building the integrand: ℓ * kernel_1 * kernel_2 * (C_ik*C_jl + C_il*C_jk)
+    4. Integrating with Simpson's rule
+
+    Parameters
+    ----------
+    ells : np.ndarray
+        Multipole values
+    cl_5d : np.ndarray
+        Power spectra with shape (n_probes, n_probes, n_ell, zbins, zbins)
+    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix : int
+        Probe indices
+    zi, zj, zk, zl : int
+        Tomographic bin indices
+    Amax : float
+        Survey area in steradians
+    kernel_1_func : callable
+        First projection kernel function of ℓ (e.g., k_mu(ℓ, theta_1))
+    kernel_2_func : callable
+        Second projection kernel function of ℓ (e.g., k_nu(ℓ, theta_2))
+
+    Returns
+    -------
+    cov_elem : float
+        Single covariance matrix element
+    """
+    # Extract relevant C_ℓ for these tomographic bins
+    c_ik = cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
+    c_jl = cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
+    c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
+    c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
+
+    # Evaluate projection kernels
+    kmu = kernel_1_func(ells)
+    knu = kernel_2_func(ells)
+
+    # Build integrand: ℓ * K_μ * K_ν * (C_ik*C_jl + C_il*C_jk)
+    integrand = ells * kmu * knu * (c_ik * c_jl + c_il * c_jk)
+
+    # Integrate with Simpson's rule
+    integral = simps(y=integrand, x=ells)
+
+    # Apply normalization factor
+    return integral / (2.0 * np.pi * Amax)
+
+
 class CovarianceProjector:
     """
     Base class for all projected covariance computations.
@@ -99,6 +198,7 @@ class CovarianceProjector:
         self._set_terms_toloop()
         # TODO add this
         # self._set_neff_and_sigma_eps()
+        # TODO here (in the init) I should add the finely binned Cls, which are used in all projections!
 
     def _set_survey_info(self):
         """Set up survey geometry information."""

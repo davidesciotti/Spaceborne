@@ -469,7 +469,7 @@ class CovCOSEBIs(CovarianceProjector):
                     ind_cd,
                     w_ells_arr=self.w_ells_arr,
                     n_modes=self.n_modes,
-                    cov_func=crs.cov_sva_simps,
+                    cov_func=cp.cov_sva_simps,
                 )
 
         # TODO understand this

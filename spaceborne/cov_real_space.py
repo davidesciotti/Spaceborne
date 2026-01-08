@@ -126,36 +126,8 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
     return product_terms
 
+
 # ! ====================== COV RS W/ SIMPSON INTEGRATION ===============================
-def cov_sva_simps(
-    zi, zj, zk, zl, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-    cl_5d, Amax, ells,
-    kernel_1_func: Callable, kernel_2_func: Callable, 
-):  # fmt: skip
-    """Computes a single entry of the real-space Gaussian SVA (sample variance)
-    part of the covariance matrix.
-    """
-    c_ik = cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-    c_jl = cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-    c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-    c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-
-    def integrand_func(ells):
-        """This function is not strictly necessary, but I keep it to maintain the
-        possibility to use quad in the future."""
-        kmu = kernel_1_func(ells)
-        knu = kernel_2_func(ells)
-        return ells * kmu * knu * (c_ik * c_jl + c_il * c_jk)
-
-    integrand = integrand_func(ells)
-    integral = simps(y=integrand, x=ells)
-
-    # integrate with quad and compare
-    # integral = quad_vec(integrand_func, ells[0], ells[-1])[0]
-
-    # Finally multiply the prefactor
-    cov_elem = integral / (2.0 * np.pi * Amax)
-    return cov_elem
 
 
 def cov_mix_simps(
@@ -549,7 +521,6 @@ class CovRealSpace(CovarianceProjector):
         self._set_probe_names_idxs()
 
         # other miscellaneous settings
-        self.n_jobs = self.cfg['misc']['num_threads']
         self.integration_method = self.cfg['precision']['cov_rs_int_method']
         self.levin_bin_avg = self.cfg['precision']['levin_bin_avg']
 
@@ -731,18 +702,12 @@ class CovRealSpace(CovarianceProjector):
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
     ):  # fmt: skip
-        a = np.einsum(
-            'Lik,Ljl->Lijkl',
-            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
+        # Use parent method to build the universal SVA integrand
+        integrand_5d = self.build_cov_sva_integrand_5d(
+            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix
         )
-        b = np.einsum(
-            'Lil,Ljk->Lijkl',
-            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
-        )
-        integrand_5d = a + b
 
+        # Child-specific: project with Levin + Bessel kernels
         cov_sva_rs_6d = self.cov_levin_wrapper(
             integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
         )
@@ -1103,7 +1068,7 @@ class CovRealSpace(CovarianceProjector):
                 cov_out_6d = self.cov_simps_wrapper(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
-                    cov_simps_func=cov_sva_simps,
+                    cov_simps_func=cp.cov_sva_simps,
                     kernel_1_func=k_mu,
                     kernel_2_func=k_mu,
                 )  # fmt: skip

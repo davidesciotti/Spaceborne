@@ -66,14 +66,14 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: cosebis # Type: str. 
+  space: harmonic # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
   GG: True # Type: bool. Whether to compute the photometric clustering ('GG') covariance
   
   xip: True # Type: bool. Whether to compute \xi_+
-  xim: False # Type: bool. Whether to compute \xi_-
+  xim: True # Type: bool. Whether to compute \xi_-
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
 
@@ -96,7 +96,8 @@ nz:
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
   ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
-  ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
+  # ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
+  ngal_lenses: [4.09216, 3.09215, 2.09215] # Type: list[float]
 
   # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -118,14 +119,18 @@ binning:
   # ell binning for the harmonic-space covariance matrix
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
-  ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
+  ell_bins: 2 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   ell_bins_filename: '../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt'
 
   # theta binning for the real-space covariance matrix
-  theta_min_arcmin: 0.5  # Type: float | int. 
+  theta_min_arcmin: 50  # Type: float | int. 
   theta_max_arcmin: 300  # Type: float | int. 
   theta_bins: 10  # Type: int.
+
+  # Number of modes for the COSEBIs covariance
+  n_modes_cosebis: 2  # Type: int. 
+
 
 
 C_ell:
@@ -236,7 +241,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: False # Type: bool
+  split_gaussian_cov: True # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -352,14 +357,11 @@ precision:
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_rs: 2  # Type: int
   ell_max_rs: 100000  # Type: int
-  ell_bins_rs: 500  # Type: int. Should be high to get accurate results with Simpson integration
+  ell_bins_rs: 1000  # Type: int. Should be high to get accurate results with Simpson integration
   ell_bins_rs_nongauss: 100  # Type: int. Should be high to get accurate results with Simpson integration
-  
-  
-  n_modes_cosebis: 2  # Type: int. Number of modes for the COSEBIs covariance
-  
+    
   # theta range and steps for the COSEBIs covariance integration
-  theta_min_arcmin_cosebis: 50  # Type: int | float.
+  theta_min_arcmin_cosebis: 2  # Type: int | float.
   theta_max_arcmin_cosebis: 300  # Type: int | float.
   theta_steps_cosebis: 1000  # Type: int.
   

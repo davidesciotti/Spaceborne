@@ -167,6 +167,12 @@ RS_PROBE_NAME_TO_LATEX = {
     'gt': r'$\gamma_{t}$',
     'w': r'$w$',
 }
+CS_PROBE_NAME_TO_LATEX = {
+    'En': r'$E_{\rm n}$',
+    'Bn': r'$B_{\rm n}$',
+    'Psigl': r'$\Psi_{\rm gl}$',
+    'Psigg': r'$\Psi_{\rm gg}$',
+}
 HS_PROBE_NAME_TO_LATEX = {'LL': r'${\rm LL}$', 'GL': r'${\rm GL}$', 'GG': r'${\rm GG}$'}
 
 # adapted from notebook by G. C. Herrera

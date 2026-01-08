@@ -33,6 +33,91 @@ from spaceborne import sb_lib as sl
 _UNSET = object()
 
 
+def reorder_block_cov(
+    cov: np.ndarray, block_sizes: dict, from_order, to_order
+) -> np.ndarray:
+    cov = np.asanyarray(cov)
+    if cov.ndim != 2 or cov.shape[0] != cov.shape[1]:
+        raise ValueError('cov must be a square 2D array')
+
+    if set(from_order) != set(to_order):
+        raise ValueError('from_order and to_order must contain the same labels')
+    if any(lab not in block_sizes for lab in from_order):
+        raise ValueError('Missing block size for at least one label in from_order')
+
+    # Build (start, stop) ranges in the *current* order
+    ranges = {}
+    s = 0
+    for lab in from_order:
+        n = int(block_sizes[lab])
+        ranges[lab] = (s, s + n)
+        s += n
+    if s != cov.shape[0]:
+        raise ValueError(f'Sum(block_sizes)={s} does not match cov size {cov.shape[0]}')
+
+    # Concatenate indices in the *target* order and permute both axes
+    idx = np.concatenate([np.arange(*ranges[lab]) for lab in to_order])
+    return cov[np.ix_(idx, idx)]
+
+
+def cov_ggglll_to_llglgg(
+    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
+) -> np.ndarray:
+    n = cov_ggglll_2d.shape[0]
+    elem_apc = elem_auto + elem_cross
+    elem_ll = n - elem_apc
+
+    block_sizes = {'gg': elem_auto, 'gl': elem_cross, 'll': elem_ll}
+    return reorder_block_cov(
+        cov_ggglll_2d,
+        block_sizes=block_sizes,
+        from_order=['gg', 'gl', 'll'],
+        to_order=['ll', 'gl', 'gg'],
+    )
+
+
+# old version kept for reference
+def _cov_ggglll_to_llglgg(
+    self, cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
+) -> np.ndarray:
+    """Transforms a covariance matrix from gg-gl-ll format to llglgg format.
+
+    Parameters
+    ----------
+    cov_ggglll_2d : np.ndarray
+        Input covariance matrix in gg-gl-ll format.
+    elem_auto : int
+        Number of auto elements in the covariance matrix.
+    elem_cross : int
+        Number of cross elements in the covariance matrix.
+
+    Returns
+    -------
+    np.ndarray
+        Transformed covariance matrix in mm-gm-gg format.
+
+    """
+    elem_apc = elem_auto + elem_cross
+
+    cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
+    cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
+    cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
+    cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
+    cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
+    cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
+    cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
+    cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
+    cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
+
+    row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
+    row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
+    row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
+
+    cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
+
+    return cov_llglgg_2d
+
+
 def compare_sb_cov_to_oc_list(
     cov_rs_obj,
     cov_oc_dict_6d: dict,
@@ -146,7 +231,7 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
 
 
 def process_cov_from_list_file(
-    cov_dict, oc_output_covlist_fname, zbins, obs_space, df_chunk_size=5_000_000
+    cov_dict, oc_output_covlist_fname, zbins, obs_space, nbx, df_chunk_size=5_000_000
 ):
     import re
 
@@ -181,6 +266,7 @@ def process_cov_from_list_file(
     scales_oc_load = data[f'{scale_ix_name}1'].unique()
     cov_scale_indices = {scale: idx for idx, scale in enumerate(scales_oc_load)}
     nbx_oc = len(scales_oc_load)  # 'nbx' = nbt or nbl
+    assert nbx_oc == nbx, 'scale bins mismatch'
 
     # check tomo idxs: SB tomographic indices start from 0
     tomoi_oc_load = data['tomoi'].unique()
@@ -321,6 +407,7 @@ class OneCovarianceInterface:
         self.ind = pvt_cfg['ind']
         self.probe_ordering = pvt_cfg['probe_ordering']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
+        self.nbx = pvt_cfg['nbx']
 
         # set which cov terms to compute from cfg file
         self.compute_g = do_g
@@ -659,7 +746,7 @@ class OneCovarianceInterface:
         if self.obs_space == 'cosebis':
             for _probe in ['', '_clustering', '_lensing']:
                 cfg_oc_ini['covCOSEBI settings'][f'En_modes{_probe}'] = str(
-                    self.cfg['precision']['n_modes_cosebis']
+                    self.cfg['binning']['n_modes_cosebis']
                 )
                 for _type in ['_min', '_max']:
                     cfg_oc_ini['covCOSEBI settings'][f'theta{_type}{_probe}'] = str(
@@ -934,19 +1021,19 @@ class OneCovarianceInterface:
         cov_sn_tuple = [self.cov_g[idx * 3 + 2] for idx in range(6)]
 
         self.cov_sva_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sva_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_sva_tuple, nbl=self.nbx, compute_cov=self.compute_g
         )
         self.cov_mix_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_mix_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_mix_tuple, nbl=self.nbx, compute_cov=self.compute_g
         )
         self.cov_sn_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sn_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_sn_tuple, nbl=self.nbx, compute_cov=self.compute_g
         )
         self.cov_ssc_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_ssc, nbl=self.nbl_3x2pt, compute_cov=self.compute_ssc
+            cov_tuple_in=self.cov_ssc, nbl=self.nbx, compute_cov=self.compute_ssc
         )
         self.cov_cng_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_cng, nbl=self.nbl_3x2pt, compute_cov=self.compute_cng
+            cov_tuple_in=self.cov_cng, nbl=self.nbx, compute_cov=self.compute_cng
         )
 
         self.cov_g_oc_3x2pt_10D = (
@@ -962,20 +1049,20 @@ class OneCovarianceInterface:
 
         self.cov_dict_matfmt = defaultdict(lambda: defaultdict(dict))
 
-        elem_auto = self.zpairs_auto * self.nbl_3x2pt
-        elem_cross = self.zpairs_cross * self.nbl_3x2pt
+        elem_auto = self.zpairs_auto * self.nbx
+        elem_cross = self.zpairs_cross * self.nbx
 
         if self.compute_g:
             cov_in = np.genfromtxt(
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
             )
-            self.cov_dict_matfmt['g']['3x2pt']['2d'] = self.cov_ggglll_to_llglgg(
+            self.cov_dict_matfmt['g']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
         if self.compute_ssc:
             cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
-            self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = self.cov_ggglll_to_llglgg(
+            self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
@@ -983,12 +1070,12 @@ class OneCovarianceInterface:
             cov_in = np.genfromtxt(
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
             )
-            self.cov_dict_matfmt['cng']['3x2pt']['2d'] = self.cov_ggglll_to_llglgg(
+            self.cov_dict_matfmt['cng']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
         cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
-        self.cov_dict_matfmt['tot']['3x2pt']['2d'] = self.cov_ggglll_to_llglgg(
+        self.cov_dict_matfmt['tot']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
             cov_in, elem_auto, elem_cross
         )
 
@@ -1046,46 +1133,6 @@ class OneCovarianceInterface:
                 err_msg=f'{term} covariance matrix from .mat file is'
                 ' not consistent with .dat output',
             )
-
-    def cov_ggglll_to_llglgg(
-        self, cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
-    ) -> np.ndarray:
-        """Transforms a covariance matrix from gg-gl-ll format to llglgg format.
-
-        Parameters
-        ----------
-        cov_ggglll_2d : np.ndarray
-            Input covariance matrix in gg-gl-ll format.
-        elem_auto : int
-            Number of auto elements in the covariance matrix.
-        elem_cross : int
-            Number of cross elements in the covariance matrix.
-
-        Returns
-        -------
-        np.ndarray
-            Transformed covariance matrix in mm-gm-gg format.
-
-        """
-        elem_apc = elem_auto + elem_cross
-
-        cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
-        cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
-        cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
-        cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
-        cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
-        cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
-        cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
-        cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
-        cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
-
-        row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
-        row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
-        row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
-
-        cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
-
-        return cov_llglgg_2d
 
     def find_optimal_ellmax_oc(self, target_ell_array):
         upper_lim = self.ells_sb[-1] + 300

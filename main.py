@@ -3,17 +3,22 @@ Branch TODOs:
 []  the covariance objects postprocessing (reshaping blocks to 4d and 2d, assembling
     3x2pt ant tot covs...) should be centralised, I already should have space-agnostic
     routines
-[]  block_index must only be taken from the main (in pvt_cfg)
+    -> this is partially done, only leftover TODO is probably to use
+       sl.postprocess_cov_dict() for harmonic space as well
 []  remove hardcoded compute_oc_g = True
 []  restore cov_oc_obj.call_oc_from_bash()
+[]  restore cov_oc_obj.output_sanity_check()
 []  perform different tests against OC for RS and cosebis, for different ngals between sources & lenses
-    e.g. solve the:         # TODO IMPORTANT: nz src or lens below?
-[] understand why setting theta_min_cosebis_arcmin = 50 (!=0.5) causes the discrepancy with OC
-[] do not instantiate the theta grid for cosebis in the main nor in the cov_sn function,
+    e.g. solve the:
+    # TODO IMPORTANT: nz src or lens below?
+[]  understand why setting theta_min_cosebis_arcmin = 50 (!=0.5) causes the discrepancy with OC
+[]  do not instantiate the theta grid for cosebis in the main nor in the cov_sn function,
     do it in the init or elsewhere in the class. use the existing theta_steps_cosebis!
-[] find a nicer solution for:
+[]  find a nicer solution for:
     # TODO these ifs are not very nice...
         elif term == 'sn' and probe_ab != probe_cd:
+[]  understand better self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_src, self.n_eff_lns))
+    in Cosebis covariance class
 """
 
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
@@ -434,10 +439,13 @@ req_probe_combs_2d_ix_hs = [
 
 if obs_space == 'harmonic':
     req_probe_combs_2d = req_probe_combs_hs_2d
+    nbx = cfg['binning']['ell_bins']
 elif obs_space == 'real':
     req_probe_combs_2d = req_probe_combs_rs_2d
+    nbx = cfg['binning']['theta_bins']
 elif obs_space == 'cosebis':
     req_probe_combs_2d = req_probe_combs_cs_2d
+    nbx = cfg['binning']['n_modes_cosebis']
 else:
     raise ValueError(f'Unknown observables space: {obs_space:s}')
 
@@ -701,6 +709,7 @@ pvt_cfg = {
     'symmetrize_output_dict': const.HS_SYMMETRIZE_OUTPUT_DICT,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
+    'nbx': nbx,
 }
 
 # instantiate data handler class
@@ -1201,7 +1210,6 @@ if obs_space == 'real':
 
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
-    cov_rs_obj.set_cov_2d_ordering()
     ell_obj.compute_ells_3x2pt_rs()
     cov_rs_obj.ells = ell_obj.ells_3x2pt_rs
     cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_rs)
@@ -1230,7 +1238,6 @@ if obs_space == 'cosebis':
     from spaceborne import cov_cosebis
 
     cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
-    cov_cs_obj.set_cov_2d_ordering()
     ell_obj.compute_ells_3x2pt_rs()
 
     # ell grid used for the integrals
@@ -1270,7 +1277,7 @@ else:
 cov_oc_obj = None
 
 # TODO remove this
-compute_oc_g = True
+# compute_oc_g = True
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1382,7 +1389,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # compute cov
     # TODO restore this
-    cov_oc_obj.call_oc_from_bash()
+    # cov_oc_obj.call_oc_from_bash()
 
     # load output .list file (maybe the .mat format would be better, actually...)
     # and store it into a 6d dictionary
@@ -1394,6 +1401,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
         obs_space=obs_space,
+        nbx=nbx,
         df_chunk_size=5_000_000,
     )
 
@@ -1402,18 +1410,15 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     full_cov = False  # True if all probes + the cross-covariance are required
     if obs_space == 'harmonic':
         _req_probe_combs_2d = req_probe_combs_hs_2d
-        nbx = ell_obj.nbl_3x2pt
         # TODO I think these can be deleted!
         full_cov = (ps['LL'] + ps['GL'] + ps['GG']) == 3 and ps['cross_cov'] is True
     elif obs_space == 'real':
         _req_probe_combs_2d = req_probe_combs_rs_2d
-        nbx = cov_rs_obj.nbt_coarse
         full_cov = (ps['xip'] + ps['xim'] + ps['gt'] + ps['w']) == 4 and ps[
             'cross_cov'
         ] is True
     elif obs_space == 'cosebis':
         _req_probe_combs_2d = req_probe_combs_cs_2d
-        nbx = cfg['precision']['n_modes_cosebis']
         full_cov = (ps['En'] + ps['Bn'] + ps['Psigl'] + ps['Psigg']) == 4 and ps[
             'cross_cov'
         ] is True
@@ -1433,13 +1438,18 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
             'ind_cross': ind_cross,
             'zpairs_auto': zpairs_auto,
             'zpairs_cross': zpairs_cross,
-            'block_index': cov_hs_obj.block_index,
+            'block_index': block_index,
         }
-        cov_oc_obj.output_sanity_check(
-            req_probe_combs_2d=_req_probe_combs_2d,
-            cov_dict_6d_to_4d_and_2d_kw=cov_dict_6d_to_4d_and_2d_kw,
-            rtol=1e-4,
-        )
+
+        # TODO in progress
+        cov_oc_obj.process_cov_from_mat_file()
+
+        # TODO restore this
+        # cov_oc_obj.output_sanity_check(
+        #     req_probe_combs_2d=_req_probe_combs_2d,
+        #     cov_dict_6d_to_4d_and_2d_kw=cov_dict_6d_to_4d_and_2d_kw,
+        #     rtol=1e-4,
+        # )
 
     # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks
@@ -1488,7 +1498,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     # # ! construct 3x2pt 2d covs (there is no 6d nor 4d 3x2pt!)
     sl.postprocess_cov_dict(
         cov_dict=cov_oc_obj.cov_dict,
-        obs_space='cosebis',
+        obs_space=obs_space,
         nbx=nbx,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
@@ -1750,99 +1760,6 @@ if obs_space == 'harmonic':
     )
 
 
-if obs_space == 'cosebis':
-    print('\nComputing COSEBIs covariance...')
-
-    start_rs = time.perf_counter()
-
-    # precompute COSEBIs kernels W_n(ell)
-    cov_cs_obj.set_w_ells()
-
-    # TODO understand a bit better how to treat real-space SSC and cNG
-    for _probe, _term in itertools.product(
-        unique_probe_combs_cs, cov_cs_obj.terms_toloop
-    ):
-        print(f'\n***** working on probe {_probe} - term {_term} *****')
-        cov_cs_obj.compute_cs_cov_term_probe_6d(
-            cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
-        )
-
-    for term in cov_cs_obj.terms_toloop:
-        sl.fill_remaining_probe_blocks_6d(
-            cov_dict=cov_cs_obj.cov_dict,
-            term=term,
-            symm_probe_combs=symm_probe_combs_cs,
-            nonreq_probe_combs=nonreq_probe_combs_cs,
-            space='cosebis',
-            nbx=cov_cs_obj.n_modes,
-            zbins=zbins,
-        )
-
-    sl.postprocess_cov_dict(
-        cov_dict=cov_cs_obj.cov_dict,
-        obs_space='cosebis',
-        nbx=cov_cs_obj.n_modes,
-        ind_auto=ind_auto,
-        ind_cross=ind_cross,
-        zpairs_auto=zpairs_auto,
-        zpairs_cross=zpairs_cross,
-        block_index=block_index,
-        cov_ordering_2d=cov_ordering_2d,
-        req_probe_combs_2d=req_probe_combs_2d,
-    )
-
-    # for term in cov_cs_obj.terms_toloop:
-    #     # reshape all the probe blocks to 4d and 2d
-    #     cov_cs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
-
-    for term in ['sva', 'sn', 'mix']:
-        cov_sb_test_2d = cov_cs_obj.cov_dict[term]['3x2pt']['2d']
-        cov_oc_test_2d = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
-
-        sl.compare_arrays(
-            cov_sb_test_2d,
-            cov_oc_test_2d+1,
-            name_A=f'SB {term}',
-            name_B=f'OC {term}',
-            abs_val=True,
-            early_return=False,
-        )
-        sl.compare_2d_covs(
-            np.abs(cov_sb_test_2d),
-            np.abs(cov_oc_test_2d),
-            'SB',
-            'OC',
-            f'cov {term}',
-            1e-5,
-        )
-
-        print('=' * 70)
-        print('')
-
-    assert False, 'stop here, now code up SN term and compute all three'
-
-    # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
-    # old
-    # cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
-
-    # new
-    sl.sum_split_g_terms_allprobeblocks_alldims(cov_cs_obj.cov_dict)
-
-    # construct 4d and 2d 3x2pt
-    # cov_rs_obj._build_cov_3x2pt_4d_and_2d()
-
-    # test new method:
-    for term in cov_rs_obj.cov_dict:
-        if term == 'tot':
-            continue  # tot is built at the end, skip it
-
-        cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
-            cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
-        )
-
-    print(f'...done in {time.perf_counter() - start_rs:.2f} s')
-
-
 if obs_space == 'real':
     print('\nComputing real-space covariance...')
     start_rs = time.perf_counter()
@@ -1851,7 +1768,8 @@ if obs_space == 'real':
     for _probe, _term in itertools.product(
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
-        print(f'\n***** working on probe {_probe} - term {_term} *****')
+        probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
+        print(f'\n***** working on probe {probe_ab, probe_cd} - term {_term} *****')
         cov_rs_obj.compute_rs_cov_term_probe_6d(
             cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
         )
@@ -1863,35 +1781,67 @@ if obs_space == 'real':
             symm_probe_combs=symm_probe_combs_rs,
             nonreq_probe_combs=nonreq_probe_combs_rs,
             space='real',
-            nbx=cov_rs_obj.nbt_coarse,
+            nbx=nbx,
             zbins=zbins,
         )
 
-    # TODO All of the following should have been superseeded by postprocess_cov_dict
-    """
-    for term in cov_rs_obj.terms_toloop:
-        # reshape all the probe blocks to 4d and 2d
-        cov_rs_obj._cov_probeblocks_6d_to_4d_and_2d(term)
+    # sum sva, sn and mix to get the Gaussian term
+    sl.sum_split_g_terms_allprobeblocks_alldims(cov_rs_obj.cov_dict)
 
-    # sum sva, sn and mix to get the Gaussian term (in 6d, 4d and 2d)
-    cov_rs_obj._sum_split_g_terms_allprobeblocks_alldims()
-    # construct 4d and 2d 3x2pt
-    # cov_rs_obj._build_cov_3x2pt_4d_and_2d()
+    # postprocess: reshape to 4d and 2d, build 3x2pt 2d
+    sl.postprocess_cov_dict(
+        cov_dict=cov_rs_obj.cov_dict,
+        obs_space='real',
+        nbx=nbx,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        block_index=block_index,
+        cov_ordering_2d=cov_ordering_2d,
+        req_probe_combs_2d=req_probe_combs_2d,
+    )
 
-    # test new method:
-    for term in cov_rs_obj.cov_dict:
-        if term == 'tot':
-            continue  # tot is built at the end, skip it
+    print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
-        cov_rs_obj.cov_dict[term]['3x2pt']['2d'] = sl.build_cov_3x2pt_2d(
-            cov_rs_obj.cov_dict[term], cov_rs_obj.cov_ordering_2d, obs_space='real'
+# TODO this code block is almost identical to the real-space one above, probably
+# TODO can be unified
+if obs_space == 'cosebis':
+    print('\nComputing COSEBIs covariance...')
+    start_rs = time.perf_counter()
+
+    # precompute COSEBIs kernels W_n(ell)
+    cov_cs_obj.set_w_ells()
+
+    # TODO understand a bit better how to treat real-space SSC and cNG
+    for _probe, _term in itertools.product(
+        unique_probe_combs_cs, cov_cs_obj.terms_toloop
+    ):
+        probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
+        print(f'\n***** working on probe {probe_ab, probe_cd} - term {_term} *****')
+        cov_cs_obj.compute_cs_cov_term_probe_6d(
+            cov_hs_obj=cov_hs_obj, probe_abcd=_probe, term=_term
         )
-    """
 
+    for term in cov_cs_obj.terms_toloop:
+        sl.fill_remaining_probe_blocks_6d(
+            cov_dict=cov_cs_obj.cov_dict,
+            term=term,
+            symm_probe_combs=symm_probe_combs_cs,
+            nonreq_probe_combs=nonreq_probe_combs_cs,
+            space='cosebis',
+            nbx=nbx,
+            zbins=zbins,
+        )
+
+    # sum sva, sn and mix to get the Gaussian term
+    sl.sum_split_g_terms_allprobeblocks_alldims(cov_cs_obj.cov_dict)
+
+    # postprocess: reshape to 4d and 2d, build 3x2pt 2d
     sl.postprocess_cov_dict(
         cov_dict=cov_cs_obj.cov_dict,
         obs_space='cosebis',
-        nbx=cov_cs_obj.n_modes,
+        nbx=nbx,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1910,10 +1860,37 @@ if obs_space == 'harmonic':
 elif obs_space == 'real':
     _cov_obj = cov_rs_obj
     _probes = unique_probe_combs_rs
+elif obs_space == 'cosebis':
+    _cov_obj = cov_cs_obj
+    _probes = unique_probe_combs_cs
 else:
     raise ValueError(
         f'Unknown cfg["probe_selection"]["space"]: {cfg["probe_selection"]["space"]}'
     )
+
+# # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
+# # ! moreover, some of the sub-blocks are transposed.
+# for term in ['sva', 'sn', 'mix']:
+#     cov_a = _cov_obj.cov_dict[term]['3x2pt']['2d']
+#     cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+
+#     sl.compare_2d_covs(
+#         cov_a, cov_b, 'SB', 'OC', f'cov {term} {obs_space} space - ', diff_threshold=10
+#     )
+
+#     print('=' * 70)
+#     print('')
+
+# # compare G against mat fmt of OC
+# cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
+# cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
+# sl.compare_2d_covs(
+#     cov_a, cov_b, 'SB', 'OC', f'cov g {obs_space} space - ', diff_threshold=10
+# )
+
+
+# assert False, 'stop here, now code up SN term and compute all three'
+
 
 # ! save 2D covs (for each term) in npz archive
 cov_dict_tosave_2d = {}
@@ -1938,7 +1915,6 @@ np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
 # ! i.e. there is no cov_3x2pt_{term}_6d
-
 if cfg['covariance']['save_full_cov']:
     cov_dict_tosave_6d = {}
     _cd = _cov_obj.cov_dict  # just to make the code more readable
@@ -1987,12 +1963,14 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     unique_probe_combs = unique_probe_combs_hs
                     diag_probe_combs = const.HS_DIAG_PROBE_COMBS
                     latex_labels = const.HS_PROBE_NAME_TO_LATEX
-                    scale_bins = ell_obj.nbl_3x2pt
                 elif obs_space == 'real':
                     unique_probe_combs = unique_probe_combs_rs
                     diag_probe_combs = const.RS_DIAG_PROBE_COMBS
                     latex_labels = const.RS_PROBE_NAME_TO_LATEX
-                    scale_bins = cov_rs_obj.nbt_coarse
+                elif obs_space == 'cosebis':
+                    unique_probe_combs = unique_probe_combs_cs
+                    diag_probe_combs = const.CS_DIAG_PROBE_COMBS
+                    latex_labels = const.CS_PROBE_NAME_TO_LATEX
 
                 # this is to get the names and order of the *required* probes
                 # along the diagonel
@@ -2000,8 +1978,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
                 req_diag_probes = [p for p in diag_probe_combs if p in req_diag_probes]
 
                 # set the boundaries
-                elem_auto = zpairs_auto * scale_bins
-                elem_cross = zpairs_cross * scale_bins
+                elem_auto = zpairs_auto * nbx
+                elem_cross = zpairs_cross * nbx
 
                 lim_dict = {
                     'LL': elem_auto,
@@ -2010,27 +1988,27 @@ with np.errstate(invalid='ignore', divide='ignore'):
                     'xip': elem_auto,
                     'xim': elem_auto,
                     'gt': elem_cross,
-                    'gg': elem_auto,
+                    'w': elem_auto,
+                    'En': elem_auto,
+                    'Bn': elem_auto,
                 }
 
                 # draw the boundaries
                 start_ab, start_cd = 0, 0
                 for probe_abcd in req_diag_probes[:-1]:
-                    if obs_space == 'harmonic':
-                        probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
-                    if obs_space == 'real':
-                        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+                    probe_ab, probe_cd = sl.split_probe_name(
+                        probe_abcd, space=obs_space
+                    )
 
                     kw = {'color': 'k', 'alpha': 0.7, 'ls': '--'}
-                    ax[0].axvline(start_ab + lim_dict[probe_ab], **kw)
-                    ax[0].axhline(start_ab + lim_dict[probe_ab], **kw)
-                    ax[0].axvline(start_cd + lim_dict[probe_cd], **kw)
-                    ax[0].axhline(start_cd + lim_dict[probe_cd], **kw)
-
-                    ax[1].axvline(start_ab + lim_dict[probe_ab], **kw)
-                    ax[1].axhline(start_ab + lim_dict[probe_ab], **kw)
-                    ax[1].axvline(start_cd + lim_dict[probe_cd], **kw)
-                    ax[1].axhline(start_cd + lim_dict[probe_cd], **kw)
+                    ax[0].axvline(start_ab + lim_dict[probe_ab] - 0.5, **kw)
+                    ax[0].axhline(start_ab + lim_dict[probe_ab] - 0.5, **kw)
+                    ax[0].axvline(start_cd + lim_dict[probe_cd] - 0.5, **kw)
+                    ax[0].axhline(start_cd + lim_dict[probe_cd] - 0.5, **kw)
+                    ax[1].axvline(start_ab + lim_dict[probe_ab] - 0.5, **kw)
+                    ax[1].axhline(start_ab + lim_dict[probe_ab] - 0.5, **kw)
+                    ax[1].axvline(start_cd + lim_dict[probe_cd] - 0.5, **kw)
+                    ax[1].axhline(start_cd + lim_dict[probe_cd] - 0.5, **kw)
 
                     start_ab += lim_dict[probe_ab]
                     start_cd += lim_dict[probe_cd]
@@ -2040,18 +2018,17 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
                 start_ab, start_cd = 0, 0
                 for probe_abcd in req_diag_probes:
-                    if obs_space == 'harmonic':
-                        probe_ab, probe_cd = probe_abcd[:2], probe_abcd[2:]
-                    if obs_space == 'real':
-                        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'real')
+                    probe_ab, probe_cd = sl.split_probe_name(
+                        probe_abcd, space=obs_space
+                    )
 
                     # x direction
-                    center_ab = start_ab + lim_dict[probe_ab] / 2
+                    center_ab = start_ab + (lim_dict[probe_ab] - 1) / 2
                     xticks.append(center_ab)
                     xlabels.append(latex_labels[probe_ab])
 
                     # y direction
-                    center_cd = start_cd + lim_dict[probe_cd] / 2
+                    center_cd = start_cd + (lim_dict[probe_cd] - 1) / 2
                     yticks.append(center_cd)
                     ylabels.append(latex_labels[probe_cd])
 

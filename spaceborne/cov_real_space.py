@@ -29,6 +29,7 @@ from spaceborne import constants as const
 from spaceborne import cov_dict as cd
 from spaceborne import cov_projector as cp
 from spaceborne import sb_lib as sl
+from spaceborne.cov_projector import CovarianceProjector
 
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
@@ -215,20 +216,6 @@ def cov_mix_simps(
     # 'not recognized.')
 
     return integral
-
-
-def _get_t_munu(mu, nu, sigma_eps_tot):
-    # TODO delete this function?
-    if mu == nu == 0 or mu == nu == 4:
-        return sigma_eps_tot**4
-    elif mu == nu == 2:
-        return sigma_eps_tot**2 / 2
-    elif mu == nu == 0:
-        return 1
-    elif mu != nu:
-        return 0
-    else:
-        raise ValueError('mu and nu must be either 0, 2, or 4.')
 
 
 def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
@@ -541,20 +528,9 @@ def integrate_single_bessel_pair(
 # ! ====================================================================================
 
 
-class CovRealSpace:
+class CovRealSpace(CovarianceProjector):
     def __init__(self, cfg, pvt_cfg, mask_obj):
-        self.cfg = cfg
-        self.pvt_cfg = pvt_cfg
-        self.mask_obj = mask_obj
-
-        self.zbins = pvt_cfg['zbins']
-        self.zpairs_auto = pvt_cfg['zpairs_auto']
-        self.zpairs_cross = pvt_cfg['zpairs_cross']
-        self.zpairs_3x2pt = pvt_cfg['zpairs_3x2pt']
-        self.ind_auto = pvt_cfg['ind_auto']
-        self.ind_cross = pvt_cfg['ind_cross']
-        self.ind_dict = pvt_cfg['ind_dict']
-        self.cov_ordering_2d = pvt_cfg['cov_ordering_2d']
+        super().__init__(cfg, pvt_cfg, mask_obj)
 
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
@@ -634,7 +610,6 @@ class CovRealSpace:
         # self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_src, self.n_eff_lns))
 
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
-        self.sigma_eps_tot = self.sigma_eps_i * np.sqrt(2)
 
     def _set_levin_bessel_precision(self):
         self.levin_prec_kw = {

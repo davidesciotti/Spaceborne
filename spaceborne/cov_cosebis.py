@@ -4,7 +4,6 @@
 
 import itertools
 import warnings
-from functools import partial
 
 import cloelib.auxiliary.cosebi_helpers as ch
 import numpy as np
@@ -13,7 +12,6 @@ from scipy.integrate import simpson as simps
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
 from spaceborne import cov_projector as cp
-from spaceborne import cov_real_space as crs
 from spaceborne import sb_lib as sl
 from spaceborne.cov_projector import CovarianceProjector
 
@@ -231,17 +229,15 @@ class CovCOSEBIs(CovarianceProjector):
             'probe_b_ix': probe_b_ix,
             'probe_c_ix': probe_c_ix,
             'probe_d_ix': probe_d_ix,
-            'cl_5d': self.cl_3x2pt_5d,
-            'ells': self.ells,
-            'Amax': self.amax,
         }
 
         # Arguments for the kernel builder
-        # For COSEBIs: pass w_ells_arr (constant across all mode pairs)
-        # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by the wrapper
+        # For COSEBIs it's only w_ells_arr (constant across all mode pairs)
+        # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by 
+        # the wrapper
         kernel_builder_func_kw = {'w_ells_arr': self.w_ells_arr}
 
-        # Compute covariance based on term
+        # Compute term-specific covariance 
         if term == 'sva':
             if 'Bn' in probe_2tpl:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
@@ -270,14 +266,11 @@ class CovCOSEBIs(CovarianceProjector):
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
 
-        elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
-            cov_out_6d = np.zeros(self.cov_shape_6d)
-
-        elif term == 'sn' and probe_ab == probe_cd:
-            cov_out_6d = self.cov_sn_cs()
-        # TODO these ifs are not very nice...
-        elif term == 'sn' and probe_ab != probe_cd:
-            cov_out_6d = np.zeros(self.cov_shape_6d)
+        elif term == 'sn':
+            if probe_ab == probe_cd:
+                cov_out_6d = self.cov_sn_cs()
+            else:
+                cov_out_6d = np.zeros(self.cov_shape_6d)
 
         else:
             raise ValueError(

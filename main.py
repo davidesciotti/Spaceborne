@@ -108,6 +108,7 @@ from spaceborne import (
     cosmo_lib,
     cov_cosebis,
     cov_harmonic_space,
+    cov_real_space,
     ell_utils,
     io_handler,
     mask_utils,
@@ -1202,7 +1203,6 @@ else:
 cov_rs_obj = None
 
 if obs_space == 'real':
-    from spaceborne import cov_real_space
 
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
@@ -1233,7 +1233,6 @@ if obs_space == 'real':
 # TODO this could probably be done with super.__init__() where super is the
 # cov projector class
 if obs_space == 'cosebis':
-    from spaceborne import cov_cosebis
 
     cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
     ell_obj.compute_ells_3x2pt_rs()

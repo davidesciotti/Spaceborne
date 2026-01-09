@@ -23,23 +23,26 @@ from spaceborne import constants as const
 
 _UNSET = object()
 
+
 def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
     """Compute total (ideal) number of pairs in a theta bin, i.e., N(theta).
     N(θ) = π (θ_u^2 - θ_l^2) × A × n_i × n_j
          = \int_{θ_l}^{θ_u} dθ (dN(θ)/dθ)
     """
-    n_eff_i *= const.SR_TO_ARCMIN2
-    n_eff_j *= const.SR_TO_ARCMIN2
-    return np.pi * (theta_1_u**2 - theta_1_l**2) * survey_area_sr * n_eff_i * n_eff_j
+    n_eff_i_sr = n_eff_i * const.SR_TO_ARCMIN2
+    n_eff_j_sr = n_eff_j * const.SR_TO_ARCMIN2
+    return (
+        np.pi * (theta_1_u**2 - theta_1_l**2) * survey_area_sr * n_eff_i_sr * n_eff_j_sr
+    )
 
 
 def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
     """Compute differential (ideal) number of pairs, i.e. dN(theta)/dtheta.
     dN(θ)/dθ = 2π θ × A × n_i × n_j
     """
-    n_eff_i *= const.SR_TO_ARCMIN2
-    n_eff_j *= const.SR_TO_ARCMIN2
-    return 2 * np.pi * theta * survey_area_sr * n_eff_i * n_eff_j
+    n_eff_i_sr = n_eff_i * const.SR_TO_ARCMIN2
+    n_eff_j_sr = n_eff_j * const.SR_TO_ARCMIN2
+    return 2 * np.pi * theta * survey_area_sr * n_eff_i_sr * n_eff_j_sr
 
 
 def t_mix(probe_a_ix, zbins, sigma_eps_i):
@@ -151,7 +154,7 @@ class CovarianceProjector:
             self.zbins,
             self.zbins,
         )
-        
+
         self.obs_space = _UNSET
 
     def _set_survey_info(self, mask_obj):
@@ -226,26 +229,35 @@ class CovarianceProjector:
         zi, zj = ind_ab[zij, :]
         zk, zl = ind_cd[zkl, :]
 
+        # if not present in kernel_builder_func_kw (e.g. for the COSEBIs case), 
+        # set mu and nu to None
+        mu = kernel_builder_func_kw.get('mu', None)
+        nu = kernel_builder_func_kw.get('nu', None)
+
         # Build projection-specific kernels
         kernel_1 = self.build_projection_kernel(
             scale_ix=scale_ix_1,
             obs_space=self.obs_space,
-            mu=kernel_builder_func_kw['mu'],
+            mu=mu,
             kernel_func_kw=kernel_builder_func_kw,
         )
         kernel_2 = self.build_projection_kernel(
             scale_ix=scale_ix_2,
             obs_space=self.obs_space,
-            mu=kernel_builder_func_kw['nu'],
+            mu=nu,
             kernel_func_kw=kernel_builder_func_kw,
         )
 
-        # Update kwargs with the constructed kernels
-        cov_func_kw['kernel_1_func_of_ell'] = kernel_1
-        cov_func_kw['kernel_2_func_of_ell'] = kernel_2
+        # Update kwargs with the constructed kernels. I instantiate a new dict to
+        # avoid problems with parallelization
+        local_kw = {
+            **cov_func_kw,
+            'kernel_1_func_of_ell': kernel_1,
+            'kernel_2_func_of_ell': kernel_2,
+        }
 
         # Compute covariance value
-        cov_value = cov_func(zi=zi, zj=zj, zk=zk, zl=zl, **cov_func_kw)
+        cov_value = cov_func(zi=zi, zj=zj, zk=zk, zl=zl, **local_kw)
 
         return (scale_ix_1, scale_ix_2, zi, zj, zk, zl, cov_value)
 

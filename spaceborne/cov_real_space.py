@@ -74,7 +74,7 @@ def b_mu_nobessel(x, mu):
         raise ValueError('mu must be one of {0,2,4}.')
 
 
-def k_mu(ell, thetal, thetau, mu):
+def k_mu(ell, *, thetal, thetau, mu):
     r"""Computes the kernel K_mu(ell * theta_i) in Eq. (E.2):
 
     K_mu(l * theta_i) = 2 / [ (theta_u^2 - theta_l^2) * l^2 ]
@@ -84,7 +84,7 @@ def k_mu(ell, thetal, thetau, mu):
     return prefactor * (b_mu(ell * thetau, mu) - b_mu(ell * thetal, mu))
 
 
-def k_mu_nobessel(ell, thetal, thetau, mu):
+def k_mu_nobessel(ell, *, thetal, thetau, mu):
     """
     Generates a list of decomposed terms for the kernel K_μ.
 
@@ -131,15 +131,15 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
 
 def cov_mix_simps(
-    self, kernel_1_func: Callable, kernel_2_func: Callable,
+    self, kernel_1_func_of_ell: Callable, kernel_2_func_of_ell: Callable,
     ells, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
     zi, zj, zk, zl, Amax
 ):  # fmt: skip
     """This function accepts self as an argument, but it's not a class method"""
 
     def integrand_func(ells, inner_integrand):
-        k1 = kernel_1_func(ells)
-        k2 = kernel_2_func(ells)
+        k1 = kernel_1_func_of_ell(ells)
+        k2 = kernel_2_func_of_ell(ells)
         return (1 / (2 * np.pi * Amax)) * ells * k1 * k2 * inner_integrand
 
     def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
@@ -500,6 +500,8 @@ class CovRealSpace(CovarianceProjector):
     def __init__(self, cfg, pvt_cfg, mask_obj):
         super().__init__(cfg, pvt_cfg, mask_obj)
 
+        self.obs_space = 'real'
+
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_rs_2d']
@@ -826,41 +828,6 @@ class CovRealSpace(CovarianceProjector):
 
         return cov_rs_4d
 
-    def _build_rs_kernels(
-        self, theta_1_ix, theta_2_ix, mu, nu, kernel_1_func, kernel_2_func, **kwargs
-    ):
-        """
-        Build Bessel kernel functions for real-space covariance computation.
-
-        This method creates partial functions of the Bessel kernels k_mu and k_nu
-        by fixing the theta bin edges and Bessel orders, leaving only ell as a variable.
-
-        Parameters
-        ----------
-        theta_1_ix, theta_2_ix : int
-            Theta bin indices for first and second projection dimensions
-        mu, nu : int
-            Bessel function orders (0, 2, or 4)
-        kernel_1_func, kernel_2_func : callable
-            Full kernel functions with signature: kernel(ell, thetal, thetau, mu)
-        **kwargs : dict
-            Additional arguments (ignored)
-
-        Returns
-        -------
-        kernel_1, kernel_2 : callable
-            Partial kernel functions with signature: kernel(ell)
-        """
-        theta_1_l = self.theta_edges_fine[theta_1_ix]
-        theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
-        theta_2_l = self.theta_edges_fine[theta_2_ix]
-        theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
-
-        kernel_1 = partial(kernel_1_func, thetal=theta_1_l, thetau=theta_1_u, mu=mu)
-        kernel_2 = partial(kernel_2_func, thetal=theta_2_l, thetau=theta_2_u, mu=nu)
-
-        return kernel_1, kernel_2
-
     def compute_rs_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
         """
         Computes the real space covariance matrix for the specified term
@@ -923,7 +890,6 @@ class CovRealSpace(CovarianceProjector):
                     ind_cd=ind_cd,
                     cov_simps_func=cp.cov_sva_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
-                    kernel_builder_func=self._build_rs_kernels,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
 
@@ -944,7 +910,6 @@ class CovRealSpace(CovarianceProjector):
                     ind_cd=ind_cd,
                     cov_simps_func=partial(cov_mix_simps, self=self),
                     cov_simps_func_kw=cov_simps_func_kw,
-                    kernel_builder_func=self._build_rs_kernels,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
 
@@ -1132,3 +1097,7 @@ class CovRealSpace(CovarianceProjector):
         # setattr(self, f'cov_{probe}_{term}_2d', cov_out_2d)
 
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
+
+    def k_mu(self, ell, *, thetal, thetau, mu):
+        """Thin wrapper around k_mu, just to make it a method of the class"""
+        return k_mu(ell, thetal=thetal, thetau=thetau, mu=mu)

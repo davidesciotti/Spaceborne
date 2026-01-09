@@ -9,6 +9,7 @@ The key insight is that different statistics share the same integrand building
 """
 
 from collections.abc import Callable
+from functools import partial
 
 import numpy as np
 from joblib import Parallel, delayed
@@ -104,8 +105,8 @@ def cov_sva_simps(
     zk,
     zl,
     Amax,
-    kernel_1_func,
-    kernel_2_func,
+    kernel_1_func_of_ell,
+    kernel_2_func_of_ell,
 ):
     """
     Universal Simpson integrator for SVA covariance - projection kernel agnostic.
@@ -145,8 +146,8 @@ def cov_sva_simps(
     c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
 
     # Evaluate projection kernels
-    kmu = kernel_1_func(ells)
-    knu = kernel_2_func(ells)
+    kmu = kernel_1_func_of_ell(ells)
+    knu = kernel_2_func_of_ell(ells)
 
     # Build integrand: ℓ * K_μ * K_ν * (C_ik*C_jl + C_il*C_jk)
     integrand = ells * kmu * knu * (c_ik * c_jl + c_il * c_jk)
@@ -241,7 +242,6 @@ class CovarianceProjector:
         ind_cd,
         cov_func,
         cov_func_kw,
-        kernel_builder_func,
         kernel_builder_func_kw,
     ):
         """
@@ -286,14 +286,23 @@ class CovarianceProjector:
         zi, zj = ind_ab[zij, :]
         zk, zl = ind_cd[zkl, :]
 
-        # Build projection-specific kernels (delegated to child class)
-        kernel_1, kernel_2 = kernel_builder_func(
-            scale_ix_1, scale_ix_2, **kernel_builder_func_kw
+        # Build projection-specific kernels
+        kernel_1 = self.build_projection_kernel(
+            scale_ix=scale_ix_1,
+            obs_space=self.obs_space,
+            mu=kernel_builder_func_kw['mu'],
+            kernel_func_kw=kernel_builder_func_kw,
+        )
+        kernel_2 = self.build_projection_kernel(
+            scale_ix=scale_ix_2,
+            obs_space=self.obs_space,
+            mu=kernel_builder_func_kw['nu'],
+            kernel_func_kw=kernel_builder_func_kw,
         )
 
         # Update kwargs with the constructed kernels
-        cov_func_kw['kernel_1_func'] = kernel_1
-        cov_func_kw['kernel_2_func'] = kernel_2
+        cov_func_kw['kernel_1_func_of_ell'] = kernel_1
+        cov_func_kw['kernel_2_func_of_ell'] = kernel_2
 
         # Compute covariance value
         cov_value = cov_func(zi=zi, zj=zj, zk=zk, zl=zl, **cov_func_kw)
@@ -308,10 +317,8 @@ class CovarianceProjector:
         ind_cd: np.ndarray,
         cov_simps_func: Callable,
         cov_simps_func_kw: dict,
-        kernel_builder_func: Callable,
         kernel_builder_func_kw: dict,
     ) -> np.ndarray:
-        
         """Helper to parallelize the cov_sva_simps and cov_mix_simps functions
         s1/s2 is the first scale index (e.g., theta or the COSEBIs mode)
         """
@@ -327,7 +334,6 @@ class CovarianceProjector:
                 ind_cd=ind_cd,
                 cov_func=cov_simps_func,
                 cov_func_kw=cov_simps_func_kw,
-                kernel_builder_func=kernel_builder_func,
                 kernel_builder_func_kw=kernel_builder_func_kw,
             )
             for s1 in tqdm(range(self.nbx))
@@ -340,3 +346,62 @@ class CovarianceProjector:
             cov_out_6d[s1, s2, zi, zj, zk, zl] = cov_value
 
         return cov_out_6d
+
+    def build_projection_kernel(
+        self,
+        scale_ix: int,
+        obs_space: str,
+        kernel_func_kw: dict,
+        mu: int | None = None,
+        arb_kernel_func: Callable | None = None,
+    ) -> Callable[[np.ndarray], np.ndarray]:
+        """
+        Based on the scale index (theta for 2PCF, n for COSEBIs) and the observables
+        space, contrtuct the projection kernel as a function of ell.
+
+        Parameters
+        ----------
+        scale_ix : int
+            Scale index (theta bin for 2PCF, n for COSEBIs)
+        obs_space : str
+            Observable space ('real', 'cosebis' or 'arbitrary')
+        mu : int | None
+            Order of the bessel function for the real space case
+        kernel_func_kw : dict
+            Keyword arguments for the kernel function
+        arb_kernel_func : callable, optional
+            Arbitrary kernel function for 'arbitrary' observable space
+
+        Returns
+        -------
+        kernel_func_of_ell : callable
+            Partial kernel functions with signature: kernel(ell)
+        """
+
+        if obs_space == 'real':
+            # in this case the kernel function is also probe-dependent (through mu)
+            theta_l = self.theta_edges_fine[scale_ix]
+            theta_u = self.theta_edges_fine[scale_ix + 1]
+            kernel_func_of_ell = partial(
+                self.k_mu, thetal=theta_l, thetau=theta_u, mu=mu
+            )
+
+        elif obs_space == 'cosebis':
+            # in this case the kernel function neither probe nor ell-dependent, so I
+            # define a simple function of ell that just returns the precomputed array
+            w_ells_arr = kernel_func_kw['w_ells_arr']
+
+            def kernel_func_of_ell(ell):
+                return w_ells_arr[scale_ix]
+
+        elif obs_space == 'arbitrary':
+            # general case. the arbitrary kernel function must have signature
+            # arb_kernel_func(ell, *, scale_ix, **kernel_func_kw)
+            kernel_func_of_ell = partial(
+                arb_kernel_func, scale_ix=scale_ix, **kernel_func_kw
+            )
+
+        else:
+            raise ValueError(f'Observable space {obs_space} not recognized!')
+
+        return kernel_func_of_ell

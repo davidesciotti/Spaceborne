@@ -4,14 +4,11 @@
 
 import itertools
 import warnings
-from collections.abc import Callable
 from functools import partial
 
 import cloelib.auxiliary.cosebi_helpers as ch
 import numpy as np
-from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
-from tqdm import tqdm
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
@@ -37,6 +34,8 @@ class CovCOSEBIs(CovarianceProjector):
     def __init__(self, cfg, pvt_cfg, mask_obj):
         super().__init__(cfg, pvt_cfg, mask_obj)
 
+        self.obs_space = 'cosebis'
+
         self.n_modes = cfg['binning']['n_modes_cosebis']
         assert self.n_modes == self.nbx, 'n_modes_cosebis must equal nbx!'
 
@@ -57,14 +56,6 @@ class CovCOSEBIs(CovarianceProjector):
         # setters
         self._set_theta_binning()
         self._set_neff_and_sigma_eps()
-
-        # other miscellaneous settings
-        self.n_jobs = self.cfg['misc']['num_threads']
-        self.integration_method = self.cfg['precision']['cov_rs_int_method']
-
-        assert self.integration_method in ['simps', 'levin'], (
-            'integration method not implemented'
-        )
 
         # attributes set at runtime
         self.cl_3x2pt_5d = _UNSET
@@ -114,9 +105,7 @@ class CovCOSEBIs(CovarianceProjector):
                 the computed W_n(ell) kernel values.
         """
 
-        with sl.timer(
-            f'Computing COSEBIs W_n(ell) kernels for {self.nbx} modes...'
-        ):
+        with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {self.nbx} modes...'):
             w_ells_dict = ch.get_W_ell(
                 thetagrid=self.theta_grid_rad,
                 Nmax=self.nbx,
@@ -206,38 +195,6 @@ class CovCOSEBIs(CovarianceProjector):
         # overall shape is (n_modes, n_modes, zbins, zbins, zbins, zbins)
         return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]
 
-
-
-    def _build_cs_kernels(self, mode_n, mode_m, w_ells_arr, **kwargs):
-        """
-        Build W_n kernel functions for COSEBIs covariance computation.
-
-        This method creates lambda functions that return the pre-computed
-        W_n(ell) weights for the specified COSEBIs modes. The weights are
-        already evaluated on the ell grid, so the kernels just return the
-        appropriate array slice.
-
-        Parameters
-        ----------
-        mode_n, mode_m : int
-            COSEBIs mode indices (passed as scale_ix_1, scale_ix_2 from loop)
-        w_ells_arr : np.ndarray
-            Pre-computed W_n(ell) weights with shape (n_modes, n_ells)
-            Passed via kernel_builder_func_kw
-        **kwargs : dict
-            Additional arguments (ignored)
-
-        Returns
-        -------
-        kernel_n, kernel_m : callable
-            Kernel functions with signature: kernel(ell) -> np.ndarray
-            Note: The ell argument is ignored since weights are pre-computed
-        """
-        kernel_n = lambda ell: w_ells_arr[mode_n]
-        kernel_m = lambda ell: w_ells_arr[mode_m]
-
-        return kernel_n, kernel_m
-
     def compute_cs_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
         """
         Computes the COSEBIs covariance matrix for the specified term and probe combination.
@@ -296,10 +253,8 @@ class CovCOSEBIs(CovarianceProjector):
         # Arguments for the kernel builder
         # For COSEBIs: pass w_ells_arr (constant across all mode pairs)
         # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by the wrapper
-        kernel_builder_func_kw = {
-            'w_ells_arr': self.w_ells_arr,
-        }
-        
+        kernel_builder_func_kw = {'w_ells_arr': self.w_ells_arr}
+
         # Compute covariance based on term
         if term == 'sva':
             if 'Bn' in probe_2tpl:
@@ -312,10 +267,8 @@ class CovCOSEBIs(CovarianceProjector):
                     ind_cd=ind_cd,
                     cov_simps_func=cp.cov_sva_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
-                    kernel_builder_func=self._build_cs_kernels,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-
 
         # TODO understand this
         # elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
@@ -330,7 +283,6 @@ class CovCOSEBIs(CovarianceProjector):
                     ind_cd=ind_cd,
                     cov_simps_func=partial(crs.cov_mix_simps, self=self),
                     cov_simps_func_kw=cov_simps_func_kw,
-                    kernel_builder_func=self._build_cs_kernels,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
 

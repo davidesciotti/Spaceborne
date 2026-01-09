@@ -1030,11 +1030,9 @@ if cfg['C_ell']['use_input_cls']:
 
 # I am creating copies here, not just a view (so modifying ccl_obj.cl_3x2pt_5d will
 # not affect ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d and vice versa)
-ccl_obj.cl_3x2pt_5d = np.zeros((n_probes, n_probes, ell_obj.nbl_3x2pt, zbins, zbins))
-ccl_obj.cl_3x2pt_5d[0, 0] = ccl_obj.cl_ll_3d
-ccl_obj.cl_3x2pt_5d[1, 0] = ccl_obj.cl_gl_3d
-ccl_obj.cl_3x2pt_5d[0, 1] = ccl_obj.cl_gl_3d.transpose(0, 2, 1)
-ccl_obj.cl_3x2pt_5d[1, 1] = ccl_obj.cl_gg_3d
+ccl_obj.cl_3x2pt_5d = sl.build_cl_3x2pt_5d(
+    cl_ll_3d=ccl_obj.cl_ll_3d, cl_gl_3d=ccl_obj.cl_gl_3d, cl_gg_3d=ccl_obj.cl_gg_3d
+)
 
 # cls plots
 plot_cls()
@@ -1175,13 +1173,11 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     cov_nmt_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
     if cfg['C_ell']['use_input_cls']:
-        cl_3x2pt_5d_unb = np.zeros(
-            (n_probes, n_probes, ell_obj.nbl_3x2pt_unb, zbins, zbins)
+        cl_3x2pt_5d_unb = sl.build_cl_3x2pt_5d(
+            cl_ll_3d=cl_ll_3d_spline(ell_obj.ells_3x2pt_unb),
+            cl_gl_3d=cl_gl_3d_spline(ell_obj.ells_3x2pt_unb),
+            cl_gg_3d=cl_gg_3d_spline(ell_obj.ells_3x2pt_unb),
         )
-        cl_3x2pt_5d_unb[0, 0] = cl_ll_3d_spline(ell_obj.ells_3x2pt_unb)
-        cl_3x2pt_5d_unb[1, 0] = cl_gl_3d_spline(ell_obj.ells_3x2pt_unb)
-        cl_3x2pt_5d_unb[0, 1] = cl_3x2pt_5d_unb[1, 0].transpose(0, 2, 1)
-        cl_3x2pt_5d_unb[1, 1] = cl_gg_3d_spline(ell_obj.ells_3x2pt_unb)
 
     else:
         cl_3x2pt_5d_unb = ccl_interface.compute_cl_3x2pt_5d(
@@ -1216,9 +1212,11 @@ if obs_space == 'real':
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:
-        cl_ll_3d_for_rs = cl_ll_3d_spline(cov_rs_obj.ells)
-        cl_gl_3d_for_rs = cl_gl_3d_spline(cov_rs_obj.ells)
-        cl_gg_3d_for_rs = cl_gg_3d_spline(cov_rs_obj.ells)
+        cl_3x2pt_5d_for_rs = sl.build_cl_3x2pt_5d(
+            cl_ll_3d=cl_ll_3d_spline(cov_rs_obj.ells),
+            cl_gl_3d=cl_gl_3d_spline(cov_rs_obj.ells),
+            cl_gg_3d=cl_gg_3d_spline(cov_rs_obj.ells),
+        )
 
     else:
         cl_3x2pt_5d_for_rs = ccl_interface.compute_cl_3x2pt_5d(
@@ -1246,9 +1244,11 @@ if obs_space == 'cosebis':
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:
-        cl_ll_3d_for_cs = cl_ll_3d_spline(cov_cs_obj.ells)
-        cl_gl_3d_for_cs = cl_gl_3d_spline(cov_cs_obj.ells)
-        cl_gg_3d_for_cs = cl_gg_3d_spline(cov_cs_obj.ells)
+        cl_3x2pt_5d_for_cs = sl.build_cl_3x2pt_5d(
+            cl_ll_3d=cl_ll_3d_spline(cov_cs_obj.ells),
+            cl_gl_3d=cl_gl_3d_spline(cov_cs_obj.ells),
+            cl_gg_3d=cl_gg_3d_spline(cov_cs_obj.ells),
+        )
 
     else:
         cl_3x2pt_5d_for_cs = ccl_interface.compute_cl_3x2pt_5d(
@@ -1277,7 +1277,7 @@ else:
 cov_oc_obj = None
 
 # TODO remove this
-# compute_oc_g = True
+compute_oc_g = True
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1337,11 +1337,9 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
         ccl_obj.wf_galaxy_obj,
         cl_ccl_kwargs,
     )
-    cl_3x2pt_5d_oc = np.zeros((n_probes, n_probes, nbl_3x2pt_oc, zbins, zbins))
-    cl_3x2pt_5d_oc[0, 0, :, :, :] = cl_ll_3d_oc
-    cl_3x2pt_5d_oc[1, 0, :, :, :] = cl_gl_3d_oc
-    cl_3x2pt_5d_oc[0, 1, :, :, :] = cl_gl_3d_oc.transpose(0, 2, 1)
-    cl_3x2pt_5d_oc[1, 1, :, :, :] = cl_gg_3d_oc
+    cl_3x2pt_5d_oc = sl.build_cl_3x2pt_5d(
+        cl_ll_3d=cl_ll_3d_oc, cl_gl_3d=cl_gl_3d_oc, cl_gg_3d=cl_gg_3d_oc
+    )
 
     cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'
     cl_gl_ascii_filename = f'Cell_gl_nbl{nbl_3x2pt_oc}'
@@ -1389,7 +1387,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
 
     # compute cov
     # TODO restore this
-    # cov_oc_obj.call_oc_from_bash()
+    cov_oc_obj.call_oc_from_bash()
 
     # load output .list file (maybe the .mat format would be better, actually...)
     # and store it into a 6d dictionary
@@ -1868,28 +1866,27 @@ else:
         f'Unknown cfg["probe_selection"]["space"]: {cfg["probe_selection"]["space"]}'
     )
 
-# # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
-# # ! moreover, some of the sub-blocks are transposed.
-# for term in ['sva', 'sn', 'mix']:
-#     cov_a = _cov_obj.cov_dict[term]['3x2pt']['2d']
-#     cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+# ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
+# ! moreover, some of the sub-blocks are transposed.
+for term in ['sva', 'sn', 'mix']:
+    cov_a = _cov_obj.cov_dict[term]['3x2pt']['2d']
+    cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-#     sl.compare_2d_covs(
-#         cov_a, cov_b, 'SB', 'OC', f'cov {term} {obs_space} space - ', diff_threshold=10
-#     )
+    sl.compare_2d_covs(
+        cov_a, cov_b, 'SB', 'OC', f'cov {term} {obs_space} space - ', diff_threshold=10
+    )
 
-#     print('=' * 70)
-#     print('')
+    print('=' * 70)
+    print('')
 
-# # compare G against mat fmt of OC
-# cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
-# cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
-# sl.compare_2d_covs(
-#     cov_a, cov_b, 'SB', 'OC', f'cov g {obs_space} space - ', diff_threshold=10
-# )
-
-
-# assert False, 'stop here, now code up SN term and compute all three'
+# compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
+# is not "full" (no Psi* covariance blocks)
+if obs_space != 'cosebis':
+    cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
+    cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
+    sl.compare_2d_covs(
+        cov_a, cov_b, 'SB', 'OC', f'cov g {obs_space} space - ', diff_threshold=10
+    )
 
 
 # ! save 2D covs (for each term) in npz archive

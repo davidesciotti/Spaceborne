@@ -88,6 +88,31 @@ Naming conventions (just to ease the notation):
 """
 
 
+def build_cl_3x2pt_5d(
+    cl_ll_3d: np.ndarray, cl_gl_3d: np.ndarray, cl_gg_3d: np.ndarray
+) -> np.ndarray:
+    """Constructs the 5D Cl array for 3x2pt from the individual 3D Cl arrays."""
+
+    assert cl_ll_3d.ndim == 3, 'cl_ll_3d must be a 3D array'
+    assert cl_gl_3d.ndim == 3, 'cl_gl_3d must be a 3D array'
+    assert cl_gg_3d.ndim == 3, 'cl_gg_3d must be a 3D array'
+
+    assert cl_ll_3d.shape == cl_gl_3d.shape == cl_gg_3d.shape, (
+        'cl_ll_3d, cl_gl_3d and cl_gg_3d must have the same shape'
+    )
+    assert cl_ll_3d.dtype == cl_gl_3d.dtype == cl_gg_3d.dtype, (
+        'cl_ll_3d, cl_gl_3d and cl_gg_3d must have the same dtype'
+    )
+
+    cl_3x2pt_5d = np.zeros((2, 2, *cl_ll_3d.shape), dtype=cl_ll_3d.dtype)
+    cl_3x2pt_5d[0, 0] = cl_ll_3d
+    cl_3x2pt_5d[1, 0] = cl_gl_3d
+    cl_3x2pt_5d[0, 1] = cl_gl_3d.transpose(0, 2, 1)
+    cl_3x2pt_5d[1, 1] = cl_gg_3d
+
+    return cl_3x2pt_5d
+
+
 def sum_split_g_terms_allprobeblocks_alldims(cov_dict) -> None:
     # small sanity check probe combinations must match for terms (sva, sn, mix)
     if not (cov_dict['sva'].keys() == cov_dict['sn'].keys() == cov_dict['mix'].keys()):
@@ -694,7 +719,7 @@ def split_probe_name(
             prefix = 'CS'
         else:
             raise ValueError(
-                f'`space` needs to be one of `harmonic` or `real`, got {space}'
+                f'`space` needs to be one of `harmonic` `real`, or `cosebis`, got {space}'
             )
         valid_probes = const.__getattribute__(f'{prefix}_DIAG_PROBES')
     else:

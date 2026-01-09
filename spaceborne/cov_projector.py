@@ -8,9 +8,6 @@ The key insight is that different statistics share the same integrand building
 (SVA, MIX terms) but differ in how they project from C_ℓ to the observable space.
 """
 
-# OLD TODO (probably done):
-# TODO sigma_eps_i should be a vector of length zbins
-
 from collections.abc import Callable
 from functools import partial
 
@@ -139,11 +136,12 @@ class CovarianceProjector:
         self.ind_dict = pvt_cfg['ind_dict']
         self.nbx = pvt_cfg['nbx']
         self.n_jobs = cfg['misc']['num_threads']
+        self.n_probes_hs = 2
 
         self._set_survey_info(mask_obj)
         self._set_terms_toloop()
-        # TODO add this
-        # self._set_neff_and_sigma_eps()
+        self._set_neff_and_sigma_eps()
+        
         # TODO here (in the init) I should add the finely binned Cls, which are used in all projections!
 
         self.cov_shape_6d = (
@@ -174,6 +172,12 @@ class CovarianceProjector:
             self.terms_toloop.append('ssc')
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
+
+    def _set_neff_and_sigma_eps(self):
+        self.n_eff_lns = self.cfg['nz']['ngal_lenses']  # clustering
+        self.n_eff_src = self.cfg['nz']['ngal_sources']  # lensing
+        self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_lns))
+        self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
 
     def cov_parallel_helper(
         self,
@@ -229,7 +233,7 @@ class CovarianceProjector:
         zi, zj = ind_ab[zij, :]
         zk, zl = ind_cd[zkl, :]
 
-        # if not present in kernel_builder_func_kw (e.g. for the COSEBIs case), 
+        # if not present in kernel_builder_func_kw (e.g. for the COSEBIs case),
         # set mu and nu to None
         mu = kernel_builder_func_kw.get('mu', None)
         nu = kernel_builder_func_kw.get('nu', None)

@@ -53,7 +53,6 @@ class CovCOSEBIs(CovarianceProjector):
 
         # setters
         self._set_theta_binning()
-        self._set_neff_and_sigma_eps()
 
         # attributes set at runtime
         self.cl_3x2pt_5d = _UNSET
@@ -79,15 +78,7 @@ class CovCOSEBIs(CovarianceProjector):
         assert len(self.theta_grid_rad) == self.nbt, 'theta_grid_rad length mismatch'
         assert np.min(np.diff(self.theta_grid_rad)) > 0, 'theta_grid_rad not sorted!'
 
-    def _set_neff_and_sigma_eps(self):
-        self.n_eff_lns = self.cfg['nz']['ngal_lenses']
-        self.n_eff_src = self.cfg['nz']['ngal_sources']
-        # ! old
-        # self.n_eff_2d = np.row_stack((self.n_eff_lns, self.n_eff_lns, self.n_eff_src))
-        # ! new
-        self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_src, self.n_eff_lns))
 
-        self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
 
     def set_w_ells(self):
         """

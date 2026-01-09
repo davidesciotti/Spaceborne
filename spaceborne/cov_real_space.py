@@ -462,9 +462,7 @@ class CovRealSpace(CovarianceProjector):
 
         # setters
         self._set_theta_binning()
-        self._set_neff_and_sigma_eps()
         self._set_levin_bessel_precision()
-        self._set_probe_names_idxs()
 
         # other miscellaneous settings
         self.integration_method = self.cfg['precision']['cov_rs_int_method']
@@ -504,21 +502,17 @@ class CovRealSpace(CovarianceProjector):
                 self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, nbt + 1
             )
             theta_edges = np.deg2rad(theta_edges_deg)  # in radians
-            theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
+
+            # [BOOKMARK 9 dec] finish checking this
+            if self.cfg['binning']['binning_type'] == 'log':
+                theta_centers = np.sqrt(theta_edges[:-1] * theta_edges[1:])
+            elif self.cfg['binning']['binning_type'] == 'lin':
+                theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
+
             setattr(self, f'theta_edges_{bin_type}', theta_edges)
             setattr(self, f'theta_centers_{bin_type}', theta_centers)
+
             assert len(theta_centers) == nbt, 'theta_centers length mismatch'
-
-    def _set_neff_and_sigma_eps(self):
-        self.n_eff_lns = self.cfg['nz']['ngal_lenses']
-        self.n_eff_src = self.cfg['nz']['ngal_sources']
-        # in this way the indices correspond to xip, xim, g
-        # ! old
-        self.n_eff_2d = np.row_stack((self.n_eff_lns, self.n_eff_lns, self.n_eff_src))
-        # ! new
-        # self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_src, self.n_eff_lns))
-
-        self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
 
     def _set_levin_bessel_precision(self):
         self.levin_prec_kw = {
@@ -534,28 +528,6 @@ class CovRealSpace(CovarianceProjector):
             'boost_bessel': self.cfg['precision']['boost_bessel'],
         }
 
-    def _set_probe_names_idxs(self):
-        self.munu_vals = (0, 2, 4)
-        self.n_probes_rs = 4  # real space
-        self.n_probes_hs = 2  # harmonic space
-        self.n_split_terms = 3
-
-        # this is only needed to be able to construct the full Gauss cov from the sum
-        # of the
-        # SVA, SN and MIX covs. No particular reason behind the choice of the indices.
-        self.split_g_dict = {'sva': 0, 'sn': 1, 'mix': 2}
-
-        # for validation purposes
-        self.probe_idx_dict_short_oc = {}
-        for key in const.RS_PROBE_NAME_TO_IX_DICT:
-            probe_ab_str, probe_cd_str = sl.split_probe_name(key, 'real')
-            probe_ab_str_oc = 'gm' if probe_ab_str == 'gt' else probe_ab_str
-            probe_cd_str_oc = 'gm' if probe_cd_str == 'gt' else probe_cd_str
-            self.probe_idx_dict_short_oc[probe_ab_str_oc + probe_cd_str_oc] = (
-                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab_str],
-                const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd_str],
-            )
-
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         # TODO generalize to different n(z)
         npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
@@ -568,9 +540,18 @@ class CovRealSpace(CovarianceProjector):
                         theta_1_u,
                         theta_1_l,
                         self.survey_area_sr,
-                        self.n_eff_lns[zi],
-                        self.n_eff_lns[zj],
+                        self.n_eff_2d[probe_a_ix, zi],
+                        self.n_eff_2d[probe_b_ix, zj],
                     )
+
+        import ipdb
+
+        ipdb.set_trace()
+        # import matplotlib.pyplot as plt
+
+        # plt.figure()
+        # plt.plot(self.theta_centers_fine, npair_arr[:, 0, 0])
+        # plt.savefig('debug_sb.png')
 
         delta_mu_nu = 1.0 if (mu == nu) else 0.0
         delta_theta = np.eye(self.nbt_fine)

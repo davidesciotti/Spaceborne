@@ -8,6 +8,9 @@ The key insight is that different statistics share the same integrand building
 (SVA, MIX terms) but differ in how they project from C_ℓ to the observable space.
 """
 
+# OLD TODO (probably done):
+# TODO sigma_eps_i should be a vector of length zbins
+
 from collections.abc import Callable
 from functools import partial
 
@@ -18,6 +21,7 @@ from tqdm import tqdm
 
 from spaceborne import constants as const
 
+_UNSET = object()
 
 def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
     """Compute total (ideal) number of pairs in a theta bin, i.e., N(theta).
@@ -93,72 +97,6 @@ def build_cov_sva_integrand_5d(cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_
     return a + b
 
 
-def cov_sva_simps(
-    ells,
-    cl_5d,
-    probe_a_ix,
-    probe_b_ix,
-    probe_c_ix,
-    probe_d_ix,
-    zi,
-    zj,
-    zk,
-    zl,
-    Amax,
-    kernel_1_func_of_ell,
-    kernel_2_func_of_ell,
-):
-    """
-    Universal Simpson integrator for SVA covariance - projection kernel agnostic.
-
-    This function computes a single matrix element of the SVA covariance by:
-    1. Selecting the relevant C_ℓ spectra for the given tomographic bins
-    2. Evaluating projection kernels (e.g., k_mu for real space, W_n for COSEBIs)
-    3. Building the integrand: ℓ * kernel_1 * kernel_2 * (C_ik*C_jl + C_il*C_jk)
-    4. Integrating with Simpson's rule
-
-    Parameters
-    ----------
-    ells : np.ndarray
-        Multipole values
-    cl_5d : np.ndarray
-        Power spectra with shape (n_probes, n_probes, n_ell, zbins, zbins)
-    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix : int
-        Probe indices
-    zi, zj, zk, zl : int
-        Tomographic bin indices
-    Amax : float
-        Survey area in steradians
-    kernel_1_func : callable
-        First projection kernel function of ℓ (e.g., k_mu(ℓ, theta_1))
-    kernel_2_func : callable
-        Second projection kernel function of ℓ (e.g., k_nu(ℓ, theta_2))
-
-    Returns
-    -------
-    cov_elem : float
-        Single covariance matrix element
-    """
-    # Extract relevant C_ℓ for these tomographic bins
-    c_ik = cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-    c_jl = cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-    c_il = cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-    c_jk = cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-
-    # Evaluate projection kernels
-    kmu = kernel_1_func_of_ell(ells)
-    knu = kernel_2_func_of_ell(ells)
-
-    # Build integrand: ℓ * K_μ * K_ν * (C_ik*C_jl + C_il*C_jk)
-    integrand = ells * kmu * knu * (c_ik * c_jl + c_il * c_jk)
-
-    # Integrate with Simpson's rule
-    integral = simps(y=integrand, x=ells)
-
-    # Apply normalization factor
-    return integral / (2.0 * np.pi * Amax)
-
-
 class CovarianceProjector:
     """
     Base class for all projected covariance computations.
@@ -188,7 +126,6 @@ class CovarianceProjector:
         """
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
-        self.mask_obj = mask_obj
 
         # Shared setup
         self.zbins = pvt_cfg['zbins']
@@ -200,7 +137,7 @@ class CovarianceProjector:
         self.nbx = pvt_cfg['nbx']
         self.n_jobs = cfg['misc']['num_threads']
 
-        self._set_survey_info()
+        self._set_survey_info(mask_obj)
         self._set_terms_toloop()
         # TODO add this
         # self._set_neff_and_sigma_eps()
@@ -214,12 +151,15 @@ class CovarianceProjector:
             self.zbins,
             self.zbins,
         )
+        
+        self.obs_space = _UNSET
 
-    def _set_survey_info(self):
+    def _set_survey_info(self, mask_obj):
         """Set up survey geometry information."""
-        self.survey_area_deg2 = self.mask_obj.survey_area_deg2
-        self.survey_area_sr = self.mask_obj.survey_area_sr
-        self.fsky = self.mask_obj.fsky
+        # TODO generalise to different survey areas (max(Aij, Akl))
+        self.survey_area_deg2 = mask_obj.survey_area_deg2
+        self.survey_area_sr = mask_obj.survey_area_sr
+        self.fsky = mask_obj.fsky
         self.srtoarcmin2 = const.SR_TO_ARCMIN2
         self.amax = max((self.survey_area_sr, self.survey_area_sr))
 
@@ -311,8 +251,8 @@ class CovarianceProjector:
 
     def cov_simps_wrapper(
         self,
-        zpairs_ab: np.ndarray,
-        zpairs_cd: np.ndarray,
+        zpairs_ab: int,
+        zpairs_cd: int,
         ind_ab: np.ndarray,
         ind_cd: np.ndarray,
         cov_simps_func: Callable,
@@ -357,7 +297,7 @@ class CovarianceProjector:
     ) -> Callable[[np.ndarray], np.ndarray]:
         """
         Based on the scale index (theta for 2PCF, n for COSEBIs) and the observables
-        space, contrtuct the projection kernel as a function of ell.
+        space, construct the projection kernel as a function of ell.
 
         Parameters
         ----------
@@ -405,3 +345,118 @@ class CovarianceProjector:
             raise ValueError(f'Observable space {obs_space} not recognized!')
 
         return kernel_func_of_ell
+
+    def cov_mix_simps(
+        self,
+        probe_a_ix: int,
+        probe_b_ix: int,
+        probe_c_ix: int,
+        probe_d_ix: int,
+        zi: int,
+        zj: int,
+        zk: int,
+        zl: int,
+        kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
+        kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
+    ):  # fmt: skip
+        def integrand_func(ells, inner_integrand):
+            k1 = kernel_1_func_of_ell(ells)
+            k2 = kernel_2_func_of_ell(ells)
+            return (1 / (2 * np.pi * self.amax)) * ells * k1 * k2 * inner_integrand
+
+        def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
+            prefac = (
+                get_delta_tomo(probe_a_ix, probe_b_ix, self.zbins)[zi, zj]
+                * t_mix(probe_a_ix, self.zbins, self.sigma_eps_i)[zi]
+                / (self.n_eff_2d[probe_a_ix, zi] * self.srtoarcmin2)
+            )
+            return prefac
+
+        # permutations should be performed as done in the SVA function
+        integrand = integrand_func(
+            self.ells,
+            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix, :, zi, zk]
+            * get_prefac(probe_b_ix, probe_d_ix, zj, zl)
+            + self.cl_3x2pt_5d[probe_b_ix, probe_d_ix, :, zj, zl]
+            * get_prefac(probe_a_ix, probe_c_ix, zi, zk)
+            + self.cl_3x2pt_5d[probe_a_ix, probe_d_ix, :, zi, zl]
+            * get_prefac(probe_b_ix, probe_c_ix, zj, zk)
+            + self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk]
+            * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
+        )
+
+        integral = simps(y=integrand, x=self.ells)
+
+        # elif integration_method == 'quad':
+
+        #     integral_1 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+        #                           args=(self.cl_3x2pt_5d[probe_a_ix, probe_c_ix, :, zi, zk],))[0]
+        #     integral_2 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+        #                           args=(self.cl_3x2pt_5d[probe_b_ix, probe_d_ix, :, zj, zl],))[0]
+        #     integral_3 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+        #                           args=(self.cl_3x2pt_5d[probe_a_ix, probe_d_ix, :, zi, zl],))[0]
+        #     integral_4 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
+        #                           args=(self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk],))[0]
+
+        # else:
+        # raise ValueError(f'integration_method {integration_method} '
+        # 'not recognized.')
+
+        return integral
+
+    def cov_sva_simps(
+        self,
+        probe_a_ix: int,
+        probe_b_ix: int,
+        probe_c_ix: int,
+        probe_d_ix: int,
+        zi: int,
+        zj: int,
+        zk: int,
+        zl: int,
+        kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
+        kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
+    ) -> float:
+        """
+        Universal Simpson integrator for SVA covariance - projection kernel agnostic.
+
+        This function computes a single matrix element of the SVA covariance by:
+        1. Selecting the relevant C_ℓ spectra for the given tomographic bins
+        2. Evaluating projection kernels (e.g., k_mu for real space, W_n for COSEBIs)
+        3. Building the integrand: ℓ * kernel_1 * kernel_2 * (C_ik*C_jl + C_il*C_jk)
+        4. Integrating with Simpson's rule
+
+        Parameters
+        ----------
+        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix : int
+            Probe indices
+        zi, zj, zk, zl : int
+            Tomographic bin indices
+        kernel_1_func_of_ell : callable
+            First projection kernel function of ℓ (e.g., k_mu(ℓ, theta_1))
+        kernel_2_func_of_ell : callable
+            Second projection kernel function of ℓ (e.g., k_nu(ℓ, theta_2))
+
+        Returns
+        -------
+        cov_elem : float
+            Single covariance matrix element
+        """
+        # Extract relevant C_ℓ for these tomographic bins
+        c_ik = self.cl_3x2pt_5d[probe_a_ix, probe_c_ix, :, zi, zk]
+        c_jl = self.cl_3x2pt_5d[probe_b_ix, probe_d_ix, :, zj, zl]
+        c_il = self.cl_3x2pt_5d[probe_a_ix, probe_d_ix, :, zi, zl]
+        c_jk = self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk]
+
+        # Evaluate projection kernels
+        kernel_1 = kernel_1_func_of_ell(self.ells)
+        kernel_2 = kernel_2_func_of_ell(self.ells)
+
+        # Build integrand: ℓ * K_μ * K_ν * (C_ik*C_jl + C_il*C_jk)
+        integrand = self.ells * kernel_1 * kernel_2 * (c_ik * c_jl + c_il * c_jk)
+
+        # Integrate with Simpson's rule
+        integral = simps(y=integrand, x=self.ells)
+
+        # Apply normalization factor
+        return integral / (2.0 * np.pi * self.amax)

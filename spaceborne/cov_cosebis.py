@@ -68,16 +68,11 @@ class CovCOSEBIs(CovarianceProjector):
         self.theta_max_arcmin = self.cfg['precision']['theta_max_arcmin_cosebis']
         self.nbt = self.cfg['precision']['theta_steps_cosebis']
 
-        # ! new
-        self.theta_min_arcmin = self.cfg['precision']['theta_min_arcmin_cosebis']
-        self.theta_max_arcmin = self.cfg['precision']['theta_max_arcmin_cosebis']
-        self.nbt = self.cfg['precision']['theta_steps_cosebis']
-
         # Convert to radians
         self.theta_min_rad = np.deg2rad(self.theta_min_arcmin / 60)
         self.theta_max_rad = np.deg2rad(self.theta_max_arcmin / 60)
 
-        # No need for bin edges in this case, I can directly do this:
+        # No need for bin edges in the case of COSEBIs, I can directly do this:
         self.theta_grid_rad = np.geomspace(
             self.theta_min_rad, self.theta_max_rad, self.nbt
         )
@@ -157,7 +152,6 @@ class CovCOSEBIs(CovarianceProjector):
         t_term = t_term_1 + t_term_2  # shape (self.nbt, n_modes, n_modes)
 
         # 3. Compute dnpair (differential pairs per unit angle)
-        # TODO IMPORTANT: nz src or lens below?
         npair_arr = np.zeros((self.nbt, self.zbins, self.zbins))
         for theta_ix, zi, zj in itertools.product(
             range(self.nbt), range(self.zbins), range(self.zbins)
@@ -265,13 +259,11 @@ class CovCOSEBIs(CovarianceProjector):
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    cov_simps_func=cp.cov_sva_simps,
+                    cov_simps_func=self.cov_sva_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
 
-        # TODO understand this
-        # elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
         elif term == 'mix':
             if 'Bn' in probe_2tpl:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
@@ -281,7 +273,7 @@ class CovCOSEBIs(CovarianceProjector):
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    cov_simps_func=partial(crs.cov_mix_simps, self=self),
+                    cov_simps_func=self.cov_mix_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )

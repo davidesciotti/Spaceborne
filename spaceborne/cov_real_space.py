@@ -130,62 +130,6 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 # ! ====================== COV RS W/ SIMPSON INTEGRATION ===============================
 
 
-def cov_mix_simps(
-    self, kernel_1_func_of_ell: Callable, kernel_2_func_of_ell: Callable,
-    ells, cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-    zi, zj, zk, zl, Amax
-):  # fmt: skip
-    """This function accepts self as an argument, but it's not a class method"""
-
-    def integrand_func(ells, inner_integrand):
-        k1 = kernel_1_func_of_ell(ells)
-        k2 = kernel_2_func_of_ell(ells)
-        return (1 / (2 * np.pi * Amax)) * ells * k1 * k2 * inner_integrand
-
-    def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
-        prefac = (
-            cp.get_delta_tomo(probe_a_ix, probe_b_ix, self.zbins)[zi, zj]
-            * t_mix(probe_a_ix, self.zbins, self.sigma_eps_i)[zi]
-            / (self.n_eff_2d[probe_a_ix, zi] * self.srtoarcmin2)
-        )
-        return prefac
-
-    # TODO generalize to different survey areas (max(Aij, Akl))
-    # TODO sigma_eps_i should be a vector of length zbins
-
-    # permutations should be performed as done in the SVA function
-    integrand = integrand_func(
-        ells,
-        cl_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-        * get_prefac(probe_b_ix, probe_d_ix, zj, zl)
-        + cl_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-        * get_prefac(probe_a_ix, probe_c_ix, zi, zk)
-        + cl_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-        * get_prefac(probe_b_ix, probe_c_ix, zj, zk)
-        + cl_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-        * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
-    )
-
-    integral = simps(y=integrand, x=ells)
-
-    # elif integration_method == 'quad':
-
-    #     integral_1 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_a_ix, probe_c_ix, :, zi, zk],))[0]
-    #     integral_2 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_b_ix, probe_d_ix, :, zj, zl],))[0]
-    #     integral_3 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_a_ix, probe_d_ix, :, zi, zl],))[0]
-    #     integral_4 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-    #                           args=(cl_5d[probe_b_ix, probe_c_ix, :, zj, zk],))[0]
-
-    # else:
-    # raise ValueError(f'integration_method {integration_method} '
-    # 'not recognized.')
-
-    return integral
-
-
 def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
     # TODO move from probe indices to probe names!
     t_munu = np.zeros((zbins, zbins))
@@ -867,9 +811,6 @@ class CovRealSpace(CovarianceProjector):
             'probe_b_ix': probe_b_ix,
             'probe_c_ix': probe_c_ix,
             'probe_d_ix': probe_d_ix,
-            'cl_5d': self.cl_3x2pt_5d,
-            'ells': self.ells,
-            'Amax': self.amax,
         }
 
         # arguments for the covariance projector kernel functions
@@ -888,7 +829,7 @@ class CovRealSpace(CovarianceProjector):
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    cov_simps_func=cp.cov_sva_simps,
+                    cov_simps_func=self.cov_sva_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
@@ -901,14 +842,12 @@ class CovRealSpace(CovarianceProjector):
 
         elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
             if self.integration_method == 'simps':
-                # cov_mix_simps also needs self, I pass it here directly by creating a
-                # partial function
                 cov_out_6d = self.cov_simps_wrapper(
                     zpairs_ab=zpairs_ab,
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    cov_simps_func=partial(cov_mix_simps, self=self),
+                    cov_simps_func=self.cov_mix_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )

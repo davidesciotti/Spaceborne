@@ -8,8 +8,12 @@ The key insight is that different statistics share the same integrand building
 (SVA, MIX terms) but differ in how they project from C_ℓ to the observable space.
 """
 
+from collections.abc import Callable
+
 import numpy as np
+from joblib import Parallel, delayed
 from scipy.integrate import simpson as simps
+from tqdm import tqdm
 
 from spaceborne import constants as const
 
@@ -192,6 +196,7 @@ class CovarianceProjector:
         self.ind_auto = pvt_cfg['ind_auto']
         self.ind_cross = pvt_cfg['ind_cross']
         self.ind_dict = pvt_cfg['ind_dict']
+        self.nbx = pvt_cfg['nbx']
         self.n_jobs = cfg['misc']['num_threads']
 
         self._set_survey_info()
@@ -199,6 +204,15 @@ class CovarianceProjector:
         # TODO add this
         # self._set_neff_and_sigma_eps()
         # TODO here (in the init) I should add the finely binned Cls, which are used in all projections!
+
+        self.cov_shape_6d = (
+            self.nbx,
+            self.nbx,
+            self.zbins,
+            self.zbins,
+            self.zbins,
+            self.zbins,
+        )
 
     def _set_survey_info(self):
         """Set up survey geometry information."""
@@ -216,3 +230,113 @@ class CovarianceProjector:
             self.terms_toloop.append('ssc')
         if self.cfg['covariance']['cNG']:
             self.terms_toloop.append('cng')
+
+    def cov_parallel_helper(
+        self,
+        scale_ix_1,
+        scale_ix_2,
+        zij,
+        zkl,
+        ind_ab,
+        ind_cd,
+        cov_func,
+        cov_func_kw,
+        kernel_builder_func,
+        kernel_builder_func_kw,
+    ):
+        """
+        Universal parallel helper for covariance computation.
+
+        This method provides a unified interface for parallel covariance calculation
+        across different projection methods (real space, COSEBIs, band powers, etc.).
+        The projection-specific kernel construction is delegated to child classes
+        via the kernel_builder callback.
+
+        Parameters
+        ----------
+        scale_ix_1, scale_ix_2 : int
+            First and second projection indices. These represent:
+            - Theta bin indices for real space (theta_1_ix, theta_2_ix)
+            - Mode indices for COSEBIs (mode_n, mode_m)
+            - Ell bin indices for band powers, etc.
+        zij, zkl : int
+            Tomographic bin pair indices
+        ind_ab, ind_cd : np.ndarray
+            Arrays mapping pair indices to tomographic bin pairs
+        func : callable
+            Covariance function to compute (e.g., cov_sva_simps, cov_mix_simps)
+        kernel_builder : callable
+            Child-specific function that builds projection kernels.
+            Signature: kernel_builder(scale_ix_1, scale_ix_2, **kwargs) -> (kernel_1, kernel_2)
+            Examples:
+            - Real space: builds k_mu(ell, theta) partial functions
+            - COSEBIs: builds W_n(ell) lambda functions
+        **kwargs : dict
+            Additional arguments containing:
+            - Data: probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, cl_5d, ells, Amax
+            - Projection-specific: mu, nu, w_ells_arr, kernel_1_func, kernel_2_func, etc.
+
+        Returns
+        -------
+        tuple
+            (scale_ix_1, scale_ix_2, zi, zj, zk, zl, cov_value)
+            Indices and computed covariance value for this combination
+        """
+        # Extract tomographic bin indices
+        zi, zj = ind_ab[zij, :]
+        zk, zl = ind_cd[zkl, :]
+
+        # Build projection-specific kernels (delegated to child class)
+        kernel_1, kernel_2 = kernel_builder_func(
+            scale_ix_1, scale_ix_2, **kernel_builder_func_kw
+        )
+
+        # Update kwargs with the constructed kernels
+        cov_func_kw['kernel_1_func'] = kernel_1
+        cov_func_kw['kernel_2_func'] = kernel_2
+
+        # Compute covariance value
+        cov_value = cov_func(zi=zi, zj=zj, zk=zk, zl=zl, **cov_func_kw)
+
+        return (scale_ix_1, scale_ix_2, zi, zj, zk, zl, cov_value)
+
+    def cov_simps_wrapper(
+        self,
+        zpairs_ab: np.ndarray,
+        zpairs_cd: np.ndarray,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        cov_simps_func: Callable,
+        cov_simps_func_kw: dict,
+        kernel_builder_func: Callable,
+        kernel_builder_func_kw: dict,
+    ) -> np.ndarray:
+        
+        """Helper to parallelize the cov_sva_simps and cov_mix_simps functions
+        s1/s2 is the first scale index (e.g., theta or the COSEBIs mode)
+        """
+        cov_out_6d = np.zeros(self.cov_shape_6d)
+
+        results = Parallel(n_jobs=self.n_jobs)(
+            delayed(self.cov_parallel_helper)(
+                scale_ix_1=s1,
+                scale_ix_2=s2,
+                zij=zij,
+                zkl=zkl,
+                ind_ab=ind_ab,
+                ind_cd=ind_cd,
+                cov_func=cov_simps_func,
+                cov_func_kw=cov_simps_func_kw,
+                kernel_builder_func=kernel_builder_func,
+                kernel_builder_func_kw=kernel_builder_func_kw,
+            )
+            for s1 in tqdm(range(self.nbx))
+            for s2 in range(self.nbx)
+            for zij in range(zpairs_ab)
+            for zkl in range(zpairs_cd)
+        )
+
+        for s1, s2, zi, zj, zk, zl, cov_value in results:
+            cov_out_6d[s1, s2, zi, zj, zk, zl] = cov_value
+
+        return cov_out_6d

@@ -533,7 +533,7 @@ class OneCovarianceInterface:
             ggl = self.cfg['probe_selection']['Psigl']
             clustering = self.cfg['probe_selection']['Psigg']
         else:
-            raise ValueError('self.which_obs must he "harmonic" or "real"')
+            raise ValueError('self.which_obs must be "harmonic", "real" or "cosebis"')
 
         cfg_oc_ini['observables']['cosmic_shear'] = str(cosmic_shear)
         cfg_oc_ini['observables']['est_shear'] = est_shear
@@ -742,7 +742,7 @@ class OneCovarianceInterface:
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
             cfg_oc_ini['covTHETAspace settings']['integration_intervals'] = str(40)
 
-        # ! [covTHETAspace settings]
+        # ! [covCOSEBI settings]
         if self.obs_space == 'cosebis':
             for _probe in ['', '_clustering', '_lensing']:
                 cfg_oc_ini['covCOSEBI settings'][f'En_modes{_probe}'] = str(

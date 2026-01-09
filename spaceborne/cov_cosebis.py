@@ -199,14 +199,6 @@ class CovCOSEBIs(CovarianceProjector):
             Probe combination string (e.g., 'xipxip')
         term : str
             Covariance term to compute ('sva', 'mix', 'sn')
-        theta_min : float
-            Minimum angular separation in arcmin
-        theta_max : float
-            Maximum angular separation in arcmin
-        n_modes : int
-            Number of COSEBIs modes to compute
-        n_threads : int, optional
-            Number of threads for pylevin integration (default: 1)
 
         Returns
         -------

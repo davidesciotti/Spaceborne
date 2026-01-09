@@ -66,7 +66,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: harmonic # Type: str. 
+  space: real # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -95,9 +95,9 @@ nz:
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
-  ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
+  ngal_sources: [12.09216, 11.09215, 10.09215] # Type: list[float]
   # ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
-  ngal_lenses: [4.09216, 3.09215, 2.09215] # Type: list[float]
+  ngal_lenses: [1.09216, 2.09215, 3.09215] # Type: list[float]
 
   # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -114,7 +114,7 @@ nz:
 
 
 binning:
-  binning_type: 'log' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
+  binning_type: 'lin' # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
   # ell binning for the harmonic-space covariance matrix
   ell_min: 10 # Type: int | float. Minimum ell
@@ -247,7 +247,7 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
+  sigma_eps_i: [0.26, 0.16, 0.36] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the
   # Gaussian covariance matrix.

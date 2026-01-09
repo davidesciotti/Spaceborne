@@ -528,10 +528,6 @@ class CovRealSpace(CovarianceProjector):
             'integration method not implemented'
         )
 
-        self.cov_rs_6d_shape = (
-            self.nbt_fine, self.nbt_fine, self.zbins, self.zbins, self.zbins, self.zbins
-            )  # fmt: skip
-
         # attributes set at runtime
         self.cl_3x2pt_5d = _UNSET
         self.ells = _UNSET
@@ -658,45 +654,6 @@ class CovRealSpace(CovarianceProjector):
         )
 
         return cov_sn_rs_6d
-
-    def cov_simps_wrapper(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, 
-        cov_simps_func: Callable, 
-        kernel_1_func: Callable, kernel_2_func: Callable
-    ):  # fmt: skip
-        """Helper to parallelize the cov_sva_simps and cov_mix_simps functions"""
-        cov_rs_6d = np.zeros(self.cov_rs_6d_shape)
-
-        kwargs = {
-            'probe_a_ix': probe_a_ix,
-            'probe_b_ix': probe_b_ix,
-            'probe_c_ix': probe_c_ix,
-            'probe_d_ix': probe_d_ix,
-            'cl_5d': self.cl_3x2pt_5d,
-            'ells': self.ells,
-            'Amax': self.amax,
-            'kernel_1_func': kernel_1_func,
-            'kernel_2_func': kernel_2_func,
-        }
-
-        results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.cov_parallel_helper)(
-                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
-                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
-                func=cov_simps_func,
-                **kwargs,
-            )
-            for theta_1_ix in tqdm(range(self.nbt_fine))
-            for theta_2_ix in range(self.nbt_fine)
-            for zij in range(zpairs_ab)
-            for zkl in range(zpairs_cd)
-        )  # fmt: skip
-
-        for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            cov_rs_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
-
-        return cov_rs_6d
 
     def cov_sva_levin(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
@@ -869,45 +826,40 @@ class CovRealSpace(CovarianceProjector):
 
         return cov_rs_4d
 
-    def cov_parallel_helper(
-        self, theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, func, **kwargs
+    def _build_rs_kernels(
+        self, theta_1_ix, theta_2_ix, mu, nu, kernel_1_func, kernel_2_func, **kwargs
     ):
-        """This is the function actually called in parallel with joblib. It essentially
-        extract the theta and z indices and calls the provided function to compute the
-        covariance value for those indices."""
+        """
+        Build Bessel kernel functions for real-space covariance computation.
+
+        This method creates partial functions of the Bessel kernels k_mu and k_nu
+        by fixing the theta bin edges and Bessel orders, leaving only ell as a variable.
+
+        Parameters
+        ----------
+        theta_1_ix, theta_2_ix : int
+            Theta bin indices for first and second projection dimensions
+        mu, nu : int
+            Bessel function orders (0, 2, or 4)
+        kernel_1_func, kernel_2_func : callable
+            Full kernel functions with signature: kernel(ell, thetal, thetau, mu)
+        **kwargs : dict
+            Additional arguments (ignored)
+
+        Returns
+        -------
+        kernel_1, kernel_2 : callable
+            Partial kernel functions with signature: kernel(ell)
+        """
         theta_1_l = self.theta_edges_fine[theta_1_ix]
         theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
         theta_2_l = self.theta_edges_fine[theta_2_ix]
         theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
 
-        zi, zj = ind_ab[zij, :]
-        zk, zl = ind_cd[zkl, :]
+        kernel_1 = partial(kernel_1_func, thetal=theta_1_l, thetau=theta_1_u, mu=mu)
+        kernel_2 = partial(kernel_2_func, thetal=theta_2_l, thetau=theta_2_u, mu=nu)
 
-        # TODO what happens if the kernel functions need more or less args
-        # take the full kernel functions, pass the theta and mu/nu args and make them
-        # partial functions of ell only
-        kernel_1_full = kwargs['kernel_1_func']
-        kernel_2_full = kwargs['kernel_2_func']
-
-        kernel_1_partial = partial(
-            kernel_1_full, thetal=theta_1_l, thetau=theta_1_u, mu=mu
-        )
-        kernel_2_partial = partial(
-            kernel_2_full, thetal=theta_2_l, thetau=theta_2_u, mu=nu
-        )
-
-        kwargs['kernel_1_func'] = kernel_1_partial
-        kwargs['kernel_2_func'] = kernel_2_partial
-
-        return (
-            theta_1_ix,
-            theta_2_ix,
-            zi,
-            zj,
-            zk,
-            zl,
-            func(zi=zi, zj=zj, zk=zk, zl=zl, **kwargs),
-        )
+        return kernel_1, kernel_2
 
     def cov_cosebis_parallel_helper(
         self, mode_n, mode_m, zij, zkl, ind_ab, ind_cd, func, w_ells_arr, **kwargs
@@ -1062,16 +1014,38 @@ class CovRealSpace(CovarianceProjector):
         assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
         assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
 
+        # arguments for the covariance projector functions
+        cov_simps_func_kw = {
+            'probe_a_ix': probe_a_ix,
+            'probe_b_ix': probe_b_ix,
+            'probe_c_ix': probe_c_ix,
+            'probe_d_ix': probe_d_ix,
+            'cl_5d': self.cl_3x2pt_5d,
+            'ells': self.ells,
+            'Amax': self.amax,
+        }
+
+        # arguments for the covariance projector kernel functions
+        kernel_builder_func_kw = {
+            'mu': mu,
+            'nu': nu,
+            'kernel_1_func': k_mu,
+            'kernel_2_func': k_mu,
+        }
+
         # Compute covariance:
         if term == 'sva':
             if self.integration_method in ['simps', 'quad']:
                 cov_out_6d = self.cov_simps_wrapper(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
+                    zpairs_ab=zpairs_ab,
+                    zpairs_cd=zpairs_cd,
+                    ind_ab=ind_ab,
+                    ind_cd=ind_cd,
                     cov_simps_func=cp.cov_sva_simps,
-                    kernel_1_func=k_mu,
-                    kernel_2_func=k_mu,
-                )  # fmt: skip
+                    cov_simps_func_kw=cov_simps_func_kw,
+                    kernel_builder_func=self._build_rs_kernels,
+                    kernel_builder_func_kw=kernel_builder_func_kw,
+                )
 
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_sva_levin(
@@ -1084,12 +1058,15 @@ class CovRealSpace(CovarianceProjector):
                 # cov_mix_simps also needs self, I pass it here directly by creating a
                 # partial function
                 cov_out_6d = self.cov_simps_wrapper(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu,
+                    zpairs_ab=zpairs_ab,
+                    zpairs_cd=zpairs_cd,
+                    ind_ab=ind_ab,
+                    ind_cd=ind_cd,
                     cov_simps_func=partial(cov_mix_simps, self=self),
-                    kernel_1_func=k_mu,
-                    kernel_2_func=k_mu,
-                )  # fmt: skip
+                    cov_simps_func_kw=cov_simps_func_kw,
+                    kernel_builder_func=self._build_rs_kernels,
+                    kernel_builder_func_kw=kernel_builder_func_kw,
+                )
 
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_mix_levin(
@@ -1098,10 +1075,7 @@ class CovRealSpace(CovarianceProjector):
                 )  # fmt: skip
 
         elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
-            cov_out_6d = np.zeros(
-                (self.nbt_fine, self.nbt_fine,
-                 self.zbins, self.zbins, self.zbins, self.zbins)
-            )  # fmt: skip
+            cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term == 'sn':
             # this is 0 for

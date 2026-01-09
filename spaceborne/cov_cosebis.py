@@ -38,6 +38,7 @@ class CovCOSEBIs(CovarianceProjector):
         super().__init__(cfg, pvt_cfg, mask_obj)
 
         self.n_modes = cfg['binning']['n_modes_cosebis']
+        assert self.n_modes == self.nbx, 'n_modes_cosebis must equal nbx!'
 
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
@@ -64,10 +65,6 @@ class CovCOSEBIs(CovarianceProjector):
         assert self.integration_method in ['simps', 'levin'], (
             'integration method not implemented'
         )
-
-        self.cov_cs_6d_shape = (
-            self.n_modes, self.n_modes, self.zbins, self.zbins, self.zbins, self.zbins
-            )  # fmt: skip
 
         # attributes set at runtime
         self.cl_3x2pt_5d = _UNSET
@@ -118,11 +115,11 @@ class CovCOSEBIs(CovarianceProjector):
         """
 
         with sl.timer(
-            f'Computing COSEBIs W_n(ell) kernels for {self.n_modes} modes...'
+            f'Computing COSEBIs W_n(ell) kernels for {self.nbx} modes...'
         ):
             w_ells_dict = ch.get_W_ell(
                 thetagrid=self.theta_grid_rad,
-                Nmax=self.n_modes,
+                Nmax=self.nbx,
                 ells=self.ells,
                 N_thread=self.n_jobs,
             )
@@ -142,14 +139,14 @@ class CovCOSEBIs(CovarianceProjector):
         prefactor = first_term[:, :, None, None] * second_term
 
         # 1. Compute T_minus and T_plus
-        t_minus = np.zeros((self.nbt, self.n_modes))
-        t_plus = np.zeros((self.nbt, self.n_modes))
+        t_minus = np.zeros((self.nbt, self.nbx))
+        t_plus = np.zeros((self.nbt, self.nbx))
 
         rn, nn, coeff_j = ch.get_roots_and_norms(
-            tmax=self.theta_max_rad, tmin=self.theta_min_rad, Nmax=self.n_modes
+            tmax=self.theta_max_rad, tmin=self.theta_min_rad, Nmax=self.nbx
         )
 
-        for n in range(self.n_modes):
+        for n in range(self.nbx):
             t_minus[:, n] = ch.tm(
                 n=n + 1,
                 t=self.theta_grid_rad,
@@ -210,131 +207,36 @@ class CovCOSEBIs(CovarianceProjector):
         return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]
 
 
-    def cov_simps_wrapper(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, 
-        cov_simps_func: Callable, 
-        kernel_1_func: Callable, kernel_2_func: Callable
-    ):  # fmt: skip
-        """Helper to parallelize the cov_sva_simps and cov_mix_simps functions"""
-        cov_rs_6d = np.zeros(self.cov_rs_6d_shape)
 
-        kwargs = {
-            'probe_a_ix': probe_a_ix,
-            'probe_b_ix': probe_b_ix,
-            'probe_c_ix': probe_c_ix,
-            'probe_d_ix': probe_d_ix,
-            'cl_5d': self.cl_3x2pt_5d,
-            'ells': self.ells,
-            'Amax': self.amax,
-            'kernel_1_func': kernel_1_func,
-            'kernel_2_func': kernel_2_func,
-        }
+    def _build_cs_kernels(self, mode_n, mode_m, w_ells_arr, **kwargs):
+        """
+        Build W_n kernel functions for COSEBIs covariance computation.
 
-        results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.cov_parallel_helper)(
-                theta_1_ix=theta_1_ix, theta_2_ix=theta_2_ix, mu=mu, nu=nu,
-                zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
-                func=cov_simps_func,
-                **kwargs,
-            )
-            for theta_1_ix in tqdm(range(self.nbt_fine))
-            for theta_2_ix in range(self.nbt_fine)
-            for zij in range(zpairs_ab)
-            for zkl in range(zpairs_cd)
-        )  # fmt: skip
-
-        for theta_1, theta_2, zi, zj, zk, zl, cov_value in results:
-            cov_rs_6d[theta_1, theta_2, zi, zj, zk, zl] = cov_value
-
-        return cov_rs_6d
-
-    def cov_parallel_helper(
-        self, theta_1_ix, theta_2_ix, mu, nu, zij, zkl, ind_ab, ind_cd, func, **kwargs
-    ):
-        """This is the function actually called in parallel with joblib. It essentially
-        extract the theta and z indices and calls the provided function to compute the
-        covariance value for those indices."""
-        theta_1_l = self.theta_edges_fine[theta_1_ix]
-        theta_1_u = self.theta_edges_fine[theta_1_ix + 1]
-        theta_2_l = self.theta_edges_fine[theta_2_ix]
-        theta_2_u = self.theta_edges_fine[theta_2_ix + 1]
-
-        zi, zj = ind_ab[zij, :]
-        zk, zl = ind_cd[zkl, :]
-
-        # TODO what happens if the kernel functions need more or less args
-        # take the full kernel functions, pass the theta and mu/nu args and make them
-        # partial functions of ell only
-        kernel_1_full = kwargs['kernel_1_func']
-        kernel_2_full = kwargs['kernel_2_func']
-
-        kernel_1_partial = partial(
-            kernel_1_full, thetal=theta_1_l, thetau=theta_1_u, mu=mu
-        )
-        kernel_2_partial = partial(
-            kernel_2_full, thetal=theta_2_l, thetau=theta_2_u, mu=nu
-        )
-
-        kwargs['kernel_1_func'] = kernel_1_partial
-        kwargs['kernel_2_func'] = kernel_2_partial
-
-        return (
-            theta_1_ix,
-            theta_2_ix,
-            zi,
-            zj,
-            zk,
-            zl,
-            func(zi=zi, zj=zj, zk=zk, zl=zl),
-        )
-
-    def cov_cosebis_parallel_helper(
-        self, mode_n, mode_m, zij, zkl, ind_ab, ind_cd, func, w_ells_arr, **kwargs
-    ):
-        """Parallel helper for COSEBIs - no theta dependence, just mode indices.
+        This method creates lambda functions that return the pre-computed
+        W_n(ell) weights for the specified COSEBIs modes. The weights are
+        already evaluated on the ell grid, so the kernels just return the
+        appropriate array slice.
 
         Parameters
         ----------
-        mode_n : int
-            First COSEBIs mode index
-        mode_m : int
-            Second COSEBIs mode index
-        zij : int
-            Index for first tomographic bin pair
-        zkl : int
-            Index for second tomographic bin pair
-        ind_ab : np.ndarray
-            Array of tomographic indices for first probe pair
-        ind_cd : np.ndarray
-            Array of tomographic indices for second probe pair
-        func : callable
-            Covariance function to call (e.g., cov_sva_simps)
+        mode_n, mode_m : int
+            COSEBIs mode indices (passed as scale_ix_1, scale_ix_2 from loop)
         w_ells_arr : np.ndarray
-            Array of W_n(ell) arrays, shape (n_modes, n_ells)
+            Pre-computed W_n(ell) weights with shape (n_modes, n_ells)
+            Passed via kernel_builder_func_kw
         **kwargs : dict
-            Additional arguments to pass to func
-        """
-        zi, zj = ind_ab[zij, :]
-        zk, zl = ind_cd[zkl, :]
+            Additional arguments (ignored)
 
-        # Create mode-specific kernel callables (no theta dependence!)
-        # w_ells_arr[mode_n] should already be evaluated on self.ells grid
+        Returns
+        -------
+        kernel_n, kernel_m : callable
+            Kernel functions with signature: kernel(ell) -> np.ndarray
+            Note: The ell argument is ignored since weights are pre-computed
+        """
         kernel_n = lambda ell: w_ells_arr[mode_n]
         kernel_m = lambda ell: w_ells_arr[mode_m]
 
-        kwargs['kernel_1_func'] = kernel_n
-        kwargs['kernel_2_func'] = kernel_m
-
-        return (
-            mode_n,
-            mode_m,
-            zi,
-            zj,
-            zk,
-            zl,
-            func(zi=zi, zj=zj, zk=zk, zl=zl, **kwargs),
-        )
+        return kernel_n, kernel_m
 
     def cov_cosebis_wrapper(
         self,
@@ -392,7 +294,7 @@ class CovCOSEBIs(CovarianceProjector):
         }
 
         results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.cov_cosebis_parallel_helper)(
+            delayed(self.cov_parallel_helper)(
                 mode_n=mode_n, mode_m=mode_m,
                 zij=zij, zkl=zkl, ind_ab=ind_ab, ind_cd=ind_cd,
                 func=cov_func,
@@ -453,53 +355,66 @@ class CovCOSEBIs(CovarianceProjector):
         # Create a theta grid for computing the Hankel transform
         # You may want to use a finer grid than self.theta_centers_fine
 
+        # Arguments for the covariance function (same for SVA and MIX)
+        cov_simps_func_kw = {
+            'probe_a_ix': probe_a_ix,
+            'probe_b_ix': probe_b_ix,
+            'probe_c_ix': probe_c_ix,
+            'probe_d_ix': probe_d_ix,
+            'cl_5d': self.cl_3x2pt_5d,
+            'ells': self.ells,
+            'Amax': self.amax,
+        }
+
+        # Arguments for the kernel builder
+        # For COSEBIs: pass w_ells_arr (constant across all mode pairs)
+        # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by the wrapper
+        kernel_builder_func_kw = {
+            'w_ells_arr': self.w_ells_arr,
+        }
+        
         # Compute covariance based on term
         if term == 'sva':
             if 'Bn' in probe_2tpl:
-                cov_out_6d = np.zeros(self.cov_cs_6d_shape)
+                cov_out_6d = np.zeros(self.cov_shape_6d)
             else:
-                cov_out_6d = self.cov_cosebis_wrapper(
-                    probe_a_ix,
-                    probe_b_ix,
-                    probe_c_ix,
-                    probe_d_ix,
-                    zpairs_ab,
-                    zpairs_cd,
-                    ind_ab,
-                    ind_cd,
-                    w_ells_arr=self.w_ells_arr,
-                    n_modes=self.n_modes,
-                    cov_func=cp.cov_sva_simps,
+                cov_out_6d = self.cov_simps_wrapper(
+                    zpairs_ab=zpairs_ab,
+                    zpairs_cd=zpairs_cd,
+                    ind_ab=ind_ab,
+                    ind_cd=ind_cd,
+                    cov_simps_func=cp.cov_sva_simps,
+                    cov_simps_func_kw=cov_simps_func_kw,
+                    kernel_builder_func=self._build_cs_kernels,
+                    kernel_builder_func_kw=kernel_builder_func_kw,
                 )
+
 
         # TODO understand this
         # elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
         elif term == 'mix':
             if 'Bn' in probe_2tpl:
-                cov_out_6d = np.zeros(self.cov_cs_6d_shape)
+                cov_out_6d = np.zeros(self.cov_shape_6d)
             else:
-                cov_out_6d = self.cov_cosebis_wrapper(
-                    probe_a_ix,
-                    probe_b_ix,
-                    probe_c_ix,
-                    probe_d_ix,
-                    zpairs_ab,
-                    zpairs_cd,
-                    ind_ab,
-                    ind_cd,
-                    w_ells_arr=self.w_ells_arr,
-                    n_modes=self.n_modes,
-                    cov_func=partial(crs.cov_mix_simps, self=self),
+                cov_out_6d = self.cov_simps_wrapper(
+                    zpairs_ab=zpairs_ab,
+                    zpairs_cd=zpairs_cd,
+                    ind_ab=ind_ab,
+                    ind_cd=ind_cd,
+                    cov_simps_func=partial(crs.cov_mix_simps, self=self),
+                    cov_simps_func_kw=cov_simps_func_kw,
+                    kernel_builder_func=self._build_cs_kernels,
+                    kernel_builder_func_kw=kernel_builder_func_kw,
                 )
 
         elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
-            cov_out_6d = np.zeros(self.cov_cs_6d_shape)
+            cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term == 'sn' and probe_ab == probe_cd:
             cov_out_6d = self.cov_sn_cs()
         # TODO these ifs are not very nice...
         elif term == 'sn' and probe_ab != probe_cd:
-            cov_out_6d = np.zeros(self.cov_cs_6d_shape)
+            cov_out_6d = np.zeros(self.cov_shape_6d)
 
         else:
             raise ValueError(

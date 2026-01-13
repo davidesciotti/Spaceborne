@@ -131,6 +131,37 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
 
 def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
+    """
+    Returns tau^{sn}_{(ij)(mn)} as a (zbins, zbins) array over (i,j) of the FIRST pair (ij),
+    consistent with Eq. (65).
+    Assumes sigma_eps_i is sigma_{epsilon1,i} (std); if it is already variance, set sig2=sigma_eps_i.
+    """
+    sig2 = (
+        sigma_eps_i**2
+    )  # change to: sig2 = sigma_eps_i  if sigma_eps_i is already variance
+
+    # all-source case (e.g. xip/xip or xim/xim)
+    if probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 0:
+        # tau(i,j) = 2 * sig2[i] * sig2[j]
+        return 2.0 * sig2[:, None] * sig2[None, :]
+
+    # all-lens case (e.g. gg/gg)
+    if probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 1:
+        return np.ones((zbins, zbins), dtype=float)
+
+    # mixed case: each pair contains one lens and one source (e.g. gt/gt)
+    if {probe_a_ix, probe_b_ix} == {0, 1} and {probe_c_ix, probe_d_ix} == {0, 1}:
+        # Eq. (65) says tau = sigma^2_{epsilon1, source_index_in_(ij)}.
+        if probe_a_ix == 0:  # (ij) = (source, lens) -> source index is i
+            return sig2[:, None] * np.ones((1, zbins))
+        else:  # (ij) = (lens, source) -> source index is j
+            return np.ones((zbins, 1)) * sig2[None, :]
+
+    return np.zeros((zbins, zbins), dtype=float)
+
+
+
+def _t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
     # TODO move from probe indices to probe names!
     t_munu = np.zeros((zbins, zbins))
 
@@ -528,8 +559,56 @@ class CovRealSpace(CovarianceProjector):
             'boost_bessel': self.cfg['precision']['boost_bessel'],
         }
 
+
+
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
-        # TODO generalize to different n(z)
+        npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
+        for theta_ix in range(self.nbt_fine):
+            theta_l = self.theta_edges_fine[theta_ix]
+            theta_u = self.theta_edges_fine[theta_ix + 1]
+            for zi in range(self.zbins):
+                for zj in range(self.zbins):
+                    npair_arr[theta_ix, zi, zj] = cp.get_npair(
+                        theta_u,
+                        theta_l,
+                        self.survey_area_sr,
+                        self.n_eff_2d[probe_a_ix, zi],
+                        self.n_eff_2d[probe_b_ix, zj],
+                    )
+
+        delta_mu_nu = 1.0 if (mu == nu) else 0.0
+        delta_theta = np.eye(self.nbt_fine)
+
+        t_arr = t_sn(
+            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, self.zbins, self.sigma_eps_i
+        )
+
+        term = (
+            cp.get_delta_tomo(probe_a_ix, probe_c_ix, self.zbins)[
+                None, None, :, None, :, None
+            ]
+            * cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[
+                None, None, None, :, None, :
+            ]
+            + cp.get_delta_tomo(probe_a_ix, probe_d_ix, self.zbins)[
+                None, None, :, None, None, :
+            ]
+            * cp.get_delta_tomo(probe_b_ix, probe_c_ix, self.zbins)[
+                None, None, None, :, :, None
+            ]
+        )
+
+        cov_sn_rs_6d = (
+            delta_mu_nu
+            * delta_theta[:, :, None, None, None, None]
+            * term
+            * t_arr[None, None, :, :, None, None]
+            / npair_arr[:, None, :, :, None, None]
+        )
+        return cov_sn_rs_6d
+
+
+    def _cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
         for theta_ix in range(self.nbt_fine):
             for zi in range(self.zbins):
@@ -544,9 +623,9 @@ class CovRealSpace(CovarianceProjector):
                         self.n_eff_2d[probe_b_ix, zj],
                     )
 
-        import ipdb
+        # import ipdb
 
-        ipdb.set_trace()
+        # ipdb.set_trace()
         # import matplotlib.pyplot as plt
 
         # plt.figure()
@@ -576,7 +655,8 @@ class CovRealSpace(CovarianceProjector):
                     None, None, None, :, :, None
                 ]
             )
-            * t_arr[None, None, :, None, :, None]
+            # * t_arr[None, None, :, None, :, None]
+            * t_arr[None, None, :, :, None, None]
             / npair_arr[None, :, :, :, None, None]
         )
 

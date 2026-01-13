@@ -66,7 +66,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: real # Type: str. 
+  space: harmonic # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -119,7 +119,7 @@ binning:
   # ell binning for the harmonic-space covariance matrix
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
-  ell_bins: 2 # Type: int. Number of ell bins. Not used in the 'unbinned' case
+  ell_bins: 20 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   ell_bins_filename: '../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt'
 
@@ -247,7 +247,7 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.16, 0.36] # Type: list[float]
+  sigma_eps_i: [0.26, 0.16, 0.56] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the
   # Gaussian covariance matrix.
@@ -355,6 +355,7 @@ precision:
   # ================================= real space cov ===================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
+  # TODO change this to a generic "projection_ell_grid"
   ell_min_rs: 2  # Type: int
   ell_max_rs: 100000  # Type: int
   ell_bins_rs: 1000  # Type: int. Should be high to get accurate results with Simpson integration

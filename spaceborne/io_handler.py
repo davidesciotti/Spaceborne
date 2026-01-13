@@ -64,6 +64,9 @@ def check_cl_symm(cl_3d):
 
 
 def load_cl_euclidlib(filename, key_a, key_b):
+    import ipdb
+
+    ipdb.set_trace()
     import euclidlib as el
 
     # checks
@@ -76,11 +79,13 @@ def load_cl_euclidlib(filename, key_a, key_b):
     # import .fits using euclidlib
     # TODO the bare `except` is horrible but I'm not yet sure what's the definitive
     #      structure of the euclidlib import
-    # try:
-    #     cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
-    # except:
-    # cl_dict = el.photo.angular_power_spectra(filename)
-    cl_dict = el.le3.pk_wl.angular_power_spectra(filename)
+    try:
+        cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
+    except AttributeError:
+        try:
+            cl_dict = el.photo.angular_power_spectra(filename)
+        except AttributeError:
+            cl_dict = el.le3.pk_wl.angular_power_spectra(filename)
 
     # extract ells
     ells = cl_dict[key_a, key_b, 1, 1].ell

@@ -1,26 +1,3 @@
-"""
-Branch TODOs:
-[]  the covariance objects postprocessing (reshaping blocks to 4d and 2d, assembling
-    3x2pt ant tot covs...) should be centralised, I already should have space-agnostic
-    routines
-    -> this is partially done, only leftover TODO is probably to use
-       sl.postprocess_cov_dict() for harmonic space as well
-[]  remove hardcoded compute_oc_g = True
-[]  restore cov_oc_obj.call_oc_from_bash()
-[]  restore cov_oc_obj.output_sanity_check()
-[]  perform different tests against OC for RS and cosebis, for different ngals between sources & lenses
-    e.g. solve the:
-    # TODO IMPORTANT: nz src or lens below?
-[]  understand why setting theta_min_cosebis_arcmin = 50 (!=0.5) causes the discrepancy with OC
-[]  do not instantiate the theta grid for cosebis in the main nor in the cov_sn function,
-    do it in the init or elsewhere in the class. use the existing theta_steps_cosebis!
-[]  find a nicer solution for:
-    # TODO these ifs are not very nice...
-        elif term == 'sn' and probe_ab != probe_cd:
-[]  understand better self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_src, self.n_eff_lns))
-    in Cosebis covariance class
-"""
-
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
@@ -1274,7 +1251,7 @@ else:
 cov_oc_obj = None
 
 # TODO remove this
-compute_oc_g = True
+# compute_oc_g = True
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
@@ -1878,44 +1855,44 @@ else:
 
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
-for term in ['sva', 'sn', 'mix']:
-    cov_a = _cov_obj.cov_dict[term]['3x2pt']['2d']
-    cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+# for term in ['sva', 'sn', 'mix']:
+#     cov_a = _cov_obj.cov_dict[term]['3x2pt']['2d']
+#     cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-    sl.compare_2d_covs(
-        cov_a,
-        cov_b,
-        'SB',
-        'OC',
-        f'cov {term} {obs_space} space - ',
-        diff_threshold=10,
-        compare_cov_2d=False,
-        compare_corr_2d=False,
-        compare_diag=True,
-        compare_flat=False,
-        compare_spectrum=False,
-    )
-    print('=' * 70)
-    print('')
+#     sl.compare_2d_covs(
+#         cov_a,
+#         cov_b,
+#         'SB',
+#         'OC',
+#         f'cov {term} {obs_space} space - ',
+#         diff_threshold=10,
+#         compare_cov_2d=False,
+#         compare_corr_2d=False,
+#         compare_diag=True,
+#         compare_flat=False,
+#         compare_spectrum=False,
+#     )
+#     print('=' * 70)
+#     print('')
 
-# compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
-# is not "full" (no Psi* covariance blocks)
-if obs_space != 'cosebis':
-    cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
-    cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
-    sl.compare_2d_covs(
-        cov_a,
-        cov_b,
-        'SB',
-        'OC',
-        f'cov g {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
-        diff_threshold=10,
-        compare_cov_2d=False,
-        compare_corr_2d=False,
-        compare_diag=True,
-        compare_flat=False,
-        compare_spectrum=False,
-    )
+# # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
+# # is not "full" (no Psi* covariance blocks)
+# if obs_space != 'cosebis':
+#     cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
+#     cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
+#     sl.compare_2d_covs(
+#         cov_a,
+#         cov_b,
+#         'SB',
+#         'OC',
+#         f'cov g {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
+#         diff_threshold=10,
+#         compare_cov_2d=False,
+#         compare_corr_2d=False,
+#         compare_diag=True,
+#         compare_flat=False,
+#         compare_spectrum=False,
+#     )
 
 
 # ! save 2D covs (for each term) in npz archive

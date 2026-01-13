@@ -737,72 +737,89 @@ def split_probe_name(
     )
 
 
-def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
+def compare_2d_covs(
+    cov_a,
+    cov_b,
+    name_a,
+    name_b,
+    title,
+    diff_threshold,
+    compare_cov_2d=True,
+    compare_corr_2d=True,
+    compare_diag=True,
+    compare_flat=True,
+    compare_spectrum=True,
+):
     # compare covariance
-    compare_arrays(
-        cov_a,
-        cov_b,
-        name_a,
-        name_b,
-        log_array=True,
-        log_diff=False,
-        abs_val=True,
-        plot_diff_threshold=diff_threshold,
-        title=title,
-        early_return=False,
-    )
+    if compare_cov_2d:
+        compare_arrays(
+            cov_a,
+            cov_b,
+            name_a,
+            name_b,
+            log_array=True,
+            log_diff=False,
+            abs_val=True,
+            plot_diff_threshold=diff_threshold,
+            title=title,
+            early_return=False,
+        )
 
     # compare correlation
-    corr_a = cov2corr(cov_a)
-    corr_b = cov2corr(cov_b)
-    matshow_arr_kw = {'cmap': 'RdBu_r', 'vmin': -1, 'vmax': 1}
-    compare_arrays(
-        corr_a,
-        corr_b,
-        name_a,
-        name_b,
-        log_array=False,
-        log_diff=False,
-        matshow_arr_kw=matshow_arr_kw,
-        plot_diff_hist=False,
-        plot_diff_threshold=diff_threshold,
-        title=title,
-        early_return=False,
-    )
+    if compare_corr_2d:
+        corr_a = cov2corr(cov_a)
+        corr_b = cov2corr(cov_b)
+        matshow_arr_kw = {'cmap': 'RdBu_r', 'vmin': -1, 'vmax': 1}
+        compare_arrays(
+            corr_a,
+            corr_b,
+            name_a,
+            name_b,
+            log_array=False,
+            log_diff=False,
+            matshow_arr_kw=matshow_arr_kw,
+            plot_diff_hist=False,
+            plot_diff_threshold=diff_threshold,
+            title=title,
+            early_return=False,
+        )
 
     # compare cov diag
-    compare_funcs(
-        x=None,
-        y={
-            f'abs diag {name_a}': np.diag(np.abs(cov_a)),
-            f'abs diag {name_b}': np.diag(np.abs(cov_b)),
-        },
-        logscale_y=[True, False],
-        title=title + ' diag',
-    )
+    if compare_diag:
+        compare_funcs(
+            x=None,
+            y={
+                f'abs diag {name_a}': np.diag(np.abs(cov_a)),
+                f'abs diag {name_b}': np.diag(np.abs(cov_b)),
+            },
+            logscale_y=[True, False],
+            title=title + ' diag',
+        )
 
     # compare cov flat
-    compare_funcs(
-        x=None,
-        y={
-            f'abs flat {name_a}': np.abs(cov_a).flatten(),
-            f'abs flat {name_b}': np.abs(cov_b).flatten(),
-        },
-        logscale_y=[True, False],
-        ylim_diff=[-100, 100],
-        title=title + ' flat',
-    )
+    if compare_flat:
+        compare_funcs(
+            x=None,
+            y={
+                f'abs flat {name_a}': np.abs(cov_a).flatten(),
+                f'abs flat {name_b}': np.abs(cov_b).flatten(),
+            },
+            logscale_y=[True, False],
+            ylim_diff=[-100, 100],
+            title=title + ' flat',
+        )
 
     # compare SB against mat - cov spectrum
-    eig_a = np.linalg.eigvals(cov_a)
-    eig_b = np.linalg.eigvals(cov_b)
-    compare_funcs(
-        x=None,
-        y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
-        logscale_y=[True, False],
-        ylim_diff=[-100, 100],
-        title=title + ' eig',
-    )
+    if compare_spectrum:
+        eig_a = np.linalg.eigvals(cov_a)
+        eig_b = np.linalg.eigvals(cov_b)
+        compare_funcs(
+            x=None,
+            y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
+            logscale_y=[True, False],
+            ylim_diff=[-100, 100],
+            title=title + ' eig',
+        )
 
 
 def build_probe_list(probes, include_cross_terms=False):

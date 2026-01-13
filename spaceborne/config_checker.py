@@ -702,6 +702,10 @@ class SpaceborneConfigChecker:
                 'At least one of En, Bn, Psigl, or Psigg must be selected for '
                 'cosebis space covariance'
             )
+            if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']:
+                raise NotImplementedError(
+                    'The non-gaussian COSEBIs covariance has not been implemented yet'
+                )
 
         else:
             raise ValueError(

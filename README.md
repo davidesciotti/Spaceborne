@@ -78,7 +78,7 @@ pip install -U "jax[cuda12]"
 ```
 
 Please refer to the [official installation instructions](https://docs.jax.dev/en/latest/installation.html#installation) for more accurate, up-to date and platform specific 
-(see Silicon Macs) intructions.
+(see e.g. Silicon Macs) intructions.
 
 ## Running the Code
 

@@ -1203,7 +1203,6 @@ else:
 cov_rs_obj = None
 
 if obs_space == 'real':
-
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
     ell_obj.compute_ells_3x2pt_rs()
@@ -1233,7 +1232,6 @@ if obs_space == 'real':
 # TODO this could probably be done with super.__init__() where super is the
 # cov projector class
 if obs_space == 'cosebis':
-
     cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
     ell_obj.compute_ells_3x2pt_rs()
 
@@ -1307,6 +1305,7 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
     # oc needs finer ell sampling to avoid issues with ell bin edges
+    # ! old
     ell_max_max = cfg['binning']['ell_max']
     ell_min_unb_oc = 2
     ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
@@ -1315,6 +1314,18 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     ells_3x2pt_oc = np.geomspace(
         ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )
+
+    # ! new
+    # nbl_3x2pt_oc = 100
+    # nbl_3x2pt_oc = pvt_cfg['nbl_3x2pt']
+    # ells_3x2pt_oc, _ = ell_utils.compute_ells_oc(
+    #     nbl=nbl_3x2pt_oc,
+    #     ell_min=float(pvt_cfg['ell_min_3x2pt']),
+    #     ell_max=ell_max_max,
+    #     binning_type=cfg['binning']['binning_type'],
+    #     output_ell_bin_edges=False,
+    # )
+
     cl_ll_3d_oc = ccl_obj.compute_cls(
         ells_3x2pt_oc,
         ccl_obj.p_of_k_a,
@@ -1872,9 +1883,18 @@ for term in ['sva', 'sn', 'mix']:
     cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
     sl.compare_2d_covs(
-        cov_a, cov_b, 'SB', 'OC', f'cov {term} {obs_space} space - ', diff_threshold=10
+        cov_a,
+        cov_b,
+        'SB',
+        'OC',
+        f'cov {term} {obs_space} space - ',
+        diff_threshold=10,
+        compare_cov_2d=False,
+        compare_corr_2d=False,
+        compare_diag=True,
+        compare_flat=False,
+        compare_spectrum=False,
     )
-
     print('=' * 70)
     print('')
 
@@ -1884,7 +1904,17 @@ if obs_space != 'cosebis':
     cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
     cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
     sl.compare_2d_covs(
-        cov_a, cov_b, 'SB', 'OC', f'cov g {obs_space} space - ', diff_threshold=10
+        cov_a,
+        cov_b,
+        'SB',
+        'OC',
+        f'cov g {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
+        diff_threshold=10,
+        compare_cov_2d=False,
+        compare_corr_2d=False,
+        compare_diag=True,
+        compare_flat=False,
+        compare_spectrum=False,
     )
 
 

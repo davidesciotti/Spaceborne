@@ -28,6 +28,7 @@ from scipy.optimize import minimize_scalar
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
+from spaceborne import ell_utils
 from spaceborne import sb_lib as sl
 
 _UNSET = object()
@@ -78,7 +79,7 @@ def cov_ggglll_to_llglgg(
 
 # old version kept for reference
 def _cov_ggglll_to_llglgg(
-    self, cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
+    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
 ) -> np.ndarray:
     """Transforms a covariance matrix from gg-gl-ll format to llglgg format.
 
@@ -263,13 +264,18 @@ def process_cov_from_list_file(
     # and to perform checks on the tomo bin idxs
     data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep=r'\s+')
 
-    scales_oc_load = data[f'{scale_ix_name}1'].unique()
+    scales_oc_load = sorted(data[f'{scale_ix_name}1'].unique())
     cov_scale_indices = {scale: idx for idx, scale in enumerate(scales_oc_load)}
     nbx_oc = len(scales_oc_load)  # 'nbx' = nbt or nbl
-    assert nbx_oc == nbx, 'scale bins mismatch'
+    assert nbx_oc == nbx, (
+        f'Scale bins mismatch: OC: {nbx_oc}, SB: {nbx}.\n'
+        'A possible source of this error is '
+        'the casting of ell bin edges to integers in OneCovariance, which may reduce '
+        'the number of unique ell bins. Please check the ell binning settings.'
+    )
 
     # check tomo idxs: SB tomographic indices start from 0
-    tomoi_oc_load = data['tomoi'].unique()
+    tomoi_oc_load = sorted(data['tomoi'].unique())
     subtract_one_from_z_ix = min(tomoi_oc_load) == 1
 
     # Setup probe translation
@@ -483,8 +489,6 @@ class OneCovarianceInterface:
         cfg_oc_ini['observables'] = {}
         cfg_oc_ini['output settings'] = {}
         cfg_oc_ini['covELLspace settings'] = {}
-        cfg_oc_ini['covTHETAspace settings'] = {}  # For real space case
-        cfg_oc_ini['covCOSEBI settings'] = {}  # For COSEBIs case
         cfg_oc_ini['survey specs'] = {}
         cfg_oc_ini['redshift'] = {}
         cfg_oc_ini['cosmo'] = {}
@@ -533,7 +537,7 @@ class OneCovarianceInterface:
             ggl = self.cfg['probe_selection']['Psigl']
             clustering = self.cfg['probe_selection']['Psigg']
         else:
-            raise ValueError('self.which_obs must be "harmonic", "real" or "cosebis"')
+            raise ValueError('self.obs_space must be "harmonic", "real" or "cosebis"')
 
         cfg_oc_ini['observables']['cosmic_shear'] = str(cosmic_shear)
         cfg_oc_ini['observables']['est_shear'] = est_shear
@@ -574,9 +578,9 @@ class OneCovarianceInterface:
         )
         delta_z = np.diff(self.z_grid_trisp_sb)[0]
 
-        ell_binning_type = self.cfg['binning']['binning_type']
+        self.binning_type = self.cfg['binning']['binning_type']
         if self.cfg['binning']['binning_type'] == 'ref_cut':
-            ell_binning_type = 'log'
+            self.binning_type = 'log'
 
         # settings common to both observables
         cfg_oc_ini['covELLspace settings']['limber'] = str(True)
@@ -589,40 +593,26 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
             map(str, mult_shear_bias_list)
         )
-        cfg_oc_ini['covELLspace settings']['ell_type_clustering'] = ell_binning_type
-        cfg_oc_ini['covELLspace settings']['ell_type_lensing'] = ell_binning_type
 
-        # settings specific to both observables
+        # find best ell_max for OC, since it uses a slightly different recipe
+        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
+
         if self.obs_space == 'harmonic':
-            cfg_oc_ini['covELLspace settings']['ell_min'] = str(
-                self.pvt_cfg['ell_min_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_min_lensing'] = str(
-                self.pvt_cfg['ell_min_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_min_clustering'] = str(
-                self.pvt_cfg['ell_min_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
-                self.pvt_cfg['nbl_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_bins_lensing'] = str(
-                self.pvt_cfg['nbl_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_bins_clustering'] = str(
-                self.pvt_cfg['nbl_3x2pt']
-            )
+            for _probe in ['', '_clustering', '_lensing']:
+                cfg_oc_ini['covELLspace settings'][f'ell_min{_probe}'] = str(
+                    self.pvt_cfg['ell_min_3x2pt']
+                )
+                cfg_oc_ini['covELLspace settings'][f'ell_max{_probe}'] = str(
+                    self.optimal_ellmax
+                )
+                cfg_oc_ini['covELLspace settings'][f'ell_bins{_probe}'] = str(
+                    self.pvt_cfg['nbl_3x2pt']
+                )
+                cfg_oc_ini['covELLspace settings'][f'ell_type{_probe}'] = str(
+                    self.binning_type
+                )
 
-            # find best ell_max for OC, since it uses a slightly different recipe
-            self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
-            cfg_oc_ini['covELLspace settings']['ell_max'] = str(self.optimal_ellmax)
-            cfg_oc_ini['covELLspace settings']['ell_max_lensing'] = str(
-                self.optimal_ellmax
-            )
-            cfg_oc_ini['covELLspace settings']['ell_max_clustering'] = str(
-                self.optimal_ellmax
-            )
-
+        # now the ell binning is for the projection!
         elif self.obs_space == 'real':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.cfg['precision']['ell_min_rs']
@@ -717,16 +707,21 @@ class OneCovarianceInterface:
                     )
 
                 cfg_oc_ini['covTHETAspace settings'][f'theta_type{_probe}'] = str(
-                    self.cfg['binning']['binning_type']
+                    self.binning_type
                 )
                 cfg_oc_ini['covTHETAspace settings'][f'theta_bins{_probe}'] = str(
                     self.cfg['binning']['theta_bins']
                 )
 
-            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(True)
-            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(True)
+            xi_pm = (
+                self.cfg['probe_selection']['xip'] or self.cfg['probe_selection']['xim']
+            )
+            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(xi_pm)
+            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(xi_pm)
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
             cfg_oc_ini['covTHETAspace settings']['integration_intervals'] = str(40)
+        else:
+            cfg_oc_ini['covTHETAspace settings'] = {}
 
         # ! [covCOSEBI settings]
         if self.obs_space == 'cosebis':
@@ -743,6 +738,8 @@ class OneCovarianceInterface:
             cfg_oc_ini['covCOSEBI settings']['wn_style'] = 'log'
             cfg_oc_ini['covCOSEBI settings']['wn_accuracy'] = str(1e-6)
             cfg_oc_ini['covCOSEBI settings']['dimensionless_cosebi'] = str(False)
+        else:
+            cfg_oc_ini['covCOSEBI settings'] = {}
 
         # ! [halomodel evaluation]
         if ('Tinker10' not in self.cfg['halo_model']['mass_function']) or (
@@ -1137,10 +1134,17 @@ class OneCovarianceInterface:
         else:
             print('Optimization failed.')
 
-        self.new_ells_oc = self.compute_ells_oc(
+        # self.new_ells_oc = self.compute_ells_oc(
+        #     nbl=int(self.pvt_cfg['nbl_3x2pt']),
+        #     ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
+        #     ell_max=self.optimal_ellmax,
+        # )
+        self.new_ells_oc, _ = ell_utils.compute_ells_oc(
             nbl=int(self.pvt_cfg['nbl_3x2pt']),
             ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
             ell_max=self.optimal_ellmax,
+            binning_type=self.binning_type,
+            output_ell_bin_edges=False,
         )
 
         fig, ax = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
@@ -1158,20 +1162,41 @@ class OneCovarianceInterface:
         ax[1].set_ylabel('SB/OC - 1 [%]')
         fig.supxlabel('ell idx')
 
-    def compute_ells_oc(self, nbl, ell_min, ell_max):
-        ell_bin_edges_oc_int = np.unique(
-            np.geomspace(ell_min, ell_max, nbl + 1)
-        ).astype(int)
-        ells_oc_int = np.exp(
-            0.5 * (np.log(ell_bin_edges_oc_int[1:]) + np.log(ell_bin_edges_oc_int[:-1]))
-        )  # it's the same if I take base 10 log
-        return ells_oc_int
+    # def compute_ells_oc(self, nbl, ell_min, ell_max):
+    #     if self.binning_type == 'log':
+    #         # log-spaced bin edges and geometric mean for the bin centers
+    #         # OC casts the ell bin edges to int
+    #         ell_bin_edges_oc_int = np.unique(
+    #             np.geomspace(ell_min, ell_max, nbl + 1).astype(int)
+    #         )
+    #         # this is the geometric mean
+    #         ells_oc_int = np.exp(
+    #             0.5
+    #             * (np.log(ell_bin_edges_oc_int[1:]) + np.log(ell_bin_edges_oc_int[:-1]))
+    #         )
+
+    #     # lin-spaced bin edges and arithmetic mean for the bin centers
+    #     elif self.binning_type == 'lin':
+    #         ell_bin_edges_oc_int = np.linspace(ell_min, ell_max, nbl + 1).astype(int)
+    #         ells_oc_int = 0.5 * (ell_bin_edges_oc_int[1:] + ell_bin_edges_oc_int[:-1])
+
+    #     else:
+    #         raise ValueError(f'Binning type {self.binning_type} not recognized')
+
+    #     return ells_oc_int
 
     def objective_function(self, ell_max):
-        ells_oc = self.compute_ells_oc(
+        # ells_oc = self.compute_ells_oc(
+        #     nbl=int(self.pvt_cfg['nbl_3x2pt']),
+        #     ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
+        #     ell_max=ell_max,
+        # )
+        ells_oc, _ = ell_utils.compute_ells_oc(
             nbl=int(self.pvt_cfg['nbl_3x2pt']),
             ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
             ell_max=ell_max,
+            binning_type=self.binning_type,
+            output_ell_bin_edges=False,
         )
         ssd = np.sum((self.ells_sb - ells_oc) ** 2)
         # ssd = np.sum(sl.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this

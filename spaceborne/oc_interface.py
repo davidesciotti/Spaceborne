@@ -489,6 +489,8 @@ class OneCovarianceInterface:
         cfg_oc_ini['observables'] = {}
         cfg_oc_ini['output settings'] = {}
         cfg_oc_ini['covELLspace settings'] = {}
+        cfg_oc_ini['covTHETAspace settings'] = {}
+        cfg_oc_ini['covCOSEBI settings'] = {}
         cfg_oc_ini['survey specs'] = {}
         cfg_oc_ini['redshift'] = {}
         cfg_oc_ini['cosmo'] = {}

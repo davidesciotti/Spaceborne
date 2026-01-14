@@ -457,6 +457,21 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('cov_filename'), str), (
             'covariance: cov_filename must be a string'
         )
+        assert isinstance(cov_cfg.get('G_code'), (str, type(None))), (
+            'covariance: G_code must be a string or None'
+        )
+        assert isinstance(cov_cfg.get('SSC_code'), (str, type(None))), (
+            'covariance: SSC_code must be a string or None'
+        )
+        assert isinstance(cov_cfg.get('which_sigma2_b'), (str, type(None))), (
+            'covariance: which_sigma2_b must be a string or None'
+        )
+        assert isinstance(cov_cfg.get('n_probes'), int), (
+            'covariance: n_probes must be an int'
+        )
+        assert isinstance(cov_cfg.get('probe_ordering'), list), (
+            'covariance: probe_ordering must be a list'
+        )
 
         # PyCCL
         assert isinstance(self.cfg.get('PyCCL'), dict), (
@@ -584,8 +599,17 @@ class SpaceborneConfigChecker:
         assert isinstance(misc_cfg.get('plot_probe_names'), bool), (
             'misc: plot_probe_names must be a boolean'
         )
-        assert isinstance(misc_cfg.get('use_h_units'), bool), (
-            'misc: use_h_units must be a boolean'
+        assert isinstance(misc_cfg.get('jax_platform'), str), (
+            'misc: jax_platform must be a string'
+        )
+        assert isinstance(misc_cfg.get('jax_enable_x64'), bool), (
+            'misc: jax_enable_x64 must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('cl_triangle_plot'), bool), (
+            'misc: cl_triangle_plot must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('plot_probe_names'), bool), (
+            'misc: plot_probe_names must be a boolean'
         )
         assert isinstance(misc_cfg.get('levin_batch_size'), int), (
             'misc: levin_batch_size must be an int'

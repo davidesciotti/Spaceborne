@@ -1853,46 +1853,47 @@ else:
         f'Unknown cfg["probe_selection"]["space"]: {cfg["probe_selection"]["space"]}'
     )
 
+
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
-# for term in ['sva', 'sn', 'mix']:
-#     cov_a = _cov_obj.cov_dict[term]['3x2pt']['2d']
-#     cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+for term in ['sva', 'sn', 'mix']:
+    cov_a = _cov_obj.cov_dict[term]['3x2pt']['2d']
+    cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-#     sl.compare_2d_covs(
-#         cov_a,
-#         cov_b,
-#         'SB',
-#         'OC',
-#         f'cov {term} {obs_space} space - ',
-#         diff_threshold=10,
-#         compare_cov_2d=False,
-#         compare_corr_2d=False,
-#         compare_diag=True,
-#         compare_flat=False,
-#         compare_spectrum=False,
-#     )
-#     print('=' * 70)
-#     print('')
+    sl.compare_2d_covs(
+        cov_a,
+        cov_b,
+        'SB',
+        'OC',
+        f'cov {term} {obs_space} space - ',
+        diff_threshold=10,
+        compare_cov_2d=True,
+        compare_corr_2d=False,
+        compare_diag=True,
+        compare_flat=True,
+        compare_spectrum=True,
+    )
+    print('=' * 70)
+    print('')
 
-# # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
-# # is not "full" (no Psi* covariance blocks)
-# if obs_space != 'cosebis':
-#     cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
-#     cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
-#     sl.compare_2d_covs(
-#         cov_a,
-#         cov_b,
-#         'SB',
-#         'OC',
-#         f'cov g {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
-#         diff_threshold=10,
-#         compare_cov_2d=False,
-#         compare_corr_2d=False,
-#         compare_diag=True,
-#         compare_flat=False,
-#         compare_spectrum=False,
-#     )
+# compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
+# is not "full" (no Psi* covariance blocks)
+if obs_space != 'cosebis':
+    cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
+    cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
+    sl.compare_2d_covs(
+        cov_a,
+        cov_b,
+        'SB',
+        'OC',
+        f'cov g {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
+        diff_threshold=10,
+        compare_cov_2d=True,
+        compare_corr_2d=False,
+        compare_diag=True,
+        compare_flat=True,
+        compare_spectrum=True,
+    )
 
 
 # ! save 2D covs (for each term) in npz archive
@@ -1948,6 +1949,7 @@ if cfg['covariance']['save_cov_fits'] and obs_space != 'harmonic':
     )
 
 print(f'\nCovariance matrices saved in {output_path}\n')
+
 
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):

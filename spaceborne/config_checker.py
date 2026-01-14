@@ -539,12 +539,6 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('ell_bins_rs'), int), (
             'precision: ell_bins_rs must be an int'
         )
-        assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
-            'precision: cov_rs_int_method must be a string'
-        )
-        assert isinstance(precision_cfg.get('theta_min_arcmin_cosebis'), int), (
-            'precision: theta_min_arcmin_cosebis must be an int'
-        )
         assert isinstance(precision_cfg.get('theta_max_arcmin_cosebis'), int), (
             'precision: theta_max_arcmin_cosebis must be an int'
         )
@@ -566,9 +560,6 @@ class SpaceborneConfigChecker:
         assert isinstance(misc_cfg.get('num_threads'), int), (
             'misc: num_threads must be an int'
         )
-        assert isinstance(misc_cfg.get('levin_batch_size'), int), (
-            'misc: levin_batch_size must be an int'
-        )
         assert isinstance(misc_cfg.get('test_numpy_inversion'), bool), (
             'misc: test_numpy_inversion must be a boolean'
         )
@@ -586,18 +577,6 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(misc_cfg.get('save_figs'), bool), (
             'misc: save_figs must be a boolean'
-        )
-        assert isinstance(misc_cfg.get('jax_platform'), str), (
-            'misc: jax_platform must be a string'
-        )
-        assert isinstance(misc_cfg.get('jax_enable_x64'), bool), (
-            'misc: jax_enable_x64 must be a boolean'
-        )
-        assert isinstance(misc_cfg.get('cl_triangle_plot'), bool), (
-            'misc: cl_triangle_plot must be a boolean'
-        )
-        assert isinstance(misc_cfg.get('plot_probe_names'), bool), (
-            'misc: plot_probe_names must be a boolean'
         )
         assert isinstance(misc_cfg.get('jax_platform'), str), (
             'misc: jax_platform must be a string'

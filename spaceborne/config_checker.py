@@ -325,9 +325,6 @@ class SpaceborneConfigChecker:
             assert isinstance(oc_cfg.get('consistency_checks'), bool), (
                 'OneCovariance: consistency_checks must be a boolean'
             )
-            assert isinstance(oc_cfg.get('path_to_oc_env'), str), (
-                'OneCovariance: path_to_oc_env must be a string'
-            )
             assert isinstance(oc_cfg.get('oc_output_filename'), str), (
                 'OneCovariance: oc_output_filename must be a string, found '
                 f'{oc_cfg.get("oc_output_filename")} instead'

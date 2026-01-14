@@ -66,7 +66,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: harmonic # Type: str. 
+  space: cosebis # Type: str. 
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -78,11 +78,11 @@ probe_selection:
   w: True # Type: bool. Whether to compute w
 
   En: True # Type: bool. Whether to compute En
-  Bn: True # Type: bool. Whether to compute Bn
+  Bn: False # Type: bool. Whether to compute Bn
   Psigl: False # Type: bool. Whether to compute Psigl
   Psigg: False # Type: bool. Whether to compute Psigg
   
-  cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
+  cross_cov: False # Type: bool. Whether to compute the cross-covariance between the selected probes
 
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.
@@ -119,7 +119,7 @@ binning:
   # ell binning for the harmonic-space covariance matrix
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
-  ell_bins: 20 # Type: int. Number of ell bins. Not used in the 'unbinned' case
+  ell_bins: 30 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   ell_bins_filename: '../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt'
 
@@ -361,10 +361,10 @@ precision:
   ell_bins_rs: 1000  # Type: int. Should be high to get accurate results with Simpson integration
   ell_bins_rs_nongauss: 100  # Type: int. Should be high to get accurate results with Simpson integration
     
-  # theta range and steps for the COSEBIs covariance integration
+  # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 2  # Type: int | float.
   theta_max_arcmin_cosebis: 300  # Type: int | float.
-  theta_steps_cosebis: 1000  # Type: int.
+  theta_steps_cosebis: 1000  # Type: int. Increase for higher precision. Around 1000 should be enough.
   
 
 misc:

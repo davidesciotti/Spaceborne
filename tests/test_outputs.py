@@ -148,7 +148,7 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/home/cosmo/davide.sciotti/data'
+# ROOT = '/home/cosmo/davide.sciotti/data'
 ROOT = '/Users/davidesciotti/Documents/Work/Code'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 

@@ -4474,7 +4474,9 @@ def build_cov_3x2pt_2d(
     elif obs_space == 'cosebis':
         prefix = 'CS'
     else:
-        raise ValueError(f'obs_space must be "real" or "harmonic", not: {obs_space}')
+        raise ValueError(
+            f'obs_space must be "real", "harmonic" or "cosebis", not: {obs_space}'
+        )
 
     diag_probes = const.__getattribute__(f'{prefix}_DIAG_PROBES')
 

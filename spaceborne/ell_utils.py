@@ -180,7 +180,7 @@ def compute_ells(
         deltas = np.diff(ell_bin_edges)
 
     else:
-        raise ValueError('recipe must be either "ISTF" or "ISTNL" or "lin"')
+        raise ValueError('recipe must be either "ISTF", "ISTNL", "lin" or "log"')
 
     if output_ell_bin_edges:
         return ells, deltas, ell_bin_edges
@@ -209,7 +209,7 @@ def compute_ells_oc(
         ells = np.exp(0.5 * (np.log(ell_bin_edges[1:]) + np.log(ell_bin_edges[:-1])))
 
     else:
-        raise ValueError('binning_type must be either "ISTF" or "ISTNL" or "lin"')
+        raise ValueError('binning_type must be either "lin" or "log"')
 
     # TODO I think OneCovariance computes this differently
     deltas = np.diff(ell_bin_edges)

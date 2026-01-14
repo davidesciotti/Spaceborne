@@ -177,7 +177,7 @@ class CovCOSEBIs(CovarianceProjector):
         return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]
 
     def compute_cs_cov_term_probe_6d(
-        self, cov_hs_dict: dict, probe_abcd: str, term: str
+        self, cov_hs_dict: dict | None, probe_abcd: str, term: str
     ) -> None:
         """
         Computes the COSEBIs covariance matrix for the specified term and probe combination.

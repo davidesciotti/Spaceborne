@@ -830,7 +830,7 @@ class CovRealSpace(CovarianceProjector):
         return cov_rs_4d
 
     def compute_rs_cov_term_probe_6d(
-        self, cov_hs_dict: dict, probe_abcd: str, term: str
+        self, cov_hs_dict: dict | None, probe_abcd: str, term: str
     ) -> None:
         """
         Computes the real space covariance matrix for the specified term

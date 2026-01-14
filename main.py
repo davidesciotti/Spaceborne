@@ -1249,9 +1249,6 @@ else:
 # ! =================================== OneCovariance ================================
 # initialize object
 cov_oc_obj = None
-
-# TODO remove this
-compute_oc_g = True
 if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(

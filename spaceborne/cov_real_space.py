@@ -160,7 +160,6 @@ def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
     return np.zeros((zbins, zbins), dtype=float)
 
 
-
 def _t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
     # TODO move from probe indices to probe names!
     t_munu = np.zeros((zbins, zbins))
@@ -559,8 +558,6 @@ class CovRealSpace(CovarianceProjector):
             'boost_bessel': self.cfg['precision']['boost_bessel'],
         }
 
-
-
     def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
         for theta_ix in range(self.nbt_fine):
@@ -606,7 +603,6 @@ class CovRealSpace(CovarianceProjector):
             / npair_arr[:, None, :, :, None, None]
         )
         return cov_sn_rs_6d
-
 
     def _cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
         npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
@@ -833,7 +829,9 @@ class CovRealSpace(CovarianceProjector):
 
         return cov_rs_4d
 
-    def compute_rs_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
+    def compute_rs_cov_term_probe_6d(
+        self, cov_hs_dict: dict, probe_abcd: str, term: str
+    ) -> None:
         """
         Computes the real space covariance matrix for the specified term
         and probe combination, in 6d
@@ -1030,12 +1028,10 @@ class CovRealSpace(CovarianceProjector):
             if term == 'cng':
                 norm *= self.amax
 
-            cov_ng_hs_10d = getattr(cov_hs_obj, f'cov_3x2pt_{term}_10d')
-
             # project hs non-gaussian cov to real space using pylevin
-            cov_ng_hs_6d = cov_ng_hs_10d[
+            cov_ng_hs_6d = cov_hs_dict[term][
                 probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
-            ]
+            ]['6d']
 
             cov_ng_rs_6d = dl1dl2_bessel_wrapper(
                 cov_hs=cov_ng_hs_6d,

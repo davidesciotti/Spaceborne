@@ -78,8 +78,6 @@ class CovCOSEBIs(CovarianceProjector):
         assert len(self.theta_grid_rad) == self.nbt, 'theta_grid_rad length mismatch'
         assert np.min(np.diff(self.theta_grid_rad)) > 0, 'theta_grid_rad not sorted!'
 
-
-
     def set_w_ells(self):
         """
         Compute and set the COSEBIs W_n(ell) kernels for all modes and ells.
@@ -178,7 +176,9 @@ class CovCOSEBIs(CovarianceProjector):
         # overall shape is (n_modes, n_modes, zbins, zbins, zbins, zbins)
         return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]
 
-    def compute_cs_cov_term_probe_6d(self, cov_hs_obj, probe_abcd, term):
+    def compute_cs_cov_term_probe_6d(
+        self, cov_hs_dict: dict, probe_abcd: str, term: str
+    ) -> None:
         """
         Computes the COSEBIs covariance matrix for the specified term and probe combination.
 
@@ -224,11 +224,11 @@ class CovCOSEBIs(CovarianceProjector):
 
         # Arguments for the kernel builder
         # For COSEBIs it's only w_ells_arr (constant across all mode pairs)
-        # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by 
+        # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by
         # the wrapper
         kernel_builder_func_kw = {'w_ells_arr': self.w_ells_arr}
 
-        # Compute term-specific covariance 
+        # Compute term-specific covariance
         if term == 'sva':
             if 'Bn' in probe_2tpl:
                 cov_out_6d = np.zeros(self.cov_shape_6d)

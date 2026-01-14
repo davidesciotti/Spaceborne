@@ -325,12 +325,15 @@ class SpaceborneConfigChecker:
             assert isinstance(oc_cfg.get('consistency_checks'), bool), (
                 'OneCovariance: consistency_checks must be a boolean'
             )
+            assert isinstance(oc_cfg.get('path_to_oc_env'), str), (
+                'OneCovariance: path_to_oc_env must be a string'
+            )
             assert isinstance(oc_cfg.get('oc_output_filename'), str), (
                 'OneCovariance: oc_output_filename must be a string, found '
                 f'{oc_cfg.get("oc_output_filename")} instead'
             )
 
-        # Ell Binning
+        # Binning
         assert isinstance(self.cfg.get('binning'), dict), (
             "Section 'binning' must be a dictionary"
         )
@@ -355,6 +358,9 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(binning_cfg.get('theta_bins'), int), (
             'binning: theta_bins must be an int'
+        )
+        assert isinstance(binning_cfg.get('n_modes_cosebis'), int), (
+            'binning: n_modes_cosebis must be an int'
         )
 
         # BNT
@@ -509,7 +515,6 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('verbose'), bool), (
             'precision: verbose must be a boolean'
         )
-
         assert isinstance(precision_cfg.get('ell_min_rs'), int), (
             'precision: ell_min_rs must be an int'
         )
@@ -518,6 +523,21 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(precision_cfg.get('ell_bins_rs'), int), (
             'precision: ell_bins_rs must be an int'
+        )
+        assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
+            'precision: cov_rs_int_method must be a string'
+        )
+        assert isinstance(precision_cfg.get('theta_min_arcmin_cosebis'), int), (
+            'precision: theta_min_arcmin_cosebis must be an int'
+        )
+        assert isinstance(precision_cfg.get('theta_max_arcmin_cosebis'), int), (
+            'precision: theta_max_arcmin_cosebis must be an int'
+        )
+        assert isinstance(precision_cfg.get('theta_steps_cosebis'), int), (
+            'precision: theta_steps_cosebis must be an int'
+        )
+        assert isinstance(precision_cfg.get('ell_bins_rs_nongauss'), int), (
+            'precision: ell_bins_rs_nongauss must be an int'
         )
         assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
             'precision: cov_rs_int_method must be a string'
@@ -551,6 +571,24 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(misc_cfg.get('save_figs'), bool), (
             'misc: save_figs must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('jax_platform'), str), (
+            'misc: jax_platform must be a string'
+        )
+        assert isinstance(misc_cfg.get('jax_enable_x64'), bool), (
+            'misc: jax_enable_x64 must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('cl_triangle_plot'), bool), (
+            'misc: cl_triangle_plot must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('plot_probe_names'), bool), (
+            'misc: plot_probe_names must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('use_h_units'), bool), (
+            'misc: use_h_units must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('levin_batch_size'), int), (
+            'misc: levin_batch_size must be an int'
         )
 
     def check_misc(self) -> None:

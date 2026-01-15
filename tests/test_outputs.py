@@ -148,7 +148,8 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/home/cosmo/davide.sciotti/data'
+# ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/Users/davidesciotti/Documents/Work/Code'
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file
@@ -159,6 +160,9 @@ bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
 bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 bench_yaml_names.sort()
+
+# real space
+# bench_yaml_names = [f'config_{i:04d}' for i in range(84, 120)]
 
 # slow_benchs = [
 #     'config_0004',

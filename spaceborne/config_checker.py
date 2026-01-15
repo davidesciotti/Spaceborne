@@ -330,7 +330,7 @@ class SpaceborneConfigChecker:
                 f'{oc_cfg.get("oc_output_filename")} instead'
             )
 
-        # Ell Binning
+        # Binning
         assert isinstance(self.cfg.get('binning'), dict), (
             "Section 'binning' must be a dictionary"
         )
@@ -355,6 +355,9 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(binning_cfg.get('theta_bins'), int), (
             'binning: theta_bins must be an int'
+        )
+        assert isinstance(binning_cfg.get('n_modes_cosebis'), int), (
+            'binning: n_modes_cosebis must be an int'
         )
 
         # BNT
@@ -451,6 +454,21 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('cov_filename'), str), (
             'covariance: cov_filename must be a string'
         )
+        assert isinstance(cov_cfg.get('G_code'), (str, type(None))), (
+            'covariance: G_code must be a string or None'
+        )
+        assert isinstance(cov_cfg.get('SSC_code'), (str, type(None))), (
+            'covariance: SSC_code must be a string or None'
+        )
+        assert isinstance(cov_cfg.get('which_sigma2_b'), (str, type(None))), (
+            'covariance: which_sigma2_b must be a string or None'
+        )
+        assert isinstance(cov_cfg.get('n_probes'), int), (
+            'covariance: n_probes must be an int'
+        )
+        assert isinstance(cov_cfg.get('probe_ordering'), list), (
+            'covariance: probe_ordering must be a list'
+        )
 
         # PyCCL
         assert isinstance(self.cfg.get('PyCCL'), dict), (
@@ -509,7 +527,6 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('verbose'), bool), (
             'precision: verbose must be a boolean'
         )
-
         assert isinstance(precision_cfg.get('ell_min_rs'), int), (
             'precision: ell_min_rs must be an int'
         )
@@ -518,6 +535,15 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(precision_cfg.get('ell_bins_rs'), int), (
             'precision: ell_bins_rs must be an int'
+        )
+        assert isinstance(precision_cfg.get('theta_max_arcmin_cosebis'), int), (
+            'precision: theta_max_arcmin_cosebis must be an int'
+        )
+        assert isinstance(precision_cfg.get('theta_steps_cosebis'), int), (
+            'precision: theta_steps_cosebis must be an int'
+        )
+        assert isinstance(precision_cfg.get('ell_bins_rs_nongauss'), int), (
+            'precision: ell_bins_rs_nongauss must be an int'
         )
         assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
             'precision: cov_rs_int_method must be a string'
@@ -530,9 +556,6 @@ class SpaceborneConfigChecker:
         misc_cfg = self.cfg['misc']
         assert isinstance(misc_cfg.get('num_threads'), int), (
             'misc: num_threads must be an int'
-        )
-        assert isinstance(misc_cfg.get('levin_batch_size'), int), (
-            'misc: levin_batch_size must be an int'
         )
         assert isinstance(misc_cfg.get('test_numpy_inversion'), bool), (
             'misc: test_numpy_inversion must be a boolean'
@@ -551,6 +574,21 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(misc_cfg.get('save_figs'), bool), (
             'misc: save_figs must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('jax_platform'), str), (
+            'misc: jax_platform must be a string'
+        )
+        assert isinstance(misc_cfg.get('jax_enable_x64'), bool), (
+            'misc: jax_enable_x64 must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('cl_triangle_plot'), bool), (
+            'misc: cl_triangle_plot must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('plot_probe_names'), bool), (
+            'misc: plot_probe_names must be a boolean'
+        )
+        assert isinstance(misc_cfg.get('levin_batch_size'), int), (
+            'misc: levin_batch_size must be an int'
         )
 
     def check_misc(self) -> None:
@@ -645,7 +683,21 @@ class SpaceborneConfigChecker:
         ), 'Only one of `use_namaster` and `compute_sample_cov` can be True — not both.'
 
     def check_probe_selection(self) -> None:
-        allowed_keys = ['space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gt', 'w', 'cross_cov']
+        allowed_keys = [
+            'space',
+            'LL',
+            'GL',
+            'GG',
+            'xip',
+            'xim',
+            'gt',
+            'w',
+            'En',
+            'Bn',
+            'Psigl',
+            'Psigg',
+            'cross_cov',
+        ]
 
         for key in self.cfg['probe_selection']:
             assert key in allowed_keys, f'Probe selection key {key} is not valid. '
@@ -678,10 +730,25 @@ class SpaceborneConfigChecker:
                 'At least one of LL, GL, or GG must be selected for '
                 'harmonic space covariance'
             )
+        elif self.cfg['probe_selection']['space'] == 'cosebis':
+            assert (
+                self.cfg['probe_selection']['En']
+                + self.cfg['probe_selection']['Bn']
+                + self.cfg['probe_selection']['Psigl']
+                + self.cfg['probe_selection']['Psigg']
+            ) > 0, (
+                'At least one of En, Bn, Psigl, or Psigg must be selected for '
+                'cosebis space covariance'
+            )
+            if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']:
+                raise NotImplementedError(
+                    'The non-gaussian COSEBIs covariance has not been implemented yet'
+                )
+
         else:
             raise ValueError(
-                'probe_selection: "space" must be either "real" or '
-                f'"harmonic", got {self.cfg["probe_selection"]["space"]}'
+                'probe_selection: "space" must be either "real", '
+                f'"harmonic", or "cosebis" got {self.cfg["probe_selection"]["space"]}'
             )
 
     def check_nmt(self) -> None:

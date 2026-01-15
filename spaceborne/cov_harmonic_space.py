@@ -50,9 +50,7 @@ class SpaceborneCovariance:
         self.zpairs_auto = pvt_cfg['zpairs_auto']
         self.zpairs_cross = pvt_cfg['zpairs_cross']
         self.zpairs_3x2pt = pvt_cfg['zpairs_3x2pt']
-        self.GL_OR_LG = pvt_cfg['GL_OR_LG']
-        if self.GL_OR_LG == 'LG':  # on-the-fly check
-            raise ValueError('the cross-correlation between G and L must be GL, not LG')
+        self.block_index = pvt_cfg['block_index']
 
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
@@ -82,39 +80,6 @@ class SpaceborneCovariance:
         # other useful objects
         self.cov_nmt_obj = cov_nmt_obj
 
-        if self.cov_ordering_2d == 'probe_scale_zpair':
-            self.block_index = 'ell'
-            self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2DCLOE_3x2pt_hs
-            self.cov_4D_to_2D_3x2pt_func_kw = {
-                'block_index': self.block_index,
-                'zbins': self.zbins,
-                'req_probe_combs_2d': self.req_probe_combs_2d,
-            }
-        elif self.cov_ordering_2d == 'probe_zpair_scale':
-            self.block_index = 'zpair'
-            self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2DCLOE_3x2pt_hs
-            self.cov_4D_to_2D_3x2pt_func_kw = {
-                'block_index': self.block_index,
-                'zbins': self.zbins,
-                'req_probe_combs_2d': self.req_probe_combs_2d,
-            }
-        elif self.cov_ordering_2d == 'scale_probe_zpair':
-            self.block_index = 'ell'
-            self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2D
-            self.cov_4D_to_2D_3x2pt_func_kw = {
-                'block_index': self.block_index,
-                'optimize': True,
-            }
-        elif self.cov_ordering_2d == 'zpair_probe_scale':
-            self.block_index = 'zpair'
-            self.cov_4D_to_2D_3x2pt_func = sl.cov_4D_to_2D
-            self.cov_4D_to_2D_3x2pt_func_kw = {
-                'block_index': self.block_index,
-                'optimize': True,
-            }
-        else:
-            raise ValueError(f'Unknown 2D cov ordering: {self.cov_ordering_2d}')
-
     def consistency_checks(self):
         # sanity checks
 
@@ -139,15 +104,6 @@ class SpaceborneCovariance:
                 'You should use linear scale instead.'
             )
 
-        # if C_XC is C_LG, switch the ind ordering for the correct rows
-        if self.GL_OR_LG == 'LG':
-            print('\nAttention! switching columns in the ind array (for the XC part)')
-            self.ind[
-                self.zpairs_auto : (self.zpairs_auto + self.zpairs_cross), [2, 3]
-            ] = self.ind[
-                self.zpairs_auto : (self.zpairs_auto + self.zpairs_cross), [3, 2]
-            ]
-
         # sanity check: the last 2 columns of ind_auto should be equal to the
         # last two of ind_auto
         assert np.array_equiv(
@@ -160,90 +116,6 @@ class SpaceborneCovariance:
         assert self.cng_code in ['PyCCL', 'OneCovariance'], (
             "covariance_cfg['cNG_code'] not recognised"
         )
-
-    def reshape_cov(
-        self,
-        cov_in,
-        ndim_in,
-        ndim_out,
-        nbl,
-        zpairs=None,
-        ind_probe=None,
-        is_3x2pt=False,
-    ):
-        """Reshape a covariance matrix between dimensions (6/2D -> 4/2D).
-
-        Parameters
-        ----------
-        cov_in : np.ndarray
-            Input covariance matrix.
-        ndim_in : int
-            Input dimension of the covariance matrix (e.g., 6 or 10).
-        ndim_out : int
-            Desired output dimension of the covariance matrix (e.g., 4 or 2).
-        nbl : int
-            Number of multipole bins.
-        zpairs : int, optional
-            Number of redshift pairs. Required for 6D -> 4D reshaping.
-        ind_probe : np.ndarray, optional
-            Probe index array for 6D -> 4D reshaping.
-        is_3x2pt : bool, optional
-            If True, indicates that the covariance is a 3x2pt covariance.
-
-        Returns
-        -------
-        np.ndarray
-            Reshaped covariance matrix.
-
-        Raises
-        ------
-        ValueError
-            If the combination of ndim_in, ndim_out, and is_3x2pt is not supported.
-        """
-
-        # Validate inputs
-        if ndim_in not in [6, 10, 4]:
-            raise ValueError(
-                f'Unsupported ndim_in={ndim_in}. Only 6D or 10D supported.'
-            )
-        if ndim_out not in [2, 4]:
-            raise ValueError(
-                f'Unsupported ndim_out={ndim_out}. Only 2D or 4D supported.'
-            )
-
-        # Reshape logic
-        if ndim_in == 6:
-            assert cov_in.ndim == 6, 'Input covariance must be 6D for this operation.'
-            assert not is_3x2pt, 'input 3x2pt cov should be 10d.'
-            cov_out = sl.cov_6D_to_4D(cov_in, nbl, zpairs, ind_probe)
-
-        elif ndim_in == 10:
-            assert cov_in.ndim == 10, 'Input covariance must be 10D for this operation.'
-            assert is_3x2pt, 'input 3x2pt cov should be 10d.'
-            cov_out = sl.cov_3x2pt_10D_to_4D(
-                cov_3x2pt_10D=cov_in,
-                probe_ordering=self.probe_ordering,
-                nbl=nbl,
-                zbins=self.zbins,
-                ind_copy=self.ind.copy(),
-                GL_OR_LG=self.GL_OR_LG,
-                req_probe_combs_2d=self.req_probe_combs_2d,
-            )
-
-        elif ndim_in == 4:
-            cov_out = cov_in.copy()
-
-        if ndim_out == 2:
-            if is_3x2pt:
-                # the 3x2pt has an additional layer of complexity for the ordering,
-                # as it includes multiple probes
-                cov_out = self.cov_4D_to_2D_3x2pt_func(
-                    cov_out, **self.cov_4D_to_2D_3x2pt_func_kw
-                )
-            else:
-                cov_out = sl.cov_4D_to_2D(cov_out, block_index=self.block_index)
-
-        return cov_out
 
     def set_gauss_cov(self, ccl_obj: CCLInterface):
         start = time.perf_counter()
@@ -349,29 +221,6 @@ class SpaceborneCovariance:
                     del self.cov_dict[term]
 
         print(f'...done in {(time.perf_counter() - start):.2f} s')
-
-    def _build_cov_3x2pt_4d_and_2d(self):
-        """For each covariance term, constructs the 4d and 2d 3x2pt covs from
-        the 6d probe-specific ones.
-
-        Note: remember that there is no 6d 3x2pt 6d or 10d cov!
-        Note: This exact same function is also defined in cov_real_space.py
-        """
-
-        # TODO deprecate this func
-
-        for term in self.cov_dict:
-            if term == 'tot':
-                continue  # tot is built at the end, skip it
-
-            self.cov_dict[term]['3x2pt']['4d'] = (
-                sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
-                    self.cov_dict[term], obs_space='harmonic'
-                )
-            )
-            self.cov_dict[term]['3x2pt']['2d'] = self.cov_4D_to_2D_3x2pt_func(
-                self.cov_dict[term]['3x2pt']['4d'], **self.cov_4D_to_2D_3x2pt_func_kw
-            )
 
     def _remove_split_terms_from_dict(self, split_gaussian_cov: bool):
         """Helper function to remove the SVA/SN/MIX parts of the G cov if
@@ -623,7 +472,7 @@ class SpaceborneCovariance:
             space='harmonic',
         )
 
-        # ! clean upd dictionaries:
+        # ! clean up dictionaries:
         self._remove_split_terms_from_dict(split_gaussian_cov)
 
         # ! perform ell cuts on the 2D covs

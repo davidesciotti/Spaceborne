@@ -149,8 +149,8 @@ def test_main_script(test_cfg_path):
 
 # Path
 ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
-ROOT = '/u/dsciotti/code'  # orlanth
-ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
+# ROOT = '/u/dsciotti/code'  # orlanth
+# ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file

@@ -104,7 +104,7 @@ def test_main_script(test_cfg_path):
                 rtol=1e-5,
                 err_msg=f"{key} doesn't match the benchmark ❌",
             )
-            print(f'{key:<30} matches the benchmark ✅')
+            print(f'{key:<20} matches the benchmark ✅')
         except ValueError as e:
             # Catch shape mismatches (e.g., one empty, one non-empty)
             print(f"Shape mismatch for '{key}': {e}")
@@ -148,8 +148,9 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-# ROOT = '/home/cosmo/davide.sciotti/data'
-ROOT = '/Users/davidesciotti/Documents/Work/Code'
+ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
+# ROOT = '/u/dsciotti/code'  # orlanth
+# ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file

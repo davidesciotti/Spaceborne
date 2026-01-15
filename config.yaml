@@ -78,8 +78,6 @@ probe_selection:
 
   En: True # Type: bool. Whether to compute En
   Bn: True # Type: bool. Whether to compute Bn
-  Psigl: False # Type: bool. Whether to compute Psigl
-  Psigg: False # Type: bool. Whether to compute Psigg
 
   cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
 
@@ -272,7 +270,7 @@ covariance:
   use_KE_approximation: False # Type: bool. Whether or not to use the single-redshift integral approximation for the SSC
 
   # Name of the output covariance file.
-  cov_filename: cov_sb # Type: str.
+  cov_filename: covmat # Type: str.
   save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
 
 PyCCL:

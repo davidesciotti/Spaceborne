@@ -209,7 +209,6 @@ for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
-
 # for the Gaussian covariance computation
 k_steps_sigma2_simps = 20_000
 shift_nz_interpolation_kind = 'linear'
@@ -256,6 +255,10 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
     2.15443469, 3.59381366, 5.9948425, 10.0,
 ]  # fmt: skip
 
+# Psi-statistics not implemented yet
+cfg['probe_selection']['Psigl'] = False
+cfg['probe_selection']['Psigg'] = False
+
 # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
 # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only).
 #   In this case, the output covmat
@@ -281,11 +284,7 @@ cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
 cfg['misc']['levin_batch_size'] = 1000  # Type: int.
 
 # ordering of the different 3x2pt probes in the covariance matrix
-cfg['covariance']['probe_ordering'] = [
-    ['L', 'L'],
-    ['G', 'L'],
-    ['G', 'G'],
-]  # Type: list[list[str]]
+cfg['covariance']['probe_ordering'] = [['L', 'L'], ['G', 'L'], ['G', 'G']]
 
 probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
@@ -481,6 +480,12 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
     compute_ccl_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'PyCCL':
     compute_ccl_cng = True
+
+cov_terms_and_codes = {
+    'G': cfg['covariance']['G_code'] if cfg['covariance']['G'] else False,
+    'SSC': cfg['covariance']['SSC_code'] if cfg['covariance']['SSC'] else False,
+    'cNG': cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else False,
+}
 
 _condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
 if compute_ccl_cng and _condition:
@@ -1058,7 +1063,7 @@ if cfg['BNT']['cl_BNT_transform']:
     cl_ll_3d = bnt.cl_bnt_transform(ccl_obj.cl_ll_3d, bnt_matrix, 'L', 'L')
     cl_3x2pt_5d = bnt.cl_bnt_transform_3x2pt(ccl_obj.cl_3x2pt_5d, bnt_matrix)
     warnings.warn('you should probably BNT-transform the responses too!', stacklevel=2)
-    if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+    if 'OneCovariance' in cov_terms_and_codes.values():
         raise NotImplementedError('You should cut also the OC Cls')
 
 
@@ -1119,7 +1124,7 @@ else:
 #     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(
 #         cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt']
 #     )
-#     if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+#     if 'OneCovariance' in cov_terms_and_codes.values():
 #         raise NotImplementedError('You should cut also the OC Cls')
 
 # re-set cls in the ccl_obj after BNT transform and/or ell cuts
@@ -1249,7 +1254,7 @@ else:
 # ! =================================== OneCovariance ================================
 # initialize object
 cov_oc_obj = None
-if compute_oc_g or compute_oc_ssc or compute_oc_cng:
+if 'OneCovariance' in cov_terms_and_codes.values():
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
             'TODO double check inputs in this case. This case is untested'
@@ -1494,7 +1499,8 @@ if compute_oc_g or compute_oc_ssc or compute_oc_cng:
     print(f'Time taken to compute OC: {(time.perf_counter() - start_time) / 60:.2f} m')
 
 cov_ssc_obj = None
-if compute_sb_ssc:
+if cov_terms_and_codes['SSC'] == 'Spaceborne':
+    # TODO most of this should go in the cov_ssc class
     # ! ================================= Probe responses ==============================
     resp_obj = responses.SpaceborneResponses(
         cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp, ccl_obj=ccl_obj
@@ -1742,7 +1748,7 @@ if obs_space == 'harmonic':
     )
 
 
-if obs_space == 'real':
+if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     print('\nComputing real-space covariance...')
     start_rs = time.perf_counter()
 
@@ -1751,7 +1757,10 @@ if obs_space == 'real':
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
-        print(f'\n***** working on probe {probe_ab, probe_cd} - term {_term} *****')
+        print(
+            f'\n2PCF cov: computing probe combination {probe_ab, probe_cd}'
+            f' - term {_term.upper()}'
+        )
 
         _cov_hs_dict = cov_hs_obj.cov_dict if cov_hs_obj is not None else None
         cov_rs_obj.compute_rs_cov_term_probe_6d(
@@ -1790,7 +1799,7 @@ if obs_space == 'real':
 
 # TODO this code block is almost identical to the real-space one above, probably
 # TODO can be unified
-if obs_space == 'cosebis':
+if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     print('\nComputing COSEBIs covariance...')
     start_rs = time.perf_counter()
 
@@ -1802,7 +1811,10 @@ if obs_space == 'cosebis':
         unique_probe_combs_cs, cov_cs_obj.terms_toloop
     ):
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
-        print(f'\n***** working on probe {probe_ab, probe_cd} - term {_term} *****')
+        print(
+            f'\nCOSEBIs cov: computing probe combination {probe_ab, probe_cd}'
+            f' - term {_term.upper()}'
+        )
         _cov_hs_dict = cov_hs_obj.cov_dict if cov_hs_obj is not None else None
         cov_cs_obj.compute_cs_cov_term_probe_6d(
             cov_hs_dict=_cov_hs_dict, probe_abcd=_probe, term=_term
@@ -1838,20 +1850,59 @@ if obs_space == 'cosebis':
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
+# def copy_cov_dict_leaf_level(original, new):
+#     for term in original:
+#         for probe_2tpl in original[term]:
+#             for dim
+#             new[term][probe_2tpl] = deepcopy(original[term][probe_2tpl])
+
 
 if obs_space == 'harmonic':
-    _cov_obj = cov_hs_obj
+    _cov_dict = cov_hs_obj.cov_dict
     _probes = unique_probe_combs_hs
 elif obs_space == 'real':
-    _cov_obj = cov_rs_obj
+    _cov_dict = cov_rs_obj.cov_dict
     _probes = unique_probe_combs_rs
 elif obs_space == 'cosebis':
-    _cov_obj = cov_cs_obj
+    _cov_dict = cov_cs_obj.cov_dict
     _probes = unique_probe_combs_cs
 else:
     raise ValueError(
         f'Unknown cfg["probe_selection"]["space"]: {cfg["probe_selection"]["space"]}'
     )
+
+# in the harmonic case, this is handled by the cov_harmonic_space class
+if obs_space != 'harmonic':
+    if cfg['covariance']['G_code'] == 'OneCovariance':
+        # Copy arrays at leaf level for 'g' term
+        for probe_pair in _cov_dict['g']:
+            for dim in _cov_dict['g'][probe_pair]:
+                _cov_dict['g'][probe_pair][dim] = cov_oc_obj.cov_dict['g'][probe_pair][
+                    dim
+                ]
+
+        # Copy split Gaussian terms if they exist
+        if cfg['covariance']['split_gaussian_cov']:
+            for term in ['sva', 'sn', 'mix']:
+                for probe_pair in _cov_dict[term]:
+                    for dim in _cov_dict[term][probe_pair]:
+                        _cov_dict[term][probe_pair][dim] = cov_oc_obj.cov_dict[term][
+                            probe_pair
+                        ][dim]
+
+    if cfg['covariance']['SSC_code'] == 'OneCovariance':
+        for probe_pair in _cov_dict['ssc']:
+            for dim in _cov_dict['ssc'][probe_pair]:
+                _cov_dict['ssc'][probe_pair][dim] = cov_oc_obj.cov_dict['ssc'][
+                    probe_pair
+                ][dim]
+
+    if cfg['covariance']['cNG_code'] == 'OneCovariance':
+        for probe_pair in _cov_dict['cng']:
+            for dim in _cov_dict['cng'][probe_pair]:
+                _cov_dict['cng'][probe_pair][dim] = cov_oc_obj.cov_dict['cng'][
+                    probe_pair
+                ][dim]
 
 
 # # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
@@ -1899,19 +1950,19 @@ else:
 # ! save 2D covs (for each term) in npz archive
 cov_dict_tosave_2d = {}
 if cfg['covariance']['G']:
-    cov_dict_tosave_2d['Gauss'] = _cov_obj.cov_dict['g']['3x2pt']['2d']
+    cov_dict_tosave_2d['Gauss'] = _cov_dict['g']['3x2pt']['2d']
 if cfg['covariance']['SSC']:
-    cov_dict_tosave_2d['SSC'] = _cov_obj.cov_dict['ssc']['3x2pt']['2d']
+    cov_dict_tosave_2d['SSC'] = _cov_dict['ssc']['3x2pt']['2d']
 if cfg['covariance']['cNG']:
-    cov_dict_tosave_2d['cNG'] = _cov_obj.cov_dict['cng']['3x2pt']['2d']
+    cov_dict_tosave_2d['cNG'] = _cov_dict['cng']['3x2pt']['2d']
 if cfg['covariance']['split_gaussian_cov']:
-    cov_dict_tosave_2d['SVA'] = _cov_obj.cov_dict['sva']['3x2pt']['2d']
-    cov_dict_tosave_2d['SN'] = _cov_obj.cov_dict['sn']['3x2pt']['2d']
-    cov_dict_tosave_2d['MIX'] = _cov_obj.cov_dict['mix']['3x2pt']['2d']
+    cov_dict_tosave_2d['SVA'] = _cov_dict['sva']['3x2pt']['2d']
+    cov_dict_tosave_2d['SN'] = _cov_dict['sn']['3x2pt']['2d']
+    cov_dict_tosave_2d['MIX'] = _cov_dict['mix']['3x2pt']['2d']
 # the total covariance is equal to the Gaussian one if neither SSC nor cNG are computed,
 # so only save it if at least one of the two is computed
 if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
-    cov_dict_tosave_2d['TOT'] = _cov_obj.cov_dict['tot']['3x2pt']['2d']
+    cov_dict_tosave_2d['TOT'] = _cov_dict['tot']['3x2pt']['2d']
 
 cov_filename = cfg['covariance']['cov_filename']
 np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d)
@@ -1921,7 +1972,7 @@ np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d
 # ! i.e. there is no cov_3x2pt_{term}_6d
 if cfg['covariance']['save_full_cov']:
     cov_dict_tosave_6d = {}
-    _cd = _cov_obj.cov_dict  # just to make the code more readable
+    _cd = _cov_dict  # just to make the code more readable
     for _probe in _probes:
         probe_ab, probe_cd = sl.split_probe_name(_probe, obs_space)
         probe_2tpl = (probe_ab, probe_cd)  # just to make the code more readable
@@ -1941,7 +1992,7 @@ if cfg['covariance']['save_full_cov']:
     np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **cov_dict_tosave_6d)
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
-    io_obj.save_cov_euclidlib(cov_hs_obj=_cov_obj)
+    io_obj.save_cov_euclidlib(cov_hs_obj=_cov_dict)
 if cfg['covariance']['save_cov_fits'] and obs_space != 'harmonic':
     raise ValueError(
         'Official Euclid .fits format is only supported for harmonic space '
@@ -2219,13 +2270,13 @@ if cfg['misc']['save_output_as_benchmark']:
 
     # ! old
     covs_arrays_dict = {}
-    for term in _cov_obj.cov_dict:
-        for _probe_abcd in _cov_obj.cov_dict[term]:
-            for dim in _cov_obj.cov_dict[term][_probe_abcd]:
-                if _cov_obj.cov_dict[term][_probe_abcd][dim] is None:
+    for term in _cov_dict:
+        for _probe_abcd in _cov_dict[term]:
+            for dim in _cov_dict[term][_probe_abcd]:
+                if _cov_dict[term][_probe_abcd][dim] is None:
                     value = 0
                 else:
-                    value = _cov_obj.cov_dict[term][_probe_abcd][dim]
+                    value = _cov_dict[term][_probe_abcd][dim]
 
                 if _probe_abcd == ('LL', 'LL'):
                     probe_abcd = 'WL'
@@ -2243,12 +2294,12 @@ if cfg['misc']['save_output_as_benchmark']:
                 covs_arrays_dict[name] = value
 
     # TODO this should be removed after merge with develop
-    if 'ssc' not in _cov_obj.cov_dict:
+    if 'ssc' not in _cov_dict:
         for probe in ['WL', 'GC', '3x2pt']:
             covs_arrays_dict[f'cov_{probe}_ssc_6d'] = 0
             covs_arrays_dict[f'cov_{probe}_ssc_4d'] = 0
             covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
-    if 'cng' not in _cov_obj.cov_dict:
+    if 'cng' not in _cov_dict:
         for probe in ['WL', 'GC', 'XC', '3x2pt']:
             covs_arrays_dict[f'cov_{probe}_cng_6d'] = 0
             covs_arrays_dict[f'cov_{probe}_cng_4d'] = 0

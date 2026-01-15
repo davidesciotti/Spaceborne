@@ -394,29 +394,35 @@ class SpaceborneCovariance:
                 assert _term in cov_oc_obj.cov_dict, '_term not in cov_oc_obj.cov_dict'
 
                 # check probes
-                probe_list_sb = sorted(self.cov_dict[_term].keys())
-                probe_list_oc = sorted(cov_oc_obj.cov_dict[_term].keys())
+                probe_list_sb = set(self.cov_dict[_term].keys())
+                probe_list_oc = set(cov_oc_obj.cov_dict[_term].keys())
                 assert probe_list_sb == probe_list_oc, (
                     f'probe_list_sb: {probe_list_sb}, probe_list_oc: {probe_list_oc}'
                 )
 
                 # check dims
                 for _probe_2tpl in probe_list_sb:
-                    dim_list_sb = sorted(self.cov_dict[_term][_probe_2tpl].keys())
-                    dim_list_oc = sorted(cov_oc_obj.cov_dict[_term][_probe_2tpl].keys())
+                    dim_list_sb = set(self.cov_dict[_term][_probe_2tpl].keys())
+                    dim_list_oc = set(cov_oc_obj.cov_dict[_term][_probe_2tpl].keys())
                     assert dim_list_sb == dim_list_oc, (
                         f'dim_list_sb: {dim_list_sb}, dim_list_oc: {dim_list_oc}'
                     )
-                    assert dim_list_sb == ['6d'], (
-                        'the dict should only contain 6d arrays for the moment'
-                    )
 
+            # TODO delete this
             # having checked the covs, overwrite the relevand dict items
-            self.cov_dict['g'] = deepcopy(cov_oc_obj.cov_dict['g'])
-            if split_gaussian_cov:
-                self.cov_dict['sva'] = deepcopy(cov_oc_obj.cov_dict['sva'])
-                self.cov_dict['sn'] = deepcopy(cov_oc_obj.cov_dict['sn'])
-                self.cov_dict['mix'] = deepcopy(cov_oc_obj.cov_dict['mix'])
+            # self.cov_dict['g'] = deepcopy(cov_oc_obj.cov_dict['g'])
+            # if split_gaussian_cov:
+            #     self.cov_dict['sva'] = deepcopy(cov_oc_obj.cov_dict['sva'])
+            #     self.cov_dict['sn'] = deepcopy(cov_oc_obj.cov_dict['sn'])
+            #     self.cov_dict['mix'] = deepcopy(cov_oc_obj.cov_dict['mix'])
+
+            for term in self.cov_dict:
+                for probe_2tpl in self.cov_dict[term]:
+                    for dim in self.cov_dict[term][probe_2tpl]:
+                        if self.cov_dict[term][probe_2tpl][dim] is not None:
+                            self.cov_dict[term][probe_2tpl][dim] = deepcopy(
+                                cov_oc_obj.cov_dict[term][probe_2tpl][dim]
+                            )
 
         # ! reshape and set SSC and cNG - the "if include SSC/cNG"
         # ! are inside the function

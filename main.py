@@ -1213,6 +1213,7 @@ if obs_space == 'real':
 
 # TODO this could probably be done with super.__init__() where super is the
 # cov projector class
+cov_cs_obj = None
 if obs_space == 'cosebis':
     cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
     ell_obj.compute_ells_3x2pt_rs()
@@ -1948,48 +1949,48 @@ if obs_space != 'harmonic':
 
 
 # ! save 2D covs (for each term) in npz archive
-cov_dict_tosave_2d = {}
+covs_3x2pt_2d_tosave_dict = {}
 if cfg['covariance']['G']:
-    cov_dict_tosave_2d['Gauss'] = _cov_dict['g']['3x2pt']['2d']
+    covs_3x2pt_2d_tosave_dict['Gauss'] = _cov_dict['g']['3x2pt']['2d']
 if cfg['covariance']['SSC']:
-    cov_dict_tosave_2d['SSC'] = _cov_dict['ssc']['3x2pt']['2d']
+    covs_3x2pt_2d_tosave_dict['SSC'] = _cov_dict['ssc']['3x2pt']['2d']
 if cfg['covariance']['cNG']:
-    cov_dict_tosave_2d['cNG'] = _cov_dict['cng']['3x2pt']['2d']
+    covs_3x2pt_2d_tosave_dict['cNG'] = _cov_dict['cng']['3x2pt']['2d']
 if cfg['covariance']['split_gaussian_cov']:
-    cov_dict_tosave_2d['SVA'] = _cov_dict['sva']['3x2pt']['2d']
-    cov_dict_tosave_2d['SN'] = _cov_dict['sn']['3x2pt']['2d']
-    cov_dict_tosave_2d['MIX'] = _cov_dict['mix']['3x2pt']['2d']
+    covs_3x2pt_2d_tosave_dict['SVA'] = _cov_dict['sva']['3x2pt']['2d']
+    covs_3x2pt_2d_tosave_dict['SN'] = _cov_dict['sn']['3x2pt']['2d']
+    covs_3x2pt_2d_tosave_dict['MIX'] = _cov_dict['mix']['3x2pt']['2d']
 # the total covariance is equal to the Gaussian one if neither SSC nor cNG are computed,
 # so only save it if at least one of the two is computed
 if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
-    cov_dict_tosave_2d['TOT'] = _cov_dict['tot']['3x2pt']['2d']
+    covs_3x2pt_2d_tosave_dict['TOT'] = _cov_dict['tot']['3x2pt']['2d']
 
 cov_filename = cfg['covariance']['cov_filename']
-np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **cov_dict_tosave_2d)
+np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **covs_3x2pt_2d_tosave_dict)
 
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
 # ! i.e. there is no cov_3x2pt_{term}_6d
 if cfg['covariance']['save_full_cov']:
-    cov_dict_tosave_6d = {}
+    covs_6d_tosave_dict = {}
     _cd = _cov_dict  # just to make the code more readable
     for _probe in _probes:
         probe_ab, probe_cd = sl.split_probe_name(_probe, obs_space)
         probe_2tpl = (probe_ab, probe_cd)  # just to make the code more readable
         if cfg['covariance']['G']:
-            cov_dict_tosave_6d[f'{_probe}_Gauss'] = _cd['g'][probe_2tpl]['6d']
+            covs_6d_tosave_dict[f'{_probe}_Gauss'] = _cd['g'][probe_2tpl]['6d']
         if cfg['covariance']['SSC']:
-            cov_dict_tosave_6d[f'{_probe}_SSC'] = _cd['ssc'][probe_2tpl]['6d']
+            covs_6d_tosave_dict[f'{_probe}_SSC'] = _cd['ssc'][probe_2tpl]['6d']
         if cfg['covariance']['cNG']:
-            cov_dict_tosave_6d[f'{_probe}_cNG'] = _cd['cng'][probe_2tpl]['6d']
+            covs_6d_tosave_dict[f'{_probe}_cNG'] = _cd['cng'][probe_2tpl]['6d']
         if cfg['covariance']['split_gaussian_cov']:
-            cov_dict_tosave_6d[f'{_probe}_SVA'] = _cd['sva'][probe_2tpl]['6d']
-            cov_dict_tosave_6d[f'{_probe}_SN'] = _cd['sn'][probe_2tpl]['6d']
-            cov_dict_tosave_6d[f'{_probe}_MIX'] = _cd['mix'][probe_2tpl]['6d']
+            covs_6d_tosave_dict[f'{_probe}_SVA'] = _cd['sva'][probe_2tpl]['6d']
+            covs_6d_tosave_dict[f'{_probe}_SN'] = _cd['sn'][probe_2tpl]['6d']
+            covs_6d_tosave_dict[f'{_probe}_MIX'] = _cd['mix'][probe_2tpl]['6d']
         if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
-            cov_dict_tosave_6d[f'{_probe}_TOT'] = _cd['tot'][probe_2tpl]['6d']
+            covs_6d_tosave_dict[f'{_probe}_TOT'] = _cd['tot'][probe_2tpl]['6d']
 
-    np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **cov_dict_tosave_6d)
+    np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **covs_6d_tosave_dict)
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
     io_obj.save_cov_euclidlib(cov_hs_obj=_cov_dict)
@@ -2004,7 +2005,7 @@ print(f'\nCovariance matrices saved in {output_path}\n')
 
 # ! ============================ plot & tests ==========================================
 with np.errstate(invalid='ignore', divide='ignore'):
-    for cov_name, cov in cov_dict_tosave_2d.items():
+    for cov_name, cov in covs_3x2pt_2d_tosave_dict.items():
         if not np.allclose(cov, 0, atol=0, rtol=1e-6):
             fig, ax = plt.subplots(1, 2, figsize=(10, 6))
             ax[0].matshow(np.log10(cov))
@@ -2206,6 +2207,33 @@ if cfg['misc']['save_output_as_benchmark']:
                 )
                 _ell_dict[key] = val.get_effective_ells()
 
+    # other stuff to save
+    misc_dict = {}
+
+    # COSEBIs W_n kernels
+    if obs_space == 'cosebis' and cov_cs_obj is not None:
+        if hasattr(cov_cs_obj, 'w_ells'):
+            misc_dict['cosebis_w_ells'] = cov_cs_obj.w_ells
+        if hasattr(cov_cs_obj, 'ells_for_w'):
+            misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
+
+    # NaMaster-specific arrays
+    if cfg['namaster']['use_namaster'] and cov_nmt_obj is not None:
+        if hasattr(cov_nmt_obj, 'mcm_ee_binned'):
+            misc_dict['nmt_mcm_ee'] = cov_nmt_obj.mcm_ee_binned
+        if hasattr(cov_nmt_obj, 'mcm_te_binned'):
+            misc_dict['nmt_mcm_te'] = cov_nmt_obj.mcm_te_binned
+        if hasattr(cov_nmt_obj, 'mcm_tt_binned'):
+            misc_dict['nmt_mcm_tt'] = cov_nmt_obj.mcm_tt_binned
+
+    # Mask information
+    if mask_obj is not None:
+        misc_dict['mask'] = mask_obj.mask
+        misc_dict['mask_ell'] = mask_obj.ell_mask
+        misc_dict['mask_cl'] = mask_obj.cl_mask
+        misc_dict['mask_fsky'] = np.array([mask_obj.fsky])
+        misc_dict['mask_survey_area_deg2'] = np.array([mask_obj.survey_area_deg2])
+
     # save metadata
     import datetime
 
@@ -2229,81 +2257,40 @@ if cfg['misc']['save_output_as_benchmark']:
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
         yaml.dump(cfg, yaml_file, default_flow_style=False)
 
-    # ! new
-    # ! Save all arrays in cov_*_obj objects, as well as all the values in
-    # ! cov_*_obj.cov_dict
-    # covs_arrays_dict = {}
+    # ! Save all the values in cov_*_obj.cov_dict
+    covs_totest_dict = {}
+    for _cov_obj, _cov_obj_name in zip(
+        [cov_hs_obj, cov_rs_obj, cov_cs_obj, cov_oc_obj, cov_nmt_obj],
+        ['cov_hs_obj', 'cov_rs_obj', 'cov_cs_obj', 'cov_oc_obj', 'cov_nmt_obj'],
+        strict=True,
+    ):
+        if _cov_obj is None:
+            continue
 
-    # for _cov_obj, _cov_obj_name in zip(
-    #     [cov_hs_obj, cov_rs_obj, cov_oc_obj, cov_nmt_obj],
-    #     ['cov_hs_obj', 'cov_rs_obj', 'cov_oc_obj', 'cov_nmt_obj'],
-    #     strict=True,
-    # ):
-    #     if _cov_obj is None:
-    #         continue
+        # optional: save every array contained in _cov_obj (slight overkill)
+        # (this will potentially save more than needed)
+        # covs_arrays_dict.update(
+        #     {k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)}
+        # )
 
-    #     # save every array contained in _cov_obj (this will potentially save more
-    #     # than needed)
-    #     # covs_arrays_dict.update(
-    #     #     {k: v for k, v in vars(_cov_obj).items() if isinstance(v, np.ndarray)}
-    #     # )
+        if not hasattr(_cov_obj, 'cov_dict'):
+            continue
 
-    #     if not hasattr(_cov_obj, 'cov_dict'):
-    #         continue
+        # save all covariance arrays in _cov_obj.cov_dict
+        for term in _cov_obj.cov_dict:
+            for probe_2tpl in _cov_obj.cov_dict[term]:
+                for dim in _cov_obj.cov_dict[term][probe_2tpl]:
+                    cov = _cov_obj.cov_dict[term][probe_2tpl][dim]
+                    if cov is None:
+                        continue
 
-    #     # save all covariance arrays in _cov_obj.cov_dict
-    #     for term in _cov_obj.cov_dict:
-    #         for probe_2tpl in _cov_obj.cov_dict[term]:
-    #             for dim in _cov_obj.cov_dict[term][probe_2tpl]:
-    #                 if isinstance(probe_2tpl, tuple):
-    #                     probe_str = ''.join(probe_2tpl)
-    #                 else:
-    #                     probe_str = probe_2tpl  # Handle string keys like '3x2pt'
-    #                 key_name = f'cov_{probe_str}_{term}_{dim}'
-
-    #                 if key_name in covs_arrays_dict:
-    #                     key_name += f'_{_cov_obj_name}'
-
-    #                 covs_arrays_dict[key_name] = _cov_obj.cov_dict[term][probe_2tpl][
-    #                     dim
-    #                 ]
-
-    # ! old
-    covs_arrays_dict = {}
-    for term in _cov_dict:
-        for _probe_abcd in _cov_dict[term]:
-            for dim in _cov_dict[term][_probe_abcd]:
-                if _cov_dict[term][_probe_abcd][dim] is None:
-                    value = 0
-                else:
-                    value = _cov_dict[term][_probe_abcd][dim]
-
-                if _probe_abcd == ('LL', 'LL'):
-                    probe_abcd = 'WL'
-                elif _probe_abcd == ('GG', 'GG'):
-                    probe_abcd = 'GC'
-                elif _probe_abcd == ('GL', 'GL'):
-                    probe_abcd = 'XC'
-                else:
-                    probe_abcd = _probe_abcd
-
-                probe_joined = (
-                    ''.join(probe_abcd) if isinstance(probe_abcd, tuple) else probe_abcd
-                )
-                name = f'cov_{probe_joined}_{term}_{dim}'
-                covs_arrays_dict[name] = value
-
-    # TODO this should be removed after merge with develop
-    if 'ssc' not in _cov_dict:
-        for probe in ['WL', 'GC', '3x2pt']:
-            covs_arrays_dict[f'cov_{probe}_ssc_6d'] = 0
-            covs_arrays_dict[f'cov_{probe}_ssc_4d'] = 0
-            covs_arrays_dict[f'cov_{probe}_ssc_2d'] = 0
-    if 'cng' not in _cov_dict:
-        for probe in ['WL', 'GC', 'XC', '3x2pt']:
-            covs_arrays_dict[f'cov_{probe}_cng_6d'] = 0
-            covs_arrays_dict[f'cov_{probe}_cng_4d'] = 0
-            covs_arrays_dict[f'cov_{probe}_cng_2d'] = 0
+                    probe_abcd = ''.join(probe_2tpl)
+                    # a certain covariance term might be present in multiple
+                    # covariance objects
+                    key_name = f'{_cov_obj_name}_cov_{term}_{probe_abcd}_{dim}'
+                    covs_totest_dict[key_name] = _cov_obj.cov_dict[term][probe_2tpl][
+                        dim
+                    ]
 
     np.savez_compressed(
         bench_filename,
@@ -2335,7 +2322,8 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
-        **covs_arrays_dict,
+        **covs_totest_dict,
+        **misc_dict,
         metadata=metadata,
     )
 
@@ -2346,9 +2334,11 @@ if (
     or cfg['misc']['test_symmetry']
 ):
     key = (
-        'TOT' if 'SSC' in cov_dict_tosave_2d or 'cNG' in cov_dict_tosave_2d else 'Gauss'
+        'TOT'
+        if 'SSC' in covs_3x2pt_2d_tosave_dict or 'cNG' in covs_3x2pt_2d_tosave_dict
+        else 'Gauss'
     )
-    cov = cov_dict_tosave_2d[key]
+    cov = covs_3x2pt_2d_tosave_dict[key]
     print(f'Testing cov {key}...')
 
     if cfg['misc']['test_condition_number']:

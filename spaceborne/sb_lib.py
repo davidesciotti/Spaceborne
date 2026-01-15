@@ -183,8 +183,6 @@ def fill_remaining_probe_blocks_6d(
     # * (excluding diagonal blocks)
     for probe_abcd in symm_probe_combs:
         probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
-        print(f'RS cov: filling probe combination {probe_ab, probe_cd} by symmetry')
-
         cov_cdab = cov_dict[term][probe_cd, probe_ab]['6d']
         cov = (cov_cdab.transpose(1, 0, 4, 5, 2, 3)).copy()
         cov_dict[term][probe_ab, probe_cd]['6d'] = cov

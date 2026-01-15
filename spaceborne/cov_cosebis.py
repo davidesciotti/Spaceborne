@@ -5,7 +5,14 @@
 import itertools
 import warnings
 
-import cloelib.auxiliary.cosebi_helpers as ch
+try:
+    import cloelib.auxiliary.cosebi_helpers as ch
+except ImportError as e:
+    raise ImportError(
+        'cloelib is required to compute COSEBIs covariance. '
+        'Please install it and rerun the code.'
+    ) from e
+
 import numpy as np
 from scipy.integrate import simpson as simps
 

@@ -209,7 +209,6 @@ for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
 # ! START HARDCODED OPTIONS/PARAMETERS
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
-
 # for the Gaussian covariance computation
 k_steps_sigma2_simps = 20_000
 shift_nz_interpolation_kind = 'linear'
@@ -256,6 +255,10 @@ cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
     2.15443469, 3.59381366, 5.9948425, 10.0,
 ]  # fmt: skip
 
+# Psi-statistics not implemented yet
+cfg['probe_selection']['Psigl'] = False
+cfg['probe_selection']['Psigg'] = False
+
 # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
 # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only).
 #   In this case, the output covmat
@@ -281,11 +284,7 @@ cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
 cfg['misc']['levin_batch_size'] = 1000  # Type: int.
 
 # ordering of the different 3x2pt probes in the covariance matrix
-cfg['covariance']['probe_ordering'] = [
-    ['L', 'L'],
-    ['G', 'L'],
-    ['G', 'G'],
-]  # Type: list[list[str]]
+cfg['covariance']['probe_ordering'] = [['L', 'L'], ['G', 'L'], ['G', 'G']]
 
 probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]

@@ -2217,15 +2217,6 @@ if cfg['misc']['save_output_as_benchmark']:
         if hasattr(cov_cs_obj, 'ells_for_w'):
             misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
 
-    # NaMaster-specific arrays
-    if cfg['namaster']['use_namaster'] and cov_nmt_obj is not None:
-        if hasattr(cov_nmt_obj, 'mcm_ee_binned'):
-            misc_dict['nmt_mcm_ee'] = cov_nmt_obj.mcm_ee_binned
-        if hasattr(cov_nmt_obj, 'mcm_te_binned'):
-            misc_dict['nmt_mcm_te'] = cov_nmt_obj.mcm_te_binned
-        if hasattr(cov_nmt_obj, 'mcm_tt_binned'):
-            misc_dict['nmt_mcm_tt'] = cov_nmt_obj.mcm_tt_binned
-
     # Mask information
     if mask_obj is not None:
         misc_dict['mask'] = mask_obj.mask

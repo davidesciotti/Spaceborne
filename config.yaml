@@ -49,7 +49,7 @@ halo_model:
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
-  # Options: ['harmonic', 'real'].
+  # Options: ['harmonic', 'real', 'cosebis'].
   space: harmonic # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
@@ -60,6 +60,11 @@ probe_selection:
   xim: True # Type: bool. Whether to compute \xi_-
   gt: True # Type: bool. Whether to compute \gamma_t
   w: True # Type: bool. Whether to compute w
+
+  En: True # Type: bool. Whether to compute En
+  Bn: True # Type: bool. Whether to compute Bn
+  Psigl: False # Type: bool. Whether to compute Psigl
+  Psigg: False # Type: bool. Whether to compute Psigg
 
   cross_cov: True # Type: bool. Whether to compute the cross-covariance between the selected probes
 
@@ -101,9 +106,12 @@ binning:
   ell_bins_filename: ../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
-  theta_min_arcmin: 50 # Type: float | int. Minimum theta (in arcminutes)
-  theta_max_arcmin: 300 # Type: float | int. Maximum theta (in arcminutes)
-  theta_bins: 10 # Type: int. Number of theta bins
+  theta_min_arcmin: 50 # Type: float | int.
+  theta_max_arcmin: 300 # Type: float | int.
+  theta_bins: 10 # Type: int.
+
+  # Number of modes for the COSEBIs covariance
+  n_modes_cosebis: 2 # Type: int.
 
 C_ell:
   # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
@@ -196,9 +204,9 @@ covariance:
   # `scale` = ell or theta, depending on the 'space' requested.
   # Options: [scale_probe_zpair, probe_scale_zpair, probe_zpair_scale]
   # Examples:
-  # - probe_zpair_scale: Ordered by probe type, then redshift pair, then scale (ell/theta). This is the 2D ordering used by cloelike
-  # - probe_scale_zpair: Ordered by probe type, then scale (ell/theta), then redshift pair.
-  # - scale_probe_zpair: Ordered by scale index (ell or theta), then probe type, then redshift pair.
+  # - probe_zpair_scale: Ordered by probe type, then redshift pair, then scale (ell/theta/n). This is the 2D ordering used by cloelike
+  # - probe_scale_zpair: Ordered by probe type, then scale (ell/theta/n), then redshift pair.
+  # - scale_probe_zpair: Ordered by scale index (ell/theta/n), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
@@ -209,7 +217,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: False # Type: bool
+  split_gaussian_cov: True # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -269,7 +277,7 @@ PyCCL:
 
   # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
   # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
-  n_samples_wf: 1000 # Type: int  # TODO move to precision settings!
+  n_samples_wf: 1000 # Type: int
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
@@ -309,7 +317,7 @@ precision:
   # Precision settings for pylevin. See the official documentation for more details:
   # https://levin-bessel.readthedocs.io/en/latest/index.html
   # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-  n_sub: 20 # number of collocation points in each bisection  # default: 8
+  n_sub: 50 # number of collocation points in each bisection  # default: 8
   n_bisec_max: 500 # maximum number of bisections used  # default: 32
   rel_acc: 1.e-7 # relative accuracy target  # default: 1.e-4
   boost_bessel: True # Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
@@ -323,10 +331,15 @@ precision:
   ell_bins_rs: 500 # Type: int. Should be high to get accurate results with Simpson integration
   ell_bins_rs_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
 
+  # Parameters of the (log-spaced) grid used for the COSEBIs covariance
+  theta_min_arcmin_cosebis: 2 # Type: int | float.
+  theta_max_arcmin_cosebis: 300 # Type: int | float.
+  theta_steps_cosebis: 1000 # Type: int. Increase for higher precision. Around 1000 should be enough.
+
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 72 # Type: int. How many threads to use for the parallel computations
+  num_threads: 50 # Type: int. How many threads to use for the parallel computations
 
   # jax-specific settings
   jax_platform: auto # Type: str. 'auto', 'cpu' or 'gpu'

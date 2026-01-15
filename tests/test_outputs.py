@@ -162,7 +162,8 @@ bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 bench_yaml_names.sort()
 
-bench_yaml_names = [f'config_{i:04d}' for i in range(85, 335)]
+# real space
+# bench_yaml_names = [f'config_{i:04d}' for i in range(84, 120)]
 
 # slow_benchs = [
 #     'config_0004',
@@ -239,4 +240,4 @@ for bench_name in bench_yaml_names:
             os.remove(file_path)
 
 
-print('Done.')
+print('All tests run ☑️')

@@ -88,6 +88,170 @@ Naming conventions (just to ease the notation):
 """
 
 
+def build_cl_3x2pt_5d(
+    cl_ll_3d: np.ndarray, cl_gl_3d: np.ndarray, cl_gg_3d: np.ndarray
+) -> np.ndarray:
+    """Constructs the 5D Cl array for 3x2pt from the individual 3D Cl arrays."""
+
+    assert cl_ll_3d.ndim == 3, 'cl_ll_3d must be a 3D array'
+    assert cl_gl_3d.ndim == 3, 'cl_gl_3d must be a 3D array'
+    assert cl_gg_3d.ndim == 3, 'cl_gg_3d must be a 3D array'
+
+    assert cl_ll_3d.shape == cl_gl_3d.shape == cl_gg_3d.shape, (
+        'cl_ll_3d, cl_gl_3d and cl_gg_3d must have the same shape'
+    )
+    assert cl_ll_3d.dtype == cl_gl_3d.dtype == cl_gg_3d.dtype, (
+        'cl_ll_3d, cl_gl_3d and cl_gg_3d must have the same dtype'
+    )
+
+    cl_3x2pt_5d = np.zeros((2, 2, *cl_ll_3d.shape), dtype=cl_ll_3d.dtype)
+    cl_3x2pt_5d[0, 0] = cl_ll_3d
+    cl_3x2pt_5d[1, 0] = cl_gl_3d
+    cl_3x2pt_5d[0, 1] = cl_gl_3d.transpose(0, 2, 1)
+    cl_3x2pt_5d[1, 1] = cl_gg_3d
+
+    return cl_3x2pt_5d
+
+
+def sum_split_g_terms_allprobeblocks_alldims(cov_dict) -> None:
+    # small sanity check probe combinations must match for terms (sva, sn, mix)
+    if not (cov_dict['sva'].keys() == cov_dict['sn'].keys() == cov_dict['mix'].keys()):
+        raise ValueError(
+            'The probe combinations keys in the SVA, SN and MIX covariance '
+            'dictionaries do not match!'
+        )
+
+    # sanity check: all the probes must match
+    probes_sva = set(cov_dict['sva'].keys())
+    probes_sn = set(cov_dict['sn'].keys())
+    probes_mix = set(cov_dict['mix'].keys())
+    if not (probes_sva == probes_sn == probes_mix):
+        raise ValueError(
+            'The probe combinations in the SVA, SN and MIX covariance '
+            'dictionaries do not match!'
+        )
+
+    # now sum the terms to get the Gaussian, for all probe combinations and
+    # dimensions
+    for probe_2tpl in cov_dict['sva']:
+        if probe_2tpl == '3x2pt':
+            continue  # skip 3x2pt, built later
+
+        # sanity check: all the dimensions must match
+        dims_sva = set(cov_dict['sva'][probe_2tpl].keys())
+        dims_sn = set(cov_dict['sn'][probe_2tpl].keys())
+        dims_mix = set(cov_dict['mix'][probe_2tpl].keys())
+        if not (dims_sva == dims_sn == dims_mix):
+            raise ValueError(
+                'The probe combinations in the SVA, SN and MIX covariance '
+                'dictionaries do not match!'
+            )
+
+        # for each dim, perform the sum
+        for dim in ['2d', '4d', '6d']:
+            sva = cov_dict['sva'][probe_2tpl][dim]
+            sn = cov_dict['sn'][probe_2tpl][dim]
+            mix = cov_dict['mix'][probe_2tpl][dim]
+
+            # Check consistency: either all None or all not None
+            none_count = sum([sva is None, sn is None, mix is None])
+            if none_count not in {0, 3}:
+                raise ValueError(
+                    f'For probe {probe_2tpl} and dim {dim}, '
+                    f'SVA, SN, and MIX must all be None or all be non-None. '
+                    f'Found: SVA={sva is not None}, SN={sn is not None}, '
+                    f'MIX={mix is not None}'
+                )
+
+            if none_count == 3:
+                continue
+
+            cov_dict['g'][probe_2tpl][dim] = (
+                cov_dict['sva'][probe_2tpl][dim]
+                + cov_dict['sn'][probe_2tpl][dim]
+                + cov_dict['mix'][probe_2tpl][dim]
+            )
+
+
+def fill_remaining_probe_blocks_6d(
+    cov_dict, term, symm_probe_combs, nonreq_probe_combs, space, nbx, zbins
+):
+    """Fill the remaining probe combinations by symmetry or
+    set them to 0 if not required."""
+
+    # * fill the symmetric counterparts of the required blocks
+    # * (excluding diagonal blocks)
+    for probe_abcd in symm_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
+        print(f'RS cov: filling probe combination {probe_ab, probe_cd} by symmetry')
+
+        cov_cdab = cov_dict[term][probe_cd, probe_ab]['6d']
+        cov = (cov_cdab.transpose(1, 0, 4, 5, 2, 3)).copy()
+        cov_dict[term][probe_ab, probe_cd]['6d'] = cov
+
+    # * if block is not required, set it to 0
+    for probe_abcd in nonreq_probe_combs:
+        probe_ab, probe_cd = split_probe_name(probe_abcd, space=space)
+        probe_2tpl = (probe_ab, probe_cd)
+
+        cov_dict[term][probe_2tpl]['6d'] = np.zeros(
+            (nbx, nbx, zbins, zbins, zbins, zbins)
+        )
+
+
+def postprocess_cov_dict(
+    cov_dict,
+    obs_space,
+    nbx,
+    ind_auto,
+    ind_cross,
+    zpairs_auto,
+    zpairs_cross,
+    block_index,
+    cov_ordering_2d,
+    req_probe_combs_2d,
+):
+    """
+    Space-agnostic postprocessing:
+    1. Reshape individual probe blocks from 6d to 4d and 2d, for each term
+    2. Build 3x2pt based on the required probe combinations
+    3. Sum g, ssc and cng to get tot term
+    """
+
+    # Step 1: Reshape probe-specific 6d → 4d → 2d
+    cov_dict_6d_probe_blocks_to_4d_and_2d(
+        cov_dict=cov_dict,
+        obs_space=obs_space,
+        nbx=nbx,
+        ind_auto=ind_auto,
+        ind_cross=ind_cross,
+        zpairs_auto=zpairs_auto,
+        zpairs_cross=zpairs_cross,
+        block_index=block_index,
+    )
+
+    # Step 2: Build 3x2pt 2d covs
+    for term in cov_dict:
+        probe_list = cov_dict[term].keys()
+        all_none = all(
+            cov_dict[term][probe_2tpl]['4d'] is None for probe_2tpl in probe_list
+        )
+
+        if term != 'tot' and not all_none:
+            cov_dict[term]['3x2pt']['2d'] = build_cov_3x2pt_2d(
+                cov_term_dict=cov_dict[term],
+                cov_ordering_2d=cov_ordering_2d,
+                obs_space=obs_space,
+            )
+
+    # Step 3: Sum to get 'tot'
+    set_cov_tot_2d_and_6d(
+        cov_dict=cov_dict, req_probe_combs_2d=req_probe_combs_2d, space=obs_space
+    )
+
+    return cov_dict
+
+
 def symmetrize_and_fill_probe_blocks(
     cov_term_dict: dict,
     dim: str,
@@ -548,21 +712,24 @@ def split_probe_name(
     # this is the default: use hardcoded probe names
     if valid_probes is None:
         if space == 'harmonic':
-            valid_probes = const.HS_DIAG_PROBES
+            prefix = 'HS'
         elif space == 'real':
-            valid_probes = const.RS_DIAG_PROBES
+            prefix = 'RS'
+        elif space == 'cosebis':
+            prefix = 'CS'
         else:
             raise ValueError(
-                f'`space` needs to be one of `harmonic` or `real`, got {space}'
+                f'`space` needs to be one of `harmonic` `real`, or `cosebis`, got {space}'
             )
+        valid_probes = const.__getattribute__(f'{prefix}_DIAG_PROBES')
     else:
         assert isinstance(valid_probes, (list, tuple)), 'valid_probes must be a list'
 
     # Try splitting at each possible position
-    for i in range(2, len(full_probe_name)):
-        first, second = full_probe_name[:i], full_probe_name[i:]
-        if first in valid_probes and second in valid_probes:
-            return first, second
+    for i in range(1, len(full_probe_name)):
+        probe_ab, probe_cd = full_probe_name[:i], full_probe_name[i:]
+        if probe_ab in valid_probes and probe_cd in valid_probes:
+            return probe_ab, probe_cd
 
     raise ValueError(
         f'Invalid probe name: {full_probe_name}. '
@@ -570,70 +737,89 @@ def split_probe_name(
     )
 
 
-def compare_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold):
+def compare_2d_covs(
+    cov_a,
+    cov_b,
+    name_a,
+    name_b,
+    title,
+    diff_threshold,
+    compare_cov_2d=True,
+    compare_corr_2d=True,
+    compare_diag=True,
+    compare_flat=True,
+    compare_spectrum=True,
+):
     # compare covariance
-    compare_arrays(
-        cov_a,
-        cov_b,
-        name_a,
-        name_b,
-        log_array=True,
-        log_diff=False,
-        abs_val=True,
-        plot_diff_threshold=diff_threshold,
-        title=title,
-    )
+    if compare_cov_2d:
+        compare_arrays(
+            cov_a,
+            cov_b,
+            name_a,
+            name_b,
+            log_array=True,
+            log_diff=False,
+            abs_val=True,
+            plot_diff_threshold=diff_threshold,
+            title=title,
+            early_return=False,
+        )
 
     # compare correlation
-    corr_a = cov2corr(cov_a)
-    corr_b = cov2corr(cov_b)
-    matshow_arr_kw = {'cmap': 'RdBu_r', 'vmin': -1, 'vmax': 1}
-    compare_arrays(
-        corr_a,
-        corr_b,
-        name_a,
-        name_b,
-        log_array=False,
-        log_diff=False,
-        matshow_arr_kw=matshow_arr_kw,
-        plot_diff_hist=False,
-        plot_diff_threshold=diff_threshold,
-        title=title,
-    )
+    if compare_corr_2d:
+        corr_a = cov2corr(cov_a)
+        corr_b = cov2corr(cov_b)
+        matshow_arr_kw = {'cmap': 'RdBu_r', 'vmin': -1, 'vmax': 1}
+        compare_arrays(
+            corr_a,
+            corr_b,
+            name_a,
+            name_b,
+            log_array=False,
+            log_diff=False,
+            matshow_arr_kw=matshow_arr_kw,
+            plot_diff_hist=False,
+            plot_diff_threshold=diff_threshold,
+            title=title,
+            early_return=False,
+        )
 
     # compare cov diag
-    compare_funcs(
-        x=None,
-        y={
-            f'abs diag {name_a}': np.diag(np.abs(cov_a)),
-            f'abs diag {name_b}': np.diag(np.abs(cov_b)),
-        },
-        logscale_y=[True, False],
-        title=title + ' diag',
-    )
+    if compare_diag:
+        compare_funcs(
+            x=None,
+            y={
+                f'abs diag {name_a}': np.diag(np.abs(cov_a)),
+                f'abs diag {name_b}': np.diag(np.abs(cov_b)),
+            },
+            logscale_y=[True, False],
+            title=title + ' diag',
+        )
 
     # compare cov flat
-    compare_funcs(
-        x=None,
-        y={
-            f'abs flat {name_a}': np.abs(cov_a).flatten(),
-            f'abs flat {name_b}': np.abs(cov_b).flatten(),
-        },
-        logscale_y=[True, False],
-        ylim_diff=[-100, 100],
-        title=title + ' flat',
-    )
+    if compare_flat:
+        compare_funcs(
+            x=None,
+            y={
+                f'abs flat {name_a}': np.abs(cov_a).flatten(),
+                f'abs flat {name_b}': np.abs(cov_b).flatten(),
+            },
+            logscale_y=[True, False],
+            ylim_diff=[-100, 100],
+            title=title + ' flat',
+        )
 
     # compare SB against mat - cov spectrum
-    eig_a = np.linalg.eigvals(cov_a)
-    eig_b = np.linalg.eigvals(cov_b)
-    compare_funcs(
-        x=None,
-        y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
-        logscale_y=[True, False],
-        ylim_diff=[-100, 100],
-        title=title + ' eig',
-    )
+    if compare_spectrum:
+        eig_a = np.linalg.eigvals(cov_a)
+        eig_b = np.linalg.eigvals(cov_b)
+        compare_funcs(
+            x=None,
+            y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
+            logscale_y=[True, False],
+            ylim_diff=[-100, 100],
+            title=title + ' eig',
+        )
 
 
 def build_probe_list(probes, include_cross_terms=False):
@@ -664,14 +850,18 @@ def get_probe_combs(unique_probe_combs, space):
     """Given the desired probe combinations, builds a list the ones to be filled by
     symmetry and the ones fo be skipped"""
 
-    assert space in ['harmonic', 'real'], 'Invalid space specified'
+    assert space in ['harmonic', 'real', 'cosebis'], 'Invalid space specified'
 
+    # get probe combinations' names
     if space == 'harmonic':
-        ALL_PROBE_COMBS = const.HS_ALL_PROBE_COMBS
-        DIAG_PROBE_COMBS = const.HS_DIAG_PROBE_COMBS
+        prefix = 'HS'
     elif space == 'real':
-        ALL_PROBE_COMBS = const.RS_ALL_PROBE_COMBS
-        DIAG_PROBE_COMBS = const.RS_DIAG_PROBE_COMBS
+        prefix = 'RS'
+    elif space == 'cosebis':
+        prefix = 'CS'
+
+    ALL_PROBE_COMBS = const.__getattribute__(f'{prefix}_ALL_PROBE_COMBS')
+    DIAG_PROBE_COMBS = const.__getattribute__(f'{prefix}_DIAG_PROBE_COMBS')
 
     # sanity checks
     for probe in unique_probe_combs:
@@ -687,11 +877,7 @@ def get_probe_combs(unique_probe_combs, space):
     # invert probe_a, probe_b <-> probe_c, probe_d
     symm_probe_combs = []
     for probe in _symm_probe_combs:
-        if space == 'harmonic':
-            probe_ab, probe_cd = probe[:2], probe[2:]
-        elif space == 'real':
-            probe_ab, probe_cd = split_probe_name(probe, 'real')
-
+        probe_ab, probe_cd = split_probe_name(probe, space)
         symm_probe_combs.append(probe_cd + probe_ab)
 
     # lastly, find the remaining (non required) probe combinations
@@ -2186,7 +2372,6 @@ def read_yaml(filename):
     return config
 
 
-# @njit
 def percent_diff(array_1, array_2, abs_value=False):
     array_1 = np.atleast_1d(array_1)  # Ensure array-like behavior
     array_2 = np.atleast_1d(array_2)
@@ -2205,7 +2390,6 @@ def percent_diff(array_1, array_2, abs_value=False):
         return diff.item() if diff.size == 1 else diff
 
 
-# @njit
 def percent_diff_mean(array_1, array_2):
     """Result is in "percent" units."""
     mean = (array_1 + array_2) / 2.0
@@ -2213,7 +2397,6 @@ def percent_diff_mean(array_1, array_2):
     return diff
 
 
-# @njit
 def _percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     if eraseNaN:
         diff = np.where(array_1 == array_2, 0, percent_diff(array_1, array_2))
@@ -2357,6 +2540,7 @@ def compare_arrays(
     white_where_zero=True,
     plot_diff_hist=False,
     matshow_arr_kw=None,
+    early_return=True,
     title='',
 ):
     fontsize = 25
@@ -2364,33 +2548,32 @@ def compare_arrays(
     if matshow_arr_kw is None:
         matshow_arr_kw = {}
 
-    if np.array_equal(A, B):
-        print(f'{name_A} and {name_B} are equal ✅')
-        return
-
-    for rtol in [1e-3, 1e-2, 5e-2]:  # these are NOT percent units
+    rtols = [0, 1e-3, 1e-2, 5e-2]
+    for rtol in rtols:
         if np.allclose(A, B, rtol=rtol, atol=0):
             print(
-                f'{name_A} and {name_B} are close within relative tolerance '
-                f'of {rtol * 100}% ✅'
+                f'{name_A} and {name_B} are close within '
+                f'relative tolerance of {rtol * 100}% ✅'
             )
-            return
-
-    diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
-    higher_rtol = plot_diff_threshold or 5.0
-    max_diff = np.max(diff_AB)
-    result_emoji = '❌' if max_diff > higher_rtol or np.isnan(max_diff) else '✅'
-    no_outliers = np.sum(diff_AB > higher_rtol)
-    additional_info = (
-        f'\nMax discrepancy: {max_diff:.2f}%;'
-        f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}'
-        f'\nFraction of elements with discrepancy > {higher_rtol}%: '
-        f'{no_outliers / diff_AB.size:.5f}'
-    )
-    print(
-        f'Are {name_A} and {name_B} different by less than {higher_rtol}%? '
-        f'{result_emoji} {additional_info}'
-    )
+            if early_return:
+                return
+            break
+    else:
+        # runs only if the loop never 'break'-s (i.e., not close at any rtol)
+        diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
+        higher_rtol = rtols[-1] * 100  # in percent
+        max_diff = np.max(diff_AB)
+        no_outliers = np.sum(diff_AB > higher_rtol)
+        additional_info = (
+            f'\nMax discrepancy: {max_diff:.2f}%;'
+            f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}'
+            f'\nFraction of elements with discrepancy > {higher_rtol}%: '
+            f'{no_outliers / diff_AB.size:.5f}'
+        )
+        print(
+            f'{name_A} and {name_B} differ by more than {higher_rtol}% ❌:'
+            f'{additional_info}'
+        )
 
     # Check that arrays are 2D if any plotting is requested.
     if plot_diff or plot_array:
@@ -3435,11 +3618,15 @@ def cov_dict_6d_probe_blocks_to_4d_and_2d(
     """
 
     if obs_space == 'harmonic':
-        auto_probes = const.HS_AUTO_PROBES
+        prefix = 'HS'
     elif obs_space == 'real':
-        auto_probes = const.RS_AUTO_PROBES
+        prefix = 'RS'
+    elif obs_space == 'cosebis':
+        prefix = 'CS'
     else:
-        raise ValueError('`space` must be in ["harmonic", "real"]')
+        raise ValueError('`space` must be in ["harmonic", "real", "cosebis"]')
+
+    auto_probes = const.__getattribute__(f'{prefix}_AUTO_PROBES')
 
     # reshape the probe-specific 6d arrays to 4d and 2d
     for term in cov_dict:  # noqa: PLC0206
@@ -4280,12 +4467,18 @@ def build_cov_3x2pt_2d(
 
     # I loop like the diagonal probe blocks instead of taking directly the cov
     # dict keys to enforce probe ordering to be LL, GL, GG (or xip, xim, gt, w)
-    if obs_space == 'real':
-        diag_probes = const.RS_DIAG_PROBES
-    elif obs_space == 'harmonic':
-        diag_probes = const.HS_DIAG_PROBES
+    if obs_space == 'harmonic':
+        prefix = 'HS'
+    elif obs_space == 'real':
+        prefix = 'RS'
+    elif obs_space == 'cosebis':
+        prefix = 'CS'
     else:
-        raise ValueError(f'obs_space must be "real" or "harmonic", not: {obs_space}')
+        raise ValueError(
+            f'obs_space must be "real", "harmonic" or "cosebis", not: {obs_space}'
+        )
+
+    diag_probes = const.__getattribute__(f'{prefix}_DIAG_PROBES')
 
     # grab the number of ell bins
     probe_blocks = [k for k in cov_term_dict if cov_term_dict[k] is not None]

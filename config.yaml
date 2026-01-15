@@ -44,6 +44,7 @@ extra_parameters:
     dark_energy_model: ppf # Type: str
 
 # Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
+# Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
 # Each parameter maps directly to a CCL class, and has exactly its name
 halo_model:
   mass_def: MassDef200m # Type: str
@@ -56,10 +57,10 @@ halo_model:
 OneCovariance:
   # Path to Python executable in OneCovariance conda environment
   # Update this to match your system's conda installation
-  path_to_oc_env: "/opt/miniconda3/envs/cov20_env/bin/python"
-  path_to_oc_executable: "../OneCovariance/covariance.py" # Relative path to OneCovariance executable from Spaceborne root
+  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+  path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
-  oc_output_filename: "cov_rcf_mergetest"
+  oc_output_filename: cov_rcf_mergetest
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
@@ -110,14 +111,14 @@ nz:
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
 
 binning:
-  binning_type: "log" # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
+  binning_type: log # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
   # ell binning for the harmonic-space covariance matrix
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
-  ell_bins_filename: "../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt"
+  ell_bins_filename: ../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50 # Type: float | int.
@@ -152,8 +153,8 @@ C_ell:
   # - 'FS2_polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
   #                         The actual values of these coefficients can be changed by modifying the values of
   #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
-  which_gal_bias: "FS2_polynomial_fit" # Type: str.
-  which_mag_bias: "FS2_polynomial_fit" # Type: str.
+  which_gal_bias: FS2_polynomial_fit # Type: str.
+  which_mag_bias: FS2_polynomial_fit # Type: str.
 
   # Coefficients of the third-order polynomial galaxy and magnification bias.
   # The order is [z^0, z^1, z^2, z^3]

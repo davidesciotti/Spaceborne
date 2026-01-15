@@ -239,4 +239,4 @@ for bench_name in bench_yaml_names:
             os.remove(file_path)
 
 
-print('Done.')
+print('All tests run ☑️')

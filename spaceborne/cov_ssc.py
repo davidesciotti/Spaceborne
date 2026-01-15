@@ -314,7 +314,7 @@ class SpaceborneSSC:
         for probe_abcd in unique_probe_combs_hs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
 
-            print(f'SSC: computing probe combination {probe_ab, probe_cd}')
+            print(f'SSC cov: computing probe combination {probe_ab, probe_cd}')
             d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_ab)]
             d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_cd)]
 

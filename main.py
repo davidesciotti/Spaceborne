@@ -1751,7 +1751,10 @@ if obs_space == 'real':
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
     ):
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
-        print(f'\n***** working on probe {probe_ab, probe_cd} - term {_term} *****')
+        print(
+            f'\n2PCF cov: computing probe combination {probe_ab, probe_cd}'
+            f' - term {_term.upper()}'
+        )
 
         _cov_hs_dict = cov_hs_obj.cov_dict if cov_hs_obj is not None else None
         cov_rs_obj.compute_rs_cov_term_probe_6d(
@@ -1802,7 +1805,10 @@ if obs_space == 'cosebis':
         unique_probe_combs_cs, cov_cs_obj.terms_toloop
     ):
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
-        print(f'\n***** working on probe {probe_ab, probe_cd} - term {_term} *****')
+        print(
+            f'\nCOSEBIs cov: computing probe combination {probe_ab, probe_cd}'
+            f' - term {_term.upper()}'
+        )
         _cov_hs_dict = cov_hs_obj.cov_dict if cov_hs_obj is not None else None
         cov_cs_obj.compute_cs_cov_term_probe_6d(
             cov_hs_dict=_cov_hs_dict, probe_abcd=_probe, term=_term

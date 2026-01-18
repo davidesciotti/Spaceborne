@@ -360,7 +360,7 @@ base_cfg = {
         'z_steps': 500,
         'z_steps_trisp': 10,
         'use_KE_approximation': False,
-        'cov_filename': 'cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz',
+        'cov_filename': 'covmat',
         'save_cov_fits': False,
     },
     'PyCCL': {

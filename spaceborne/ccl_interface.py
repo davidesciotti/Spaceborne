@@ -473,7 +473,8 @@ class CCLInterface:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
 
             with sl.timer(
-                f'{comp_load_str} {which_ng_cov} trispectrum, probe combination {probe_abcd}'
+                f'{comp_load_str} {which_ng_cov} trispectrum, '
+                f'probe combination {probe_ab, probe_cd}'
             ):
                 # Attempt to load from cache, fall back to computing if necessary
                 tkka_abcd = None

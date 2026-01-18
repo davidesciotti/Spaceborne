@@ -99,7 +99,7 @@ binning:
   # ell binning for the harmonic-space covariance matrix
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
-  ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
+  ell_bins: 50 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   ell_bins_filename: ../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
@@ -184,8 +184,8 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
-  cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   coupled_cov: False # Type: bool. Whether to compute the covariance of the coupled or decoupled Cls
 

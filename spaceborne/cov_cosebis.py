@@ -5,14 +5,6 @@
 import itertools
 import warnings
 
-try:
-    import cloelib.auxiliary.cosebi_helpers as ch
-except ImportError as e:
-    raise ImportError(
-        'cloelib is required to compute COSEBIs covariance. '
-        'Please install it and rerun the code.'
-    ) from e
-
 import numpy as np
 from scipy.integrate import simpson as simps
 
@@ -40,6 +32,7 @@ class CovCOSEBIs(CovarianceProjector):
         super().__init__(cfg, pvt_cfg, mask_obj)
 
         self.obs_space = 'cosebis'
+        self._ch = None
 
         self.n_modes = cfg['binning']['n_modes_cosebis']
         assert self.n_modes == self.nbx, 'n_modes_cosebis must equal nbx!'
@@ -65,6 +58,20 @@ class CovCOSEBIs(CovarianceProjector):
         self.cl_3x2pt_5d = _UNSET
         self.ells = _UNSET
         self.nbl = _UNSET
+
+    @property
+    def ch(self):
+        """Lazy import of cloelib.auxiliary.cosebi_helpers."""
+        if self._ch is None:
+            try:
+                import cloelib.auxiliary.cosebi_helpers as ch
+                self._ch = ch
+            except ImportError as e:
+                raise ImportError(
+                    'cloelib is required to compute COSEBIs covariance. '
+                    'Please install it and rerun the code.'
+                ) from e
+        return self._ch
 
     def _set_theta_binning(self):
         """Set the theta binning for the COSEBIs SN term integral."""
@@ -95,7 +102,7 @@ class CovCOSEBIs(CovarianceProjector):
         """
 
         with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {self.nbx} modes...'):
-            w_ells_dict = ch.get_W_ell(
+            w_ells_dict = self.ch.get_W_ell(
                 thetagrid=self.theta_grid_rad,
                 Nmax=self.nbx,
                 ells=self.ells,
@@ -120,19 +127,19 @@ class CovCOSEBIs(CovarianceProjector):
         t_minus = np.zeros((self.nbt, self.nbx))
         t_plus = np.zeros((self.nbt, self.nbx))
 
-        rn, nn, coeff_j = ch.get_roots_and_norms(
+        rn, nn, coeff_j = self.ch.get_roots_and_norms(
             tmax=self.theta_max_rad, tmin=self.theta_min_rad, Nmax=self.nbx
         )
 
         for n in range(self.nbx):
-            t_minus[:, n] = ch.tm(
+            t_minus[:, n] = self.ch.tm(
                 n=n + 1,
                 t=self.theta_grid_rad,
                 tmin=self.theta_min_rad,
                 nn=nn,
                 coeff_j=coeff_j,
             )
-            t_plus[:, n] = ch.tp(
+            t_plus[:, n] = self.ch.tp(
                 n=n + 1, t=self.theta_grid_rad, tmin=self.theta_min_rad, nn=nn, rn=rn
             )
             # convert the mp.math object to normal floats

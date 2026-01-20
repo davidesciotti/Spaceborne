@@ -104,12 +104,12 @@ binning:
   ell_bins_filename: ../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
-  theta_min_arcmin: 50 # Type: float | int.
+  theta_min_arcmin: 5 # Type: float | int.
   theta_max_arcmin: 300 # Type: float | int.
   theta_bins: 10 # Type: int.
 
   # Number of modes for the COSEBIs covariance
-  n_modes_cosebis: 2 # Type: int.
+  n_modes_cosebis: 7 # Type: int.
 
 C_ell:
   # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
@@ -330,7 +330,7 @@ precision:
   ell_bins_rs_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
-  theta_min_arcmin_cosebis: 2 # Type: int | float.
+  theta_min_arcmin_cosebis: 5 # Type: int | float.
   theta_max_arcmin_cosebis: 300 # Type: int | float.
   theta_steps_cosebis: 1000 # Type: int. Increase for higher precision. Around 1000 should be enough.
 

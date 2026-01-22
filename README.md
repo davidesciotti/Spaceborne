@@ -38,11 +38,11 @@ To install Spaceborne within a dedicated `conda` environment:
 # Clone the repository
 git clone https://github.com/davidesciotti/Spaceborne.git
 
-# Checkout the latest release (version tag); e.g., git checkout v2025.07.1
-git checkout <latest_version_tag>
-
 # Enter the Spaceborne root directory you just cloned
 cd Spaceborne
+
+# Checkout the latest release (version tag); e.g., git checkout v2025.07.1
+git checkout <latest_version_tag>
 
 # Create the conda environment. This step can be slow; add --solver=libmamba 
 # to speed it up (see below for more details)

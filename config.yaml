@@ -60,7 +60,8 @@ OneCovariance:
   path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
-  oc_output_filename: cov_rcf_mergetest
+  oc_output_filename: cov_oc
+  compare_against_oc: True
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
@@ -322,20 +323,16 @@ sample_covariance:
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 precision:
-  # ==================================== NaMaster ======================================
-  # Number of iterations when computing the alms of the input map. See
-  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-  n_iter_nmt: null # Type: None | int.
-
-  # ===================================== pylevin ======================================
-  # Precision settings for pylevin. See the official documentation for more details:
-  # https://levin-bessel.readthedocs.io/en/latest/index.html
-  # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-  n_sub: 50 # number of collocation points in each bisection  # default: 8
-  n_bisec_max: 500 # maximum number of bisections used  # default: 32
-  rel_acc: 1.e-7 # relative accuracy target  # default: 1.e-4
-  boost_bessel: True # Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
-  verbose: True # Type: bool. Whether to display warnings
+  # Binning method for the "1/fsky" harmonic-space Gaussian covariance
+  # (which is diagonal in ell1, ell2):
+  # - True:  Average over all integer ell modes within each bin (exact formula).
+  #          Sum over modes and divide by N_modes², where N_modes is the number of
+  #          integer ells in the bin. Slightly slower but more accurate, especially
+  #          for wide bins or low ell.
+  # - False: Evaluate at bin centers assuming slowly-varying covariance (approximation).
+  #          Divide by Delta_ell. Slightly faster but less accurate for wide bins or low ell.
+  # Note: N_modes = Delta_ell for integer ells
+  cov_hs_g_ell_bin_average: True
 
   # ================================= real space cov ===================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
@@ -350,6 +347,11 @@ precision:
   theta_min_arcmin_cosebis: 5 # Type: int | float.
   theta_max_arcmin_cosebis: 300 # Type: int | float.
   theta_steps_cosebis: 1000 # Type: int. Increase for higher precision. Around 1000 should be enough.
+
+  # ==================================== NaMaster ======================================
+  # Number of iterations when computing the alms of the input map. See
+  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
+  n_iter_nmt: null # Type: None | int.
 
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might

@@ -249,7 +249,7 @@ if 'OneCovariance' not in cfg:
     )
     cfg['OneCovariance']['consistency_checks'] = False
     cfg['OneCovariance']['oc_output_filename'] = 'cov_oc'
-    cfg['OneCovariance']['compare_against_oc'] = True
+    cfg['OneCovariance']['compare_against_oc'] = False
 
 if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
@@ -1948,25 +1948,25 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
 if cfg['OneCovariance']['compare_against_oc']:
-#     for term in _cov_dict:
-#         cov_a = _cov_dict[term]['3x2pt']['2d']
-#         cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+    #     for term in _cov_dict:
+    #         cov_a = _cov_dict[term]['3x2pt']['2d']
+    #         cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-#         sl.compare_2d_covs(
-#             cov_a,
-#             cov_b,
-#             'SB',
-#             'OC',
-#             f'cov {term} {obs_space} space - ',
-#             diff_threshold=10,
-#             compare_cov_2d=True,
-#             compare_corr_2d=False,
-#             compare_diag=True,
-#             compare_flat=True,
-#             compare_spectrum=True,
-#         )
-#         print('=' * 70)
-#         print('')
+    #         sl.compare_2d_covs(
+    #             cov_a,
+    #             cov_b,
+    #             'SB',
+    #             'OC',
+    #             f'cov {term} {obs_space} space - ',
+    #             diff_threshold=10,
+    #             compare_cov_2d=True,
+    #             compare_corr_2d=False,
+    #             compare_diag=True,
+    #             compare_flat=True,
+    #             compare_spectrum=True,
+    #         )
+    #         print('=' * 70)
+    #         print('')
 
     # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
     # is not "full" (no Psi* covariance blocks)

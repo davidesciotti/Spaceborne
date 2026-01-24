@@ -206,7 +206,7 @@ if not os.path.exists(output_path):
 for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
     os.makedirs(f'{output_path}/{subdir}', exist_ok=True)
 
-# ! START HARDCODED OPTIONS/PARAMETERS
+# ! ======================== START HARDCODED OPTIONS/PARAMETERS ========================
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
 # for the Gaussian covariance computation
@@ -216,6 +216,24 @@ shift_nz_interpolation_kind = 'linear'
 
 # these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
+
+
+# ===================================== pylevin ======================================
+# Precision settings for pylevin. See the official documentation for more details:
+# https://levin-bessel.readthedocs.io/en/latest/index.html
+# https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
+
+# number of collocation points in each bisection. default: 8
+cfg['precision']['n_sub'] = 50
+# maximum number of bisections used. default: 32
+cfg['precision']['n_bisec_max'] = 500
+# relative accuracy target. default: 1.e-4
+cfg['precision']['rel_acc'] = 1.0e-7
+# Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
+cfg['precision']['boost_bessel'] = True
+# Type: bool. Whether to display warnings
+cfg['precision']['verbose'] = True
+
 
 if 'G_code' not in cfg['covariance']:
     cfg['covariance']['G_code'] = 'Spaceborne'
@@ -230,7 +248,8 @@ if 'OneCovariance' not in cfg:
         '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
     )
     cfg['OneCovariance']['consistency_checks'] = False
-    cfg['OneCovariance']['oc_output_filename'] = 'cov_rcf_mergetest_v2_'
+    cfg['OneCovariance']['oc_output_filename'] = 'cov_oc'
+    cfg['OneCovariance']['compare_against_oc'] = True
 
 if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
@@ -304,7 +323,7 @@ cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
 # setting this to False makes the code resort to the less accurate bin averaging method
 # mentioned above
 cfg['precision']['levin_bin_avg'] = True  # Type: bool.
-# ! END HARDCODED OPTIONS/PARAMETERS
+# ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
 # convenence settings that have been hardcoded
 n_probes = cfg['covariance']['n_probes']
@@ -468,6 +487,12 @@ if cfg['covariance']['G'] and cfg['covariance']['G_code'] == 'OneCovariance':
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'OneCovariance':
     compute_oc_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'OneCovariance':
+    compute_oc_cng = True
+if cfg['covariance']['G'] and cfg['OneCovariance']['compare_against_oc']:
+    compute_oc_g = True
+if cfg['covariance']['SSC'] and cfg['OneCovariance']['compare_against_oc']:
+    compute_oc_ssc = True
+if cfg['covariance']['cNG'] and cfg['OneCovariance']['compare_against_oc']:
     compute_oc_cng = True
 
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
@@ -1132,7 +1157,29 @@ else:
 # ccl_obj.cl_gg_3d = cl_gg_3d
 # ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
-# ! =========================== Unbinned Cls for nmt/sample cov ========================
+# ! =========================== Unbinned Cls for nmt/sample/HS bin avg cov =====================
+if (
+    cfg['namaster']['use_namaster']
+    or cfg['sample_covariance']['compute_sample_cov']
+    or cfg['precision']['cov_hs_g_ell_bin_average']
+):
+    if cfg['C_ell']['use_input_cls']:
+        cl_3x2pt_unb_5d = sl.build_cl_3x2pt_5d(
+            cl_ll_3d=cl_ll_3d_spline(ell_obj.ells_3x2pt_unb),
+            cl_gl_3d=cl_gl_3d_spline(ell_obj.ells_3x2pt_unb),
+            cl_gg_3d=cl_gg_3d_spline(ell_obj.ells_3x2pt_unb),
+        )
+
+    else:
+        cl_3x2pt_unb_5d = ccl_interface.compute_cl_3x2pt_5d(
+            ccl_obj,
+            ells=ell_obj.ells_3x2pt_unb,
+            zbins=zbins,
+            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+            cl_ccl_kwargs=cl_ccl_kwargs,
+            n_probes_hs=cfg['covariance']['n_probes'],
+        )
+
 if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
@@ -1155,26 +1202,9 @@ if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_c
     cov_nmt_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     cov_nmt_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
 
-    if cfg['C_ell']['use_input_cls']:
-        cl_3x2pt_5d_unb = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(ell_obj.ells_3x2pt_unb),
-            cl_gl_3d=cl_gl_3d_spline(ell_obj.ells_3x2pt_unb),
-            cl_gg_3d=cl_gg_3d_spline(ell_obj.ells_3x2pt_unb),
-        )
-
-    else:
-        cl_3x2pt_5d_unb = ccl_interface.compute_cl_3x2pt_5d(
-            ccl_obj,
-            ells=ell_obj.ells_3x2pt_unb,
-            zbins=zbins,
-            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-            cl_ccl_kwargs=cl_ccl_kwargs,
-            n_probes_hs=cfg['covariance']['n_probes'],
-        )
-
-    cov_nmt_obj.cl_ll_unb_3d = cl_3x2pt_5d_unb[0, 0]
-    cov_nmt_obj.cl_gl_unb_3d = cl_3x2pt_5d_unb[1, 0]
-    cov_nmt_obj.cl_gg_unb_3d = cl_3x2pt_5d_unb[1, 1]
+    cov_nmt_obj.cl_ll_unb_3d = cl_3x2pt_unb_5d[0, 0]
+    cov_nmt_obj.cl_gl_unb_3d = cl_3x2pt_unb_5d[1, 0]
+    cov_nmt_obj.cl_gg_unb_3d = cl_3x2pt_unb_5d[1, 1]
 
 else:
     cov_nmt_obj = None
@@ -1248,14 +1278,23 @@ if obs_space == 'harmonic':
         cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
     )
     cov_hs_obj.consistency_checks()
+
+    # set unbinned cls if needed
+    if cfg['precision']['cov_hs_g_ell_bin_average']:
+        cov_hs_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
+
     cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
+
 else:
     cov_hs_obj = None
 
 # ! =================================== OneCovariance ================================
 # initialize object
 cov_oc_obj = None
-if 'OneCovariance' in cov_terms_and_codes.values():
+if (
+    'OneCovariance' in cov_terms_and_codes.values()
+    or cfg['OneCovariance']['compare_against_oc']
+):
     if cfg['ell_cuts']['cl_ell_cuts']:
         raise NotImplementedError(
             'TODO double check inputs in this case. This case is untested'
@@ -1906,46 +1945,47 @@ if obs_space != 'harmonic':
                 ][dim]
 
 
-# # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
-# # ! moreover, some of the sub-blocks are transposed.
-# for term in ['sva', 'sn', 'mix']:
-#     cov_a = _cov_obj.cov_dict[term]['3x2pt']['2d']
-#     cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+# ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
+# ! moreover, some of the sub-blocks are transposed.
+if cfg['OneCovariance']['compare_against_oc']:
+#     for term in _cov_dict:
+#         cov_a = _cov_dict[term]['3x2pt']['2d']
+#         cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-#     sl.compare_2d_covs(
-#         cov_a,
-#         cov_b,
-#         'SB',
-#         'OC',
-#         f'cov {term} {obs_space} space - ',
-#         diff_threshold=10,
-#         compare_cov_2d=True,
-#         compare_corr_2d=False,
-#         compare_diag=True,
-#         compare_flat=True,
-#         compare_spectrum=True,
-#     )
-#     print('=' * 70)
-#     print('')
+#         sl.compare_2d_covs(
+#             cov_a,
+#             cov_b,
+#             'SB',
+#             'OC',
+#             f'cov {term} {obs_space} space - ',
+#             diff_threshold=10,
+#             compare_cov_2d=True,
+#             compare_corr_2d=False,
+#             compare_diag=True,
+#             compare_flat=True,
+#             compare_spectrum=True,
+#         )
+#         print('=' * 70)
+#         print('')
 
-# # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
-# # is not "full" (no Psi* covariance blocks)
-# if obs_space != 'cosebis':
-#     cov_a = _cov_obj.cov_dict['g']['3x2pt']['2d']
-#     cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
-#     sl.compare_2d_covs(
-#         cov_a,
-#         cov_b,
-#         'SB',
-#         'OC',
-#         f'cov g {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
-#         diff_threshold=10,
-#         compare_cov_2d=True,
-#         compare_corr_2d=False,
-#         compare_diag=True,
-#         compare_flat=True,
-#         compare_spectrum=True,
-#     )
+    # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
+    # is not "full" (no Psi* covariance blocks)
+    if obs_space != 'cosebis':
+        cov_a = _cov_dict['g']['3x2pt']['2d']
+        cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
+        sl.compare_2d_covs(
+            cov_a,
+            cov_b,
+            'SB',
+            'OC mat fmt',
+            f'cov g {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
+            diff_threshold=10,
+            compare_cov_2d=True,
+            compare_corr_2d=False,
+            compare_diag=True,
+            compare_flat=True,
+            compare_spectrum=True,
+        )
 
 
 # ! save 2D covs (for each term) in npz archive

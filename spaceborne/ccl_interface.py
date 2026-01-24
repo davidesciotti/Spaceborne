@@ -338,10 +338,10 @@ class CCLInterface:
 
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(
-            kernel_a,
-            kernel_b,
-            ell_grid,
-            self.zbins,
+            wf_a=kernel_a,
+            wf_b=kernel_b,
+            ells=ell_grid,
+            zbins=self.zbins,
             p_of_k_a=p_of_k_a,
             cosmo=self.cosmo_ccl,
             cl_ccl_kwargs=cl_ccl_kwargs,

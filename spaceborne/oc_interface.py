@@ -1031,6 +1031,7 @@ class OneCovarianceInterface:
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
             self.zbins
         )
+        
 
         self.cov_dict_matfmt = defaultdict(lambda: defaultdict(dict))
 

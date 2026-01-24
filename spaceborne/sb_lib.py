@@ -3344,42 +3344,123 @@ def get_zpairs(zbins):
     return zpairs_auto, zpairs_cross, zpairs_3x2pt
 
 
-def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_diagonal_ells):
-    """Helper function to compute covariance terms."""
-    if return_only_diagonal_ells:
-        if mix:
-            term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
-            term_2 = np.einsum('ACLik, BDLjl -> ABCDLijkl', b, a)
-            term_3 = np.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
-            term_4 = np.einsum('ADLil, BCLjk -> ABCDLijkl', b, a)
+def _expand_diagonal_to_full(cov_diag):
+    """Expand diagonal covariance to full (ell1, ell2) matrix.
 
-        else:
-            term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
-            term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
-            term_3 = 0
-            term_4 = 0
+    Parameters
+    ----------
+    cov_diag : np.ndarray
+        Diagonal covariance with shape (A, B, C, D, nbl, i, j, k, l)
 
-        cov = np.einsum(
-            'ABCDLijkl, L -> ABCDLijkl', term_1 + term_2 + term_3 + term_4, prefactor
+    Returns
+    -------
+    cov_full : np.ndarray
+        Full covariance with shape (A, B, C, D, nbl, nbl, i, j, k, l)
+        where only the diagonal (ell, ell) entries are non-zero
+    """
+    nbl = cov_diag.shape[4]
+    cov_shape = (*cov_diag.shape[:4], nbl, nbl, *cov_diag.shape[5:])
+    cov_full = np.zeros(cov_shape, dtype=cov_diag.dtype)
+
+    for ell in range(nbl):
+        cov_full[:, :, :, :, ell, ell] = cov_diag[:, :, :, :, ell]
+
+    return cov_full
+
+
+def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
+    """Bin covariance computed at integer ell modes into ell bins.
+
+    Parameters
+    ----------
+    cov_ell_modes : np.ndarray
+        Covariance computed at integer ell modes, shape (A, B, C, D, n_ell_modes, i, j, k, l)
+    ell_edges : np.ndarray
+        Bin edges, shape (nbl + 1,)
+    ell_values : np.ndarray
+        Integer ell values, shape (n_ell_modes,)
+
+    Returns
+    -------
+    cov_binned : np.ndarray
+        Binned covariance, shape (A, B, C, D, nbl, i, j, k, l)
+
+    Notes
+    -----
+    This function sums the covariance over all ell modes in each bin and divides
+    by the bin width delta_ell = ell_upper - ell_lower. This matches OneCovariance's
+    approach where the prefactor is 1/((2*ell+1)*fsky*delta_ell).
+    """
+    nbl = len(ell_edges) - 1
+
+    # Initialize output array (the shape is the same as the input, but with fewer
+    # ell bins)
+    output_shape = (*cov_ell_modes.shape[:4], nbl, *cov_ell_modes.shape[5:])
+    cov_binned = np.zeros(output_shape)
+
+    # Sum over ell modes in each bin and divide by n_modes**2 (i.e., average over the
+    # given ell bin)
+    for bin_idx in range(nbl):
+        ell_lower = int(ell_edges[bin_idx])
+        ell_upper = int(ell_edges[bin_idx + 1])
+
+        # Find which ell modes fall in this bin
+        mask = (ell_values >= ell_lower) & (ell_values < ell_upper)
+        n_modes = np.sum(mask)
+
+        if n_modes == 0:
+            raise ValueError(
+                f'No ell modes found in bin {bin_idx} [{ell_lower}, {ell_upper}).'
+                'The ell binning might be too fine for two integer values to fall '
+                'within certain bins.'
+            )
+
+        # Sum over modes and divide by num_modes**2
+        cov_binned[:, :, :, :, bin_idx, ...] = (
+            np.sum(cov_ell_modes[:, :, :, :, mask, ...], axis=4) / n_modes**2
         )
 
+    return cov_binned
+
+
+def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_ell_diagonal: bool):
+    """Helper function to compute covariance terms.
+
+    Parameters
+    ----------
+    a, b : np.ndarray
+        Input arrays with shape (n_probes, n_probes, n_ell, zbins, zbins)
+    mix : bool
+        If True, compute mixed terms (for cross-covariance of signal and noise)
+    prefactor : np.ndarray
+        1D array of prefactors for each ell mode
+    return_only_ell_diagonal : bool
+        If True, return shape (A,B,C,D,L,i,j,k,l). If False, return (A,B,C,D,L,M,i,j,k,l)
+
+    Returns
+    -------
+    cov : np.ndarray
+        Covariance array
+    """
+    if mix:
+        term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
+        term_2 = np.einsum('ACLik, BDLjl -> ABCDLijkl', b, a)
+        term_3 = np.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
+        term_4 = np.einsum('ADLil, BCLjk -> ABCDLijkl', b, a)
     else:
-        if mix:
-            term_1 = np.einsum('ACLik, BDMjl -> ABCDLMijkl', a, b)
-            term_2 = np.einsum('ACLik, BDMjl -> ABCDLMijkl', b, a)
-            term_3 = np.einsum('ADLil, BCMjk -> ABCDLMijkl', a, b)
-            term_4 = np.einsum('ADLil, BCMjk -> ABCDLMijkl', b, a)
+        term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
+        term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
+        term_3 = 0
+        term_4 = 0
 
-        else:
-            term_1 = np.einsum('ACLik, BDMjl -> ABCDLMijkl', a, b)
-            term_2 = np.einsum('ADLil, BCMjk -> ABCDLMijkl', a, b)
-            term_3 = 0
-            term_4 = 0
+    cov_diag = np.einsum(
+        'ABCDLijkl, L -> ABCDLijkl', term_1 + term_2 + term_3 + term_4, prefactor
+    )
 
-        cov = np.einsum(
-            'ABCDLMijkl, LM -> ABCDLMijkl', term_1 + term_2 + term_3 + term_4, prefactor
-        )
-    return cov
+    if return_only_ell_diagonal:
+        return cov_diag
+    else:
+        return _expand_diagonal_to_full(cov_diag)
 
 
 def compute_g_cov(
@@ -3389,11 +3470,44 @@ def compute_g_cov(
     ell_values: np.ndarray,
     delta_ell: np.ndarray,
     split_terms: bool,
-    return_only_diagonal_ells: bool = False,
+    return_only_ell_diagonal: bool = False,
+    cov_hs_g_ell_bin_average: bool = True,
+    ell_edges: np.ndarray = None,
 ):
     """Computes the Gaussian (1/fsky) covariance term, splitting into SVA, SN and MIX
     terms if required.
+
+    Parameters
+    ----------
+    cl_5d : np.ndarray
+        Power spectra with shape (n_probes, n_probes, nbl, zbins, zbins)
+    noise_5d : np.ndarray
+        Noise power spectra with shape (n_probes, n_probes, nbl, zbins, zbins)
+    fsky : float
+        Sky fraction
+    ell_values : np.ndarray
+        Ell values. If cov_hs_g_ell_bin_average=True, these are all integer ell values.
+        If cov_hs_g_ell_bin_average=False, these are bin centers.
+    delta_ell : np.ndarray
+        Bin widths (only used if cov_hs_g_ell_bin_average=False)
+    split_terms : bool
+        If True, return (cov_sva, cov_sn, cov_mix). If False, return total cov.
+    return_only_ell_diagonal : bool
+        If True, return diagonal covariance shape (A,B,C,D,L,i,j,k,l).
+        If False, return full covariance shape (A,B,C,D,L,M,i,j,k,l).
+    cov_hs_g_ell_bin_average : bool
+        If True, sum over integer ell modes and divide by number of modes**2
+        If False, use traditional binned approach: Cov = prefactor / delta_ell
+    ell_edges : np.ndarray, optional
+        Bin edges (required if cov_hs_g_ell_bin_average=False). Shape (nbl+1,)
+
+    Returns
+    -------
+    cov or (cov_sva, cov_sn, cov_mix) : np.ndarray or tuple
+        Covariance array(s)
     """
+
+    # sanity checks
     assert cl_5d.shape[0] in [1, 2], 'This function only works with 1 or 2 probes'
     assert cl_5d.shape[0] == cl_5d.shape[1], (
         'cl_5d must have shape (n_probes, n_probes, nbl, zbins, zbins)'
@@ -3403,32 +3517,79 @@ def compute_g_cov(
     )
     assert noise_5d.shape == cl_5d.shape, 'noise_5d must have the same shape as cl_5d'
 
-    # Prefactor setup
-    prefactor = 1 / ((2 * ell_values + 1) * fsky * delta_ell)
-    if not return_only_diagonal_ells:
-        prefactor = np.diag(prefactor)
-
-    clplusn_5d = cl_5d + noise_5d
-
-    # Compute total covariance without splitting terms
-    if not split_terms:
-        cov = cov_g_terms_helper(
-            clplusn_5d, clplusn_5d, False, prefactor, return_only_diagonal_ells
+    if cov_hs_g_ell_bin_average and ell_edges is None:
+        raise ValueError(
+            'ell_edges must be provided when cov_hs_g_ell_bin_average=True'
         )
+
+    # convenience variables
+    clplusn_5d = cl_5d + noise_5d
+    prefactor = 1 / ((2 * ell_values + 1) * fsky)
+
+    if cov_hs_g_ell_bin_average:
+        # In this case, we need to compute the covariance at all integer ell modes,
+        # which makes the output 2D (ell1, ell2) covariance too large
+        _return_only_ell_diagonal = True
+    else:
+        # Traditional approach: prefactor at bin centers divided by delta_ell
+        _return_only_ell_diagonal = return_only_ell_diagonal
+        prefactor /= delta_ell
+
+    if split_terms:
+        cov_sva = cov_g_terms_helper(
+            cl_5d,
+            cl_5d,
+            mix=False,
+            prefactor=prefactor,
+            return_only_ell_diagonal=_return_only_ell_diagonal,
+        )
+        cov_sn = cov_g_terms_helper(
+            noise_5d,
+            noise_5d,
+            mix=False,
+            prefactor=prefactor,
+            return_only_ell_diagonal=_return_only_ell_diagonal,
+        )
+        cov_mix = cov_g_terms_helper(
+            cl_5d,
+            noise_5d,
+            mix=True,
+            prefactor=prefactor,
+            return_only_ell_diagonal=_return_only_ell_diagonal,
+        )
+
+        # bin the integer ell modes
+        if cov_hs_g_ell_bin_average:
+            cov_sva = _bin_cov_hs_g_diag(cov_sva, ell_edges, ell_values)
+            cov_sn = _bin_cov_hs_g_diag(cov_sn, ell_edges, ell_values)
+            cov_mix = _bin_cov_hs_g_diag(cov_mix, ell_edges, ell_values)
+
+            # if the user wants full (ell1, ell2) matrix, expand diagonal to full
+            if not return_only_ell_diagonal:
+                cov_sva = _expand_diagonal_to_full(cov_sva)
+                cov_sn = _expand_diagonal_to_full(cov_sn)
+                cov_mix = _expand_diagonal_to_full(cov_mix)
+
+        return cov_sva, cov_sn, cov_mix
+
+    else:
+        cov = cov_g_terms_helper(
+            clplusn_5d,
+            clplusn_5d,
+            mix=False,
+            prefactor=prefactor,
+            return_only_ell_diagonal=_return_only_ell_diagonal,
+        )
+
+        # bin the integer ell modes
+        if cov_hs_g_ell_bin_average:
+            cov = _bin_cov_hs_g_diag(cov, ell_edges, ell_values)
+
+            # if the user wants full (ell1, ell2) matrix, expand diagonal to full
+            if not return_only_ell_diagonal:
+                cov = _expand_diagonal_to_full(cov)
+
         return cov
-
-    # Split terms
-    cov_sva = cov_g_terms_helper(
-        cl_5d, cl_5d, False, prefactor, return_only_diagonal_ells
-    )
-    cov_sn = cov_g_terms_helper(
-        noise_5d, noise_5d, False, prefactor, return_only_diagonal_ells
-    )
-    cov_mix = cov_g_terms_helper(
-        cl_5d, noise_5d, True, prefactor, return_only_diagonal_ells
-    )
-
-    return cov_sva, cov_sn, cov_mix
 
 
 def cov_10d_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):

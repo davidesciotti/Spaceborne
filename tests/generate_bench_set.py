@@ -450,79 +450,83 @@ row_col = 'row-major'
 for space in ['harmonic', 'real', 'cosebis']:
     for split_gaussian_cov in [True, False]:
         for cross_cov in [True, False]:
-            for ordering in [
-                'probe_scale_zpair',
-                'probe_zpair_scale',
-                'scale_probe_zpair',
-            ]:
-                # for triu_tril in ['triu', 'tril']:
-                # for row_col in ['row-major', 'col-major']:
-                if space == 'harmonic':
-                    for LL, GL, GG in product([True, False], repeat=3):
-                        if not any([LL, GL, GG]):
-                            continue
-                        configs_to_test.append(
-                            {
-                                'probe_selection': {
-                                    'LL': LL,
-                                    'GL': GL,
-                                    'GG': GG,
-                                    'cross_cov': cross_cov,
-                                    'space': space,
-                                },
-                                'covariance': {
-                                    'SSC': False,
-                                    'split_gaussian_cov': split_gaussian_cov,
-                                    'covariance_ordering_2D': ordering,
-                                    'triu_tril': triu_tril,
-                                    'row_col_major': row_col,
-                                },
-                            }
-                        )
-                elif space == 'real':
-                    for xip, xim, gt, w in product([True, False], repeat=4):
-                        if not any([xip, xim, gt, w]):
-                            continue
-                        configs_to_test.append(
-                            {
-                                'probe_selection': {
-                                    'xip': xip,
-                                    'xim': xim,
-                                    'gt': gt,
-                                    'w': w,
-                                    'cross_cov': cross_cov,
-                                    'space': space,
-                                },
-                                'covariance': {
-                                    'SSC': False,
-                                    'split_gaussian_cov': split_gaussian_cov,
-                                    'covariance_ordering_2D': ordering,
-                                    'triu_tril': triu_tril,
-                                    'row_col_major': row_col,
-                                },
-                            }
-                        )
-                elif space == 'cosebis':
-                    for En, Bn in product([True, False], repeat=2):
-                        if not any([En, Bn]):
-                            continue
-                        configs_to_test.append(
-                            {
-                                'probe_selection': {
-                                    'En': En,
-                                    'Bn': Bn,
-                                    'cross_cov': cross_cov,
-                                    'space': space,
-                                },
-                                'covariance': {
-                                    'SSC': False,
-                                    'split_gaussian_cov': split_gaussian_cov,
-                                    'covariance_ordering_2D': ordering,
-                                    'triu_tril': triu_tril,
-                                    'row_col_major': row_col,
-                                },
-                            }
-                        )
+            for use_input_cls in [True, False]:
+                for ordering in [
+                    'probe_scale_zpair',
+                    'probe_zpair_scale',
+                    'scale_probe_zpair',
+                ]:
+                    # for triu_tril in ['triu', 'tril']:
+                    # for row_col in ['row-major', 'col-major']:
+                    if space == 'harmonic':
+                        for LL, GL, GG in product([True, False], repeat=3):
+                            if not any([LL, GL, GG]):
+                                continue
+                            configs_to_test.append(
+                                {
+                                    'probe_selection': {
+                                        'LL': LL,
+                                        'GL': GL,
+                                        'GG': GG,
+                                        'cross_cov': cross_cov,
+                                        'space': space,
+                                    },
+                                    'covariance': {
+                                        'SSC': False,
+                                        'split_gaussian_cov': split_gaussian_cov,
+                                        'covariance_ordering_2D': ordering,
+                                        'triu_tril': triu_tril,
+                                        'row_col_major': row_col,
+                                    },
+                                    'C_ell': {'use_input_cls': use_input_cls},
+                                }
+                            )
+                    elif space == 'real':
+                        for xip, xim, gt, w in product([True, False], repeat=4):
+                            if not any([xip, xim, gt, w]):
+                                continue
+                            configs_to_test.append(
+                                {
+                                    'probe_selection': {
+                                        'xip': xip,
+                                        'xim': xim,
+                                        'gt': gt,
+                                        'w': w,
+                                        'cross_cov': cross_cov,
+                                        'space': space,
+                                    },
+                                    'covariance': {
+                                        'SSC': False,
+                                        'split_gaussian_cov': split_gaussian_cov,
+                                        'covariance_ordering_2D': ordering,
+                                        'triu_tril': triu_tril,
+                                        'row_col_major': row_col,
+                                    },
+                                    'C_ell': {'use_input_cls': use_input_cls},
+                                }
+                            )
+                    elif space == 'cosebis':
+                        for En, Bn in product([True, False], repeat=2):
+                            if not any([En, Bn]):
+                                continue
+                            configs_to_test.append(
+                                {
+                                    'probe_selection': {
+                                        'En': En,
+                                        'Bn': Bn,
+                                        'cross_cov': cross_cov,
+                                        'space': space,
+                                    },
+                                    'covariance': {
+                                        'SSC': False,
+                                        'split_gaussian_cov': split_gaussian_cov,
+                                        'covariance_ordering_2D': ordering,
+                                        'triu_tril': triu_tril,
+                                        'row_col_major': row_col,
+                                    },
+                                    'C_ell': {'use_input_cls': use_input_cls},
+                                }
+                            )
 
 
 # ! Bias models
@@ -566,7 +570,7 @@ for Aia in [0.16, 0.5, 1.0]:
         )
 
 # ! Multiplicative shear bias
-for mult_shear_bias in [[0.0, 0.0, 0.0], [0.01, 0.01, 0.01], [-0.01, -0.01, -0.01]]:
+for mult_shear_bias in [[0.01, 0.02, 0.03], [-0.01, 0.09, -0.05]]:
     configs_to_test.append({'C_ell': {'mult_shear_bias': mult_shear_bias}})
 
 # ! Input Cls vs computed

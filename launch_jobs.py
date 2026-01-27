@@ -13,6 +13,8 @@ def generate_zipped_configs(base_config: dict, changes_list: list[dict]) -> list
         for key, value in changes_dict.items():
             if isinstance(value, dict):
                 if key not in target_dict or not isinstance(target_dict[key], dict):
+                    if key in target_dict:
+                        print(f'Warning: Overwriting non-dict value at key "{key}"')
                     target_dict[key] = {}
                 apply_changes(target_dict[key], value)
             else:

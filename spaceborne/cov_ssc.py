@@ -11,6 +11,7 @@ from scipy.integrate import simpson as simps
 from scipy.interpolate import interp1d
 
 from spaceborne import cosmo_lib
+from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
 
@@ -161,12 +162,10 @@ def ssc_integral_4D_simps_jax_ke_approx(
 
 
 class SpaceborneSSC:
-    def __init__(self, cfg, ccl_obj, z_grid, ind_dict, zbins, use_h_units):
+    def __init__(self, cfg, pvt_cfg, ccl_obj, z_grid):
         self.use_ke_approx = cfg['covariance']['use_KE_approximation']
         self.z_grid = z_grid
-        self.zbins = zbins
         self.ccl_obj = ccl_obj
-        self.use_h_units = use_h_units
 
         # Enable 64-bit precision if required
         jax.config.update('jax_enable_x64', cfg['misc']['jax_enable_x64'])
@@ -180,13 +179,25 @@ class SpaceborneSSC:
             self.ssc_func = ssc_integral_4D_simps_jax
             self.cl_integral_convention_ssc = 'Euclid'
 
-        self.ind_dict = ind_dict
-        self.ind_auto = ind_dict[('L', 'L')]
-        self.ind_cross = ind_dict[('G', 'L')]
-        self.zpairs_auto, self.zpairs_cross, _ = sl.get_zpairs(self.zbins)
+        self.ind_dict = pvt_cfg['ind_dict']
+        self.ind_auto = pvt_cfg['ind_auto']
+        self.ind_cross = pvt_cfg['ind_cross']
+        self.zpairs_auto = pvt_cfg['zpairs_auto']
+        self.zpairs_cross = pvt_cfg['zpairs_cross']
+
+        self.zbins = pvt_cfg['zbins']
+        self.use_h_units = pvt_cfg['use_h_units']
 
         assert self.zpairs_auto == self.ind_auto.shape[0]
         assert self.zpairs_cross == self.ind_cross.shape[0]
+
+        req_terms = ['ssc']
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space='harmonic')
+            for probe in pvt_cfg['req_probe_combs_hs_2d']
+        ]  # SSC computes probe blocks only, not full 3x2pt
+        dims = ['4d']
+        self.cov_dict = cd.create_cov_dict(req_terms, _req_probe_combs_2d, dims=dims)
 
     def set_sigma2_b(self, ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b):
         """Wrapper function for setting sigma2_b in 1 or 2 dimensions (depending on
@@ -275,9 +286,9 @@ class SpaceborneSSC:
             d2CGL_dVddeltab_3d[:, zij, :] = d2CGL_dVddeltab_4d[:, zi, zj, :]
 
         d2CAB_dVddeltab_dict_3d = {
-            ('L', 'L'): d2CLL_dVddeltab_3d,
-            ('G', 'L'): d2CGL_dVddeltab_3d,
-            ('G', 'G'): d2CGG_dVddeltab_3d,
+            ('LL'): d2CLL_dVddeltab_3d,
+            ('GL'): d2CGL_dVddeltab_3d,
+            ('GG'): d2CGG_dVddeltab_3d,
         }
 
         # ! necessary ingredients for the integration:
@@ -296,15 +307,16 @@ class SpaceborneSSC:
         )
 
         # ! start the actual computation
-        cov_ssc_3x2pt_dict_4d = {}
         start = time.perf_counter()
-        print('\nComputing SSC...')
-        
+        print('\nComputing Spaceborne SSC...')
+
         # * compute required blocks
         for probe_abcd in unique_probe_combs_hs:
-            probe_a, probe_b, probe_c, probe_d = probe_abcd
-            d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_a, probe_b)]
-            d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_c, probe_d)]
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
+
+            print(f'SSC cov: computing probe combination {probe_ab, probe_cd}')
+            d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_ab)]
+            d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_cd)]
 
             result = self.ssc_func(
                 jnp.array(d2CABdVddeltab_3d),
@@ -315,31 +327,21 @@ class SpaceborneSSC:
                 jnp.array(simpson_weights),
             )
 
-            cov_ssc_3x2pt_dict_4d[probe_a, probe_b, probe_c, probe_d] = np.array(result)
+            self.cov_dict['ssc'][probe_ab, probe_cd]['4d'] = np.array(result)
 
-        # * fill the symmetric counterparts of the required blocks
-        # * (excluding diagonal blocks)
-        for probe_abcd in symm_probe_combs_hs:
-            probe_a, probe_b, probe_c, probe_d = probe_abcd
-            probe_tpl_orig = (probe_a, probe_b, probe_c, probe_d)
-            probe_tpl_symm = (probe_c, probe_d, probe_a, probe_b)
-
-            cov_ssc_3x2pt_dict_4d[probe_tpl_orig] = (
-                cov_ssc_3x2pt_dict_4d[probe_tpl_symm].transpose(1, 0, 3, 2)
-            ).copy()
-
-        # * if block is not required, set it to 0
-        for probe_abcd in nonreq_probe_combs_hs:
-            probe_a, probe_b, probe_c, probe_d = probe_abcd
-            probe_tpl = (probe_a, probe_b, probe_c, probe_d)
-            print('SSC 3x2pt cov: skipping probe combination ', probe_tpl)
-
-            zpairs_ab = self.ind_dict[probe_a, probe_b].shape[0]
-            zpairs_cd = self.ind_dict[probe_c, probe_d].shape[0]
-            cov_ssc_3x2pt_dict_4d[probe_tpl] = np.zeros(
-                (nbl, nbl, zpairs_ab, zpairs_cd)
-            )
+        # * symmetrize and set to 0 the remaning probe blocks
+        sl.symmetrize_and_fill_probe_blocks(
+            cov_term_dict=self.cov_dict['ssc'],
+            dim='4d',
+            unique_probe_combs=unique_probe_combs_hs,
+            nonreq_probe_combs=nonreq_probe_combs_hs,
+            obs_space='harmonic',
+            nbx=nbl,
+            zbins=None,
+            ind_dict=self.ind_dict,
+            msg='SSC: ',
+        )
 
         print(f'...done in {(time.perf_counter() - start):.2f} s')
 
-        return cov_ssc_3x2pt_dict_4d
+        return self.cov_dict

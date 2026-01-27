@@ -19,83 +19,104 @@ Key Features:
 import configparser
 import os
 import subprocess
-import time
-import warnings
+from collections import defaultdict
+from copy import deepcopy
 
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.optimize import minimize_scalar
 
 from spaceborne import constants as const
+from spaceborne import cov_dict as cd
+from spaceborne import ell_utils
 from spaceborne import sb_lib as sl
 
 _UNSET = object()
 
 
-def oc_cov_dict_6d_to_array_10d(
-    cov_dict_6d: dict,
-    desired_term: str,
-    n_probes: int,
-    nbx: int,
-    zbins: int,
-    probe_idx_dict: dict,
-):
-    """Turns a dict of 6D arrays with keys {probe}_{term} into a 10D array"""
+def reorder_block_cov(
+    cov: np.ndarray, block_sizes: dict, from_order, to_order
+) -> np.ndarray:
+    cov = np.asanyarray(cov)
+    if cov.ndim != 2 or cov.shape[0] != cov.shape[1]:
+        raise ValueError('cov must be a square 2D array')
 
-    cov_10d = np.zeros(
-        (n_probes, n_probes, n_probes, n_probes, nbx, nbx, zbins, zbins, zbins, zbins)
+    if set(from_order) != set(to_order):
+        raise ValueError('from_order and to_order must contain the same labels')
+    if any(lab not in block_sizes for lab in from_order):
+        raise ValueError('Missing block size for at least one label in from_order')
+
+    # Build (start, stop) ranges in the *current* order
+    ranges = {}
+    s = 0
+    for lab in from_order:
+        n = int(block_sizes[lab])
+        ranges[lab] = (s, s + n)
+        s += n
+    if s != cov.shape[0]:
+        raise ValueError(f'Sum(block_sizes)={s} does not match cov size {cov.shape[0]}')
+
+    # Concatenate indices in the *target* order and permute both axes
+    idx = np.concatenate([np.arange(*ranges[lab]) for lab in to_order])
+    return cov[np.ix_(idx, idx)]
+
+
+def cov_ggglll_to_llglgg(
+    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
+) -> np.ndarray:
+    n = cov_ggglll_2d.shape[0]
+    elem_apc = elem_auto + elem_cross
+    elem_ll = n - elem_apc
+
+    block_sizes = {'gg': elem_auto, 'gl': elem_cross, 'll': elem_ll}
+    return reorder_block_cov(
+        cov_ggglll_2d,
+        block_sizes=block_sizes,
+        from_order=['gg', 'gl', 'll'],
+        to_order=['ll', 'gl', 'gg'],
     )
-    for cov in cov_dict_6d.values():
-        assert cov.shape == (nbx, nbx, zbins, zbins, zbins, zbins), (
-            'cov shape should be '
-            f'({nbx}, {nbx}, {zbins}, {zbins}, {zbins}, {zbins}), got '
-            f'{cov.shape} instead'
-        )
-
-    # for key, cov in cov_dict_6d.items():
-    #     # go from e.g. 'gggg_sva' to ['g', 'g', 'g', 'g']
-    #     probe_abcd, term = key.split('_')
-    #     probe_abcd = list(probe_abcd)
-    #     if term == desired_term:
-    #         probe_ixs = [probe_idx_dict[probe] for probe in probe_abcd]
-    #         cov_10d[*probe_ixs] = cov
-
-    if not cov_dict_6d:
-        raise ValueError("cov_dict_6d is empty")
-
-    key_found = False
-    for key, cov in cov_dict_6d.items():
-        probe_abcd, term = key.split('_')
-        if term != desired_term:
-            continue
-        probes = list(probe_abcd)
-        probe_ixs = [probe_idx_dict[p] for p in probes]
-        cov_10d[*probe_ixs] = cov
-        key_found = True
-
-    if not key_found:
-        raise KeyError(f"No keys with term '{desired_term}' found in cov_dict_6d.")
-    return cov_10d
 
 
-def symmetrize_probes_dict_6d(cov_dict_6d: dict, space: str, valid_probes: list):
-    """Fills the symmetric probe combinations (e.g., given gggt, fills gtgg)"""
+# old version kept for reference
+def _cov_ggglll_to_llglgg(
+    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
+) -> np.ndarray:
+    """Transforms a covariance matrix from gg-gl-ll format to llglgg format.
 
-    # this is needed to avoid mutating the dict while I loop over it
-    new_entries = {}
-    for key, cov in cov_dict_6d.items():
-        # compute symmetric_key, symmetric_cov
-        probe_abcd, term = key.split('_')
+    Parameters
+    ----------
+    cov_ggglll_2d : np.ndarray
+        Input covariance matrix in gg-gl-ll format.
+    elem_auto : int
+        Number of auto elements in the covariance matrix.
+    elem_cross : int
+        Number of cross elements in the covariance matrix.
 
-        probe_ab, probe_cd = sl.split_probe_name(
-            full_probe_name=probe_abcd, space=space, valid_probes=valid_probes
-        )
-        probe_cdab = probe_cd + probe_ab
-        new_entries[f'{probe_cdab}_{term}'] = cov.transpose(1, 0, 4, 5, 2, 3)
+    Returns
+    -------
+    np.ndarray
+        Transformed covariance matrix in mm-gm-gg format.
 
-    cov_dict_6d.update(new_entries)
+    """
+    elem_apc = elem_auto + elem_cross
 
-    return cov_dict_6d
+    cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
+    cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
+    cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
+    cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
+    cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
+    cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
+    cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
+    cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
+    cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
+
+    row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
+    row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
+    row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
+
+    cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
+
+    return cov_llglgg_2d
 
 
 def compare_sb_cov_to_oc_list(
@@ -114,7 +135,7 @@ def compare_sb_cov_to_oc_list(
     probe_oc = probe_sb.replace('gt', 'gm')
 
     # get probe names, ind and zpairs for 2D conversion
-    probe_ab, probe_cd = sl.split_probe_name(probe_sb)
+    probe_ab, probe_cd = sl.split_probe_name(probe_sb)  # TODO space?
     probe_ab_ix, probe_cd_ix = (
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
         const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],
@@ -210,7 +231,9 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
         print()  # Add a blank line for readability between sections
 
 
-def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_000_000):
+def process_cov_from_list_file(
+    cov_dict, oc_output_covlist_fname, zbins, obs_space, nbx, df_chunk_size=5_000_000
+):
     import re
 
     import pandas as pd
@@ -225,53 +248,98 @@ def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_0
     )
     column_names = header_list
 
-    usecols = ['#obs', 'tomoi']
+    # Determine scale type
     if 'theta1' in column_names:
-        theta_or_ell = 'theta'
+        scale_ix_name = 'theta'
     elif 'ell1' in column_names:
-        theta_or_ell = 'ell'
+        scale_ix_name = 'ell'
+    elif 'n1' in column_names:
+        scale_ix_name = 'n'
     else:
         raise ValueError('OneCov column names not recognised')
-    usecols += [f'{theta_or_ell}1']
+
+    usecols = ['#obs', 'tomoi', f'{scale_ix_name}1']
 
     # partial (much quicker) import of the .list file, to get info about thetas, probes
     # and to perform checks on the tomo bin idxs
-    data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep='\s+')
+    data = pd.read_csv(oc_output_covlist_fname, usecols=usecols, sep=r'\s+')
 
-    # check thetas and nbt
-    scales_oc_load = data[f'{theta_or_ell}1'].unique()
-    cov_scale_indices = {scale_out: idx for idx, scale_out in enumerate(scales_oc_load)}
+    scales_oc_load = sorted(data[f'{scale_ix_name}1'].unique())
+    cov_scale_indices = {scale: idx for idx, scale in enumerate(scales_oc_load)}
     nbx_oc = len(scales_oc_load)  # 'nbx' = nbt or nbl
+    assert nbx_oc == nbx, (
+        f'Scale bins mismatch: OC: {nbx_oc}, SB: {nbx}.\n'
+        'A possible source of this error is '
+        'the casting of ell bin edges to integers in OneCovariance, which may reduce '
+        'the number of unique ell bins. Please check the ell binning settings.'
+    )
 
     # check tomo idxs: SB tomographic indices start from 0
-    tomoi_oc_load = data['tomoi'].unique()
-    subtract_one_from_z_ix = False
-    if min(tomoi_oc_load) == 1:
-        subtract_one_from_z_ix = True
+    tomoi_oc_load = sorted(data['tomoi'].unique())
+    subtract_one_from_z_ix = min(tomoi_oc_load) == 1
 
-    # ! import .list covariance file
+    # Setup probe translation
+    if obs_space == 'harmonic':
+        valid_probes = const.HS_DIAG_PROBES_OC
+        probe_transl_dict = const.HS_DIAG_PROBES_OC_TO_SB
+        assert scale_ix_name == 'ell', 'scale_ix_name must be "ell" for harmonic space'
+    elif obs_space == 'real':
+        valid_probes = const.RS_DIAG_PROBES_OC
+        probe_transl_dict = const.RS_DIAG_PROBES_OC_TO_SB
+        assert scale_ix_name == 'theta', 'scale_ix_name must be "theta" for real space'
+    elif obs_space == 'cosebis':
+        valid_probes = const.CS_DIAG_PROBES_OC
+        probe_transl_dict = const.CS_DIAG_PROBES_OC_TO_SB
+        assert scale_ix_name == 'n', 'scale_ix_name must be "n" for cosebis space'
+    else:
+        raise ValueError('obs_space must be either "harmonic", "real" or "cosebis"')
+
     print(f'Loading OneCovariance output from {oc_output_covlist_fname} file...')
-    covs_dict_6d = {}
+
+    # Initialize arrays
+    # in this case it's necessary to preallocate the 6D shapes, since the arrays
+    # are filled partially at each iteration of the for loop
+    temp_cov_arrays = defaultdict(
+        lambda: defaultdict(
+            lambda: np.zeros((nbx_oc, nbx_oc, zbins, zbins, zbins, zbins))
+        )
+    )
+
+    # Column mapping for covariance terms
+    term_columns = {
+        'sva': 'covg sva',
+        'mix': 'covg mix',
+        'sn': 'covg sn',
+        'ssc': 'covssc',
+        'cng': 'covng',
+    }
+
     for df_chunk in pd.read_csv(
         oc_output_covlist_fname,
-        sep='\s+',
+        sep=r'\s+',
         names=column_names,
         skiprows=1,
         chunksize=df_chunk_size,
     ):
-        # now group by probe string
-        for probe, subdf in df_chunk.groupby('#obs'):
-            # Map 'ell' values to their corresponding indices
-            theta1_idx = subdf[f'{theta_or_ell}1'].map(cov_scale_indices).values
-            theta2_idx = subdf[f'{theta_or_ell}2'].map(cov_scale_indices).values
+        for probe_abcd_oc, subdf in df_chunk.groupby('#obs'):
+            probe_ab_oc, probe_cd_oc = sl.split_probe_name(
+                probe_abcd_oc, space=None, valid_probes=valid_probes
+            )
+            probe_ab, probe_cd = (
+                probe_transl_dict[probe_ab_oc],
+                probe_transl_dict[probe_cd_oc],
+            )
+            probe_2tpl = (probe_ab, probe_cd)
 
-            # Compute z indices
+            # Pre-compute indices once
+            theta1_idx = subdf[f'{scale_ix_name}1'].map(cov_scale_indices).values
+            theta2_idx = subdf[f'{scale_ix_name}2'].map(cov_scale_indices).values
+
             if subtract_one_from_z_ix:
                 z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
             else:
                 z_ixs = subdf[['tomoi', 'tomoj', 'tomok', 'tomol']].values
 
-            # define index tuple
             index_tuple = (
                 theta1_idx,
                 theta2_idx,
@@ -281,39 +349,30 @@ def process_cov_from_list_file(oc_output_covlist_fname, zbins, df_chunk_size=5_0
                 z_ixs[:, 3],
             )
 
-            # for each covariance term, insert into dict
-            for term, col in {
-                'sva': 'covg sva',
-                'mix': 'covg mix',
-                'sn': 'covg sn',
-                'ssc': 'covssc',
-                'cng': 'covng',
-            }.items():
-                key = f'{probe}_{term}'
+            # Assign individual terms
+            for term, col in term_columns.items():
+                temp_cov_arrays[term][probe_2tpl][index_tuple] = subdf[col].values
 
-                # allocate shape: (nbt_oc, nbt_oc, zbins, zbins, zbins, zbins)
-                if key not in covs_dict_6d:
-                    covs_dict_6d[key] = np.zeros(
-                        (nbx_oc, nbx_oc, zbins, zbins, zbins, zbins)
-                    )
-
-                # assign array to the correct key
-                covs_dict_6d[key][index_tuple] = subdf[col].values
-
-            # gauss is the sum of sva + mix + sn
-            key = f'{probe}_g'
-            if key not in covs_dict_6d:
-                covs_dict_6d[key] = np.zeros(
-                    (nbx_oc, nbx_oc, zbins, zbins, zbins, zbins)
-                )
-            covs_dict_6d[key][index_tuple] = (
+            # Compute 'g' term as sum of sva, sn and mix
+            temp_cov_arrays['g'][probe_2tpl][index_tuple] = (
                 subdf['covg sva'].values
-                + subdf['covg mix'].values
                 + subdf['covg sn'].values
+                + subdf['covg mix'].values
             )
 
+            temp_cov_arrays['tot'][probe_2tpl][index_tuple] = (
+                temp_cov_arrays['g'][probe_2tpl][index_tuple]
+                + temp_cov_arrays['ssc'][probe_2tpl][index_tuple]
+                + temp_cov_arrays['cng'][probe_2tpl][index_tuple]
+            )
+
+    # store in cov_dict
+    for term in cov_dict:
+        for probe_2tpl in cov_dict[term]:
+            if probe_2tpl != '3x2pt':
+                cov_dict[term][probe_2tpl]['6d'] = temp_cov_arrays[term][probe_2tpl]
+
     print('...done')
-    return covs_dict_6d
 
 
 class OneCovarianceInterface:
@@ -354,6 +413,7 @@ class OneCovarianceInterface:
         self.ind = pvt_cfg['ind']
         self.probe_ordering = pvt_cfg['probe_ordering']
         self.GL_OR_LG = pvt_cfg['GL_OR_LG']
+        self.nbx = pvt_cfg['nbx']
 
         # set which cov terms to compute from cfg file
         self.compute_g = do_g
@@ -362,19 +422,38 @@ class OneCovarianceInterface:
 
         self.obs_space = self.cfg['probe_selection']['space']
 
-        # paths and filenems
-        self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
+        if self.obs_space == 'harmonic':
+            prefix = 'hs'
+        elif self.obs_space == 'real':
+            prefix = 'rs'
+        elif self.obs_space == 'cosebis':
+            prefix = 'cs'
+        else:
+            raise ValueError('self.obs_space must be "harmonic", "real" or "cosebis"')
 
-        self.probe_idx_dict_hs = {
-            'm': const.HS_PROBE_NAME_TO_IX_DICT['L'],
-            'g': const.HS_PROBE_NAME_TO_IX_DICT['G'],
-        }
+        # instantiate cov dict with the required terms and probe combinations
+        self.req_terms = pvt_cfg['req_terms']
+        self.req_probe_combs_2d = pvt_cfg[f'req_probe_combs_{prefix}_2d']
+        self.nonreq_probe_combs = pvt_cfg[f'nonreq_probe_combs_{prefix}']
+        dims = ['6d', '4d', '2d']
+
+        _req_probe_combs_2d = [
+            sl.split_probe_name(probe, space=self.obs_space)
+            for probe in self.req_probe_combs_2d
+        ]
+        _req_probe_combs_2d.append('3x2pt')
+        self.cov_dict = cd.create_cov_dict(
+            self.req_terms, _req_probe_combs_2d, dims=dims
+        )
+
+        # paths and filenems
+        self.path_to_oc_env = cfg['OneCovariance']['path_to_oc_env']
+        self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
 
         self.oc_path: str = _UNSET
         self.z_grid_trisp_sb: np.ndarray = _UNSET
         self.path_to_config_oc_ini: str = _UNSET
         self.ells_sb: np.ndarray = _UNSET
-        self.cov_dict_6d: dict = _UNSET
         self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
         self.cov_3x2pt_sn_10d: np.ndarray = _UNSET
         self.cov_3x2pt_mix_10d: np.ndarray = _UNSET
@@ -410,7 +489,8 @@ class OneCovarianceInterface:
         cfg_oc_ini['observables'] = {}
         cfg_oc_ini['output settings'] = {}
         cfg_oc_ini['covELLspace settings'] = {}
-        cfg_oc_ini['covTHETAspace settings'] = {}  # For real space case
+        cfg_oc_ini['covTHETAspace settings'] = {}
+        cfg_oc_ini['covCOSEBI settings'] = {}
         cfg_oc_ini['survey specs'] = {}
         cfg_oc_ini['redshift'] = {}
         cfg_oc_ini['cosmo'] = {}
@@ -434,21 +514,43 @@ class OneCovarianceInterface:
             est_shear = 'C_ell'
             est_ggl = 'C_ell'
             est_clust = 'C_ell'
+
+            cosmic_shear = self.cfg['probe_selection']['LL']
+            ggl = self.cfg['probe_selection']['GL']
+            clustering = self.cfg['probe_selection']['GG']
+
         elif self.obs_space == 'real':
             est_shear = 'xi_pm'
             est_ggl = 'gamma_t'
             est_clust = 'w'
-        else:
-            raise ValueError('self.which_obs must he "harmonic" or "real"')
 
-        cfg_oc_ini['observables']['cosmic_shear'] = str(True)
+            cosmic_shear = (
+                self.cfg['probe_selection']['xip'] or self.cfg['probe_selection']['xim']
+            )
+            ggl = self.cfg['probe_selection']['gt']
+            clustering = self.cfg['probe_selection']['w']
+
+        elif self.obs_space == 'cosebis':
+            est_shear = est_ggl = est_clust = 'cosebi'
+
+            cosmic_shear = (
+                self.cfg['probe_selection']['En'] or self.cfg['probe_selection']['Bn']
+            )
+            ggl = self.cfg['probe_selection']['Psigl']
+            clustering = self.cfg['probe_selection']['Psigg']
+        else:
+            raise ValueError('self.obs_space must be "harmonic", "real" or "cosebis"')
+
+        cfg_oc_ini['observables']['cosmic_shear'] = str(cosmic_shear)
         cfg_oc_ini['observables']['est_shear'] = est_shear
-        cfg_oc_ini['observables']['ggl'] = str(True)
+        cfg_oc_ini['observables']['ggl'] = str(ggl)
         cfg_oc_ini['observables']['est_ggl'] = est_ggl
-        cfg_oc_ini['observables']['clustering'] = str(True)
+        cfg_oc_ini['observables']['clustering'] = str(clustering)
         cfg_oc_ini['observables']['est_clust'] = est_clust
         cfg_oc_ini['observables']['cstellar_mf'] = str(False)
-        cfg_oc_ini['observables']['cross_terms'] = str(True)
+        cfg_oc_ini['observables']['cross_terms'] = str(
+            self.cfg['probe_selection']['cross_cov']
+        )
         cfg_oc_ini['observables']['unbiased_clustering'] = str(False)
 
         # ! [output settings]
@@ -478,9 +580,9 @@ class OneCovarianceInterface:
         )
         delta_z = np.diff(self.z_grid_trisp_sb)[0]
 
-        ell_binning_type = self.cfg['binning']['binning_type']
+        self.binning_type = self.cfg['binning']['binning_type']
         if self.cfg['binning']['binning_type'] == 'ref_cut':
-            ell_binning_type = 'log'
+            self.binning_type = 'log'
 
         # settings common to both observables
         cfg_oc_ini['covELLspace settings']['limber'] = str(True)
@@ -493,40 +595,26 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
             map(str, mult_shear_bias_list)
         )
-        cfg_oc_ini['covELLspace settings']['ell_type_clustering'] = ell_binning_type
-        cfg_oc_ini['covELLspace settings']['ell_type_lensing'] = ell_binning_type
 
-        # settings specific to both observables
+        # find best ell_max for OC, since it uses a slightly different recipe
+        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
+
         if self.obs_space == 'harmonic':
-            cfg_oc_ini['covELLspace settings']['ell_min'] = str(
-                self.pvt_cfg['ell_min_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_min_lensing'] = str(
-                self.pvt_cfg['ell_min_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_min_clustering'] = str(
-                self.pvt_cfg['ell_min_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
-                self.pvt_cfg['nbl_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_bins_lensing'] = str(
-                self.pvt_cfg['nbl_3x2pt']
-            )
-            cfg_oc_ini['covELLspace settings']['ell_bins_clustering'] = str(
-                self.pvt_cfg['nbl_3x2pt']
-            )
+            for _probe in ['', '_clustering', '_lensing']:
+                cfg_oc_ini['covELLspace settings'][f'ell_min{_probe}'] = str(
+                    self.pvt_cfg['ell_min_3x2pt']
+                )
+                cfg_oc_ini['covELLspace settings'][f'ell_max{_probe}'] = str(
+                    self.optimal_ellmax
+                )
+                cfg_oc_ini['covELLspace settings'][f'ell_bins{_probe}'] = str(
+                    self.pvt_cfg['nbl_3x2pt']
+                )
+                cfg_oc_ini['covELLspace settings'][f'ell_type{_probe}'] = str(
+                    self.binning_type
+                )
 
-            # find best ell_max for OC, since it uses a slightly different recipe
-            self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
-            cfg_oc_ini['covELLspace settings']['ell_max'] = str(self.optimal_ellmax)
-            cfg_oc_ini['covELLspace settings']['ell_max_lensing'] = str(
-                self.optimal_ellmax
-            )
-            cfg_oc_ini['covELLspace settings']['ell_max_clustering'] = str(
-                self.optimal_ellmax
-            )
-
+        # now the ell binning is for the projection!
         elif self.obs_space == 'real':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.cfg['precision']['ell_min_rs']
@@ -614,39 +702,46 @@ class OneCovarianceInterface:
 
         # ! [covTHETAspace settings]
         if self.obs_space == 'real':
-            cfg_oc_ini['covTHETAspace settings']['theta_min_clustering'] = str(
-                self.cfg['binning']['theta_min_arcmin']
-            )
-            cfg_oc_ini['covTHETAspace settings']['theta_max_clustering'] = str(
-                self.cfg['binning']['theta_max_arcmin']
-            )
-            cfg_oc_ini['covTHETAspace settings']['theta_bins_clustering'] = str(
-                self.cfg['binning']['theta_bins']
-            )
-            cfg_oc_ini['covTHETAspace settings']['theta_type_clustering'] = 'lin'
-            cfg_oc_ini['covTHETAspace settings']['theta_min_lensing'] = str(
-                self.cfg['binning']['theta_min_arcmin']
-            )
-            cfg_oc_ini['covTHETAspace settings']['theta_max_lensing'] = str(
-                self.cfg['binning']['theta_max_arcmin']
-            )
-            cfg_oc_ini['covTHETAspace settings']['theta_bins_lensing'] = str(
-                self.cfg['binning']['theta_bins']
-            )
-            cfg_oc_ini['covTHETAspace settings']['theta_type_lensing'] = 'lin'
+            for _probe in ['', '_clustering', '_lensing']:
+                for _type in ['_min', '_max']:
+                    cfg_oc_ini['covTHETAspace settings'][f'theta{_type}{_probe}'] = str(
+                        self.cfg['binning'][f'theta{_type}_arcmin']
+                    )
 
-            cfg_oc_ini['covTHETAspace settings']['theta_min'] = str(
-                self.cfg['binning']['theta_min_arcmin']
-            )
-            cfg_oc_ini['covTHETAspace settings']['theta_max'] = str(
-                self.cfg['binning']['theta_max_arcmin']
-            )
-            cfg_oc_ini['covTHETAspace settings']['theta_type'] = 'lin'
+                cfg_oc_ini['covTHETAspace settings'][f'theta_type{_probe}'] = str(
+                    self.binning_type
+                )
+                cfg_oc_ini['covTHETAspace settings'][f'theta_bins{_probe}'] = str(
+                    self.cfg['binning']['theta_bins']
+                )
 
-            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(True)
-            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(True)
+            xi_pm = (
+                self.cfg['probe_selection']['xip'] or self.cfg['probe_selection']['xim']
+            )
+            cfg_oc_ini['covTHETAspace settings']['xi_pp'] = str(xi_pm)
+            cfg_oc_ini['covTHETAspace settings']['xi_mm'] = str(xi_pm)
             cfg_oc_ini['covTHETAspace settings']['theta_accuracy'] = str(1e-3)
             cfg_oc_ini['covTHETAspace settings']['integration_intervals'] = str(40)
+        else:
+            cfg_oc_ini['covTHETAspace settings'] = {}
+
+        # ! [covCOSEBI settings]
+        if self.obs_space == 'cosebis':
+            for _probe in ['', '_clustering', '_lensing']:
+                cfg_oc_ini['covCOSEBI settings'][f'En_modes{_probe}'] = str(
+                    self.cfg['binning']['n_modes_cosebis']
+                )
+                for _type in ['_min', '_max']:
+                    cfg_oc_ini['covCOSEBI settings'][f'theta{_type}{_probe}'] = str(
+                        self.cfg['precision'][f'theta{_type}_arcmin_cosebis']
+                    )
+
+            cfg_oc_ini['covCOSEBI settings']['En_accuracy'] = str(1e-4)
+            cfg_oc_ini['covCOSEBI settings']['wn_style'] = 'log'
+            cfg_oc_ini['covCOSEBI settings']['wn_accuracy'] = str(1e-6)
+            cfg_oc_ini['covCOSEBI settings']['dimensionless_cosebi'] = str(False)
+        else:
+            cfg_oc_ini['covCOSEBI settings'] = {}
 
         # ! [halomodel evaluation]
         if ('Tinker10' not in self.cfg['halo_model']['mass_function']) or (
@@ -733,10 +828,25 @@ class OneCovarianceInterface:
 
     def call_oc_from_bash(self) -> None:
         """This function runs OneCovariance"""
-        subprocess.run(
-            ['python', self.path_to_oc_executable, self.path_to_config_oc_ini],
-            check=True,  # raise CalledProcessError if it fails
-        )
+        try:
+            # Set MPLBACKEND to prevent display errors in subprocess
+            env = os.environ.copy()
+            env['MPLBACKEND'] = 'Agg'
+
+            subprocess.run(
+                [
+                    self.path_to_oc_env,
+                    self.path_to_oc_executable,
+                    self.path_to_config_oc_ini,
+                ],
+                check=True,
+                capture_output=False,
+                text=True,
+                env=env,
+            )
+        except subprocess.CalledProcessError as e:
+            print('OneCovariance failed with error:')
+            raise e
 
     def call_oc_from_class(self):
         """This interface was originally created by Robert Reischke.
@@ -744,6 +854,7 @@ class OneCovarianceInterface:
             - Streamlines the call to the code by instantiating and calling the
             CovELLSpace class directly
             (as done in OneCovariance main file)
+
             - Returns outputs which are in a more similar format as Spaceborne
             - Returns outputs with more significant digits
         Cons:
@@ -895,19 +1006,19 @@ class OneCovarianceInterface:
         cov_sn_tuple = [self.cov_g[idx * 3 + 2] for idx in range(6)]
 
         self.cov_sva_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sva_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_sva_tuple, nbl=self.nbx, compute_cov=self.compute_g
         )
         self.cov_mix_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_mix_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_mix_tuple, nbl=self.nbx, compute_cov=self.compute_g
         )
         self.cov_sn_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sn_tuple, nbl=self.nbl_3x2pt, compute_cov=self.compute_g
+            cov_tuple_in=cov_sn_tuple, nbl=self.nbx, compute_cov=self.compute_g
         )
         self.cov_ssc_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_ssc, nbl=self.nbl_3x2pt, compute_cov=self.compute_ssc
+            cov_tuple_in=self.cov_ssc, nbl=self.nbx, compute_cov=self.compute_ssc
         )
         self.cov_cng_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_cng, nbl=self.nbl_3x2pt, compute_cov=self.compute_cng
+            cov_tuple_in=self.cov_cng, nbl=self.nbx, compute_cov=self.compute_cng
         )
 
         self.cov_g_oc_3x2pt_10D = (
@@ -920,19 +1031,24 @@ class OneCovarianceInterface:
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
             self.zbins
         )
+        
 
-        elem_auto = self.zpairs_auto * self.nbl_3x2pt
-        elem_cross = self.zpairs_cross * self.nbl_3x2pt
+        self.cov_dict_matfmt = defaultdict(lambda: defaultdict(dict))
+
+        elem_auto = self.zpairs_auto * self.nbx
+        elem_cross = self.zpairs_cross * self.nbx
 
         if self.compute_g:
             cov_in = np.genfromtxt(
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
             )
-            self.cov_mat_g_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
+            self.cov_dict_matfmt['g']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
+                cov_in, elem_auto, elem_cross
+            )
 
         if self.compute_ssc:
             cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
-            self.cov_mat_ssc_2d = self.cov_ggglll_to_llglgg(
+            self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
@@ -940,362 +1056,69 @@ class OneCovarianceInterface:
             cov_in = np.genfromtxt(
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
             )
-            self.cov_mat_cng_2d = self.cov_ggglll_to_llglgg(
+            self.cov_dict_matfmt['cng']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross
             )
 
         cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
-        self.cov_mat_tot_2d = self.cov_ggglll_to_llglgg(cov_in, elem_auto, elem_cross)
+        self.cov_dict_matfmt['tot']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
+            cov_in, elem_auto, elem_cross
+        )
 
-    def output_sanity_check(self, req_probe_combs_2d: list, rtol: float = 1e-4):
+    def output_sanity_check(
+        self,
+        req_probe_combs_2d: list,
+        cov_dict_6d_to_4d_and_2d_kw: dict,
+        rtol: float = 1e-4,
+    ):
         """
         Checks that the .dat and .mat outputs give consistent results
         """
 
-        # TODO why am I processing the output twice?
-        # TODO this should be generalised to real space
-
+        # process the covariance from the mat file.
+        # This creates the 3x2pt 2D cov for the different terms
         self.process_cov_from_mat_file()
-
-        cov_list_g_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_3x2pt_g_10d,
-            self.probe_ordering,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.ind,
-            self.GL_OR_LG,
-            req_probe_combs_2d=req_probe_combs_2d,
-        )
-        cov_list_ssc_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_3x2pt_ssc_10d,
-            self.probe_ordering,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.ind,
-            self.GL_OR_LG,
-            req_probe_combs_2d=req_probe_combs_2d,
-        )
-        cov_list_cng_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_3x2pt_cng_10d,
-            self.probe_ordering,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.ind,
-            self.GL_OR_LG,
-            req_probe_combs_2d=req_probe_combs_2d,
-        )
-        cov_list_tot_4d = sl.cov_3x2pt_10D_to_4D(
-            self.cov_3x2pt_tot_10d,
-            self.probe_ordering,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.ind,
-            self.GL_OR_LG,
-            req_probe_combs_2d=req_probe_combs_2d,
-        )
 
         if self.obs_space == 'harmonic':
             cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_hs
         elif self.obs_space == 'real':
             cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
 
-        cov_list_g_2d = cov_4d_to_2dcloe_func(
-            cov_list_g_4d,
-            zbins=self.zbins,
-            req_probe_combs_2d=req_probe_combs_2d,
-            block_index='zpair',
-        )
-        cov_list_ssc_2d = cov_4d_to_2dcloe_func(
-            cov_list_ssc_4d,
-            zbins=self.zbins,
-            req_probe_combs_2d=req_probe_combs_2d,
-            block_index='zpair',
-        )
-        cov_list_cng_2d = cov_4d_to_2dcloe_func(
-            cov_list_cng_4d,
-            zbins=self.zbins,
-            req_probe_combs_2d=req_probe_combs_2d,
-            block_index='zpair',
-        )
-        cov_list_tot_2d = cov_4d_to_2dcloe_func(
-            cov_list_tot_4d,
-            zbins=self.zbins,
-            req_probe_combs_2d=req_probe_combs_2d,
-            block_index='zpair',
+        # NOTE: 3x2pt 4d and 2d is created on-the-fly for this check,
+        # and not stored in self. This is because of 2 reasons:
+        # 1. The reshaping is centralized in the SB cov (hs/rs) classes.
+        # 2. The zpair ordering is hardcoded in OC
+        # TODO check point number 2, there is some option in the ini file...
+
+        # create a copy to avoid polluting the original dict,
+        # which has only 6d and no 3x2pt
+        cov_dict_tmplist = deepcopy(self.cov_dict)
+        # reshape individual blocks to 4d and 2d
+        cov_dict_tmplist = sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
+            cov_dict_tmplist, **cov_dict_6d_to_4d_and_2d_kw
         )
 
-        if self.compute_g:
-            np.testing.assert_allclose(
-                cov_list_g_2d,
-                self.cov_mat_g_2d,
-                atol=0,
-                rtol=rtol,
-                err_msg='Gaussian covariance matrix from .mat file is'
-                ' not consistent with .dat output',
+        for term in self.cov_dict_matfmt:
+            # create 3x2pt 4d
+            cov_term_3x2pt_list_4d = sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
+                cov_dict_tmplist[term], self.obs_space
             )
-
-        if self.compute_ssc:
-            np.testing.assert_allclose(
-                cov_list_ssc_2d,
-                self.cov_mat_ssc_2d,
-                atol=0,
-                rtol=rtol,
-                err_msg='SSC covariance matrix from .mat file is'
-                ' not consistent with .dat output',
-            )
-
-        if self.compute_cng:
-            np.testing.assert_allclose(
-                cov_list_cng_2d,
-                self.cov_mat_cng_2d,
-                atol=0,
-                rtol=rtol,
-                err_msg='cNG covariance matrix from .mat file is'
-                ' not consistent with .dat output',
-            )
-
-        np.testing.assert_allclose(
-            cov_list_tot_2d,
-            self.cov_mat_tot_2d,
-            atol=0,
-            rtol=rtol,
-            err_msg='Total covariance matrix from .mat file is'
-            ' not consistent with .dat output',
-        )
-
-    def cov_ggglll_to_llglgg(
-        self, cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
-    ) -> np.ndarray:
-        """Transforms a covariance matrix from gg-gl-ll format to llglgg format.
-
-        Parameters
-        ----------
-        cov_ggglll_2d : np.ndarray
-            Input covariance matrix in gg-gl-ll format.
-        elem_auto : int
-            Number of auto elements in the covariance matrix.
-        elem_cross : int
-            Number of cross elements in the covariance matrix.
-
-        Returns
-        -------
-        np.ndarray
-            Transformed covariance matrix in mm-gm-gg format.
-
-        """
-        elem_apc = elem_auto + elem_cross
-
-        cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
-        cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
-        cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
-        cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
-        cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
-        cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
-        cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
-        cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
-        cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
-
-        row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
-        row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
-        row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
-
-        cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
-
-        return cov_llglgg_2d
-
-    def process_cov_from_list_file_hs(self, df_chunk_size=5_000_000):
-        """
-        Import and reshape the output of the OneCovariance (OC) .dat
-        (aka "list") file into a set of 10d arrays.
-        The function also performs some additional processing,
-        such as symmetrizing the output dictionary.
-        """
-        raise NotImplementedError(
-            'This function should be deprecated; use '
-            'process_cov_from_list_file() instead'
-        )
-        import re
-
-        import pandas as pd
-
-        # set df column names
-        with open(f'{self.oc_path}/{self.cov_oc_fname}_list.dat') as file:
-            header = (
-                file.readline().strip()
-            )  # Read the first line and strip newline characters
-        header_list = re.split(
-            '\t', header.strip().replace('\t\t', '\t').replace('\t\t', '\t')
-        )
-        column_names = header_list
-
-        # ell values actually used in OC; save in self to be able to compare to
-        # the SB ell values
-        # note use delim_whitespace=True instead of sep='\s+' if this gives
-        # compatibility issues
-        self.ells_oc_load = pd.read_csv(
-            f'{self.oc_path}/{self.cov_oc_fname}_list.dat', usecols=['ell1'], sep='\s+'
-        )['ell1'].unique()
-
-        # check if the saved ells are within 1% of the required ones;
-        # I think the saved values are truncated to only
-        # 2 decimals, so this is a rough comparison (rtol is 1%)
-        try:
-            np.testing.assert_allclose(
-                self.new_ells_oc, self.ells_oc_load, atol=0, rtol=1e-2
-            )
-        except AssertionError as err:
-            print('ell values computed vs loaded for OC are not the same')
-            print(err)
-
-        cov_ell_indices = {
-            ell_out: idx for idx, ell_out in enumerate(self.ells_oc_load)
-        }
-
-        # ! import .list covariance file
-        shape = (
-            self.n_probes,
-            self.n_probes,
-            self.n_probes,
-            self.n_probes,
-            self.nbl_3x2pt,
-            self.nbl_3x2pt,
-            self.zbins,
-            self.zbins,
-            self.zbins,
-            self.zbins,
-        )
-        self.cov_g_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_sva_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_mix_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_sn_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_ssc_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_cng_oc_3x2pt_10D = np.zeros(shape)
-        self.cov_tot_oc_3x2pt_10D = np.zeros(shape)
-
-        print('Loading OneCovariance output from covariance_list.dat file...')
-        start = time.perf_counter()
-        for df_chunk in pd.read_csv(
-            f'{self.oc_path}/covariance_list.dat',
-            sep='\s+',
-            names=column_names,
-            skiprows=1,
-            chunksize=df_chunk_size,
-        ):
-            # Vectorize the extraction of probe indices
-            probe_idx_a = df_chunk['#obs'].str[0].map(probe_idx_dict).values
-            probe_idx_b = df_chunk['#obs'].str[1].map(probe_idx_dict).values
-            probe_idx_c = df_chunk['#obs'].str[2].map(probe_idx_dict).values
-            probe_idx_d = df_chunk['#obs'].str[3].map(probe_idx_dict).values
-
-            # Map 'ell' values to their corresponding indices
-            ell1_idx = df_chunk['ell1'].map(cov_ell_indices).values
-            ell2_idx = df_chunk['ell2'].map(cov_ell_indices).values
-
-            # Compute z indices
-            if np.min(df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values) == 1:
-                z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].sub(1).values
-            else:
-                warnings.warn('tomo indices seem to start from 0...', stacklevel=2)
-                z_indices = df_chunk[['tomoi', 'tomoj', 'tomok', 'tomol']].values
-
-            # Vectorized assignment to the arrays
-            index_tuple = (
-                probe_idx_a,
-                probe_idx_b,
-                probe_idx_c,
-                probe_idx_d,
-                ell1_idx,
-                ell2_idx,
-                z_indices[:, 0],
-                z_indices[:, 1],
-                z_indices[:, 2],
-                z_indices[:, 3],
-            )
-
-            self.cov_sva_oc_3x2pt_10D[index_tuple] = df_chunk['covg sva'].values
-            self.cov_mix_oc_3x2pt_10D[index_tuple] = df_chunk['covg mix'].values
-            self.cov_sn_oc_3x2pt_10D[index_tuple] = df_chunk['covg sn'].values
-            self.cov_g_oc_3x2pt_10D[index_tuple] = (
-                df_chunk['covg sva'].values
-                + df_chunk['covg mix'].values
-                + df_chunk['covg sn'].values
-            )
-            self.cov_ssc_oc_3x2pt_10D[index_tuple] = df_chunk['covssc'].values
-            self.cov_cng_oc_3x2pt_10D[index_tuple] = df_chunk['covng'].values
-            self.cov_tot_oc_3x2pt_10D[index_tuple] = df_chunk['cov'].values
-
-        covs_10d = [
-            self.cov_sva_oc_3x2pt_10D,
-            self.cov_mix_oc_3x2pt_10D,
-            self.cov_sn_oc_3x2pt_10D,
-            self.cov_g_oc_3x2pt_10D,
-            self.cov_ssc_oc_3x2pt_10D,
-            self.cov_cng_oc_3x2pt_10D,
-            self.cov_tot_oc_3x2pt_10D,
-        ]
-
-        for cov_10d in covs_10d:
-            cov_10d[0, 0, 1, 1] = (
-                np.transpose(cov_10d[1, 1, 0, 0], (1, 0, 4, 5, 2, 3))
-            ).copy()
-            cov_10d[1, 0, 0, 0] = (
-                np.transpose(cov_10d[0, 0, 1, 0], (1, 0, 4, 5, 2, 3))
-            ).copy()
-            cov_10d[1, 0, 1, 1] = (
-                np.transpose(cov_10d[1, 1, 1, 0], (1, 0, 4, 5, 2, 3))
-            ).copy()
-
-        print(
-            f'OneCovariance output loaded in {time.perf_counter() - start:.2f} seconds'
-        )
-
-    def _oc_output_to_dict_or_array(
-        self, which_ng_cov, output_type, ind_dict=None, symmetrize_output_dict=None
-    ):
-        # ! THIS FUNCTION IS DEPRECATED
-
-        # import
-        filename = self.cov_filename.format(
-            which_ng_cov=which_ng_cov,
-            probe_a='{probe_a:s}',
-            probe_b='{probe_b:s}',
-            probe_c='{probe_c:s}',
-            probe_d='{probe_d:s}',
-        )
-        cov_ng_oc_3x2pt_dict_8D = sl.load_cov_from_probe_blocks(
-            path=self.oc_path,
-            filename=filename,
-            probe_ordering=self.cfg['covariance']['probe_ordering'],
-        )
-
-        # reshape
-        if output_type == '8D_dict':
-            return cov_ng_oc_3x2pt_dict_8D
-
-        elif output_type in ['10D_dict', '10D_array']:
-            cov_ng_oc_3x2pt_dict_10D = sl.cov_3x2pt_dict_8d_to_10d(
-                cov_3x2pt_dict_8D=cov_ng_oc_3x2pt_dict_8D,
-                nbl=self.pvt_cfg['nbl_3x2pt'],
+            # create 3x2pt 2d
+            cov_term_3x2pt_list_2d = cov_4d_to_2dcloe_func(
+                cov_term_3x2pt_list_4d,
                 zbins=self.zbins,
-                ind_dict=ind_dict,
-                probe_ordering=self.cfg['covariance']['probe_ordering'],
-                space=self.obs_space,
-                symmetrize_output_dict=symmetrize_output_dict,
+                req_probe_combs_2d=req_probe_combs_2d,
+                block_index='zpair',
             )
-
-            if output_type == '10D_dict':
-                return cov_ng_oc_3x2pt_dict_10D
-
-            elif output_type == '10D_array':
-                return sl.cov_10d_dict_to_array(
-                    cov_ng_oc_3x2pt_dict_10D,
-                    nbl=self.pvt_cfg['nbl_3x2pt'],
-                    zbins=self.zbins,
-                    n_probes=self.cfg['covariance']['n_probes'],
-                )
-
-        else:
-            raise ValueError('output_dict_dim must be 8D or 10D')
+            # compare with mat fmt
+            np.testing.assert_allclose(
+                cov_term_3x2pt_list_2d,
+                self.cov_dict_matfmt[term]['3x2pt']['2d'],
+                rtol=rtol,
+                atol=0,
+                err_msg=f'{term} covariance matrix from .mat file is'
+                ' not consistent with .dat output',
+            )
 
     def find_optimal_ellmax_oc(self, target_ell_array):
         upper_lim = self.ells_sb[-1] + 300
@@ -1314,10 +1137,17 @@ class OneCovarianceInterface:
         else:
             print('Optimization failed.')
 
-        self.new_ells_oc = self.compute_ells_oc(
+        # self.new_ells_oc = self.compute_ells_oc(
+        #     nbl=int(self.pvt_cfg['nbl_3x2pt']),
+        #     ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
+        #     ell_max=self.optimal_ellmax,
+        # )
+        self.new_ells_oc, _ = ell_utils.compute_ells_oc(
             nbl=int(self.pvt_cfg['nbl_3x2pt']),
             ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
             ell_max=self.optimal_ellmax,
+            binning_type=self.binning_type,
+            output_ell_bin_edges=False,
         )
 
         fig, ax = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
@@ -1335,20 +1165,41 @@ class OneCovarianceInterface:
         ax[1].set_ylabel('SB/OC - 1 [%]')
         fig.supxlabel('ell idx')
 
-    def compute_ells_oc(self, nbl, ell_min, ell_max):
-        ell_bin_edges_oc_int = np.unique(
-            np.geomspace(ell_min, ell_max, nbl + 1)
-        ).astype(int)
-        ells_oc_int = np.exp(
-            0.5 * (np.log(ell_bin_edges_oc_int[1:]) + np.log(ell_bin_edges_oc_int[:-1]))
-        )  # it's the same if I take base 10 log
-        return ells_oc_int
+    # def compute_ells_oc(self, nbl, ell_min, ell_max):
+    #     if self.binning_type == 'log':
+    #         # log-spaced bin edges and geometric mean for the bin centers
+    #         # OC casts the ell bin edges to int
+    #         ell_bin_edges_oc_int = np.unique(
+    #             np.geomspace(ell_min, ell_max, nbl + 1).astype(int)
+    #         )
+    #         # this is the geometric mean
+    #         ells_oc_int = np.exp(
+    #             0.5
+    #             * (np.log(ell_bin_edges_oc_int[1:]) + np.log(ell_bin_edges_oc_int[:-1]))
+    #         )
+
+    #     # lin-spaced bin edges and arithmetic mean for the bin centers
+    #     elif self.binning_type == 'lin':
+    #         ell_bin_edges_oc_int = np.linspace(ell_min, ell_max, nbl + 1).astype(int)
+    #         ells_oc_int = 0.5 * (ell_bin_edges_oc_int[1:] + ell_bin_edges_oc_int[:-1])
+
+    #     else:
+    #         raise ValueError(f'Binning type {self.binning_type} not recognized')
+
+    #     return ells_oc_int
 
     def objective_function(self, ell_max):
-        ells_oc = self.compute_ells_oc(
+        # ells_oc = self.compute_ells_oc(
+        #     nbl=int(self.pvt_cfg['nbl_3x2pt']),
+        #     ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
+        #     ell_max=ell_max,
+        # )
+        ells_oc, _ = ell_utils.compute_ells_oc(
             nbl=int(self.pvt_cfg['nbl_3x2pt']),
             ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
             ell_max=ell_max,
+            binning_type=self.binning_type,
+            output_ell_bin_edges=False,
         )
         ssd = np.sum((self.ells_sb - ells_oc) ** 2)
         # ssd = np.sum(sl.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this

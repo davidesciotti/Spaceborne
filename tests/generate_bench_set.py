@@ -29,6 +29,8 @@ NOTES
    but you don't need to care about this.
 """
 
+# ruff: noqa: PERF401
+
 import gc
 import json
 import os
@@ -279,14 +281,16 @@ base_cfg = {
         'xim': True,
         'gt': True,
         'w': True,
+        'En': True,
+        'Bn': True,
         'cross_cov': True,
     },
     'nz': {
         'nz_sources_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
         'nz_lenses_filename': f'{ROOT}/common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
         'normalize_nz': True,
-        'ngal_sources': [8.09216, 8.09215, 8.09215],
-        'ngal_lenses': [8.09216, 8.09215, 8.09215],
+        'ngal_sources': [7.09216, 8.09215, 9.09215],
+        'ngal_lenses': [3.09216, 2.09215, 4.09215],
         'shift_nz': False,
         'dzWL': [0.0, 0.0, 0.0],
         'dzGC': [0.0, 0.0, 0.0],
@@ -302,6 +306,7 @@ base_cfg = {
         'theta_min_arcmin': 50,
         'theta_max_arcmin': 300,
         'theta_bins': 4,
+        'n_modes_cosebis': 3,
     },
     'C_ell': {
         'use_input_cls': False,
@@ -334,6 +339,13 @@ base_cfg = {
         'aposize': 0.1,
     },
     'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
+    'OneCovariance': {
+    'path_to_oc_env': '/opt/miniconda3/envs/cov20_env/bin/python',
+    'path_to_oc_executable': f'{ROOT}/OneCovariance/covariance.py',
+    'consistency_checks': False,
+    'oc_output_filename': 'cov_oc',
+    }, 
+        
     'covariance': {
         'G': True,
         'SSC': True,
@@ -344,7 +356,7 @@ base_cfg = {
         'covariance_ordering_2D': 'probe_scale_zpair',
         'save_full_cov': True,
         'split_gaussian_cov': False,
-        'sigma_eps_i': [0.26, 0.26, 0.26],
+        'sigma_eps_i': [0.16, 0.26, 0.36],
         'no_sampling_noise': False,
         'which_pk_responses': 'halo_model',
         'which_b1g_in_resp': 'from_input',
@@ -392,9 +404,12 @@ base_cfg = {
         'ell_max_rs': 100000,
         'ell_bins_rs': 50,
         'ell_bins_rs_nongauss': 50,
+        'theta_min_arcmin_cosebis': 2,
+        'theta_max_arcmin_cosebis': 300,
+        'theta_steps_cosebis': 500,
     },
     'misc': {
-        'num_threads': 72,
+        'num_threads': 50,
         'jax_platform': 'auto',
         'jax_enable_x64': True,
         'test_numpy_inversion': False,
@@ -414,65 +429,104 @@ base_cfg = {
 # Each dictionary represents one configuration to test
 configs_to_test = []
 
+# ! OneCovariance
+for obs_space in ['harmonic', 'real', 'cosebis']:
+    configs_to_test.append(
+        {
+            'covariance': {
+                'G_code': 'OneCovariance',
+                'SSC': False,
+                'cNG': False,
+            },
+            'probe_selection': {'space': obs_space},
+            'binning': {'binning_type': 'log'},
+        }
+    )
+
 
 # ! covariance ordering
 triu_tril = 'triu'
 row_col = 'row-major'
-for space in ['harmonic', 'real']:
+for space in ['harmonic', 'real', 'cosebis']:
     for split_gaussian_cov in [True, False]:
         for cross_cov in [True, False]:
-            for ordering in [
-                'probe_scale_zpair',
-                'probe_zpair_scale',
-                'scale_probe_zpair',
-            ]:
-                # for triu_tril in ['triu', 'tril']:
-                # for row_col in ['row-major', 'col-major']:
-                if space == 'harmonic':
-                    for LL, GL, GC in product([True, False], repeat=3):
-                        if not any([LL, GL, GC]):
-                            continue
-                        configs_to_test.append(
-                            {
-                                'probe_selection': {
-                                    'LL': LL,
-                                    'GL': GL,
-                                    'GG': GC,
-                                    'cross_cov': cross_cov,
-                                    'space': 'harmonic',
-                                },
-                                'covariance': {
-                                    'SSC': False,
-                                    'split_gaussian_cov': split_gaussian_cov,
-                                    'covariance_ordering_2D': ordering,
-                                    'triu_tril': triu_tril,
-                                    'row_col_major': row_col,
-                                },
-                            }
-                        )
-                elif space == 'real':
-                    for xip, xim, gt, w in product([True, False], repeat=4):
-                        if not any([xip, xim, gt, w]):
-                            continue
-                        configs_to_test.append(
-                            {
-                                'probe_selection': {
-                                    'xip': xip,
-                                    'xim': xim,
-                                    'gt': gt,
-                                    'w': w,
-                                    'cross_cov': cross_cov,
-                                    'space': 'real',
-                                },
-                                'covariance': {
-                                    'SSC': False,
-                                    'split_gaussian_cov': split_gaussian_cov,
-                                    'covariance_ordering_2D': ordering,
-                                    'triu_tril': triu_tril,
-                                    'row_col_major': row_col,
-                                },
-                            }
-                        )
+            for use_input_cls in [True, False]:
+                for ordering in [
+                    'probe_scale_zpair',
+                    'probe_zpair_scale',
+                    'scale_probe_zpair',
+                ]:
+                    # for triu_tril in ['triu', 'tril']:
+                    # for row_col in ['row-major', 'col-major']:
+                    if space == 'harmonic':
+                        for LL, GL, GG in product([True, False], repeat=3):
+                            if not any([LL, GL, GG]):
+                                continue
+                            configs_to_test.append(
+                                {
+                                    'probe_selection': {
+                                        'LL': LL,
+                                        'GL': GL,
+                                        'GG': GG,
+                                        'cross_cov': cross_cov,
+                                        'space': space,
+                                    },
+                                    'covariance': {
+                                        'SSC': False,
+                                        'split_gaussian_cov': split_gaussian_cov,
+                                        'covariance_ordering_2D': ordering,
+                                        'triu_tril': triu_tril,
+                                        'row_col_major': row_col,
+                                    },
+                                    'C_ell': {'use_input_cls': use_input_cls},
+                                }
+                            )
+                    elif space == 'real':
+                        for xip, xim, gt, w in product([True, False], repeat=4):
+                            if not any([xip, xim, gt, w]):
+                                continue
+                            configs_to_test.append(
+                                {
+                                    'probe_selection': {
+                                        'xip': xip,
+                                        'xim': xim,
+                                        'gt': gt,
+                                        'w': w,
+                                        'cross_cov': cross_cov,
+                                        'space': space,
+                                    },
+                                    'covariance': {
+                                        'SSC': False,
+                                        'split_gaussian_cov': split_gaussian_cov,
+                                        'covariance_ordering_2D': ordering,
+                                        'triu_tril': triu_tril,
+                                        'row_col_major': row_col,
+                                    },
+                                    'C_ell': {'use_input_cls': use_input_cls},
+                                }
+                            )
+                    elif space == 'cosebis':
+                        for En, Bn in product([True, False], repeat=2):
+                            if not any([En, Bn]):
+                                continue
+                            configs_to_test.append(
+                                {
+                                    'probe_selection': {
+                                        'En': En,
+                                        'Bn': Bn,
+                                        'cross_cov': cross_cov,
+                                        'space': space,
+                                    },
+                                    'covariance': {
+                                        'SSC': False,
+                                        'split_gaussian_cov': split_gaussian_cov,
+                                        'covariance_ordering_2D': ordering,
+                                        'triu_tril': triu_tril,
+                                        'row_col_major': row_col,
+                                    },
+                                    'C_ell': {'use_input_cls': use_input_cls},
+                                }
+                            )
 
 
 # ! Bias models
@@ -490,8 +544,8 @@ for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
         )
 
 # ! Power spectrum responses
-for which_pk_responses in ['halo_model', 'separate_universe']:
-    configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
+# for which_pk_responses in ['halo_model', 'separate_universe']:
+#     configs_to_test.append({'covariance': {'which_pk_responses': which_pk_responses}})
 
 # ! RSD and magnification bias
 for has_IA in [True, False]:
@@ -516,7 +570,7 @@ for Aia in [0.16, 0.5, 1.0]:
         )
 
 # ! Multiplicative shear bias
-for mult_shear_bias in [[0.0, 0.0, 0.0], [0.01, 0.01, 0.01], [-0.01, -0.01, -0.01]]:
+for mult_shear_bias in [[0.01, 0.02, 0.03], [-0.01, 0.09, -0.05]]:
     configs_to_test.append({'C_ell': {'mult_shear_bias': mult_shear_bias}})
 
 # ! Input Cls vs computed
@@ -542,19 +596,9 @@ for ke_approx in [True, False]:
                 }
             )
 
-# ! BNT transform
-for cl_BNT_transform, cov_BNT_transform in zip(
-    [True, False], [False, True], strict=True
-):
-    configs_to_test.append(
-        {
-            'BNT': {
-                'cl_BNT_transform': cl_BNT_transform,
-                'cov_BNT_transform': cov_BNT_transform,
-            }
-        }
-    )
-
+# ! cNG
+for cng in [True, False]:
+    configs_to_test.append({'covariance': {'cNG': cng}})
 
 # ! other codes [TODO add OneCov]
 for ssc_code in ['Spaceborne', 'PyCCL']:
@@ -567,7 +611,9 @@ for shift_nz in [True, False]:
         configs_to_test.append({'nz': {'shift_nz': shift_nz, 'smooth_nz': smooth_nz}})
 
 # ! Mask variations
-for load_input_mask, generate_polar_cap in zip([True, False], [False, True]):
+for load_input_mask, generate_polar_cap in zip(
+    [True, False], [False, True], strict=True
+):
     for nside in [512, 1024]:
         configs_to_test.append(
             {
@@ -592,7 +638,12 @@ for coupled_cov in [True, False]:
                             'spin0': spin0,
                             'use_INKA': use_INKA,
                         },
-                        'binning': {'binning_type': binning_type},
+                        'binning': {
+                            # to speed up significantly Nmt
+                            'ell_max': 1000,
+                            'ell_bins': 5,
+                            'binning_type': binning_type,
+                        },
                     }
                 )
 

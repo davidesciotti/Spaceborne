@@ -17,6 +17,27 @@ def nmt_linear_binning(lmin, lmax, bw, w=None):
 
 
 def nmt_log_binning(lmin, lmax, nbl, w=None):
+    """
+    Define a logarithmic ell binning scheme with optional weights.
+    Function written by Sylvain Gouyou Beauchamps.
+
+    Parameters
+    ----------
+    lmin : int
+        Minimum ell value for the binning.
+    lmax : int
+        Maximum ell value for the binning.
+    nbl : int
+        Number of bins.
+    w : array-like, optional
+        Weights for the ell values.
+
+    Returns
+    -------
+    b : nmt.NmtBin
+        NaMaster binning object with logarithmic bins.
+    """
+
     import pymaster as nmt
 
     op = np.log10
@@ -27,8 +48,9 @@ def nmt_log_binning(lmin, lmax, nbl, w=None):
     bins = inv(np.linspace(op(lmin), op(lmax + 1), nbl + 1))
     ell = np.arange(lmin, lmax + 1)
     i = np.digitize(ell, bins) - 1
+    if w is None:
+        w = np.ones(ell.size)
     b = nmt.NmtBin(bpws=i, ells=ell, weights=w, lmax=lmax)
-
     return b
 
 
@@ -105,9 +127,13 @@ def get_idxs_to_delete_3x2pt(ell_values_3x2pt, ell_cuts_dict, zbins, covariance_
 
 
 def compute_ells(
-    nbl: int, ell_min: int, ell_max: int, recipe, output_ell_bin_edges: bool = False
+    nbl: int,
+    ell_min: int,
+    ell_max: int,
+    binning_type: str,
+    output_ell_bin_edges: bool = False,
 ):
-    """Compute the ell values and the bin widths for a given recipe.
+    """Compute the ell values and the bin width\s for a given binning_type.
 
     Parameters
     ----------
@@ -117,8 +143,8 @@ def compute_ells(
         Minimum ell value.
     ell_max : int
         Maximum ell value.
-    recipe : str
-        Recipe to use. Must be either "ISTF" or "ISTNL".
+    binning_type : str
+        Binning type to use. Must be either "ISTF" or "ISTNL".
     output_ell_bin_edges : bool, optional
         If True, also return the ell bin edges, by default False
 
@@ -132,24 +158,61 @@ def compute_ells(
         ell bin edges. Returned only if output_ell_bin_edges is True.
 
     """
-    if recipe == 'ISTF':
+    if binning_type == 'ISTF':
         ell_bin_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
-        ells = (ell_bin_edges[1:] + ell_bin_edges[:-1]) / 2.0
+        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
         deltas = np.diff(ell_bin_edges)
 
-    elif recipe == 'ISTNL':
+    elif binning_type == 'ISTNL':
         ell_bin_edges = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
         ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
         ells = np.exp(ells)
         deltas = np.diff(np.exp(ell_bin_edges))
 
-    elif recipe == 'lin':
+    elif binning_type == 'lin':
         ell_bin_edges = np.linspace(ell_min, ell_max, nbl + 1)
         ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
         deltas = np.diff(ell_bin_edges)
 
+    elif binning_type == 'log':
+        ell_bin_edges = np.geomspace(ell_min, ell_max, nbl + 1)
+        ells = np.exp((np.log(ell_bin_edges[:-1]) + np.log(ell_bin_edges[1:])) / 2.0)
+        deltas = np.diff(ell_bin_edges)
+
     else:
-        raise ValueError('recipe must be either "ISTF" or "ISTNL" or "lin"')
+        raise ValueError('recipe must be either "ISTF", "ISTNL", "lin" or "log"')
+
+    if output_ell_bin_edges:
+        return ells, deltas, ell_bin_edges
+
+    return ells, deltas
+
+
+def compute_ells_oc(
+    nbl: int,
+    ell_min: int,
+    ell_max: int,
+    binning_type: str,
+    output_ell_bin_edges: bool = False,
+):
+    """Computes ell grid as done in OneCovariance"""
+
+    if binning_type == 'lin':
+        ell_bin_edges = np.linspace(ell_min, ell_max, nbl + 1).astype(int)
+        ells = 0.5 * (ell_bin_edges[1:] + ell_bin_edges[:-1])
+
+    elif binning_type == 'log':
+        # log-spaced bin edges and geometric mean for the bin centers
+        # OC casts the ell bin edges to int
+        ell_bin_edges = np.unique(np.geomspace(ell_min, ell_max, nbl + 1).astype(int))
+        # this is the geometric mean
+        ells = np.exp(0.5 * (np.log(ell_bin_edges[1:]) + np.log(ell_bin_edges[:-1])))
+
+    else:
+        raise ValueError('binning_type must be either "lin" or "log"')
+
+    # TODO I think OneCovariance computes this differently
+    deltas = np.diff(ell_bin_edges)
 
     if output_ell_bin_edges:
         return ells, deltas, ell_bin_edges
@@ -217,7 +280,7 @@ class EllBinning:
                 nbl=self.nbl_WL,
                 ell_min=self.ell_min_WL,
                 ell_max=self.ell_max_WL,
-                recipe='ISTF',
+                binning_type='ISTF',
                 output_ell_bin_edges=True,
             )
 
@@ -225,7 +288,7 @@ class EllBinning:
                 nbl=self.nbl_GC,
                 ell_min=self.ell_min_GC,
                 ell_max=self.ell_max_GC,
-                recipe='ISTF',
+                binning_type='ISTF',
                 output_ell_bin_edges=True,
             )
 
@@ -234,7 +297,7 @@ class EllBinning:
                 nbl=self.nbl_WL,
                 ell_min=self.ell_min_WL,
                 ell_max=self.ell_max_WL,
-                recipe='lin',
+                binning_type='lin',
                 output_ell_bin_edges=True,
             )
 
@@ -242,7 +305,7 @@ class EllBinning:
                 nbl=self.nbl_GC,
                 ell_min=self.ell_min_GC,
                 ell_max=self.ell_max_GC,
-                recipe='lin',
+                binning_type='lin',
                 output_ell_bin_edges=True,
             )
 
@@ -268,8 +331,7 @@ class EllBinning:
             self.ell_min_GC = ell_edges_lo_GC[0]
             self.ell_max_WL = ell_edges_hi_WL[-1]
             self.ell_max_GC = ell_edges_hi_GC[-1]
-            
-            
+
             # sanity check
             if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
                 raise ValueError('All WL bin lower edges must be less than upper edges')
@@ -292,17 +354,16 @@ class EllBinning:
 
         elif self.binning_type == 'ref_cut':
             # TODO this is only done for backwards-compatibility reasons
-            
 
             ell_min_ref = self.cfg['binning']['ell_min_ref']
             ell_max_ref = self.cfg['binning']['ell_max_ref']
             nbl_ref = self.cfg['binning']['ell_bins_ref']
-            
+
             self.ells_ref, self.delta_l_ref, self.ell_edges_ref = compute_ells(
                 nbl=nbl_ref,
                 ell_min=ell_min_ref,
                 ell_max=ell_max_ref,
-                recipe='ISTF',
+                binning_type='ISTF',
                 output_ell_bin_edges=True,
             )
 

@@ -104,7 +104,7 @@ def test_main_script(test_cfg_path):
                 rtol=1e-5,
                 err_msg=f"{key} doesn't match the benchmark ❌",
             )
-            print(f'{key} matches the benchmark ✅')
+            print(f'{key:<20} matches the benchmark ✅')
         except ValueError as e:
             # Catch shape mismatches (e.g., one empty, one non-empty)
             print(f"Shape mismatch for '{key}': {e}")
@@ -118,10 +118,10 @@ def test_main_script(test_cfg_path):
             try:
                 # Direct comparison (handles empty arrays automatically)
                 np.testing.assert_allclose(
-                    _dict[f'cov_{probe}_tot_2D'],
-                    _dict[f'cov_{probe}_g_2D']
-                    + _dict[f'cov_{probe}_ssc_2D']
-                    + _dict[f'cov_{probe}_cng_2D'],
+                    _dict[f'cov_{probe}_tot_2d'],
+                    _dict[f'cov_{probe}_g_2d']
+                    + _dict[f'cov_{probe}_ssc_2d']
+                    + _dict[f'cov_{probe}_cng_2d'],
                     atol=0,
                     rtol=1e-5,
                     err_msg=f'cov {probe} tot != G + SSC + cNG ❌',
@@ -136,7 +136,7 @@ def test_main_script(test_cfg_path):
             except KeyError as e:
                 # Catch missing keys
                 print(
-                    f'It looks like cov_{probe}_tot_2D or one of the other '
+                    f'It looks like cov_{probe}_tot_2d or one of the other '
                     'covariances is missing. This may be because of the probes '
                     'selected in the config, and is not necessarily an error.'
                 )
@@ -148,8 +148,9 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/Users/davidesciotti/Documents/Work/Code'
-ROOT = '/u/dsciotti/code'
+ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
+# ROOT = '/u/dsciotti/code'  # orlanth
+# ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file
@@ -160,6 +161,9 @@ bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
 bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 bench_yaml_names.sort()
+
+# real space
+# bench_yaml_names = [f'config_{i:04d}' for i in range(84, 120)]
 
 # slow_benchs = [
 #     'config_0004',
@@ -236,4 +240,4 @@ for bench_name in bench_yaml_names:
             os.remove(file_path)
 
 
-print('Done.')
+print('All tests run ☑️')

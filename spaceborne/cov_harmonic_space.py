@@ -119,6 +119,8 @@ class SpaceborneCovariance:
 
     def set_gauss_cov(self, ccl_obj: CCLInterface):
         start = time.perf_counter()
+        
+        print('\nComputing Gaussian harmonic-space covariance matrix...')
 
         # signal
         cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
@@ -140,6 +142,9 @@ class SpaceborneCovariance:
         noise_3x2pt_5d = np.repeat(
             noise_3x2pt_4d[:, :, np.newaxis, :, :], self.ell_obj.nbl_3x2pt, axis=2
         )
+        noise_3x2pt_unb_5d = np.repeat(
+            noise_3x2pt_4d[:, :, np.newaxis, :, :], self.ell_obj.nbl_3x2pt_unb, axis=2
+        )
 
         # bnt-transform the noise spectra if needed
         if self.cfg['BNT']['cl_BNT_transform']:
@@ -148,16 +153,34 @@ class SpaceborneCovariance:
                 noise_3x2pt_5d, self.bnt_matrix
             )
 
+        if self.cfg['precision']['cov_hs_g_ell_bin_average']:
+            # unbinned cls and noise; need the edges to compute the number of modes 
+            # (after casting them to int. n_modes is equivalent to delta_ell modulo the 
+            # fact that for delta_ell we consider non-integer ell values)
+            _cl_5d = self.cl_3x2pt_unb_5d
+            _noise_5d = noise_3x2pt_unb_5d
+            _ell_values = self.ell_obj.ells_3x2pt_unb
+            _ell_edges = self.ell_obj.ell_edges_3x2pt
+        else:
+            # evaluate the covariance at the center of the ell bin and normalise by 
+            # delta_ell
+            _cl_5d = cl_3x2pt_5d
+            _noise_5d = noise_3x2pt_5d
+            _ell_values = self.ell_obj.ells_3x2pt
+            _ell_edges = None
+
         # ! compute 3x2pt fsky Gaussian covariance: by default, split SVA, SN and MIX
         # the Gaussian HS cov is computed for all probes at once, still
         (cov_3x2pt_sva_10d, cov_3x2pt_sn_10d, cov_3x2pt_mix_10d) = sl.compute_g_cov(
-            cl_5d=cl_3x2pt_5d,
-            noise_5d=noise_3x2pt_5d,
+            cl_5d=_cl_5d,
+            noise_5d=_noise_5d,
             fsky=self.fsky,
-            ell_values=self.ell_obj.ells_3x2pt,
+            ell_values=_ell_values,
             delta_ell=self.ell_obj.delta_l_3x2pt,
             split_terms=True,
-            return_only_diagonal_ells=False,
+            return_only_ell_diagonal=False,
+            cov_hs_g_ell_bin_average=self.cfg['precision']['cov_hs_g_ell_bin_average'],
+            ell_edges=_ell_edges,
         )
 
         # assign the different probes in the 10d array to the appropriate dict keys

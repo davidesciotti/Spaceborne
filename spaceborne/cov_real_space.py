@@ -954,7 +954,7 @@ class CovRealSpace(CovarianceProjector):
                 self.ells,
                 delta_ell,
                 split_terms=True,
-                return_only_diagonal_ells=True,
+                return_only_ell_diagonal=True,
             )
 
             # sum sva and mix in harmonic space ("svapmix" = "sva plus mix")

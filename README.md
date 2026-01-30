@@ -108,6 +108,14 @@ python main.py --config="path/to/my/config/config.yaml" --show-plots
 
 Additionally, in the `config.yaml` file you can set `save_figs: True` to save the figures in the `<output_folder>/figs` path.
 
+## Benchmarks ⏱️
+On a 2024 MacBook Pro with a 14-core Apple M4 Pro processor and 24GB of RAM, for a configuration with $\ell_{\rm min}, \ell_{\rm max}, \ell_{\rm bins} = (10, 3000, 30)$ and 10 redshift bins, the 3×2pt harmonic-space covariance matrix takes:
+
+* Gaussian term (binned by computing the covariance over all integer $\ell$ values, then averaging): ~ 5s
+* SSC (on high precision settings, i.e. using the double redshift integral expression): ~5s
+
+Stay tuned for more!
+
 ## Using Docker 🐋
 
 If you find issues with the installation, you can happily disregard the above instructions and run the code through Docker. To do this, install [Docker Desktop](https://www.docker.com/products/docker-desktop/) or the [Docker engine](https://docs.docker.com/engine/); then, in the root of the cloned repository (again, remember to checkout the latest release), run:

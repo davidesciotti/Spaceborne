@@ -3426,46 +3426,6 @@ def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     return cov_binned
 
 
-def cov_g_terms_helper(a, b, prefactor, mix: bool, return_only_ell_diagonal: bool):
-    """Helper function to compute covariance terms.
-
-    Parameters
-    ----------
-    a, b : np.ndarray
-        Input arrays with shape (n_probes, n_probes, n_ell, zbins, zbins)
-    mix : bool
-        If True, compute mixed terms (for cross-covariance of signal and noise)
-    prefactor : np.ndarray
-        1D array of prefactors for each ell mode
-    return_only_ell_diagonal : bool
-        If True, return shape (A,B,C,D,L,i,j,k,l). If False, return (A,B,C,D,L,M,i,j,k,l)
-
-    Returns
-    -------
-    cov : np.ndarray
-        Covariance array
-    """
-    if mix:
-        term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
-        term_2 = np.einsum('ACLik, BDLjl -> ABCDLijkl', b, a)
-        term_3 = np.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
-        term_4 = np.einsum('ADLil, BCLjk -> ABCDLijkl', b, a)
-    else:
-        term_1 = np.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
-        term_2 = np.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
-        term_3 = 0
-        term_4 = 0
-
-    cov_diag = np.einsum(
-        'ABCDLijkl, L -> ABCDLijkl', term_1 + term_2 + term_3 + term_4, prefactor
-    )
-
-    if return_only_ell_diagonal:
-        return cov_diag
-    else:
-        return _expand_diagonal_to_full(cov_diag)
-
-
 @partial(jit, static_argnames=['mix'])
 def cov_g_terms_helper_jax(a, b, prefactor, mix: bool):
     """Helper function to compute covariance terms (JAX version).

@@ -85,7 +85,7 @@ probe_selection:
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.
   # These must have shape (z_points, zbins + 1) where z_points is the number of
-  # redshift values over which the n(z) is measured, and format .txt or .dat
+  # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
   nz_sources_filename: /Users/davidesciotti/Documents/Work/Code/common_data/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag245.dat # Type: str
@@ -117,6 +117,12 @@ binning:
   ell_max: 5000 # Type: int | float. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
+  # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
+  # The file should have the following columns:
+  # ell, delta_ell, ell_lower_edges, ell_upper_edges  
+  # with `ell` the ell bin center, `delta_ell` its width,
+  # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
+  # The file can be in .txt, .dat or .ascii format.
   ell_bins_filename: ../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix

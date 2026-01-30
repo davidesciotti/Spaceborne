@@ -548,6 +548,9 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
             'precision: cov_rs_int_method must be a string'
         )
+        assert isinstance(precision_cfg.get('jax_enable_x64'), bool), (
+            'misc: jax_enable_x64 must be a boolean'
+        )
 
         # misc
         assert isinstance(self.cfg.get('misc'), dict), (
@@ -577,9 +580,6 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(misc_cfg.get('jax_platform'), str), (
             'misc: jax_platform must be a string'
-        )
-        assert isinstance(misc_cfg.get('jax_enable_x64'), bool), (
-            'misc: jax_enable_x64 must be a boolean'
         )
         assert isinstance(misc_cfg.get('cl_triangle_plot'), bool), (
             'misc: cl_triangle_plot must be a boolean'

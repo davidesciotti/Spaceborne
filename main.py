@@ -1,9 +1,9 @@
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
-import itertools
 import os
 import sys
+import warnings
 
 import yaml
 
@@ -82,9 +82,9 @@ os.environ['XLA_FLAGS'] = (
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
+import itertools
 import pprint
 import time
-import warnings
 from functools import partial
 
 import matplotlib

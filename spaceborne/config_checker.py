@@ -549,7 +549,7 @@ class SpaceborneConfigChecker:
             'precision: cov_rs_int_method must be a string'
         )
         assert isinstance(precision_cfg.get('jax_enable_x64'), bool), (
-            'misc: jax_enable_x64 must be a boolean'
+            'precision: jax_enable_x64 must be a boolean'
         )
 
         # misc

@@ -340,12 +340,12 @@ base_cfg = {
     },
     'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
     'OneCovariance': {
-    'path_to_oc_env': '/opt/miniconda3/envs/cov20_env/bin/python',
-    'path_to_oc_executable': f'{ROOT}/OneCovariance/covariance.py',
-    'consistency_checks': False,
-    'oc_output_filename': 'cov_oc',
-    }, 
-        
+        'path_to_oc_env': '/opt/miniconda3/envs/cov20_env/bin/python',
+        'path_to_oc_executable': f'{ROOT}/OneCovariance/covariance.py',
+        'consistency_checks': False,
+        'oc_output_filename': 'cov_oc',
+        'compare_against_oc': False,
+    },
     'covariance': {
         'G': True,
         'SSC': True,
@@ -407,11 +407,12 @@ base_cfg = {
         'theta_min_arcmin_cosebis': 2,
         'theta_max_arcmin_cosebis': 300,
         'theta_steps_cosebis': 500,
+        'jax_enable_x64': True,
+        'cov_hs_g_ell_bin_average': False,
     },
     'misc': {
         'num_threads': 50,
         'jax_platform': 'auto',
-        'jax_enable_x64': True,
         'test_numpy_inversion': False,
         'test_condition_number': False,
         'test_cholesky_decomposition': False,
@@ -433,11 +434,7 @@ configs_to_test = []
 for obs_space in ['harmonic', 'real', 'cosebis']:
     configs_to_test.append(
         {
-            'covariance': {
-                'G_code': 'OneCovariance',
-                'SSC': False,
-                'cNG': False,
-            },
+            'covariance': {'G_code': 'OneCovariance', 'SSC': False, 'cNG': False},
             'probe_selection': {'space': obs_space},
             'binning': {'binning_type': 'log'},
         }
@@ -459,28 +456,32 @@ for space in ['harmonic', 'real', 'cosebis']:
                     # for triu_tril in ['triu', 'tril']:
                     # for row_col in ['row-major', 'col-major']:
                     if space == 'harmonic':
-                        for LL, GL, GG in product([True, False], repeat=3):
-                            if not any([LL, GL, GG]):
-                                continue
-                            configs_to_test.append(
-                                {
-                                    'probe_selection': {
-                                        'LL': LL,
-                                        'GL': GL,
-                                        'GG': GG,
-                                        'cross_cov': cross_cov,
-                                        'space': space,
-                                    },
-                                    'covariance': {
-                                        'SSC': False,
-                                        'split_gaussian_cov': split_gaussian_cov,
-                                        'covariance_ordering_2D': ordering,
-                                        'triu_tril': triu_tril,
-                                        'row_col_major': row_col,
-                                    },
-                                    'C_ell': {'use_input_cls': use_input_cls},
-                                }
-                            )
+                        for cov_hs_g_ell_bin_average in [True, False]:
+                            for LL, GL, GG in product([True, False], repeat=3):
+                                if not any([LL, GL, GG]):
+                                    continue
+                                configs_to_test.append(
+                                    {
+                                        'probe_selection': {
+                                            'LL': LL,
+                                            'GL': GL,
+                                            'GG': GG,
+                                            'cross_cov': cross_cov,
+                                            'space': space,
+                                        },
+                                        'covariance': {
+                                            'SSC': False,
+                                            'split_gaussian_cov': split_gaussian_cov,
+                                            'covariance_ordering_2D': ordering,
+                                            'triu_tril': triu_tril,
+                                            'row_col_major': row_col,
+                                        },
+                                        'C_ell': {'use_input_cls': use_input_cls},
+                                        'precision': {
+                                            'cov_hs_g_ell_bin_average': cov_hs_g_ell_bin_average
+                                        },
+                                    }
+                                )
                     elif space == 'real':
                         for xip, xim, gt, w in product([True, False], repeat=4):
                             if not any([xip, xim, gt, w]):

@@ -9,13 +9,16 @@ import time
 import warnings
 from collections.abc import Sequence
 from copy import deepcopy
+from functools import partial
 from pathlib import Path
 
+import jax.numpy as jnp
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 import yaml
+from jax import jit
 from matplotlib.colors import ListedColormap, LogNorm
 from matplotlib.gridspec import GridSpec
 from scipy.integrate import simpson as simps
@@ -3423,7 +3426,7 @@ def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     return cov_binned
 
 
-def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_ell_diagonal: bool):
+def cov_g_terms_helper(a, b, prefactor, mix: bool, return_only_ell_diagonal: bool):
     """Helper function to compute covariance terms.
 
     Parameters
@@ -3461,6 +3464,43 @@ def cov_g_terms_helper(a, b, mix: bool, prefactor, return_only_ell_diagonal: boo
         return cov_diag
     else:
         return _expand_diagonal_to_full(cov_diag)
+
+
+@partial(jit, static_argnames=['mix'])
+def cov_g_terms_helper_jax(a, b, prefactor, mix: bool):
+    """Helper function to compute covariance terms (JAX version).
+    Note: this function always returns only the ell-diagonal covariance.
+
+    Parameters
+    ----------
+    a, b : jnp.ndarray
+        Input arrays with shape (n_probes, n_probes, n_ell, zbins, zbins)
+    prefactor : jnp.ndarray
+        1D array of prefactors for each ell mode
+    mix : bool
+        If True, compute mixed terms (for cross-covariance of signal and noise)
+
+    Returns
+    -------
+    cov : jnp.ndarray
+        Diagonal covariance array with shape (A, B, C, D, nbl, zi, zj, zk, zl)
+    """
+    if mix:
+        term_1 = jnp.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
+        term_2 = jnp.einsum('ACLik, BDLjl -> ABCDLijkl', b, a)
+        term_3 = jnp.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
+        term_4 = jnp.einsum('ADLil, BCLjk -> ABCDLijkl', b, a)
+    else:
+        term_1 = jnp.einsum('ACLik, BDLjl -> ABCDLijkl', a, b)
+        term_2 = jnp.einsum('ADLil, BCLjk -> ABCDLijkl', a, b)
+        term_3 = 0
+        term_4 = 0
+
+    cov_diag = jnp.einsum(
+        'ABCDLijkl, L -> ABCDLijkl', term_1 + term_2 + term_3 + term_4, prefactor
+    )
+
+    return cov_diag
 
 
 def compute_g_cov(
@@ -3526,59 +3566,12 @@ def compute_g_cov(
     clplusn_5d = cl_5d + noise_5d
     prefactor = 1 / ((2 * ell_values + 1) * fsky)
 
-    if cov_hs_g_ell_bin_average:
-        # In this case, we need to compute the covariance at all integer ell modes,
-        # which makes the output 2D (ell1, ell2) covariance too large
-        _return_only_ell_diagonal = True
-    else:
-        # Traditional approach: prefactor at bin centers divided by delta_ell
-        _return_only_ell_diagonal = return_only_ell_diagonal
+    if not cov_hs_g_ell_bin_average:
         prefactor /= delta_ell
 
-    if split_terms:
-        cov_sva = cov_g_terms_helper(
-            cl_5d,
-            cl_5d,
-            mix=False,
-            prefactor=prefactor,
-            return_only_ell_diagonal=_return_only_ell_diagonal,
-        )
-        cov_sn = cov_g_terms_helper(
-            noise_5d,
-            noise_5d,
-            mix=False,
-            prefactor=prefactor,
-            return_only_ell_diagonal=_return_only_ell_diagonal,
-        )
-        cov_mix = cov_g_terms_helper(
-            cl_5d,
-            noise_5d,
-            mix=True,
-            prefactor=prefactor,
-            return_only_ell_diagonal=_return_only_ell_diagonal,
-        )
-
-        # bin the integer ell modes
-        if cov_hs_g_ell_bin_average:
-            cov_sva = _bin_cov_hs_g_diag(cov_sva, ell_edges, ell_values)
-            cov_sn = _bin_cov_hs_g_diag(cov_sn, ell_edges, ell_values)
-            cov_mix = _bin_cov_hs_g_diag(cov_mix, ell_edges, ell_values)
-
-            # if the user wants full (ell1, ell2) matrix, expand diagonal to full
-            if not return_only_ell_diagonal:
-                cov_sva = _expand_diagonal_to_full(cov_sva)
-                cov_sn = _expand_diagonal_to_full(cov_sn)
-                cov_mix = _expand_diagonal_to_full(cov_mix)
-
-        return cov_sva, cov_sn, cov_mix
-
-    else:
-        cov = cov_g_terms_helper(
-            clplusn_5d,
-            clplusn_5d,
-            mix=False,
-            prefactor=prefactor,
-            return_only_ell_diagonal=_return_only_ell_diagonal,
+    if not split_terms:
+        cov = np.asarray(
+            cov_g_terms_helper_jax(clplusn_5d, clplusn_5d, prefactor, mix=False)
         )
 
         # bin the integer ell modes
@@ -3590,6 +3583,26 @@ def compute_g_cov(
                 cov = _expand_diagonal_to_full(cov)
 
         return cov
+
+    cov_sva = np.asarray(cov_g_terms_helper_jax(cl_5d, cl_5d, prefactor, mix=False))
+    cov_sn = np.asarray(
+        cov_g_terms_helper_jax(noise_5d, noise_5d, prefactor, mix=False)
+    )
+    cov_mix = np.asarray(cov_g_terms_helper_jax(cl_5d, noise_5d, prefactor, mix=True))
+
+    # bin the integer ell modes
+    if cov_hs_g_ell_bin_average:
+        cov_sva = _bin_cov_hs_g_diag(cov_sva, ell_edges, ell_values)
+        cov_sn = _bin_cov_hs_g_diag(cov_sn, ell_edges, ell_values)
+        cov_mix = _bin_cov_hs_g_diag(cov_mix, ell_edges, ell_values)
+
+        # if the user wants full (ell1, ell2) matrix, expand diagonal to full
+        if not return_only_ell_diagonal:
+            cov_sva = _expand_diagonal_to_full(cov_sva)
+            cov_sn = _expand_diagonal_to_full(cov_sn)
+            cov_mix = _expand_diagonal_to_full(cov_mix)
+
+    return cov_sva, cov_sn, cov_mix
 
 
 def cov_10d_dict_to_array(cov_10D_dict, nbl, zbins, n_probes=2):

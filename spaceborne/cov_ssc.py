@@ -334,7 +334,7 @@ class SpaceborneSSC:
             nbx=nbl,
             zbins=None,
             ind_dict=self.ind_dict,
-            msg='SSC: ',
+            msg='SSC cov: ',
         )
 
         print(f'...done in {(time.perf_counter() - start):.2f} s')

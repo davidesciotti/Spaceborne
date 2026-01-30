@@ -3538,9 +3538,9 @@ def compute_g_cov(
         if cov_hs_g_ell_bin_average:
             cov = _bin_cov_hs_g_diag(cov, ell_edges, ell_values)
 
-            # if the user wants full (ell1, ell2) matrix, expand diagonal to full
-            if not return_only_ell_diagonal:
-                cov = _expand_diagonal_to_full(cov)
+        # if the user wants full (ell1, ell2) matrix, expand diagonal to full
+        if not return_only_ell_diagonal:
+            cov = _expand_diagonal_to_full(cov)
 
         return cov
 
@@ -3556,11 +3556,11 @@ def compute_g_cov(
         cov_sn = _bin_cov_hs_g_diag(cov_sn, ell_edges, ell_values)
         cov_mix = _bin_cov_hs_g_diag(cov_mix, ell_edges, ell_values)
 
-        # if the user wants full (ell1, ell2) matrix, expand diagonal to full
-        if not return_only_ell_diagonal:
-            cov_sva = _expand_diagonal_to_full(cov_sva)
-            cov_sn = _expand_diagonal_to_full(cov_sn)
-            cov_mix = _expand_diagonal_to_full(cov_mix)
+    # if the user wants full (ell1, ell2) matrix, expand diagonal to full
+    if not return_only_ell_diagonal:
+        cov_sva = _expand_diagonal_to_full(cov_sva)
+        cov_sn = _expand_diagonal_to_full(cov_sn)
+        cov_mix = _expand_diagonal_to_full(cov_mix)
 
     return cov_sva, cov_sn, cov_mix
 

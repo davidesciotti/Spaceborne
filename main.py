@@ -39,9 +39,26 @@ def load_config(_config_path):
 
 
 cfg = load_config('config.yaml')
-# Set jax platform
+
+# JAX settings
 if cfg['misc']['jax_platform'] != 'auto':
     os.environ['JAX_PLATFORMS'] = cfg['misc']['jax_platform']
+if cfg['precision']['jax_enable_x64']:
+    os.environ['JAX_ENABLE_X64'] = '1'
+else:
+    os.environ['JAX_ENABLE_X64'] = '0'
+    warnings.warn(
+        'JAX 64-bit precision is disabled. This may lead to '
+        'noticeable differences with respect to the numpy '
+        'implementation, which uses 64-bit precision by default.',
+        stacklevel=2,
+    )
+
+# Import JAX after environment variables are set, then print device info
+import jax
+
+print(f'JAX devices: {jax.devices()}')
+print(f'JAX backend: {jax.default_backend()}')
 
 # if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
@@ -1948,25 +1965,25 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
 if cfg['OneCovariance']['compare_against_oc']:
-#     for term in _cov_dict:
-#         cov_a = _cov_dict[term]['3x2pt']['2d']
-#         cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+    #     for term in _cov_dict:
+    #         cov_a = _cov_dict[term]['3x2pt']['2d']
+    #         cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-#         sl.compare_2d_covs(
-#             cov_a,
-#             cov_b,
-#             'SB',
-#             'OC',
-#             f'cov {term} {obs_space} space - ',
-#             diff_threshold=10,
-#             compare_cov_2d=True,
-#             compare_corr_2d=False,
-#             compare_diag=True,
-#             compare_flat=True,
-#             compare_spectrum=True,
-#         )
-#         print('=' * 70)
-#         print('')
+    #         sl.compare_2d_covs(
+    #             cov_a,
+    #             cov_b,
+    #             'SB',
+    #             'OC',
+    #             f'cov {term} {obs_space} space - ',
+    #             diff_threshold=10,
+    #             compare_cov_2d=True,
+    #             compare_corr_2d=False,
+    #             compare_diag=True,
+    #             compare_flat=True,
+    #             compare_spectrum=True,
+    #         )
+    #         print('=' * 70)
+    #         print('')
 
     # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
     # is not "full" (no Psi* covariance blocks)
@@ -2370,7 +2387,12 @@ if (
         else 'Gauss'
     )
     cov = covs_3x2pt_2d_tosave_dict[key]
-    print(f'Testing cov {key}...')
+
+    print(
+        f'Performing sanity checks on cov {key}.\n'
+        'This can take some time for large matrices. '
+        'Please note that your files have already been saved.\n'
+    )
 
     if cfg['misc']['test_condition_number']:
         cond_number = np.linalg.cond(cov)
@@ -2418,16 +2440,16 @@ if (
 
 # note that this is *not* compatible with %matplotlib inline in the interactive window!
 if cfg['misc']['save_figs']:
-    output_dir = f'{output_path}/figs'
-    os.makedirs(output_dir, exist_ok=True)
+    output_path_figs = f'{output_path}/figs'
+    os.makedirs(output_path_figs, exist_ok=True)
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(
-            os.path.join(output_dir, f'fig_{i:03d}.pdf'),
+            os.path.join(output_path_figs, f'fig_{i:03d}.pdf'),
             bbox_inches='tight',
             pad_inches=0.1,
         )
-    print(f'Figures saved in {output_dir}\n')
+    print(f'Figures saved in {output_path_figs}\n')
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')

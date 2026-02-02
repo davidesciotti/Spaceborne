@@ -1,9 +1,9 @@
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
-import itertools
 import os
 import sys
+import warnings
 
 import yaml
 
@@ -39,9 +39,26 @@ def load_config(_config_path):
 
 
 cfg = load_config('config.yaml')
-# Set jax platform
+
+# JAX settings
 if cfg['misc']['jax_platform'] != 'auto':
     os.environ['JAX_PLATFORMS'] = cfg['misc']['jax_platform']
+if cfg['precision']['jax_enable_x64']:
+    os.environ['JAX_ENABLE_X64'] = '1'
+else:
+    os.environ['JAX_ENABLE_X64'] = '0'
+    warnings.warn(
+        'JAX 64-bit precision is disabled. This may lead to '
+        'noticeable differences with respect to the numpy '
+        'implementation, which uses 64-bit precision by default.',
+        stacklevel=2,
+    )
+
+# Import JAX after environment variables are set, then print device info
+import jax
+
+print(f'JAX devices: {jax.devices()}')
+print(f'JAX backend: {jax.default_backend()}')
 
 # if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
@@ -65,9 +82,9 @@ os.environ['XLA_FLAGS'] = (
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
+import itertools
 import pprint
 import time
-import warnings
 from functools import partial
 
 import matplotlib
@@ -2370,7 +2387,12 @@ if (
         else 'Gauss'
     )
     cov = covs_3x2pt_2d_tosave_dict[key]
-    print(f'Testing cov {key}...')
+
+    print(
+        f'Performing sanity checks on cov {key}.\n'
+        'This can take some time for large matrices. '
+        'Please note that your files have already been saved.\n'
+    )
 
     if cfg['misc']['test_condition_number']:
         cond_number = np.linalg.cond(cov)
@@ -2418,16 +2440,16 @@ if (
 
 # note that this is *not* compatible with %matplotlib inline in the interactive window!
 if cfg['misc']['save_figs']:
-    output_dir = f'{output_path}/figs'
-    os.makedirs(output_dir, exist_ok=True)
+    output_path_figs = f'{output_path}/figs'
+    os.makedirs(output_path_figs, exist_ok=True)
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(
-            os.path.join(output_dir, f'fig_{i:03d}.pdf'),
+            os.path.join(output_path_figs, f'fig_{i:03d}.pdf'),
             bbox_inches='tight',
             pad_inches=0.1,
         )
-    print(f'Figures saved in {output_dir}\n')
+    print(f'Figures saved in {output_path_figs}\n')
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')

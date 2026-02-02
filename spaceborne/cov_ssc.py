@@ -1,6 +1,5 @@
 import time
 
-import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
@@ -166,10 +165,6 @@ class SpaceborneSSC:
         self.use_ke_approx = cfg['covariance']['use_KE_approximation']
         self.z_grid = z_grid
         self.ccl_obj = ccl_obj
-
-        # Enable 64-bit precision if required
-        jax.config.update('jax_enable_x64', cfg['misc']['jax_enable_x64'])
-        print('JAX devices:', jax.devices())
 
         # set some useful attributes
         if self.use_ke_approx:
@@ -339,7 +334,7 @@ class SpaceborneSSC:
             nbx=nbl,
             zbins=None,
             ind_dict=self.ind_dict,
-            msg='SSC: ',
+            msg='SSC cov: ',
         )
 
         print(f'...done in {(time.perf_counter() - start):.2f} s')

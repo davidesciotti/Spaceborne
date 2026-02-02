@@ -766,7 +766,7 @@ class CCLInterface:
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
 
             tqdm.write(
-                f'CCL {which_ng_cov}: computing probe combination {probe_ab, probe_cd}'
+                f'CCL {which_ng_cov} cov: computing probe combination {probe_ab, probe_cd}'
             )
 
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
@@ -794,7 +794,7 @@ class CCLInterface:
             nbx=len(ells),
             zbins=None,
             ind_dict=ind_dict,
-            msg=f'CCL {which_ng_cov}: ',
+            msg=f'CCL {which_ng_cov} cov: ',
         )
 
     def check_cov_blocks_symmetry(self):

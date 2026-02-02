@@ -119,7 +119,7 @@ class SpaceborneCovariance:
 
     def set_gauss_cov(self, ccl_obj: CCLInterface):
         start = time.perf_counter()
-        
+
         print('\nComputing Gaussian harmonic-space covariance matrix...')
 
         # signal
@@ -154,15 +154,15 @@ class SpaceborneCovariance:
             )
 
         if self.cfg['precision']['cov_hs_g_ell_bin_average']:
-            # unbinned cls and noise; need the edges to compute the number of modes 
-            # (after casting them to int. n_modes is equivalent to delta_ell modulo the 
+            # unbinned cls and noise; need the edges to compute the number of modes
+            # (after casting them to int. n_modes is equivalent to delta_ell modulo the
             # fact that for delta_ell we consider non-integer ell values)
             _cl_5d = self.cl_3x2pt_unb_5d
             _noise_5d = noise_3x2pt_unb_5d
             _ell_values = self.ell_obj.ells_3x2pt_unb
             _ell_edges = self.ell_obj.ell_edges_3x2pt
         else:
-            # evaluate the covariance at the center of the ell bin and normalise by 
+            # evaluate the covariance at the center of the ell bin and normalise by
             # delta_ell
             _cl_5d = cl_3x2pt_5d
             _noise_5d = noise_3x2pt_5d

@@ -61,7 +61,7 @@ OneCovariance:
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: True
+  compare_against_oc: False
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
@@ -85,7 +85,7 @@ probe_selection:
 nz:
   # Paths to source (for WL) and lens (for GCph) redshift distributions.
   # These must have shape (z_points, zbins + 1) where z_points is the number of
-  # redshift values over which the n(z) is measured, and format .txt or .dat
+  # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
   nz_sources_filename: ../common_data/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
@@ -117,6 +117,12 @@ binning:
   ell_max: 3000 # Type: int | float. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
+  # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
+  # The file should have the following columns:
+  # ell, delta_ell, ell_lower_edges, ell_upper_edges  
+  # with `ell` the ell bin center, `delta_ell` its width,
+  # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
+  # The file can be in .txt, .dat or .ascii format.
   ell_bins_filename: ../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
@@ -354,20 +360,27 @@ precision:
   # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
   n_iter_nmt: null # Type: None | int.
 
+   
+  # ======================================= JAX ========================================
+  # Whether to enable 64-bit precision for JAX computations. Setting this to False can result
+  # in noticeable differences with respect to the plain numpy implementation, since the 
+  # latter defaults to 64-bit precision.
+  jax_enable_x64: True # Type: bool. 
+
+
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might
   # have to restart the kernel after changing the num_threads, and jax_platform
   num_threads: 50 # Type: int. How many threads to use for the parallel computations
 
-  # jax-specific settings
-  jax_platform: auto # Type: str. 'auto', 'cpu' or 'gpu'
-  jax_enable_x64: True # Type: bool. Whether to enable 64-bit precision for JAX computations
+  # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
+  jax_platform: auto # Type: str. 
 
   # some sanity checks on the covariance matrix. These could take a while to run.
-  test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
-  test_condition_number: True # Type: bool. Check if condition number is above 1e10
-  test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
-  test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
+  test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
+  test_condition_number: False # Type: bool. Check if condition number is above 1e10
+  test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
+  test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.

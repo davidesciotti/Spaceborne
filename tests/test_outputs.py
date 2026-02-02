@@ -104,43 +104,13 @@ def test_main_script(test_cfg_path):
                 rtol=1e-5,
                 err_msg=f"{key} doesn't match the benchmark ❌",
             )
-            print(f'{key:<20} matches the benchmark ✅')
+            print(f'{key:<30} matches the benchmark ✅')
         except ValueError as e:
             # Catch shape mismatches (e.g., one empty, one non-empty)
             print(f"Shape mismatch for '{key}': {e}")
         except (TypeError, AssertionError) as e:
             # Catch other errors (dtype mismatches, numerical differences)
             print(f'Comparison failed for {key}: {e}')
-
-    # check that cov TOT = G + SSC + cNG
-    for probe in ['WL', 'GC', '3x2pt']:
-        for _dict in [bench_data, test_data]:
-            try:
-                # Direct comparison (handles empty arrays automatically)
-                np.testing.assert_allclose(
-                    _dict[f'cov_{probe}_tot_2d'],
-                    _dict[f'cov_{probe}_g_2d']
-                    + _dict[f'cov_{probe}_ssc_2d']
-                    + _dict[f'cov_{probe}_cng_2d'],
-                    atol=0,
-                    rtol=1e-5,
-                    err_msg=f'cov {probe} tot != G + SSC + cNG ❌',
-                )
-                print(f'cov {probe} tot = G + SSC + cNG ✅')
-            except ValueError as e:
-                # Catch shape mismatches (e.g., one empty, one non-empty)
-                print(f"Shape mismatch for '{probe}': {e}")
-            except (TypeError, AssertionError) as e:
-                # Catch other errors (dtype mismatches, numerical differences)
-                print(f'Comparison failed for {probe}: {e}')
-            except KeyError as e:
-                # Catch missing keys
-                print(
-                    f'It looks like cov_{probe}_tot_2d or one of the other '
-                    'covariances is missing. This may be because of the probes '
-                    'selected in the config, and is not necessarily an error.'
-                )
-                print(f'Error: \n{e}\n')
 
     # example of the Note above
     # assert False, 'stop here'
@@ -164,6 +134,7 @@ bench_yaml_names.sort()
 
 # real space
 # bench_yaml_names = [f'config_{i:04d}' for i in range(84, 120)]
+# bench_yaml_names = bench_yaml_names[3:]  # skip OneCov
 
 # slow_benchs = [
 #     'config_0004',

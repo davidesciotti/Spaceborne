@@ -61,7 +61,7 @@ OneCovariance:
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: True
+  compare_against_oc: False
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
@@ -88,13 +88,13 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /Users/davidesciotti/Documents/Work/Code/common_data/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat # Type: str
-  nz_lenses_filename: /Users/davidesciotti/Documents/Work/Code/common_data/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat # Type: str
+  nz_sources_filename: /u/dsciotti/code/common_data/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat # Type: str
+  nz_lenses_filename: /u/dsciotti/code/common_data/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
-  ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
-  ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
+  ngal_sources: [8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215, 8.09215] # Type: list[float]
+  ngal_lenses: [8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215, 8.09216, 8.09215, 8.09215, 8.09215] # Type: list[float]
 
   # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -237,7 +237,7 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
+  sigma_eps_i: [0.26, 0.26, 0.26, 0.26, 0.26, 0.26, 0.26, 0.26, 0.26, 0.26, 0.26, 0.26, 0.26] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the
   # Gaussian covariance matrix.
@@ -364,10 +364,10 @@ misc:
   jax_enable_x64: True # Type: bool. Whether to enable 64-bit precision for JAX computations
 
   # some sanity checks on the covariance matrix. These could take a while to run.
-  test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
-  test_condition_number: True # Type: bool. Check if condition number is above 1e10
-  test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
-  test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
+  test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
+  test_condition_number: False # Type: bool. Check if condition number is above 1e10
+  test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
+  test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.

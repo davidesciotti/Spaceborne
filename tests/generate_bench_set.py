@@ -331,7 +331,7 @@ base_cfg = {
     },
     'mask': {
         'load_mask': False,
-        'mask_path': f'{ROOT}/common_data/Euclid_data/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
+        'mask_path': f'{ROOT}/common_data/Euclid_data/RR2/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
         'generate_polar_cap': True,
         'nside': 1024,
         'survey_area_deg2': 13245,

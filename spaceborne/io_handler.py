@@ -64,9 +64,7 @@ def check_cl_symm(cl_3d):
 
 
 def load_cl_euclidlib(filename, key_a, key_b):
-    import ipdb
 
-    ipdb.set_trace()
     import euclidlib as el
 
     # checks
@@ -424,6 +422,7 @@ class IOHandler:
         # - `nz_full`: nz table including a column for the z values
         # - `nz`:      nz table excluding a column for the z values
         # - `nz_original`: nz table as imported (it may be subjected to shifts later on)
+
         nz_src_tab_full = np.genfromtxt(self.cfg['nz']['nz_sources_filename'])
         nz_lns_tab_full = np.genfromtxt(self.cfg['nz']['nz_lenses_filename'])
         self.zgrid_nz_src = nz_src_tab_full[:, 0]

@@ -69,8 +69,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt or .dat
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: ../common_data/Spaceborne_jobs/cov_validation_2026/input/nzs.txt # Type: str
-  nz_lenses_filename: ../common_data/Spaceborne_jobs/cov_validation_2026/input/nzs.txt # Type: str
+  nz_sources_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/nzs.txt # Type: str
+  nz_lenses_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/nzs.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -98,7 +98,7 @@ binning:
   ell_max: 3000 # Type: int | float. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
-  ell_bins_filename: ../common_data/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
+  ell_bins_filename: ../DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 50 # Type: float | int. Minimum theta (in arcminutes)
@@ -121,9 +121,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: True # Type: bool
 
-  cl_LL_path: ../common_data/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000.fits # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path: ../common_data/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000.fits # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path: ../common_data/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000.fits # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_path: ../DATA/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000_euclidlib.fits # Type: str. Path to the shear-shear angular PS.
+  cl_GL_path: ../DATA/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000_euclidlib.fits # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_path: ../DATA/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000_euclidlib.fits # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -140,8 +140,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: ../common_data/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: ../common_data/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
@@ -161,7 +161,7 @@ C_ell:
 
 mask:
   load_mask: True # Type: bool. Whether to load the mask from a fits or npy file
-  mask_path: ../common_data/Spaceborne_jobs/cov_validation_2026/input/dr1_mask_nside_2048.fits # Type: str. Path to the mask file (.FITS or .npy)
+  mask_path: ../DATA/Spaceborne_jobs/cov_validation_2026/input/dr1_mask_nside_2048.fits # Type: str. Path to the mask file (.FITS or .npy)
   generate_polar_cap: False # Type: bool. Whether to generate a polar cap mask on the fly.
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
@@ -347,5 +347,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: ../common_data/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

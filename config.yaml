@@ -88,13 +88,13 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/nzs.txt # Type: str
-  nz_lenses_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/nzs.txt # Type: str
+  nz_sources_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/nz_src.txt # Type: str
+  nz_lenses_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/nz_lns.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
-  ngal_sources: [8.09216, 8.09215] # Type: list[float]
-  ngal_lenses: [8.09216, 8.09215] # Type: list[float]
+  ngal_sources: [8.09216] # Type: list[float]
+  ngal_lenses: [8.09216] # Type: list[float]
 
   # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -103,8 +103,8 @@ nz:
   normalize_nz: True # Type: bool. Whether to normalize the input n_i(z) if they are not already (within atol=0, rtol=1e-3)
 
   shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-  dzWL: [0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
-  dzGC: [0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
+  dzWL: [0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
+  dzGC: [0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
@@ -163,7 +163,8 @@ C_ell:
 
   # Coefficients of the third-order polynomial galaxy and magnification bias.
   # The order is [z^0, z^1, z^2, z^3]
-  galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
+  # galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
+  galaxy_bias_fit_coeff: [1., 0., 0., 0.] # Type: list[float]
   magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
@@ -173,12 +174,12 @@ C_ell:
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
-  mult_shear_bias: [0.0, 0.0] # Type: list[float]
+  mult_shear_bias: [0.0] # Type: list[float]
 
   # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
   has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
-  has_IA: True # Type: bool. Enable/disable intrinsic alignment.
-  has_magnification_bias: True # Type: bool. Enable/disable magnification bias.
+  has_IA: False # Type: bool. Enable/disable intrinsic alignment.
+  has_magnification_bias: False # Type: bool. Enable/disable magnification bias.
 
   # Keyword arguments for CCL Cl calculation (excluding `p_of_k_a`), described in
   # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl
@@ -243,7 +244,7 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.26] # Type: list[float]
+  sigma_eps_i: [0.26] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the
   # Gaussian covariance matrix.
@@ -278,7 +279,7 @@ covariance:
 
   # Name of the output covariance file.
   cov_filename: covmat # Type: str.
-  save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
+  save_cov_fits: True # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
@@ -377,10 +378,10 @@ misc:
   jax_platform: auto # Type: str. 
 
   # some sanity checks on the covariance matrix. These could take a while to run.
-  test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
-  test_condition_number: False # Type: bool. Check if condition number is above 1e10
-  test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
-  test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
+  test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
+  test_condition_number: True # Type: bool. Check if condition number is above 1e10
+  test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
+  test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
@@ -391,5 +392,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: ../DATA/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/cov_validation_2026/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

@@ -66,8 +66,8 @@ configs_to_run = [
     # ! nzRR2_EP06_nbl32_ellmax1500
     {
         'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
+            'nz_sources_filename': f'{ROOT}/DATA/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
+            'nz_lenses_filename': f'{ROOT}/DATA/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
             'ngal_sources': [
                 2.1279869461396435,
                 2.8237964415236063,
@@ -89,14 +89,14 @@ configs_to_run = [
         'binning': {'ell_max': 1500},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
         'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500'
+            'output_path': f'{ROOT}/DATA/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500'
         },
     },
     # ! nzRR2_EP06_nbl32_ellmax5000
     {
         'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
+            'nz_sources_filename': f'{ROOT}/DATA/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
+            'nz_lenses_filename': f'{ROOT}/DATA/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
             'ngal_sources': [
                 1.68850,
                 1.68847,
@@ -118,14 +118,14 @@ configs_to_run = [
         'binning': {'ell_max': 5000},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
         'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000'
+            'output_path': f'{ROOT}/DATA/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000'
         },
     },
     # ! nzRR2_EP06_nbl32_ellmax1500_BNT
     {
         'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
+            'nz_sources_filename': f'{ROOT}/DATA/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
+            'nz_lenses_filename': f'{ROOT}/DATA/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
             'ngal_sources': [
                 2.1279869461396435,
                 2.8237964415236063,
@@ -147,14 +147,14 @@ configs_to_run = [
         'binning': {'ell_max': 1500},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500_BNT'
+            'output_path': f'{ROOT}/DATA/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax1500_BNT'
         },
     },
     # ! nzRR2_EP06_nbl32_ellmax5000_BNT
     {
         'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
-            'nz_lenses_filename': f'{ROOT}/common_data/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
+            'nz_sources_filename': f'{ROOT}/DATA/RR2/Davide/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits',
+            'nz_lenses_filename': f'{ROOT}/DATA/RR2/Davide/Reg2_POS_tombins_unitweights_nz_SOMbin_C2020z.fits',
             'ngal_sources': [
                 2.1279869461396435,
                 2.8237964415236063,
@@ -176,17 +176,17 @@ configs_to_run = [
         'binning': {'ell_max': 5000},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000_BNT'
+            'output_path': f'{ROOT}/DATA/Spaceborne_jobs/vincenzo_2025_08/nzRR2_EP06_nbl32_ellmax5000_BNT'
         },
     },
     # ! nzSPV3_EP06_nbl32_ellmax5000 - "DR1" forecast
     # ! nz from https://drive.google.com/drive/u/2/folders/1oh9tdoE10kE-2CQfPhyIpdylRfpwoarx
     {
         'nz': {
-            # /home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzLenses-EP06-zedMin02-zedMax25-IE235.dat
-            'nz_sources_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzSources-EP06-zedMin02-zedMax25-SN05.dat',
-            'nz_lenses_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzLenses-EP06-zedMin02-zedMax25-IE235.dat',
-            # /home/cosmo/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzPar/ngbsLenses-EP06-zedMin02-zedMax25-IE235.dat
+            # /home/cosmo/davide.sciotti/data/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzLenses-EP06-zedMin02-zedMax25-IE235.dat
+            'nz_sources_filename': f'{ROOT}/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzSources-EP06-zedMin02-zedMax25-SN05.dat',
+            'nz_lenses_filename': f'{ROOT}/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzTab/nzLenses-EP06-zedMin02-zedMax25-IE235.dat',
+            # /home/cosmo/davide.sciotti/data/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/DR1/NzPar/ngbsLenses-EP06-zedMin02-zedMax25-IE235.dat
             'ngal_sources': [
                 5.98069,
                 5.98077,
@@ -209,15 +209,15 @@ configs_to_run = [
         'covariance': {'sigma_eps_i': [0.26] * 6},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP06_nbl32_ellmax5000'
+            'output_path': f'{ROOT}/DATA/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP06_nbl32_ellmax5000'
         },
     },
     # ! nzSPV3_EP13_nbl32_ellmax5000
     {
         'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
-            'nz_lenses_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
-            # sftp://davide.sciotti@melodie.phys.uniroma1.it/export/NAS/cosmo/users/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzPar/from ngbsTab-EP13-zedMin02-zedMax25-mag230
+            'nz_sources_filename': f'{ROOT}/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
+            'nz_lenses_filename': f'{ROOT}/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
+            # sftp://davide.sciotti@melodie.phys.uniroma1.it/export/NAS/cosmo/users/davide.sciotti/data/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzPar/from ngbsTab-EP13-zedMin02-zedMax25-mag230
             'ngal_sources': [
                 0.51609,
                 0.51609,
@@ -255,15 +255,15 @@ configs_to_run = [
         'covariance': {'sigma_eps_i': [0.26] * 13},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP13_nbl32_ellmax5000'
+            'output_path': f'{ROOT}/DATA/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP13_nbl32_ellmax5000'
         },
     },
     # ! nzSPV3_EP13_nbl32_ellmax5000_BNT
     {
         'nz': {
-            'nz_sources_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
-            'nz_lenses_filename': f'{ROOT}/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
-            # sftp://davide.sciotti@melodie.phys.uniroma1.it/export/NAS/cosmo/users/davide.sciotti/data/common_data/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzPar/from ngbsTab-EP13-zedMin02-zedMax25-mag230
+            'nz_sources_filename': f'{ROOT}/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
+            'nz_lenses_filename': f'{ROOT}/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzTab/nzTab-EP13-zedMin02-zedMax25-mag230.dat',
+            # sftp://davide.sciotti@melodie.phys.uniroma1.it/export/NAS/cosmo/users/davide.sciotti/data/DATA/vincenzo/SPV3_07_2022/FiRe/InputQuantities/NzFiles/SPV3/NzPar/from ngbsTab-EP13-zedMin02-zedMax25-mag230
             'ngal_sources': [
                 0.51609,
                 0.51609,
@@ -301,7 +301,7 @@ configs_to_run = [
         'covariance': {'sigma_eps_i': [0.26] * 13},
         'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': True},
         'misc': {
-            'output_path': f'{ROOT}/common_data/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP13_nbl32_ellmax5000_BNT'
+            'output_path': f'{ROOT}/DATA/Spaceborne_jobs/vincenzo_2025_08/nzSPV3_EP13_nbl32_ellmax5000_BNT'
         },
     },
 ]

@@ -2050,7 +2050,7 @@ if cfg['covariance']['save_full_cov']:
     np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **covs_6d_tosave_dict)
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
-    io_obj.save_cov_euclidlib(cov_hs_obj=_cov_dict)
+    io_obj.save_cov_euclidlib(cov_dict=_cov_dict)
 if cfg['covariance']['save_cov_fits'] and obs_space != 'harmonic':
     raise ValueError(
         'Official Euclid .fits format is only supported for harmonic space '

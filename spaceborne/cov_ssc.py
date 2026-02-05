@@ -303,7 +303,7 @@ class SpaceborneSSC:
 
         # ! start the actual computation
         start = time.perf_counter()
-        print('\nComputing Spaceborne SSC...')
+        print('\nComputing SSC...')
 
         # * compute required blocks
         for probe_abcd in unique_probe_combs_hs:

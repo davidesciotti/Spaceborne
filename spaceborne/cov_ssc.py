@@ -1,6 +1,5 @@
 import time
 
-import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
@@ -167,10 +166,6 @@ class SpaceborneSSC:
         self.z_grid = z_grid
         self.ccl_obj = ccl_obj
 
-        # Enable 64-bit precision if required
-        jax.config.update('jax_enable_x64', cfg['misc']['jax_enable_x64'])
-        print('JAX devices:', jax.devices())
-
         # set some useful attributes
         if self.use_ke_approx:
             self.ssc_func = ssc_integral_4D_simps_jax_ke_approx
@@ -314,7 +309,7 @@ class SpaceborneSSC:
         for probe_abcd in unique_probe_combs_hs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
 
-            print(f'SSC: computing probe combination {probe_ab, probe_cd}')
+            print(f'SSC cov: computing probe combination {probe_ab, probe_cd}')
             d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_ab)]
             d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_cd)]
 
@@ -339,7 +334,7 @@ class SpaceborneSSC:
             nbx=nbl,
             zbins=None,
             ind_dict=self.ind_dict,
-            msg='SSC: ',
+            msg='SSC cov: ',
         )
 
         print(f'...done in {(time.perf_counter() - start):.2f} s')

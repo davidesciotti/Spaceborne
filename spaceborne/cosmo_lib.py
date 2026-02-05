@@ -25,6 +25,51 @@ from spaceborne import sb_lib as sl
 c = constants.SPEED_OF_LIGHT
 
 
+def cloelib_to_spaceborne_params_mapping(
+    cloelib_pars_dict: dict, neutrino_mass_conversion_factor: float = 93.14
+) -> dict:
+    """Maps cosmological parameters from the cloelib basis to the Spaceborne one.
+    Requires the jaxcosmo package to compute sigma8 from As."""
+
+    import jaxcosmo
+
+    h = cloelib_pars_dict['H0'] / 100
+    Omega_nu0 = cloelib_pars_dict['mnu'] / (93.14 * h**2)
+    Omega_m0 = (
+        cloelib_pars_dict['Omega_cdm0'] + cloelib_pars_dict['Omega_b0'] + Omega_nu0
+    )
+    sigma8 = jaxcosmo.As_to_sigma8_max_precision(
+        cloelib_pars_dict['As'],
+        Omega_m0,
+        cloelib_pars_dict['Omega_b0'],
+        h,
+        cloelib_pars_dict['ns'],
+        cloelib_pars_dict['mnu'],
+        cloelib_pars_dict['w0'],
+        cloelib_pars_dict['wa'],
+    )
+
+    sigma8 = float(sigma8)
+    Omega_DE0 = 1.0 - Omega_m0 - cloelib_pars_dict['Omega_k0']
+    N_eff = cloelib_pars_dict['N_ur'] + cloelib_pars_dict['N_mnu']
+
+    # Set some Spaceborne configs at runtime; the rest are in pipe_cfg.yaml
+    sb_pars_dict = {}
+    sb_pars_dict['Om'] = Omega_m0
+    sb_pars_dict['Ob'] = cloelib_pars_dict['Omega_b0']
+    sb_pars_dict['wz'] = float(cloelib_pars_dict['w0'])
+    sb_pars_dict['wa'] = float(cloelib_pars_dict['wa'])
+    sb_pars_dict['h'] = h
+    sb_pars_dict['ns'] = cloelib_pars_dict['ns']
+    sb_pars_dict['s8'] = sigma8
+    sb_pars_dict['ODE'] = Omega_DE0
+    sb_pars_dict['m_nu'] = cloelib_pars_dict['mnu']
+    sb_pars_dict['N_eff'] = N_eff
+    sb_pars_dict['Om_k0'] = float(cloelib_pars_dict['Omega_k0'])
+
+    return sb_pars_dict
+
+
 def map_keys(input_dict, key_mapping):
     """Maps the keys of a dictionary based on a given key mapping, while retaining
     keys not specified in the mapping.
@@ -230,6 +275,7 @@ def get_omega_nu0(m_nu, h, n_eff=3.046, neutrino_mass_fac=94.07):
     omega_nu0 = m_nu / (neutrino_mass_fac * g_factor**0.75 * h**2)
     return omega_nu0
 
+
 def get_omega_nu0_new(m_nu, h, neutrino_mass_fac=93.14):
     """Compute present-day neutrino density parameter Ω_ν₀ (dimensionless).
 
@@ -257,7 +303,6 @@ def get_omega_nu0_new(m_nu, h, neutrino_mass_fac=93.14):
         Ω_ν₀.
     """
     return m_nu / (neutrino_mass_fac * h**2)
-
 
 
 def get_omega_k0(omega_m0, omega_Lambda0):

@@ -338,10 +338,10 @@ class CCLInterface:
 
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(
-            kernel_a,
-            kernel_b,
-            ell_grid,
-            self.zbins,
+            wf_a=kernel_a,
+            wf_b=kernel_b,
+            ells=ell_grid,
+            zbins=self.zbins,
             p_of_k_a=p_of_k_a,
             cosmo=self.cosmo_ccl,
             cl_ccl_kwargs=cl_ccl_kwargs,
@@ -766,7 +766,7 @@ class CCLInterface:
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
 
             tqdm.write(
-                f'CCL {which_ng_cov}: computing probe combination {probe_ab, probe_cd}'
+                f'CCL {which_ng_cov} cov: computing probe combination {probe_ab, probe_cd}'
             )
 
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
@@ -794,7 +794,7 @@ class CCLInterface:
             nbx=len(ells),
             zbins=None,
             ind_dict=ind_dict,
-            msg=f'CCL {which_ng_cov}: ',
+            msg=f'CCL {which_ng_cov} cov: ',
         )
 
     def check_cov_blocks_symmetry(self):

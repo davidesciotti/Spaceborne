@@ -482,7 +482,7 @@ class IOHandler:
         ]:  # fmt: skip
             check_ells_for_spline(_ells)
 
-    def save_cov_euclidlib(self, cov_hs_obj):
+    def save_cov_euclidlib(self, cov_dict: dict):
         """Helper function to save the covariance in the heracles/cloelikeeuclidlib
         .fits format. Works only for the harmonic-space covariance for the moment.
         """
@@ -506,5 +506,5 @@ class IOHandler:
 
         import heracles
 
-        for term in cov_hs_obj.cov_dict:
-            save_term(cov_hs_obj.cov_dict[term], term)
+        for term, cov in cov_dict.items():
+            save_term(cov, term)

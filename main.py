@@ -1059,6 +1059,7 @@ ccl_obj.cl_3x2pt_5d = sl.build_cl_3x2pt_5d(
     cl_ll_3d=ccl_obj.cl_ll_3d, cl_gl_3d=ccl_obj.cl_gl_3d, cl_gg_3d=ccl_obj.cl_gg_3d
 )
 
+
 # cls plots
 plot_cls()
 
@@ -2050,7 +2051,7 @@ if cfg['covariance']['save_full_cov']:
     np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **covs_6d_tosave_dict)
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
-    io_obj.save_cov_euclidlib(cov_hs_obj=_cov_dict)
+    io_obj.save_cov_euclidlib(cov_dict=_cov_dict)
 if cfg['covariance']['save_cov_fits'] and obs_space != 'harmonic':
     raise ValueError(
         'Official Euclid .fits format is only supported for harmonic space '

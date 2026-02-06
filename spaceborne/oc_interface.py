@@ -630,7 +630,7 @@ class OneCovarianceInterface:
         # ! [survey specs]
         # commented out to avoid loading mask file by accident
         cfg_oc_ini['survey specs']['mask_directory'] = str(
-            self.cfg['mask']['mask_path']
+            self.cfg['mask']['mask_filename']
         )  # TODO test this!!
         cfg_oc_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
             self.cfg['mask']['survey_area_deg2']

@@ -150,9 +150,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_path: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_path: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_path: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -190,7 +190,7 @@ C_ell:
 
 mask:
   load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-  mask_path: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
+  mask_filename: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
   generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
@@ -312,7 +312,7 @@ namaster:
   use_namaster: False # Type: bool. Whether to use Namaster to compute the partial-sky Gaussian covariance
   spin0: True # Type: bool. Whether to approximate the shear field as a spin-0 field (faster but slightly less accurate)
   use_INKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-  workspace_path: ... # Type: str. Path to the workspace, if already computed
+  workspace_filename: ... # Type: str. Path to the workspace, if already computed
 
 sample_covariance:
   # Whether to compute the sample covariance from a set of Gaussian realizations

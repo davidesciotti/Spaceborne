@@ -310,9 +310,9 @@ base_cfg = {
     },
     'C_ell': {
         'use_input_cls': False,
-        'cl_LL_path': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_ll.txt',
-        'cl_GL_path': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gl.txt',
-        'cl_GG_path': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gg.txt',
+        'cl_LL_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_ll.txt',
+        'cl_GL_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gl.txt',
+        'cl_GG_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gg.txt',
         'which_gal_bias': 'FS2_polynomial_fit',
         'which_mag_bias': 'FS2_polynomial_fit',
         'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
@@ -331,7 +331,7 @@ base_cfg = {
     },
     'mask': {
         'load_mask': False,
-        'mask_path': f'{ROOT}/DATA/Euclid_data/RR2/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
+        'mask_filename': f'{ROOT}/DATA/Euclid_data/RR2/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
         'generate_polar_cap': True,
         'nside': 1024,
         'survey_area_deg2': 13245,
@@ -385,7 +385,7 @@ base_cfg = {
         'use_namaster': False,
         'spin0': False,
         'use_INKA': True,
-        'workspace_path': '...',
+        'workspace_filename': '...',
     },
     'sample_covariance': {
         'compute_sample_cov': False,

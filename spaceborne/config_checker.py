@@ -137,14 +137,14 @@ class SpaceborneConfigChecker:
         assert isinstance(c_ell_cfg.get('use_input_cls'), bool), (
             'C_ell: use_input_cls must be a boolean'
         )
-        assert isinstance(c_ell_cfg.get('cl_LL_path'), str), (
-            'C_ell: cl_LL_path must be a string'
+        assert isinstance(c_ell_cfg.get('cl_LL_filename'), str), (
+            'C_ell: cl_LL_filename must be a string'
         )
-        assert isinstance(c_ell_cfg.get('cl_GL_path'), str), (
-            'C_ell: cl_GL_path must be a string'
+        assert isinstance(c_ell_cfg.get('cl_GL_filename'), str), (
+            'C_ell: cl_GL_filename must be a string'
         )
-        assert isinstance(c_ell_cfg.get('cl_GG_path'), str), (
-            'C_ell: cl_GG_path must be a string'
+        assert isinstance(c_ell_cfg.get('cl_GG_filename'), str), (
+            'C_ell: cl_GG_filename must be a string'
         )
         assert isinstance(c_ell_cfg.get('which_gal_bias'), str), (
             'C_ell: which_gal_bias must be a string'
@@ -258,8 +258,8 @@ class SpaceborneConfigChecker:
         assert isinstance(mask_cfg.get('load_mask'), bool), (
             'mask: load_mask must be a boolean'
         )
-        assert isinstance(mask_cfg.get('mask_path'), str), (
-            'mask: mask_path must be a string'
+        assert isinstance(mask_cfg.get('mask_filename'), str), (
+            'mask: mask_filename must be a string'
         )
         assert isinstance(mask_cfg.get('generate_polar_cap'), bool), (
             'mask: generate_polar_cap must be a boolean'
@@ -291,8 +291,8 @@ class SpaceborneConfigChecker:
         assert isinstance(namaster_cfg.get('use_INKA'), bool), (
             'namaster: use_INKA must be a boolean'
         )
-        assert isinstance(namaster_cfg.get('workspace_path'), str), (
-            'namaster: workspace_path must be a string'
+        assert isinstance(namaster_cfg.get('workspace_filename'), str), (
+            'namaster: workspace_filename must be a string'
         )
 
         # Sample Covariance

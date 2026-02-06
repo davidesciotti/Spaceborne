@@ -171,12 +171,12 @@ def compute_ells(
 
     elif binning_type == 'lin':
         ell_bin_edges = np.linspace(ell_min, ell_max, nbl + 1)
-        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
+        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0  # arithmetic mean
         deltas = np.diff(ell_bin_edges)
 
     elif binning_type == 'log':
         ell_bin_edges = np.geomspace(ell_min, ell_max, nbl + 1)
-        ells = np.exp((np.log(ell_bin_edges[:-1]) + np.log(ell_bin_edges[1:])) / 2.0)
+        ells = np.sqrt(ell_bin_edges[:-1] * ell_bin_edges[1:])  # geometric mean
         deltas = np.diff(ell_bin_edges)
 
     else:

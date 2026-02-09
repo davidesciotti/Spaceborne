@@ -776,24 +776,24 @@ class OneCovarianceInterface:
             self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
         )
         cfg_oc_ini['powspec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min'] * h
+            self.cfg['precision']['log10_k_min'] * h
         )
         cfg_oc_ini['powspec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max'] * h
+            self.cfg['precision']['log10_k_max'] * h
         )
         cfg_oc_ini['powspec evaluation']['log10k_bins'] = str(
-            self.cfg['covariance']['k_steps']
+            self.cfg['precision']['k_steps']
         )
 
         # ! [trispec evaluation]
         cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
-            self.cfg['covariance']['log10_k_min'] * h
+            self.cfg['precision']['log10_k_min'] * h
         )
         cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
-            self.cfg['covariance']['log10_k_max'] * h
+            self.cfg['precision']['log10_k_max'] * h
         )
         cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
-            self.cfg['covariance']['k_steps']
+            self.cfg['precision']['k_steps']
         )
         cfg_oc_ini['trispec evaluation']['matter_klim'] = str(0.001)
         cfg_oc_ini['trispec evaluation']['matter_mulim'] = str(0.001)

@@ -135,7 +135,7 @@ class TestEllBinning:
                 'ell_max': 1000,
                 'ell_bins': 10,
             },
-            'namaster': {'use_namaster': False},
+            'covariance': {'partial_sky_method': 'Knox'},
             'sample_covariance': {'compute_sample_cov': False},
         }
 
@@ -144,7 +144,7 @@ class TestEllBinning:
         ell_obj = ell_utils.EllBinning(basic_config)
         
         assert ell_obj.binning_type == 'log'
-        assert ell_obj.use_namaster is False
+        assert ell_obj.partial_sky_method == 'Knox'
         assert ell_obj.do_sample_cov is False
 
     def test_log_binning(self, basic_config):

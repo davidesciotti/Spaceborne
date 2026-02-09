@@ -46,7 +46,7 @@ class SpaceborneConfigChecker:
 
     def check_KE_approximation(self) -> None:
         if (
-            self.cfg['covariance']['use_KE_approximation']
+            self.cfg['precision']['use_KE_approximation']
             and self.cfg['covariance']['SSC_code'] == 'Spaceborne'
         ):
             assert self.cfg['covariance']['which_sigma2_b'] not in [
@@ -60,7 +60,7 @@ class SpaceborneConfigChecker:
             )
 
         elif (
-            not self.cfg['covariance']['use_KE_approximation']
+            not self.cfg['precision']['use_KE_approximation']
             and self.cfg['covariance']['SSC_code'] == 'Spaceborne'
         ):
             assert self.cfg['covariance']['which_sigma2_b'] not in [None, 'flat_sky'], (
@@ -277,24 +277,6 @@ class SpaceborneConfigChecker:
             'mask: aposize must be a float'
         )
 
-        # Namaster
-        assert isinstance(self.cfg.get('namaster'), dict), (
-            "Section 'namaster' must be a dictionary"
-        )
-        namaster_cfg = self.cfg['namaster']
-        assert isinstance(namaster_cfg.get('use_namaster'), bool), (
-            'namaster: use_namaster must be a boolean'
-        )
-        assert isinstance(namaster_cfg.get('spin0'), bool), (
-            'namaster: spin0 must be a boolean'
-        )
-        assert isinstance(namaster_cfg.get('use_INKA'), bool), (
-            'namaster: use_INKA must be a boolean'
-        )
-        assert isinstance(namaster_cfg.get('workspace_filename'), str), (
-            'namaster: workspace_filename must be a string'
-        )
-
         # Sample Covariance
         assert isinstance(self.cfg.get('sample_covariance'), dict), (
             "Section 'sample_covariance' must be a dictionary"
@@ -380,8 +362,17 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('G'), bool), 'covariance: G must be a boolean'
         assert isinstance(cov_cfg.get('SSC'), bool), 'covariance: SSC must be a boolean'
         assert isinstance(cov_cfg.get('cNG'), bool), 'covariance: cNG must be a boolean'
-        assert isinstance(cov_cfg.get('coupled_cov'), bool), (
-            'covariance: coupled_cov must be a boolean'
+        assert isinstance(cov_cfg.get('partial_sky_method'), str), (
+            'covariance: partial_sky_method must be a string'
+        )
+        assert cov_cfg.get('partial_sky_method') in ['Knox', 'NaMaster'], (
+            'covariance: partial_sky_method must be either "Knox" or "NaMaster"'
+        )
+        assert isinstance(cov_cfg.get('cov_type'), str), (
+            'covariance: cov_type must be a string'
+        )
+        assert cov_cfg.get('cov_type') in ['coupled', 'decoupled'], (
+            'covariance: cov_type must be either "coupled" or "decoupled"'
         )
         assert isinstance(cov_cfg.get('triu_tril'), str), (
             'covariance: triu_tril must be a string'
@@ -427,30 +418,6 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('load_cached_sigma2_b'), bool), (
             'covariance: load_cached_sigma2_b must be a boolean'
         )
-        assert isinstance(cov_cfg.get('log10_k_min'), float), (
-            'covariance: log10_k_min must be a float'
-        )
-        assert isinstance(cov_cfg.get('log10_k_max'), float), (
-            'covariance: log10_k_max must be a float'
-        )
-        assert isinstance(cov_cfg.get('k_steps'), int), (
-            'covariance: k_steps must be an int'
-        )
-        assert isinstance(cov_cfg.get('z_min'), float), (
-            'covariance: z_min must be a float'
-        )
-        assert isinstance(cov_cfg.get('z_max'), float), (
-            'covariance: z_max must be a float'
-        )
-        assert isinstance(cov_cfg.get('z_steps'), int), (
-            'covariance: z_steps must be an int'
-        )
-        assert isinstance(cov_cfg.get('z_steps_trisp'), int), (
-            'covariance: z_steps_trisp must be an int'
-        )
-        assert isinstance(cov_cfg.get('use_KE_approximation'), bool), (
-            'covariance: use_KE_approximation must be a boolean'
-        )
         assert isinstance(cov_cfg.get('cov_filename'), str), (
             'covariance: cov_filename must be a string'
         )
@@ -484,25 +451,7 @@ class SpaceborneConfigChecker:
         assert isinstance(pyccl_cfg.get('use_default_k_a_grids'), bool), (
             'PyCCL: use_default_k_a_grids must be a boolean'
         )
-        assert isinstance(pyccl_cfg.get('n_samples_wf'), int), (
-            'PyCCL: n_samples_wf must be an int'
-        )
 
-        assert isinstance(pyccl_cfg.get('spline_params'), (dict, type(None))), (
-            'PyCCL: spline_params must be a dictionary or None'
-        )
-        if isinstance(pyccl_cfg.get('spline_params'), dict):
-            spline_params = pyccl_cfg['spline_params']
-            assert isinstance(spline_params.get('A_SPLINE_NA_PK'), int), (
-                'PyCCL: spline_params: A_SPLINE_NA_PK must be an int'
-            )
-            assert isinstance(spline_params.get('K_MAX_SPLINE'), int), (
-                'PyCCL: spline_params: K_MAX_SPLINE must be an int'
-            )
-
-        assert isinstance(pyccl_cfg.get('gsl_params'), (dict, type(None))), (
-            'PyCCL: gsl_params must be a dictionary or None'
-        )
 
         # precision
         assert isinstance(self.cfg.get('precision'), dict), (
@@ -551,6 +500,54 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('jax_enable_x64'), bool), (
             'precision: jax_enable_x64 must be a boolean'
         )
+        assert isinstance(precision_cfg.get('log10_k_min'), float), (
+            'precision: log10_k_min must be a float'
+        )
+        assert isinstance(precision_cfg.get('log10_k_max'), float), (
+            'precision: log10_k_max must be a float'
+        )
+        assert isinstance(precision_cfg.get('k_steps'), int), (
+            'precision: k_steps must be an int'
+        )
+        assert isinstance(precision_cfg.get('z_min'), float), (
+            'precision: z_min must be a float'
+        )
+        assert isinstance(precision_cfg.get('z_max'), float), (
+            'precision: z_max must be a float'
+        )
+        assert isinstance(precision_cfg.get('z_steps'), int), (
+            'precision: z_steps must be an int'
+        )
+        assert isinstance(precision_cfg.get('z_steps_trisp'), int), (
+            'precision: z_steps_trisp must be an int'
+        )
+        assert isinstance(precision_cfg.get('use_KE_approximation'), bool), (
+            'precision: use_KE_approximation must be a boolean'
+        )
+        assert isinstance(precision_cfg.get('use_iNKA'), bool), (
+            'precision: use_iNKA must be a boolean'
+        )
+        assert isinstance(precision_cfg.get('spin0'), bool), (
+            'precision: spin0 must be a boolean'
+        )
+        assert isinstance(precision_cfg.get('n_samples_wf'), int), (
+            'precision: n_samples_wf must be an int'
+        )
+        assert isinstance(precision_cfg.get('spline_params'), (dict, type(None))), (
+            'precision: spline_params must be a dictionary or None'
+        )
+        if isinstance(precision_cfg.get('spline_params'), dict):
+            spline_params = precision_cfg['spline_params']
+            assert isinstance(spline_params.get('A_SPLINE_NA_PK'), int), (
+                'precision: spline_params: A_SPLINE_NA_PK must be an int'
+            )
+            assert isinstance(spline_params.get('K_MAX_SPLINE'), int), (
+                'precision: spline_params: K_MAX_SPLINE must be an int'
+            )
+
+        assert isinstance(precision_cfg.get('gsl_params'), (dict, type(None))), (
+            'precision: gsl_params must be a dictionary or None'
+        )
 
         # misc
         assert isinstance(self.cfg.get('misc'), dict), (
@@ -589,6 +586,9 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(misc_cfg.get('levin_batch_size'), int), (
             'misc: levin_batch_size must be an int'
+        )
+        assert isinstance(misc_cfg.get('workspace_filename'), str), (
+            'misc: workspace_filename must be a string'
         )
 
     def check_misc(self) -> None:
@@ -668,19 +668,20 @@ class SpaceborneConfigChecker:
         )
 
         if self.cfg['covariance']['split_gaussian_cov'] and (
-            self.cfg['namaster']['use_namaster']
+            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
             or self.cfg['sample_covariance']['compute_sample_cov']
         ):
             raise ValueError(
                 'cfg["covariance"]["split_gaussian_cov"] cannot be '
                 'set to True with either '
-                'cfg["namaster"]["use_namaster"] or '
+                'cfg["covariance"]["partial_sky_method"] == "NaMaster" or '
                 'cfg["sample_covariance"]["compute_sample_cov"].'
             )
         assert not (
-            self.cfg['namaster']['use_namaster']
+            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
             and self.cfg['sample_covariance']['compute_sample_cov']
-        ), 'Only one of `use_namaster` and `compute_sample_cov` can be True — not both.'
+        ), 'Only one of `partial_sky_method == "NaMaster"` and `compute_sample_cov` '
+        'can be True — not both.'
 
     def check_probe_selection(self) -> None:
         allowed_keys = [
@@ -711,7 +712,7 @@ class SpaceborneConfigChecker:
             ) > 0, (
                 'At least one of xip or xim must be selected for real space covariance'
             )
-            if self.cfg['namaster']['use_namaster']:
+            if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
                 raise NotImplementedError(
                     'The projection of the partial-sky Gaussian covariance to real '
                     'space is not implemented yet'
@@ -752,22 +753,25 @@ class SpaceborneConfigChecker:
             )
 
     def check_nmt(self) -> None:
-        if self.cfg['covariance']['coupled_cov'] and self.cfg['covariance']['G']:
+        if (
+            self.cfg['covariance']['cov_type'] == 'coupled'
+            and self.cfg['covariance']['G']
+        ):
             assert (
-                self.cfg['namaster']['use_namaster']
+                self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
                 or self.cfg['sample_covariance']['compute_sample_cov']
             ), (
                 'if the coupled Gaussian covariance is requested either '
-                'cfg["namaster"]["use_namaster"] or '
+                'cfg["covariance"]["partial_sky_method"] must be "NaMaster" or '
                 'cfg["sample_covariance"]["compute_sample_cov"] must be True'
             )
-        if self.cfg['namaster']['use_namaster']:
+        if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
             assert self.cfg['binning']['binning_type'] != 'ref_cut', (
-                'ref_cut case incompatible with nmt for the moment. '
+                'ref_cut case incompatible with NaMaster for the moment. '
                 'Please use a different binning type.'
             )
         if (
-            self.cfg['namaster']['use_namaster']
+            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
             and self.cfg['covariance']['G_code'] != 'Spaceborne'
         ):
             raise ValueError(

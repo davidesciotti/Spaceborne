@@ -249,9 +249,6 @@ class EllBinning:
             # in this case, take ell_min, ell_max, nbl from config
             self.set_ell_min_max_from_cfg(self.cfg)
 
-        self.use_namaster = cfg['namaster']['use_namaster']
-        self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
-
     def set_ell_min_max_from_cfg(self, cfg):
         self.ell_min_WL = cfg['binning']['ell_min']
         self.ell_max_WL = cfg['binning']['ell_max']
@@ -388,7 +385,10 @@ class EllBinning:
         else:
             raise ValueError(f'binning_type {self.binning_type} not recognized.')
 
-        if self.use_namaster or self.do_sample_cov:
+        if (
+            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
+            or self.cfg['sample_covariance']['compute_sample_cov']
+        ):
             # TODO what about WL?
             import pymaster as nmt
 

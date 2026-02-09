@@ -298,7 +298,7 @@ cfg['probe_selection']['Psigg'] = False
 # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
 # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only).
 #   In this case, the output covmat
-# - from_input_mask: input a mask with path specified by mask_path
+# - from_input_mask: input a mask with path specified by mask_filename
 # - polar_cap_on_the_fly: generate a polar cap during the run, with nside
 #   specified by nside
 # - null (None): use the flat-sky expression (valid for PyCCL only)
@@ -857,10 +857,13 @@ ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
 # TODO the alternative should be the HOD gal bias already set in the responses class!!
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_input = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
+    # it's safer to use a linear interpolation, in case these functions are top-hats
+    # (e.g. when requiring constant bias in each bin, over its redshift support)
     ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(
-        input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins
+        input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins, kind='linear'
     )
     ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
+
 elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(
         z_grid_lns=z_grid, magcut_lens=None, poly_fit_values=galaxy_bias_fit_fiducials
@@ -878,8 +881,10 @@ single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
+        # it's safer to use a linear interpolation, in case these functions are top-hats
+        # (e.g. when requiring constant bias in each bin, over its redshift support)
         ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(
-            mag_bias_input, z_grid, zbins
+            input_tab=mag_bias_input, z_grid_out=z_grid, zbins=zbins, kind='linear'
         )
         ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
     elif cfg['C_ell']['which_mag_bias'] == 'FS2_polynomial_fit':
@@ -1027,9 +1032,9 @@ if cfg['C_ell']['use_input_cls']:
     # check ells before spline interpolation
     io_obj.check_ells_in(ell_obj)
 
-    print(f'Using input Cls for LL from file\n{cfg["C_ell"]["cl_LL_path"]}')
-    print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_path"]}')
-    print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_path"]}')
+    print(f'Using input Cls for LL from file\n{cfg["C_ell"]["cl_LL_filename"]}')
+    print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_filename"]}')
+    print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_filename"]}')
 
     ells_WL_in, cl_ll_3d_in = io_obj.ells_WL_in, io_obj.cl_ll_3d_in
     ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in

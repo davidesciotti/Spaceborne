@@ -1411,16 +1411,18 @@ def mirror_upper_to_lower_vectorized(A):
 
 
 def check_interpolate_input_tab(
-    input_tab: np.ndarray, z_grid_out: np.ndarray, zbins: int
+    input_tab: np.ndarray, z_grid_out: np.ndarray, zbins: int, kind: str = 'CubicSpline'
 ) -> tuple:
-    """Interpolates the input table over the 0th dimension using a cubic spline
-    and returns the interpolated values on the specified grid.
+    """Interpolates the input table over the 0th dimension and returns the
+    interpolated values on the specified grid.
 
     Parameters
     ----------
     - input_tab (numpy.ndarray): The input table with shape (z_points, zbins + 1).
     - z_grid_out (numpy.ndarray): The output grid for interpolation.
     - zbins (int): The number of redshift bins.
+    - kind (str): Interpolation method. Options: 'linear' (default, recommended for
+      top-hat functions), 'cubic' (cubic spline), 'nearest' (preserves exact top-hat).
 
     Returns
     -------
@@ -1433,11 +1435,29 @@ def check_interpolate_input_tab(
         f', but has shape {input_tab.shape} and zbins = {zbins}'
     )
 
-    # Perform cubic spline interpolation
-    spline = CubicSpline(x=input_tab[:, 0], y=input_tab[:, 1:], axis=0)
-    output_tab = spline(z_grid_out)
+    z_in = input_tab[:, 0]
+    vals_in = input_tab[:, 1:]
 
-    return output_tab, spline
+    if kind == 'CubicSpline':
+        interp_func = CubicSpline(x=z_in, y=vals_in, axis=0)
+        output_tab = interp_func(z_grid_out)
+    elif kind in ['linear', 'nearest']:
+        interp_func = interp1d(
+            z_in,
+            vals_in,
+            axis=0,
+            kind=kind,
+            bounds_error=False,
+            fill_value='extrapolate',
+        )
+        output_tab = interp_func(z_grid_out)
+    else:
+        raise ValueError(
+            f"Unknown interpolation kind: {kind}. Use 'linear', 'CubicSpline', "
+            f"or 'nearest'"
+        )
+
+    return output_tab, interp_func
 
 
 def interp_2d_arr(x_in, y_in, z2d_in, x_out, y_out, output_masks):
@@ -1709,6 +1729,28 @@ def write_cl_tab(folder, filename, cl_3d, ells, zbins):
                 for zj in range(zbins):
                     value = cl_3d[ell_idx, zi, zj]
                     file.write(f'{ell_val:.3f}\t\t{zi}\t{zj}\t{value:.10e}\n')
+
+
+def read_cl_tab(
+    folder: str, filename: str, ells: np.ndarray, zbins: int, rtol: float = 0.01
+) -> np.ndarray:
+    """Reads the Cls in the SB txt format."""
+    cl_tab = np.genfromtxt(f'{folder}/{filename}')
+    cl_3d = np.zeros((len(ells), zbins, zbins))
+
+    for row in cl_tab:
+        ell_ix = np.argmin(np.abs(ells - row[0]))
+        if abs(ells[ell_ix] / row[0] - 1) > rtol:  # compare % difference
+            raise ValueError(
+                f'No matching ell found for {row[0]}: closest is {ells[ell_ix]}'
+            )
+
+        zi = int(row[1])
+        zj = int(row[2])
+        cl = row[3]
+        cl_3d[ell_ix, zi, zj] = cl
+
+    return cl_3d
 
 
 def compare_fm_constraints(

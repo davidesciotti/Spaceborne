@@ -171,12 +171,12 @@ def compute_ells(
 
     elif binning_type == 'lin':
         ell_bin_edges = np.linspace(ell_min, ell_max, nbl + 1)
-        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
+        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0  # arithmetic mean
         deltas = np.diff(ell_bin_edges)
 
     elif binning_type == 'log':
         ell_bin_edges = np.geomspace(ell_min, ell_max, nbl + 1)
-        ells = np.exp((np.log(ell_bin_edges[:-1]) + np.log(ell_bin_edges[1:])) / 2.0)
+        ells = np.sqrt(ell_bin_edges[:-1] * ell_bin_edges[1:])  # geometric mean
         deltas = np.diff(ell_bin_edges)
 
     else:
@@ -248,9 +248,6 @@ class EllBinning:
             self.gc_bins_filename = None
             # in this case, take ell_min, ell_max, nbl from config
             self.set_ell_min_max_from_cfg(self.cfg)
-
-        self.use_namaster = cfg['namaster']['use_namaster']
-        self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
     def set_ell_min_max_from_cfg(self, cfg):
         self.ell_min_WL = cfg['binning']['ell_min']
@@ -388,7 +385,10 @@ class EllBinning:
         else:
             raise ValueError(f'binning_type {self.binning_type} not recognized.')
 
-        if self.use_namaster or self.do_sample_cov:
+        if (
+            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
+            or self.cfg['sample_covariance']['compute_sample_cov']
+        ):
             # TODO what about WL?
             import pymaster as nmt
 

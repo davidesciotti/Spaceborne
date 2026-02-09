@@ -48,8 +48,14 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
     ax[1].legend(ncol=2)
 
 
-# @njit
-def pph(z_p, z, c_in, z_in, sigma_in, c_out, z_out, sigma_out, f_out):
+def normalize_nz(n_z, z):
+
+    integral = simps(y=n_z, x=z)
+    n_z_norm = n_z / integral
+    return n_z_norm
+
+
+def p_ph(z_p, z, c_in, z_in, sigma_in, c_out, z_out, sigma_out, f_out):
     first_addendum = (
         (1 - f_out)
         / (np.sqrt(2 * np.pi) * sigma_in * (1 + z))
@@ -63,13 +69,37 @@ def pph(z_p, z, c_in, z_in, sigma_in, c_out, z_out, sigma_out, f_out):
     return first_addendum + second_addendum
 
 
-# @njit
-def n_of_z(z, z_0, n_gal):
+def nz_smail(z, z_0, n_gal):
     return n_gal * (z / z_0) ** 2 * np.exp(-((z / z_0) ** (3 / 2)))
     # return  (z / z_0) ** 2 * np.exp(-(z / z_0) ** (3 / 2))
 
 
-# @njit
+def convolve_nz_with_p_ph(
+    nz, z_lo, z_hi, z_grid, p_ph_kw, zp_steps=500, normalize=False
+):
+
+    # instantiate an integration grid for this z bin
+    z_p_grid = np.linspace(z_lo, z_hi, zp_steps)
+
+    # compute gaussian photometric error function p_ph for
+    # this z bin (axes are z_p and z)
+    p_ph_2d = np.zeros((len(z_p_grid), len(z_grid)))
+    for i, z_p in enumerate(z_p_grid):
+        p_ph_2d[i, :] = p_ph(z_p, z_grid, **p_ph_kw)
+
+    # integrate over z_p
+    integrand = nz[None, :] * p_ph_2d
+    integral = simps(y=integrand, x=z_p_grid, axis=0)
+
+    norm = 1.0
+    if normalize:
+        # integrate over z to get the denominator
+        norm = simps(y=integral, x=z_grid, axis=0)
+
+    # normalize
+    return integral / norm
+
+
 def f_ia(z, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func):
     result = ((1 + z) / (1 + z_pivot_IA)) ** eta_IA * (lumin_ratio_func(z)) ** beta_IA
     return result
@@ -393,7 +423,9 @@ def cl_ccl(wf_a, wf_b, ells, zbins, p_of_k_a, cosmo, cl_ccl_kwargs: dict):
 
     if is_auto_spectrum:
         cl_3d = np.zeros((nbl, zbins, zbins))
-        for zi, zj in zip(np.triu_indices(zbins)[0], np.triu_indices(zbins)[1], strict=False):
+        for zi, zj in zip(
+            np.triu_indices(zbins)[0], np.triu_indices(zbins)[1], strict=False
+        ):
             cl_3d[:, zi, zj] = ccl.angular_cl(
                 cosmo, wf_a[zi], wf_b[zj], ells, p_of_k_a=p_of_k_a, **cl_ccl_kwargs
             )

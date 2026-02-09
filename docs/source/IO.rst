@@ -71,9 +71,9 @@ configuration file.
 
         C_ell:
            use_input_cls: True     
-           cl_LL_path: ./input/cl_ll.txt # shear-shear 
-           cl_GL_path: ./input/cl_gl.txt # galaxy-shear 
-           cl_GG_path: ./input/cl_gg.txt # galaxy-galaxy 
+           cl_LL_filename: ./input/cl_ll.txt # shear-shear 
+           cl_GL_filename: ./input/cl_gl.txt # galaxy-shear 
+           cl_GG_filename: ./input/cl_gg.txt # galaxy-galaxy 
 
 
 3. **Galaxy and magnification bias**. 
@@ -120,7 +120,7 @@ configuration file.
 
       mask:
          load_mask: False 
-         mask_path: ../input/mask.fits 
+         mask_filename: ../input/mask.fits 
          generate_polar_cap: True 
          nside: 1024 
          survey_area_deg2: 13245 

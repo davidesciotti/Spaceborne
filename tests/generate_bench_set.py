@@ -310,11 +310,11 @@ base_cfg = {
     },
     'C_ell': {
         'use_input_cls': False,
-        'cl_LL_path': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_ll.txt',
-        'cl_GL_path': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gl.txt',
-        'cl_GG_path': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gg.txt',
-        'which_gal_bias': 'FS2_polynomial_fit',
-        'which_mag_bias': 'FS2_polynomial_fit',
+        'cl_LL_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_ll.txt',
+        'cl_GL_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gl.txt',
+        'cl_GG_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gg.txt',
+        'which_gal_bias': 'polynomial_fit',
+        'which_mag_bias': 'polynomial_fit',
         'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
         'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
         'gal_bias_table_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/gal_bias_table.txt',
@@ -331,7 +331,7 @@ base_cfg = {
     },
     'mask': {
         'load_mask': False,
-        'mask_path': f'{ROOT}/DATA/Euclid_data/RR2/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
+        'mask_filename': f'{ROOT}/DATA/Euclid_data/RR2/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
         'generate_polar_cap': True,
         'nside': 1024,
         'survey_area_deg2': 13245,
@@ -350,7 +350,8 @@ base_cfg = {
         'G': True,
         'SSC': True,
         'cNG': False,
-        'coupled_cov': False,
+        'partial_sky_method': 'Knox',
+        'cov_type': 'decoupled',
         'triu_tril': 'triu',
         'row_col_major': 'row-major',
         'covariance_ordering_2D': 'probe_scale_zpair',
@@ -362,14 +363,6 @@ base_cfg = {
         'which_b1g_in_resp': 'from_input',
         'include_b2g': True,
         'include_terasawa_terms': False,
-        'log10_k_min': -5.0,
-        'log10_k_max': 2.0,
-        'k_steps': 20,
-        'z_min': 0.02,
-        'z_max': 3.0,
-        'z_steps': 500,
-        'z_steps_trisp': 10,
-        'use_KE_approximation': False,
         'cov_filename': 'cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz',
         'save_cov_fits': False,
     },
@@ -377,15 +370,6 @@ base_cfg = {
         'cov_integration_method': 'spline',
         'load_cached_tkka': False,
         'use_default_k_a_grids': False,
-        'n_samples_wf': 1000,
-        'spline_params': {'A_SPLINE_NA_PK': 240, 'K_MAX_SPLINE': 300},
-        'gsl_params': None,
-    },
-    'namaster': {
-        'use_namaster': False,
-        'spin0': False,
-        'use_INKA': True,
-        'workspace_path': '...',
     },
     'sample_covariance': {
         'compute_sample_cov': False,
@@ -409,6 +393,19 @@ base_cfg = {
         'theta_steps_cosebis': 500,
         'jax_enable_x64': True,
         'cov_hs_g_ell_bin_average': False,
+        'log10_k_min': -5.0,
+        'log10_k_max': 2.0,
+        'k_steps': 20,
+        'z_min': 0.02,
+        'z_max': 3.0,
+        'z_steps': 500,
+        'z_steps_trisp': 10,
+        'use_KE_approximation': False,
+        'n_samples_wf': 1000,
+        'spline_params': {'A_SPLINE_NA_PK': 240, 'K_MAX_SPLINE': 300},
+        'gsl_params': None,
+        'spin0': False,
+        'use_iNKA': True,
     },
     'misc': {
         'num_threads': 50,
@@ -422,6 +419,7 @@ base_cfg = {
         'output_path': './output',
         'save_output_as_benchmark': True,
         'save_figs': False,
+        'workspace_filename': '...',
     },
 }
 
@@ -531,8 +529,8 @@ for space in ['harmonic', 'real', 'cosebis']:
 
 
 # ! Bias models
-for which_gal_bias in ['from_input', 'FS2_polynomial_fit']:
-    # for which_mag_bias in ['from_input', 'FS2_polynomial_fit']:
+for which_gal_bias in ['from_input', 'polynomial_fit']:
+    # for which_mag_bias in ['from_input', 'polynomial_fit']:
     for which_b1g_in_resp in ['from_HOD', 'from_input']:
         configs_to_test.append(
             {
@@ -627,17 +625,20 @@ for load_input_mask, generate_polar_cap in zip(
         )
 
 # ! NAMASTER (test only G cov)
-for coupled_cov in [True, False]:
+for cov_type in ['coupled', 'decoupled']:
     for spin0 in [True, False]:
-        for use_INKA in [True, False]:
+        for use_iNKA in [True, False]:
             for binning_type in ['log', 'lin', 'from_input']:
                 configs_to_test.append(
                     {
-                        'covariance': {'SSC': False, 'coupled_cov': coupled_cov},
-                        'namaster': {
-                            'use_namaster': True,
+                        'covariance': {
+                            'SSC': False,
+                            'cov_type': cov_type,
+                            'partial_sky_method': 'NaMaster',
+                        },
+                        'precision': {
                             'spin0': spin0,
-                            'use_INKA': use_INKA,
+                            'use_iNKA': use_iNKA,
                         },
                         'binning': {
                             # to speed up significantly Nmt

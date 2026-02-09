@@ -192,7 +192,7 @@ class TestMask:
         """Basic configuration for mask generation."""
         return {
             'load_mask': False,
-            'mask_path': '',
+            'mask_filename': '',
             'nside': 32,
             'survey_area_deg2': 1000.0,
             'apodize': False,
@@ -207,12 +207,12 @@ class TestMask:
         nside = 32
         npix = hp.nside2npix(nside)
         mask = np.ones(npix)
-        mask_path = tmp_path / 'test_mask.npy'
-        np.save(mask_path, mask)
+        mask_filename = tmp_path / 'test_mask.npy'
+        np.save(mask_filename, mask)
 
         return {
             'load_mask': True,
-            'mask_path': str(mask_path),
+            'mask_filename': str(mask_filename),
             'nside': nside,
             'survey_area_deg2': 1000.0,
             'apodize': False,
@@ -259,12 +259,12 @@ class TestMask:
         nside = 32
         npix = hp.nside2npix(nside)
         mask = np.ones(npix)
-        mask_path = tmp_path / 'test_mask.fits'
-        hp.write_map(str(mask_path), mask, overwrite=True, dtype=np.float64)
+        mask_filename = tmp_path / 'test_mask.fits'
+        hp.write_map(str(mask_filename), mask, overwrite=True, dtype=np.float64)
 
         config = {
             'load_mask': True,
-            'mask_path': str(mask_path),
+            'mask_filename': str(mask_filename),
             'nside': nside,
             'survey_area_deg2': 1000.0,
             'apodize': False,
@@ -282,7 +282,7 @@ class TestMask:
         """Test that FileNotFoundError is raised for missing file."""
         config = {
             'load_mask': True,
-            'mask_path': '/nonexistent/path/mask.npy',
+            'mask_filename': '/nonexistent/path/mask.npy',
             'nside': 32,
             'survey_area_deg2': 1000.0,
             'apodize': False,
@@ -297,12 +297,12 @@ class TestMask:
 
     def test_unsupported_file_format(self, tmp_path):
         """Test that unsupported file format raises ValueError."""
-        mask_path = tmp_path / 'test_mask.txt'
-        mask_path.write_text('dummy data')
+        mask_filename = tmp_path / 'test_mask.txt'
+        mask_filename.write_text('dummy data')
 
         config = {
             'load_mask': True,
-            'mask_path': str(mask_path),
+            'mask_filename': str(mask_filename),
             'nside': 32,
             'survey_area_deg2': 1000.0,
             'apodize': False,
@@ -319,7 +319,7 @@ class TestMask:
         """Test that both load_mask and generate_polar_cap True raises error."""
         config = {
             'load_mask': True,
-            'mask_path': 'some_path.npy',
+            'mask_filename': 'some_path.npy',
             'nside': 32,
             'survey_area_deg2': 1000.0,
             'apodize': False,
@@ -336,7 +336,7 @@ class TestMask:
         """Test that neither load_mask nor generate_polar_cap True raises error."""
         config = {
             'load_mask': False,
-            'mask_path': '',
+            'mask_filename': '',
             'nside': 32,
             'survey_area_deg2': 1000.0,
             'apodize': False,
@@ -355,12 +355,12 @@ class TestMask:
         nside_target = 32
         npix = hp.nside2npix(nside_original)
         mask = np.ones(npix)
-        mask_path = tmp_path / 'test_mask.npy'
-        np.save(mask_path, mask)
+        mask_filename = tmp_path / 'test_mask.npy'
+        np.save(mask_filename, mask)
 
         config = {
             'load_mask': True,
-            'mask_path': str(mask_path),
+            'mask_filename': str(mask_filename),
             'nside': nside_target,
             'survey_area_deg2': 1000.0,
             'apodize': False,

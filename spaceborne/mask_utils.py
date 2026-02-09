@@ -80,7 +80,7 @@ def _read_masking_map(path, nside, *, nest=False):
 class Mask:
     def __init__(self, mask_cfg):
         self.load_mask = mask_cfg['load_mask']
-        self.mask_path = mask_cfg['mask_path']
+        self.mask_filename = mask_cfg['mask_filename']
         self.nside = mask_cfg['nside']
         self.desired_survey_area_deg2 = mask_cfg['survey_area_deg2']
         self.apodize = mask_cfg['apodize']
@@ -88,29 +88,29 @@ class Mask:
         self.generate_polar_cap = mask_cfg['generate_polar_cap']
 
     def load_mask_func(self):
-        if not os.path.exists(self.mask_path):
-            raise FileNotFoundError(f'{self.mask_path} does not exist.')
+        if not os.path.exists(self.mask_filename):
+            raise FileNotFoundError(f'{self.mask_filename} does not exist.')
 
-        print(f'\nLoading mask file from {self.mask_path}')
+        print(f'\nLoading mask file from {self.mask_filename}')
 
-        if self.mask_path.endswith('.fits') or self.mask_path.endswith('.fits.gz'):
+        if self.mask_filename.endswith('.fits') or self.mask_filename.endswith('.fits.gz'):
             try:
                 # function provided by VMPZ team to read very high resolution map
                 # and downgrade it on the fly
-                self.mask = _read_masking_map(self.mask_path, self.nside)
+                self.mask = _read_masking_map(self.mask_filename, self.nside)
             except ValueError as ve:
-                self.mask = hp.read_map(self.mask_path)
+                self.mask = hp.read_map(self.mask_filename)
                 print(
                     f'ValueError raised: {ve}, \n'
                     'falling back on hp.read_map to read input map'
                 )
 
-        elif self.mask_path.endswith('.npy'):
-            self.mask = np.load(self.mask_path)
+        elif self.mask_filename.endswith('.npy'):
+            self.mask = np.load(self.mask_filename)
 
         else:
             raise ValueError(
-                f'Unsupported file format for mask file: {self.mask_path}'
+                f'Unsupported file format for mask file: {self.mask_filename}'
                 'Supported formats are .fits, .fits.gz and .npy'
             )
 

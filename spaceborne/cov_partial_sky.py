@@ -796,7 +796,7 @@ class NmtCov:
         self.nonreq_probe_combs = pvt_cfg['nonreq_probe_combs_hs']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.ind_dict = pvt_cfg['ind_dict']
-        self.coupled_cov = cfg['covariance']['coupled_cov']
+        self.coupled_cov = cfg['covariance']['cov_type'] == 'coupled'
         self.output_path = self.cfg['misc']['output_path']
 
         # instantiate cov dict
@@ -839,7 +839,6 @@ class NmtCov:
         # shorten names for brevity
         nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
         fsky = self.mask_obj.fsky
-        nmt_cfg = self.cfg['namaster']
         unique_probe_combs = self.pvt_cfg['unique_probe_combs']
 
         ells_eff = self.ell_obj.ells_3x2pt
@@ -913,7 +912,7 @@ class NmtCov:
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
-        if nmt_cfg['use_INKA']:
+        if self.cfg['precision']['use_iNKA']:
             z_combinations = list(itertools.product(range(self.zbins), repeat=2))
             for zi, zj in z_combinations:
                 list_gg = [self.cl_gg_unb_3d[:, zi, zj]]
@@ -945,9 +944,9 @@ class NmtCov:
             cw = nmt.NmtCovarianceWorkspace()
             cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
 
-        if nmt_cfg['use_namaster']:
-            coupled_str = 'coupled' if self.coupled_cov else 'decoupled'
-            spin0_str = ' spin0' if nmt_cfg['spin0'] else ''
+        if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
+            coupled_str = self.cfg['covariance']['cov_type']
+            spin0_str = ' spin0' if self.cfg['precision']['spin0'] else ''
 
             # the nmt_gaussian_cov_opt functions modifies
             # cov_dict in-place, so no need to capture any return value
@@ -957,7 +956,7 @@ class NmtCov:
             ):
                 nmt_gaussian_cov_opt(
                     cov_dict=self.cov_dict,
-                    spin0=nmt_cfg['spin0'],
+                    spin0=self.cfg['precision']['spin0'],
                     cl_tt=cl_tt_4covnmt,
                     cl_te=cl_te_4covnmt,
                     cl_ee=cl_ee_4covnmt,

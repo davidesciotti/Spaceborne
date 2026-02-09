@@ -298,7 +298,7 @@ cfg['probe_selection']['Psigg'] = False
 # Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
 # - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only).
 #   In this case, the output covmat
-# - from_input_mask: input a mask with path specified by mask_path
+# - from_input_mask: input a mask with path specified by mask_filename
 # - polar_cap_on_the_fly: generate a polar cap during the run, with nside
 #   specified by nside
 # - null (None): use the flat-sky expression (valid for PyCCL only)
@@ -560,7 +560,7 @@ else:
     cfg['probe_selection']['GG'] = False
 
 
-if cfg['covariance']['use_KE_approximation']:
+if cfg['precision']['use_KE_approximation']:
     cl_integral_convention_ssc = 'Euclid_KE_approximation'
     ssc_integration_type = 'simps_KE_approximation'
 else:
@@ -589,8 +589,8 @@ ccl_obj = ccl_interface.CCLInterface(
     cfg['extra_parameters'],
     cfg['intrinsic_alignment'],
     cfg['halo_model'],
-    cfg['PyCCL']['spline_params'],
-    cfg['PyCCL']['gsl_params'],
+    cfg['precision']['spline_params'],
+    cfg['precision']['gsl_params'],
 )
 # set other useful attributes
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
@@ -624,24 +624,24 @@ k_limber_func = partial(
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
 z_grid = np.linspace(
-    cfg['covariance']['z_min'],
-    cfg['covariance']['z_max'],
-    cfg['covariance']['z_steps']
+    cfg['precision']['z_min'],
+    cfg['precision']['z_max'],
+    cfg['precision']['z_steps']
 )  # fmt: skip
 z_grid_trisp = np.linspace(
-    cfg['covariance']['z_min'],
-    cfg['covariance']['z_max'],
-    cfg['covariance']['z_steps_trisp'],
+    cfg['precision']['z_min'],
+    cfg['precision']['z_max'],
+    cfg['precision']['z_steps_trisp'],
 )
 k_grid = np.logspace(
-    cfg['covariance']['log10_k_min'],
-    cfg['covariance']['log10_k_max'],
-    cfg['covariance']['k_steps'],
+    cfg['precision']['log10_k_min'],
+    cfg['precision']['log10_k_max'],
+    cfg['precision']['k_steps'],
 )
 # in this case we need finer k binning because of the bessel functions
 k_grid_s2b = np.logspace(
-    cfg['covariance']['log10_k_min'],
-    cfg['covariance']['log10_k_max'],
+    cfg['precision']['log10_k_min'],
+    cfg['precision']['log10_k_max'],
     k_steps_sigma2_simps
 )  # fmt: skip
 
@@ -653,9 +653,9 @@ if len(z_grid) < 1000:
     )
 
 zgrid_str = (
-    f'zmin{cfg["covariance"]["z_min"]}_'
-    f'zmax{cfg["covariance"]["z_max"]}_'
-    f'zsteps{cfg["covariance"]["z_steps"]}'
+    f'zmin{cfg["precision"]["z_min"]}_'
+    f'zmax{cfg["precision"]["z_max"]}_'
+    f'zsteps{cfg["precision"]["z_steps"]}'
 )
 
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
@@ -857,16 +857,19 @@ ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])
 # TODO the alternative should be the HOD gal bias already set in the responses class!!
 if cfg['C_ell']['which_gal_bias'] == 'from_input':
     gal_bias_input = np.genfromtxt(cfg['C_ell']['gal_bias_table_filename'])
+    # it's safer to use a linear interpolation, in case these functions are top-hats
+    # (e.g. when requiring constant bias in each bin, over its redshift support)
     ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(
-        input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins
+        input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins, kind='linear'
     )
     ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
-elif cfg['C_ell']['which_gal_bias'] == 'FS2_polynomial_fit':
+
+elif cfg['C_ell']['which_gal_bias'] == 'polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(
         z_grid_lns=z_grid, magcut_lens=None, poly_fit_values=galaxy_bias_fit_fiducials
     )
 else:
-    raise ValueError('which_gal_bias should be "from_input" or "FS2_polynomial_fit"')
+    raise ValueError('which_gal_bias should be "from_input" or "polynomial_fit"')
 
 # Check if the galaxy bias is the same in all bins
 # Note: the [0] (inside square brackets) means "select column 0 but keep the array
@@ -878,11 +881,13 @@ single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
+        # it's safer to use a linear interpolation, in case these functions are top-hats
+        # (e.g. when requiring constant bias in each bin, over its redshift support)
         ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(
-            mag_bias_input, z_grid, zbins
+            input_tab=mag_bias_input, z_grid_out=z_grid, zbins=zbins, kind='linear'
         )
         ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
-    elif cfg['C_ell']['which_mag_bias'] == 'FS2_polynomial_fit':
+    elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':
         ccl_obj.set_mag_bias_tuple(
             z_grid_lns=z_grid,
             has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
@@ -891,7 +896,7 @@ if cfg['C_ell']['has_magnification_bias']:
         )
     else:
         raise ValueError(
-            'which_mag_bias should be "from_input" or "FS2_polynomial_fit"'
+            'which_mag_bias should be "from_input" or "polynomial_fit"'
         )
 else:
     ccl_obj.mag_bias_tuple = None
@@ -905,7 +910,7 @@ plt.legend()
 
 
 # ! ============================ Radial kernels ========================================
-ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['PyCCL']['n_samples_wf'])
+ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['precision']['n_samples_wf'])
 ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
 )
@@ -1027,9 +1032,9 @@ if cfg['C_ell']['use_input_cls']:
     # check ells before spline interpolation
     io_obj.check_ells_in(ell_obj)
 
-    print(f'Using input Cls for LL from file\n{cfg["C_ell"]["cl_LL_path"]}')
-    print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_path"]}')
-    print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_path"]}')
+    print(f'Using input Cls for LL from file\n{cfg["C_ell"]["cl_LL_filename"]}')
+    print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_filename"]}')
+    print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_filename"]}')
 
     ells_WL_in, cl_ll_3d_in = io_obj.ells_WL_in, io_obj.cl_ll_3d_in
     ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in
@@ -1177,7 +1182,7 @@ else:
 
 # ! =========================== Unbinned Cls for nmt/sample/HS bin avg cov =====================
 if (
-    cfg['namaster']['use_namaster']
+    cfg['covariance']['partial_sky_method'] == 'NaMaster'
     or cfg['sample_covariance']['compute_sample_cov']
     or cfg['precision']['cov_hs_g_ell_bin_average']
 ):
@@ -1198,7 +1203,7 @@ if (
             n_probes_hs=cfg['covariance']['n_probes'],
         )
 
-if cfg['namaster']['use_namaster'] or cfg['sample_covariance']['compute_sample_cov']:
+if cfg['covariance']['partial_sky_method'] == 'NaMaster' or cfg['sample_covariance']['compute_sample_cov']:
     from spaceborne import cov_partial_sky
 
     # check that the input cls are computed over a fine enough grid
@@ -2240,7 +2245,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
 
-    if compute_sb_ssc and cfg['covariance']['use_KE_approximation']:
+    if compute_sb_ssc and cfg['precision']['use_KE_approximation']:
         # in this case, the k grid used is the same as the Pk one, I think
         k_grid_s2b = np.array([])
 
@@ -2254,7 +2259,7 @@ if cfg['misc']['save_output_as_benchmark']:
 
     _ell_dict = {k: v for k, v in vars(ell_obj).items() if isinstance(v, np.ndarray)}
 
-    if cfg['namaster']['use_namaster']:
+    if cfg['covariance']['partial_sky_method'] == 'NaMaster':
         import pymaster
 
         # convert NmtBin objects to effective ells

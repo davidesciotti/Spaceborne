@@ -162,7 +162,7 @@ def ssc_integral_4D_simps_jax_ke_approx(
 
 class SpaceborneSSC:
     def __init__(self, cfg, pvt_cfg, ccl_obj, z_grid):
-        self.use_ke_approx = cfg['covariance']['use_KE_approximation']
+        self.use_ke_approx = cfg['precision']['use_KE_approximation']
         self.z_grid = z_grid
         self.ccl_obj = ccl_obj
 
@@ -303,7 +303,7 @@ class SpaceborneSSC:
 
         # ! start the actual computation
         start = time.perf_counter()
-        print('\nComputing Spaceborne SSC...')
+        print('\nComputing SSC...')
 
         # * compute required blocks
         for probe_abcd in unique_probe_combs_hs:

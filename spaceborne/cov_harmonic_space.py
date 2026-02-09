@@ -75,7 +75,7 @@ class SpaceborneCovariance:
         self.ssc_code = self.cov_cfg['SSC_code']
         self.cng_code = self.cov_cfg['cNG_code']
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
-        self.use_nmt = self.cfg['namaster']['use_namaster']
+        self.use_nmt = self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
         self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
         # other useful objects
         self.cov_nmt_obj = cov_nmt_obj
@@ -84,7 +84,7 @@ class SpaceborneCovariance:
         # sanity checks
 
         assert not (self.use_nmt and self.do_sample_cov), (
-            'either cfg["namaster"]["use_namaster"] or '
+            'either cfg["covariance"]["partial_sky_method"] == "NaMaster" or '
             'cfg["sample_covariance"]["compute_sample_cov"] should be True, '
             'not both (but they can both be False)'
         )
@@ -215,8 +215,8 @@ class SpaceborneCovariance:
         if self.use_nmt or self.do_sample_cov:
             if self.cov_nmt_obj is None:
                 raise ValueError(
-                    'cov_nmt_obj is required when use_namaster or compute_sample_cov '
-                    'is True'
+                    'cov_nmt_obj is required when partial_sky_method == "NaMaster" or '
+                    'compute_sample_cov is True'
                 )
 
             # noise vector doesn't have to be recomputed, but repeated a larger number
@@ -508,7 +508,7 @@ class SpaceborneCovariance:
         self._cov_2d_ell_cuts(split_gaussian_cov)
 
     def _couple_cov_ng(self):
-        if not self.cov_cfg['coupled_cov']:
+        if self.cov_cfg['cov_type'] == 'decoupled':
             return
 
         if self.cfg['BNT']['cov_BNT_transform']:
@@ -520,7 +520,7 @@ class SpaceborneCovariance:
 
         if self.cov_nmt_obj is None:
             raise ValueError(
-                'cov_nmt_obj is required when coupled_cov is True. Found None.'
+                'cov_nmt_obj is required when cov_type is "coupled". Found None.'
             )
 
         from spaceborne import cov_partial_sky

@@ -347,9 +347,9 @@ class IOHandler:
     def print_cl_path(self):
         """Print the path of the input Cl files"""
         if self.cfg['C_ell']['use_input_cls']:
-            print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_path"]}')
-            print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_path"]}')
-            print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_path"]}')
+            print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
+            print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
+            print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
         else:
             return
 
@@ -381,20 +381,20 @@ class IOHandler:
         """Get the format of the input cl files"""
         if self.cl_cfg['use_input_cls']:
             if (
-                self.cl_cfg['cl_LL_path'].endswith('.txt')
-                and self.cl_cfg['cl_GL_path'].endswith('.txt')
-                and self.cl_cfg['cl_GG_path'].endswith('.txt')
+                self.cl_cfg['cl_LL_filename'].endswith('.txt')
+                and self.cl_cfg['cl_GL_filename'].endswith('.txt')
+                and self.cl_cfg['cl_GG_filename'].endswith('.txt')
             ) or (
-                self.cl_cfg['cl_LL_path'].endswith('.dat')
-                and self.cl_cfg['cl_GL_path'].endswith('.dat')
-                and self.cl_cfg['cl_GG_path'].endswith('.dat')
+                self.cl_cfg['cl_LL_filename'].endswith('.dat')
+                and self.cl_cfg['cl_GL_filename'].endswith('.dat')
+                and self.cl_cfg['cl_GG_filename'].endswith('.dat')
             ):
                 self.cl_fmt = 'spaceborne'
 
             elif (
-                self.cl_cfg['cl_LL_path'].endswith('.fits')
-                and self.cl_cfg['cl_GL_path'].endswith('.fits')
-                and self.cl_cfg['cl_GG_path'].endswith('.fits')
+                self.cl_cfg['cl_LL_filename'].endswith('.fits')
+                and self.cl_cfg['cl_GL_filename'].endswith('.fits')
+                and self.cl_cfg['cl_GG_filename'].endswith('.fits')
             ):
                 self.cl_fmt = 'euclidlib'
 
@@ -453,9 +453,9 @@ class IOHandler:
         check_cl_symm(self.cl_gg_3d_in)
 
     def _load_cls_sb(self):
-        cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_path'])
-        cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_path'])
-        cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_path'])
+        cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_filename'])
+        cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_filename'])
+        cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_filename'])
 
         self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
         self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)
@@ -463,13 +463,13 @@ class IOHandler:
 
     def _load_cls_el(self):
         self.ells_WL_in, self.cl_ll_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_LL_path'], 'SHE', 'SHE'
+            self.cl_cfg['cl_LL_filename'], 'SHE', 'SHE'
         )
         self.ells_XC_in, self.cl_gl_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_GL_path'], 'POS', 'SHE'
+            self.cl_cfg['cl_GL_filename'], 'POS', 'SHE'
         )
         self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_GG_path'], 'POS', 'POS'
+            self.cl_cfg['cl_GG_filename'], 'POS', 'POS'
         )
 
     def check_ells_in(self, ell_obj):

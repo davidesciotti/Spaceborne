@@ -59,7 +59,7 @@ ylabel_sigma_relative_fid = mpl_other_dict['ylabel_sigma_relative_fid']
 # markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 
 
-def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None):
+def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None, cov_6d=None):
     fig, ax = plt.subplots(zbins, zbins, figsize=(7, 7), sharex=True, sharey=True)
 
     for zi in range(zbins):
@@ -71,15 +71,28 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None):
             for label, (ells, cls) in zip(
                 ells_dict.keys(), zip(ells_dict.values(), cls_dict.values())
             ):
-                ax[zi, zj].plot(
-                    ells,
-                    cls[:, zi, zj],
-                    label=label if (zi == zbins - 1 and zj == zbins - 1) else None,
-                    alpha=1,
-                    ls='--' if label == 'input' else '-',
-                    # zorder=2.0,
-                    lw=1.5,
-                )
+                if cov_6d is None:
+                    ax[zi, zj].plot(
+                        ells,
+                        cls[:, zi, zj],
+                        label=label if (zi == zbins - 1 and zj == zbins - 1) else None,
+                        alpha=1,
+                        ls='--' if label == 'input' else '-',
+                        # zorder=2.0,
+                        lw=1.5,
+                    )
+                else:
+                    ax[zi, zj].errorbar(
+                        ells,
+                        cls[:, zi, zj],
+                        yerr=np.sqrt(np.diag(cov_6d[:, :, zi, zj, zi, zj])),
+                        label=label if (zi == zbins - 1 and zj == zbins - 1) else None,
+                        alpha=1,
+                        ls='--' if label == 'input' else '-',
+                        # zorder=2.0,
+                        lw=1.5,
+                    )
+
             ax[zi, zj].axhline(0.0, c='k', lw=0.8, zorder=0)
             ax[zi, zj].tick_params(axis='both', which='both', direction='in')
 

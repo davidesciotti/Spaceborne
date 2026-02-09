@@ -120,7 +120,7 @@ class SpaceborneCovariance:
     def set_gauss_cov(self, ccl_obj: CCLInterface):
         start = time.perf_counter()
 
-        print('\nComputing Gaussian harmonic-space covariance matrix...')
+        print('\nComputing harmonic-space Gaussian covariance...')
 
         # signal
         cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d

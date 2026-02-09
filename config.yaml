@@ -189,15 +189,18 @@ C_ell:
     non_limber_integration_method: FKEM # Type: str
 
 mask:
-  load_mask: True # Type: bool. Whether to load the mask from a fits or npy file
+  load_mask: true # Type: bool. Whether to load the mask from a fits or npy file
   mask_path: ../DATA/Spaceborne_jobs/cov_validation_2026/input/dr1_mask_nside_2048.fits # Type: str. Path to the mask file (.FITS or .npy)
-  generate_polar_cap: False # Type: bool. Whether to generate a polar cap mask on the fly.
+
+  # Whether to generate a polar cap mask on the fly.
+  # This will subtend an area of survey_area_deg2 with the specified nside
+  generate_polar_cap: false # Type: bool. 
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
   # If null (None), the nside of the input mask will be used, without up/downgrading.
   nside: 2048 # Type: int | None.
 
-  survey_area_deg2: 13245 # Type: int
+  survey_area_deg2: 13245 # Type: float. Survey area in deg^2. Only used if `generate_polar_cap` is set to True.
   apodize: False # Type: bool
   aposize: 0.1 # Type: float. Apodization scale in deg
 
@@ -392,5 +395,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: ../DATA/Spaceborne_jobs/cov_validation_2026/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/cov_validation_2026/output_nmt_spin0 # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

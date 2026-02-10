@@ -266,7 +266,7 @@ if 'OneCovariance' not in cfg:
     )
     cfg['OneCovariance']['consistency_checks'] = False
     cfg['OneCovariance']['oc_output_filename'] = 'cov_oc'
-    cfg['OneCovariance']['compare_against_oc'] = True
+    cfg['OneCovariance']['compare_against_oc'] = False
 
 if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
@@ -860,7 +860,10 @@ if cfg['C_ell']['which_gal_bias'] == 'from_input':
     # it's safer to use a linear interpolation, in case these functions are top-hats
     # (e.g. when requiring constant bias in each bin, over its redshift support)
     ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(
-        input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins, kind='linear'
+        input_tab=gal_bias_input,
+        z_grid_out=z_grid,
+        zbins=zbins,
+        kind=cfg['C_ell']['gal_bias_table_interp_method'],
     )
     ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
 
@@ -884,7 +887,10 @@ if cfg['C_ell']['has_magnification_bias']:
         # it's safer to use a linear interpolation, in case these functions are top-hats
         # (e.g. when requiring constant bias in each bin, over its redshift support)
         ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(
-            input_tab=mag_bias_input, z_grid_out=z_grid, zbins=zbins, kind='linear'
+            input_tab=mag_bias_input,
+            z_grid_out=z_grid,
+            zbins=zbins,
+            kind=cfg['C_ell']['mag_bias_table_interp_method'],
         )
         ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
     elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':

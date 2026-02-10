@@ -134,7 +134,12 @@ bench_yaml_names.sort()
 
 # real space
 # bench_yaml_names = [f'config_{i:04d}' for i in range(84, 120)]
-# bench_yaml_names = bench_yaml_names[3:]  # skip OneCov
+
+# skip OneCov
+# bench_yaml_names = bench_yaml_names[3:]  
+
+# run certain tests only
+# bench_yaml_names = bench_yaml_names[603:610] 
 
 # slow_benchs = [
 #     'config_0004',

@@ -238,6 +238,8 @@ class EllBinning:
         self.cfg = cfg
 
         self.binning_type = cfg['binning']['binning_type']
+        self.partial_sky_method = cfg['covariance']['partial_sky_method']
+        self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
         # Only load filenames if using 'from_input' binning type
         if self.binning_type == 'from_input':

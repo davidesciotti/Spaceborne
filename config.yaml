@@ -88,13 +88,13 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: ../DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename: ../DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-
+  nz_sources_filename: ../DATA/Euclid_data/TR1/PIC_WebDAV/euclid_tr1_b_v1_1/phz/nz_WL_lensmc_C2020_sel_pv/nz_she_tab.txt # Type: str
+  nz_lenses_filename: ../DATA/Euclid_data/TR1/PIC_WebDAV/euclid_tr1_b_v1_1/phz/nz_GC_C2020_sel_pv/nz_pos_tab.txt # Type: str
+  
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
-  ngal_sources: [8.09216, 7.09215, 6.09215] # Type: list[float]
-  ngal_lenses: [1.09216, 2.09215, 3.09215] # Type: list[float]
+  ngal_sources: [4.27336537574752, 3.967321235323279, 4.027374640541013, 3.9282049197942084, 4.059704840413571, 3.8357937748650115] # Type: list[float]
+  ngal_lenses: [1.3554020920278584, 1.3012625894696863, 1.0782913478684577, 1.020320288146747, 1.0663890107005203, 1.0125908968843997] # Type: list[float]
 
   # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -103,8 +103,8 @@ nz:
   normalize_nz: True # Type: bool. Whether to normalize the input n_i(z) if they are not already (within atol=0, rtol=1e-3)
 
   shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-  dzWL: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
-  dzGC: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
+  dzWL: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
+  dzGC: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
@@ -180,7 +180,7 @@ C_ell:
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
-  mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
+  mult_shear_bias: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # Type: list[float]
 
   # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
   has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
@@ -195,13 +195,14 @@ C_ell:
     non_limber_integration_method: FKEM # Type: str
 
 mask:
-  load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-  mask_filename: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
-  generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
+  load_mask: true # Type: bool. Whether to load the mask from a fits or npy file
+  mask_filename: ../DATA/Euclid_data/TR1/PIC_WebDAV/euclid_tr1_a_v1/aux/maps/EUC_LE3_HPEFFECTIVECOVERAGE-WL_TR1-V1-1_20251216T123321.256977Z_00.00.fits.gz # Type: str. Path to the mask file (.FITS or .npy)
+  generate_polar_cap: false # Type: bool. Whether to generate a polar cap mask on the fly.
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
   # If null (None), the nside of the input mask will be used, without up/downgrading.
-  nside: 1024 # Type: int | None.
+  # TODO change to 4096
+  nside: 2048 # Type: int | None.
 
   survey_area_deg2: 13245 # Type: int
   apodize: False # Type: bool
@@ -241,7 +242,7 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.16, 0.36] # Type: list[float]
+  sigma_eps_i: [0.26755087067203576, 0.2665542873655714, 0.2592072487331523, 0.25923875350241427, 0.2551650920064423, 0.2644766584682269] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the
   # Gaussian covariance matrix.
@@ -289,8 +290,8 @@ covariance:
   save_full_cov: True # Type: bool
 
   # Name of the output covariance file.
-  cov_filename: covmat # Type: str.
-  save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
+  cov_filename: covmat_TR1 # Type: str.
+  save_cov_fits: True # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
@@ -342,8 +343,8 @@ precision:
   k_steps: 150 # Type: int. Around 150 should be enough
 
   # TODO what is this 0.02?
-  z_min: 0.02 # Type: float
-  z_max: 3.0 # Type: float
+  z_min: 0.0001 # Type: float
+  z_max: 3.5 # Type: float
   # Number of z steps used for the NG covariance projection.
   # Should be quite high, e.g., to trace the rapid variation of the sigma2_b function.
   # Around 1000 should be enough.
@@ -399,27 +400,27 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 200 # Type: int. How many threads to use for the parallel computations
+  num_threads: 50 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.
 
   # some sanity checks on the covariance matrix. These could take a while to run.
-  test_numpy_inversion: False # Type: bool. Test for errors in np.linalg.inv
-  test_condition_number: False # Type: bool. Check if condition number is above 1e10
-  test_cholesky_decomposition: False # Type: bool. Test if cholesky decomposition fails
-  test_symmetry: False # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
+  test_numpy_inversion: True # Type: bool. Test for errors in np.linalg.inv
+  test_condition_number: True # Type: bool. Check if condition number is above 1e10
+  test_cholesky_decomposition: True # Type: bool. Test if cholesky decomposition fails
+  test_symmetry: True # Type: bool. Test if covariance matrix is symmetric (cov = cov.T)
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
-  cl_triangle_plot: False # Type: bool.
+  cl_triangle_plot: True # Type: bool.
 
   # If the covariance_ordering_2D starts with "probe", setting this to True
   # automatically displays the labels and limits for the different probe blocks.
   # set this to False to display the number of elements in the covariance instead
-  plot_probe_names: True # Type: bool
+  plot_probe_names: True # Type: bool.
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: ../DATA/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/TR1_cov/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

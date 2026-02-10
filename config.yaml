@@ -45,7 +45,6 @@ extra_parameters:
     dark_energy_model: ppf # Type: str
 
 # Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
-# Halo model configuration using CCL classes (https://ccl.readthedocs.io/en/latest/api/pyccl.halos.html)
 # Each parameter maps directly to a CCL class, and has exactly its name
 halo_model:
   mass_def: MassDef200m # Type: str
@@ -172,6 +171,13 @@ C_ell:
   gal_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
   mag_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
 
+  # Interpolation methods for the galaxy and magnification bias tables.
+  # This should be set to "linear" or "nearest" for step-like, or in general discontinuous, 
+  # bias functions, to avoid spurious oscillations from the spline interpolation.
+  # Options: ['linear', 'nearest', 'CubicSpline']
+  gal_bias_table_interp_method: CubicSpline # Type: str.
+  mag_bias_table_interp_method: CubicSpline # Type: str.
+
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
   mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
@@ -222,7 +228,10 @@ covariance:
   #             It can be sped up quite significantly by setting spin0=True in the
   #             precision section (at the cost of lower precision)
   partial_sky_method: Knox # Type: str
-  cov_type: decoupled # Type: str. Whether to compute the covariance of the coupled or decoupled Cls
+
+  # Whether to compute the covariance of the coupled or decoupled Cls.
+  # Options: ['coupled', 'decoupled']
+  cov_type: decoupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
@@ -315,7 +324,7 @@ sample_covariance:
 
 precision:
   # =============================== harmonic-space cov =================================
-  # Binning method for the Knox harmonic-space Gaussian covariance
+  # Binning method for the Knox ("1/fsky") harmonic-space Gaussian covariance
   # (which is diagonal in ell1, ell2):
   # - True:  Average over all integer multipoles within each bin (exact formula).
   #          Sum over modes and divide by N_modes², where N_modes is the number of
@@ -366,7 +375,7 @@ precision:
   n_iter_nmt: null # Type: None | int.
   # Whether to treat all fields as having spin 0 in the NaMaster Gaussian covariance.
   # This is (significantly) faster, but less accurate.
-  spin0: True # Type: bool. 
+  spin0: True # Type: bool.
   use_iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
 
   # ======================================= JAX ========================================

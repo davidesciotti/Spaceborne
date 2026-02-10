@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+title: "Spaceborne"
+message: "If you use this software, please cite it as below."
+type: software
+
+authors:
+  - family-names: "Sciotti"
+    given-names: "Davide"
+
+repository-code: "https://github.com/davidesciotti/Spaceborne"
+url: "https://github.com/davidesciotti/Spaceborne"
+license: "MIT"
+
+abstract: >-
+  Spaceborne is a Python code for fast and accurate computation of analytical
+  covariance matrices for photometric 3x2pt probes (weak lensing, photometric
+  galaxy clustering, and galaxy-galaxy lensing) used in modern cosmological
+  analyses.
+
+keywords:
+  - cosmology
+  - covariance-matrix
+  - weak-lensing
+  - galaxy-clustering
+  - galaxy-galaxy-lensing
+  - JAX

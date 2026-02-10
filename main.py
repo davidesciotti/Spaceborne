@@ -895,9 +895,7 @@ if cfg['C_ell']['has_magnification_bias']:
             poly_fit_values=magnification_bias_fit_fiducials,
         )
     else:
-        raise ValueError(
-            'which_mag_bias should be "from_input" or "polynomial_fit"'
-        )
+        raise ValueError('which_mag_bias should be "from_input" or "polynomial_fit"')
 else:
     ccl_obj.mag_bias_tuple = None
 
@@ -1203,7 +1201,10 @@ if (
             n_probes_hs=cfg['covariance']['n_probes'],
         )
 
-if cfg['covariance']['partial_sky_method'] == 'NaMaster' or cfg['sample_covariance']['compute_sample_cov']:
+if (
+    cfg['covariance']['partial_sky_method'] == 'NaMaster'
+    or cfg['sample_covariance']['compute_sample_cov']
+):
     from spaceborne import cov_partial_sky
 
     # check that the input cls are computed over a fine enough grid

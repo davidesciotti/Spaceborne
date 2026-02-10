@@ -860,7 +860,10 @@ if cfg['C_ell']['which_gal_bias'] == 'from_input':
     # it's safer to use a linear interpolation, in case these functions are top-hats
     # (e.g. when requiring constant bias in each bin, over its redshift support)
     ccl_obj.gal_bias_2d, ccl_obj.gal_bias_func = sl.check_interpolate_input_tab(
-        input_tab=gal_bias_input, z_grid_out=z_grid, zbins=zbins, kind='linear'
+        input_tab=gal_bias_input,
+        z_grid_out=z_grid,
+        zbins=zbins,
+        kind=cfg['C_ell']['gal_bias_table_interp_method'],
     )
     ccl_obj.gal_bias_tuple = (z_grid, ccl_obj.gal_bias_2d)
 
@@ -884,7 +887,10 @@ if cfg['C_ell']['has_magnification_bias']:
         # it's safer to use a linear interpolation, in case these functions are top-hats
         # (e.g. when requiring constant bias in each bin, over its redshift support)
         ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(
-            input_tab=mag_bias_input, z_grid_out=z_grid, zbins=zbins, kind='linear'
+            input_tab=mag_bias_input,
+            z_grid_out=z_grid,
+            zbins=zbins,
+            kind=cfg['C_ell']['mag_bias_table_interp_method'],
         )
         ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
     elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':
@@ -895,9 +901,7 @@ if cfg['C_ell']['has_magnification_bias']:
             poly_fit_values=magnification_bias_fit_fiducials,
         )
     else:
-        raise ValueError(
-            'which_mag_bias should be "from_input" or "polynomial_fit"'
-        )
+        raise ValueError('which_mag_bias should be "from_input" or "polynomial_fit"')
 else:
     ccl_obj.mag_bias_tuple = None
 
@@ -1202,7 +1206,10 @@ if (
             n_probes_hs=cfg['covariance']['n_probes'],
         )
 
-if cfg['covariance']['partial_sky_method'] == 'NaMaster' or cfg['sample_covariance']['compute_sample_cov']:
+if (
+    cfg['covariance']['partial_sky_method'] == 'NaMaster'
+    or cfg['sample_covariance']['compute_sample_cov']
+):
     from spaceborne import cov_partial_sky
 
     # check that the input cls are computed over a fine enough grid

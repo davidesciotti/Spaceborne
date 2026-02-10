@@ -30,6 +30,8 @@ Some of its features include:
 
 For detailed instructions on how to install and use Spaceborne, please refer to the official [documentation](https://spaceborne.readthedocs.io/en/latest/).
 
+📔 For a hands-on walkthrough, you can check out the `DEMO.ipynb` notebook.
+
 ## Installation
 
 To install Spaceborne within a dedicated `conda` environment:

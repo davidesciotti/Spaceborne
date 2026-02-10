@@ -150,9 +150,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: True # Type: bool
 
-  cl_LL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000_euclidlib.fits # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000_euclidlib.fits # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: ../DATA/Spaceborne_jobs/cov_validation_2026/input/cls_theory_lmax_3000_euclidlib.fits # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -211,8 +211,8 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
-  cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   # ================================== Gaussian cov ====================================
   # Method to account for partial sky coverage in the Gaussian term.
@@ -225,12 +225,12 @@ covariance:
   #             survey areas, but significantly slower than the Knox approximation.
   #             It can be sped up quite significantly by setting spin0=True in the
   #             precision section (at the cost of lower precision)
-  partial_sky_method: Knox # Type: str
+  partial_sky_method: NaMaster # Type: str
   cov_type: decoupled # Type: str. Whether to compute the covariance of the coupled or decoupled Cls
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: True # Type: bool
+  split_gaussian_cov: False # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -394,7 +394,7 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 200 # Type: int. How many threads to use for the parallel computations
+  num_threads: 40 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.

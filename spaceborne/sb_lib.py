@@ -3557,7 +3557,9 @@ def compute_g_cov(
     assert cl_5d.shape[-1] == cl_5d.shape[-2], (
         'cl_5d must have shape (n_probes, n_probes, nbl, zbins, zbins)'
     )
-    assert noise_5d.shape == cl_5d.shape, 'noise_5d must have the same shape as cl_5d'
+    assert noise_5d.shape == cl_5d.shape, 'noise_5d must have the same shape as cl_5d. '
+    'This error might come from a mismatch in the number of tomographic bins inferred '
+    'from the Cls input file and the number of bins in the n(z) files'
 
     if cov_hs_g_ell_bin_average and ell_edges is None:
         raise ValueError(

@@ -141,7 +141,7 @@ class CovarianceProjector:
         self._set_survey_info(mask_obj)
         self._set_terms_toloop()
         self._set_neff_and_sigma_eps()
-        
+
         # TODO here (in the init) I should add the finely binned Cls, which are used in all projections!
 
         self.cov_shape_6d = (
@@ -390,7 +390,7 @@ class CovarianceProjector:
 
         # permutations should be performed as done in the SVA function
         integrand = integrand_func(
-            self.ells,
+            self.ells_proj_g,
             self.cl_3x2pt_5d[probe_a_ix, probe_c_ix, :, zi, zk]
             * get_prefac(probe_b_ix, probe_d_ix, zj, zl)
             + self.cl_3x2pt_5d[probe_b_ix, probe_d_ix, :, zj, zl]
@@ -401,7 +401,7 @@ class CovarianceProjector:
             * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
         )
 
-        integral = simps(y=integrand, x=self.ells)
+        integral = simps(y=integrand, x=self.ells_proj_g)
 
         # elif integration_method == 'quad':
 
@@ -465,14 +465,74 @@ class CovarianceProjector:
         c_jk = self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk]
 
         # Evaluate projection kernels
-        kernel_1 = kernel_1_func_of_ell(self.ells)
-        kernel_2 = kernel_2_func_of_ell(self.ells)
+        # TODO this should probebly be done at init to save time (at the cost of flexibility?)
+        kernel_1 = kernel_1_func_of_ell(self.ells_proj_g)
+        kernel_2 = kernel_2_func_of_ell(self.ells_proj_g)
 
         # Build integrand: ℓ * K_μ * K_ν * (C_ik*C_jl + C_il*C_jk)
-        integrand = self.ells * kernel_1 * kernel_2 * (c_ik * c_jl + c_il * c_jk)
+        integrand = self.ells_proj_g * kernel_1 * kernel_2 * (c_ik * c_jl + c_il * c_jk)
 
         # Integrate with Simpson's rule
-        integral = simps(y=integrand, x=self.ells)
+        integral = simps(y=integrand, x=self.ells_proj_g)
 
         # Apply normalization factor
         return integral / (2.0 * np.pi * self.amax)
+
+    def cov_ng_simps(
+        self,
+        ells_proj: np.ndarray,
+        cov_ng_4d: np.ndarray,
+        kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
+        kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
+    ) -> float:
+        """
+        Universal Simpson integrator for non-Gaussian covariance - projection kernel agnostic.
+
+        This function computes a single matrix element of the non-Gaussian covariance by:
+        1. Selecting the relevant C_ℓ spectra for the given tomographic bins
+        2. Evaluating projection kernels (e.g., k_mu for real space, W_n for COSEBIs)
+        3. Building the integrand: ℓ * kernel_1 * kernel_2 * (C_ik*C_jl + C_il*C_jk)
+        4. Integrating with Simpson's rule
+
+        Parameters
+        ----------
+        cov_ng_6d : np.ndarray
+            Non-Gaussian covariance in 6D (ell_1, ell_2, zi, zj, zk, zl)
+        kernel_1_func_of_ell : callable
+            First projection kernel function of ℓ (e.g., k_mu(ℓ, theta_1))
+        kernel_2_func_of_ell : callable
+            Second projection kernel function of ℓ (e.g., k_nu(ℓ, theta_2))
+
+        Returns
+        -------
+        cov_ijkl : np.ndarray
+            for the input probe combination and term (ssc or cng), returns the
+            zi, zj, zk, zl 4D matrix (no need for parallel wrappers in this case)
+        """
+
+        assert cov_ng_4d.ndim == 4, 'input array must be 6D'
+        assert cov_ng_4d.shape[0] == ells_proj.shape[0], 'input array must be 6D'
+        assert cov_ng_4d.shape[1] == ells_proj.shape[0], 'input array must be 6D'
+
+        # just to keep track, the two grids are the same
+        ells_1 = ells_proj
+        ells_2 = ells_proj
+
+        # Evaluate projection kernels
+        kernel_1 = kernel_1_func_of_ell(ells_1)
+        kernel_2 = kernel_2_func_of_ell(ells_2)
+
+        # reshape everything to match the NG cov shape
+        integrand = (
+            ells_1[:, None, None, None]
+            * ells_2[None, :, None, None]
+            * kernel_1[:, None, None, None]
+            * kernel_2[None, :, None, None]
+            * cov_ng_4d
+        )
+
+        # integrate along ells_1 and ells_2
+        part_integral = simps(y=integrand, x=ells_1, axis=0)
+        cov_ijkl = simps(y=part_integral, x=ells_2, axis=0)
+
+        return cov_ijkl

@@ -152,6 +152,9 @@ class SpaceborneCovariance:
             noise_3x2pt_5d = bnt_utils.cl_bnt_transform_3x2pt(
                 noise_3x2pt_5d, self.bnt_matrix
             )
+            noise_3x2pt_unb_5d = bnt_utils.cl_bnt_transform_3x2pt(
+                noise_3x2pt_unb_5d, self.bnt_matrix
+            )
 
         if self.cfg['precision']['cov_hs_g_ell_bin_average']:
             # unbinned cls and noise; need the edges to compute the number of modes

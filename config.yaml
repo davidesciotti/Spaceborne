@@ -358,7 +358,6 @@ precision:
   # ================================= real-space cov ===================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
-  # TODO change this to a generic "projection_ell_grid"
   ell_min_proj: 2 # Type: int
   ell_max_proj: 100000 # Type: int
   ell_bins_proj: 500 # Type: int. Should be high to get accurate results with Simpson integration

@@ -486,22 +486,21 @@ class CovarianceProjector:
         kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
     ) -> float:
         """
-        Universal Simpson integrator for non-Gaussian covariance - projection kernel agnostic.
+        Simpson integrator for non-Gaussian covariance - projection kernel agnostic.
 
-        This function computes a single matrix element of the non-Gaussian covariance by:
-        1. Selecting the relevant C_ℓ spectra for the given tomographic bins
-        2. Evaluating projection kernels (e.g., k_mu for real space, W_n for COSEBIs)
-        3. Building the integrand: ℓ * kernel_1 * kernel_2 * (C_ik*C_jl + C_il*C_jk)
-        4. Integrating with Simpson's rule
+        This function projects a 4D harmonic-space non-Gaussian covariance to real (TBD)
+        or COSEBIs space. It includes the evaluation of the projection kernels
+        (e.g., k_mwu for real space, W_n for COSEBIs over the (possibly different)
+        ell_1 and ell_2 grids.
+        It then buils the integrand: ell_1 * ell_2 * kernel_1 * kernel_2 * cov_hs_ng_4d
+        and integrates it with Simpson's rule.
 
         Parameters
         ----------
-        cov_ng_6d : np.ndarray
-            Non-Gaussian covariance in 6D (ell_1, ell_2, zi, zj, zk, zl)
-        kernel_1_func_of_ell : callable
-            First projection kernel function of ℓ (e.g., k_mu(ℓ, theta_1))
-        kernel_2_func_of_ell : callable
-            Second projection kernel function of ℓ (e.g., k_nu(ℓ, theta_2))
+        ells_proj : np.ndarray
+        cov_ng_4d : np.ndarray
+        kernel_1_func_of_ell : Callable[[np.ndarray], np.ndarray]
+        kernel_2_func_of_ell : Callable[[np.ndarray], np.ndarray]
 
         Returns
         -------

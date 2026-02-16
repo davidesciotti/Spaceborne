@@ -228,7 +228,7 @@ class TestEllBinning:
         assert len(ell_obj.ells_3x2pt_unb) == ell_obj.nbl_3x2pt_unb
         assert ell_obj.ells_3x2pt_unb[-1] == ell_obj.ell_max_3x2pt
 
-    def test_compute_ells_3x2pt_rs(self, basic_config):
+    def test_compute_ells_3x2pt_proj(self, basic_config):
         """Test real space 3x2pt ell computation."""
         basic_config['precision'] = {
             'ell_min_proj': 1,

@@ -27,7 +27,6 @@ warnings.filterwarnings(
 _UNSET = object()
 
 
-
 class CovCOSEBIs(CovarianceProjector):
     def __init__(self, cfg, pvt_cfg, mask_obj):
         super().__init__(cfg, pvt_cfg, mask_obj)
@@ -284,15 +283,12 @@ class CovCOSEBIs(CovarianceProjector):
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term in ['ssc', 'cng']:
-            # TODO this is yet to be checked
-            # TODO this has to be computed on a sufficiently fine ell grid, may pose
-            # TODO memory issues?
-
             # set normalization depending on the term
             norm = 4 * np.pi**2
             if term == 'cng':
                 norm *= self.amax
 
+            # recover corresponding harmonic-space probe names
             probe_abcd_hs = (
                 const.HS_PROBE_IX_TO_NAME_DICT[probe_a_ix]
                 + const.HS_PROBE_IX_TO_NAME_DICT[probe_b_ix]
@@ -304,6 +300,7 @@ class CovCOSEBIs(CovarianceProjector):
             # project hs non-gaussian cov to COSEBIs space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
+            # TODO finish commenting out the code
             cov_cs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
 
             # Loop over mode pairs (n, m)
@@ -320,8 +317,6 @@ class CovCOSEBIs(CovarianceProjector):
                         kernel_1_func_of_ell=kernel_n,
                         kernel_2_func_of_ell=kernel_m,
                     )
-                    
-            
 
             cov_ng_cs_6d = sl.cov_4D_to_6D_blocks(
                 cov_4D=cov_cs_ng_4d,

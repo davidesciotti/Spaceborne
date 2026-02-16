@@ -476,14 +476,14 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('verbose'), bool), (
             'precision: verbose must be a boolean'
         )
-        assert isinstance(precision_cfg.get('ell_min_rs'), int), (
-            'precision: ell_min_rs must be an int'
+        assert isinstance(precision_cfg.get('ell_min_proj'), int), (
+            'precision: ell_min_proj must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_max_rs'), int), (
-            'precision: ell_max_rs must be an int'
+        assert isinstance(precision_cfg.get('ell_max_proj'), int), (
+            'precision: ell_max_proj must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_bins_rs'), int), (
-            'precision: ell_bins_rs must be an int'
+        assert isinstance(precision_cfg.get('ell_bins_proj'), int), (
+            'precision: ell_bins_proj must be an int'
         )
         assert isinstance(precision_cfg.get('theta_max_arcmin_cosebis'), int), (
             'precision: theta_max_arcmin_cosebis must be an int'
@@ -491,8 +491,8 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('theta_steps_cosebis'), int), (
             'precision: theta_steps_cosebis must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_bins_rs_nongauss'), int), (
-            'precision: ell_bins_rs_nongauss must be an int'
+        assert isinstance(precision_cfg.get('ell_bins_proj_nongauss'), int), (
+            'precision: ell_bins_proj_nongauss must be an int'
         )
         assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
             'precision: cov_rs_int_method must be a string'
@@ -741,10 +741,6 @@ class SpaceborneConfigChecker:
                 'At least one of En, Bn, Psigl, or Psigg must be selected for '
                 'cosebis space covariance'
             )
-            if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']:
-                raise NotImplementedError(
-                    'The non-gaussian COSEBIs covariance has not been implemented yet'
-                )
 
         else:
             raise ValueError(

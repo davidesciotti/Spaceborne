@@ -26,13 +26,6 @@ warnings.filterwarnings(
 
 _UNSET = object()
 
-def cov_ng_cs(cov_ng_6d, ells):
-    # TODO compute kernels over the ell_bins_ng projection grid, which should be coarser
-    # than the G one, then perform double simpson integration. You can borrow from cov_rs I think
-    
-    # integrand = 
-    return
-    
 
 
 class CovCOSEBIs(CovarianceProjector):
@@ -48,6 +41,7 @@ class CovCOSEBIs(CovarianceProjector):
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_cs_2d']
+        self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         dims = ['6d', '4d', '2d']
 
         _req_probe_combs_2d = [
@@ -64,8 +58,10 @@ class CovCOSEBIs(CovarianceProjector):
 
         # attributes set at runtime
         self.cl_3x2pt_5d = _UNSET
-        self.ells = _UNSET
-        self.nbl = _UNSET
+        self.ells_proj_g = _UNSET
+        self.ells_proj_ng = _UNSET
+        self.nbl_proj_g = _UNSET
+        self.nbl_proj_ng = _UNSET
 
     @property
     def ch(self):
@@ -73,6 +69,7 @@ class CovCOSEBIs(CovarianceProjector):
         if self._ch is None:
             try:
                 import cloelib.auxiliary.cosebi_helpers as ch
+
                 self._ch = ch
             except ImportError as e:
                 raise ImportError(
@@ -100,7 +97,7 @@ class CovCOSEBIs(CovarianceProjector):
         assert len(self.theta_grid_rad) == self.nbt, 'theta_grid_rad length mismatch'
         assert np.min(np.diff(self.theta_grid_rad)) > 0, 'theta_grid_rad not sorted!'
 
-    def set_w_ells(self):
+    def set_w_ells(self, ells):
         """
         Compute and set the COSEBIs W_n(ell) kernels for all modes and ells.
 
@@ -113,12 +110,13 @@ class CovCOSEBIs(CovarianceProjector):
             w_ells_dict = self.ch.get_W_ell(
                 thetagrid=self.theta_grid_rad,
                 Nmax=self.nbx,
-                ells=self.ells,
+                ells=ells,
                 N_thread=self.n_jobs,
             )
 
         # turn to array of shape (n_modes, n_ells) and assign to self
-        self.w_ells_arr = np.array(list(w_ells_dict.values()))
+        w_ells_arr = np.array(list(w_ells_dict.values()))
+        return w_ells_arr
 
     def cov_sn_cs(self):
         """Compute the COSEBIs shape noise covariance term."""
@@ -199,7 +197,7 @@ class CovCOSEBIs(CovarianceProjector):
         return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]
 
     def compute_cs_cov_term_probe_6d(
-        self, cov_hs_dict: dict | None, probe_abcd: str, term: str
+        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str
     ) -> None:
         """
         Computes the COSEBIs covariance matrix for the specified term and probe combination.
@@ -285,8 +283,59 @@ class CovCOSEBIs(CovarianceProjector):
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 
-        elif term == 'ssc':
-            cov_out_6d = self.cov_ng_cs(cov_hs_dict['ssc'][probe_2tpl]['6d'])
+        elif term in ['ssc', 'cng']:
+            # TODO this is yet to be checked
+            # TODO this has to be computed on a sufficiently fine ell grid, may pose
+            # TODO memory issues?
+
+            # set normalization depending on the term
+            norm = 4 * np.pi**2
+            if term == 'cng':
+                norm *= self.amax
+
+            probe_abcd_hs = (
+                const.HS_PROBE_IX_TO_NAME_DICT[probe_a_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_b_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_c_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_d_ix]
+            )
+            probe_ab_hs, probe_cd_hs = sl.split_probe_name(probe_abcd_hs, 'harmonic')
+
+            # project hs non-gaussian cov to COSEBIs space
+            cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
+
+            cov_cs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
+
+            # Loop over mode pairs (n, m)
+            for mode_n in range(self.nbx):
+                for mode_m in range(self.nbx):
+                    # Build projection kernels for modes n and m
+                    kernel_n = lambda ell, n=mode_n: self.w_ells_arr_ng[n, :]
+                    kernel_m = lambda ell, m=mode_m: self.w_ells_arr_ng[m, :]
+
+                    # Integrate over (ell_1, ell_2) for all tomographic bin combinations at once
+                    cov_cs_ng_4d[mode_n, mode_m, :, :] = self.cov_ng_simps(
+                        ells_proj=self.ells_proj_ng,
+                        cov_ng_4d=cov_hs_ng_4d,
+                        kernel_1_func_of_ell=kernel_n,
+                        kernel_2_func_of_ell=kernel_m,
+                    )
+                    
+            
+
+            cov_ng_cs_6d = sl.cov_4D_to_6D_blocks(
+                cov_4D=cov_cs_ng_4d,
+                nbl=self.nbx,
+                zbins=self.zbins,
+                ind_ab=ind_ab,
+                ind_cd=ind_cd,
+                symmetrize_output_ab=self.symmetrize_output_dict[probe_ab_hs],
+                symmetrize_output_cd=self.symmetrize_output_dict[probe_cd_hs],
+            )
+
+            cov_ng_cs_6d /= norm
+
+            cov_out_6d = cov_ng_cs_6d
 
         else:
             raise ValueError(

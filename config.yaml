@@ -106,7 +106,7 @@ nz:
   dzWL: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
   dzGC: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
 
-  smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
+  smooth_nz: True # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
 
 binning:
@@ -202,7 +202,7 @@ mask:
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
   # If null (None), the nside of the input mask will be used, without up/downgrading.
   # TODO change to 4096
-  nside: 2048 # Type: int | None.
+  nside: 4096 # Type: int | None.
 
   survey_area_deg2: 13245 # Type: int
   apodize: False # Type: bool
@@ -228,7 +228,7 @@ covariance:
   #             survey areas, but significantly slower than the Knox approximation.
   #             It can be sped up quite significantly by setting spin0=True in the
   #             precision section (at the cost of lower precision)
-  partial_sky_method: Knox # Type: str
+  partial_sky_method: NaMaster # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
@@ -236,7 +236,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: True # Type: bool
+  split_gaussian_cov: False # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -291,7 +291,7 @@ covariance:
 
   # Name of the output covariance file.
   cov_filename: covmat_TR1 # Type: str.
-  save_cov_fits: True # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
+  save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
@@ -344,7 +344,7 @@ precision:
 
   # TODO what is this 0.02?
   z_min: 0.0001 # Type: float
-  z_max: 3.5 # Type: float
+  z_max: 6.0 # Type: float
   # Number of z steps used for the NG covariance projection.
   # Should be quite high, e.g., to trace the rapid variation of the sigma2_b function.
   # Around 1000 should be enough.
@@ -400,7 +400,7 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 50 # Type: int. How many threads to use for the parallel computations
+  num_threads: 40 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.
@@ -422,5 +422,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: ../DATA/Spaceborne_jobs/TR1_cov/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/TR1_cov/output_g_nmt # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

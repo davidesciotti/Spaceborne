@@ -495,7 +495,7 @@ _req_probe_combs_2d.append('3x2pt')
 dims = ['6d', '4d', '2d']
 cov_dict = cd.create_cov_dict(req_terms, _req_probe_combs_2d, dims=dims)
 
-
+# TODO I can probably delete these?
 compute_oc_g, compute_oc_ssc, compute_oc_cng = False, False, False
 compute_sb_ssc, compute_sb_cng = False, False
 compute_ccl_ssc, compute_ccl_cng = False, False
@@ -1246,9 +1246,10 @@ cov_rs_obj = None
 if obs_space == 'real':
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
-    ell_obj.compute_ells_3x2pt_rs()
-    cov_rs_obj.ells = ell_obj.ells_3x2pt_rs
-    cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_rs)
+    ell_obj.compute_ells_3x2pt_proj()
+    # TODO rename these and add ells_proj_ng as done in COSEBIs case
+    cov_rs_obj.ells = ell_obj.ells_3x2pt_proj
+    cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_proj)
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:
@@ -1275,24 +1276,29 @@ if obs_space == 'real':
 cov_cs_obj = None
 if obs_space == 'cosebis':
     cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
-    ell_obj.compute_ells_3x2pt_rs()
+    ell_obj.compute_ells_3x2pt_proj()
 
     # ell grid used for the integrals
-    cov_cs_obj.ells = ell_obj.ells_3x2pt_rs
-    cov_cs_obj.nbl = len(ell_obj.ells_3x2pt_rs)
+    cov_cs_obj.ells_proj_g = ell_obj.ells_3x2pt_proj
+    cov_cs_obj.nbl_proj_g = ell_obj.nbl_3x2pt_proj
+    cov_cs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
+    cov_cs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
+    cov_cs_obj.w_ells_arr = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_g)
+    # TODO make this conditional
+    cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:
         cl_3x2pt_5d_for_cs = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(cov_cs_obj.ells),
-            cl_gl_3d=cl_gl_3d_spline(cov_cs_obj.ells),
-            cl_gg_3d=cl_gg_3d_spline(cov_cs_obj.ells),
+            cl_ll_3d=cl_ll_3d_spline(cov_cs_obj.ells_proj_g),
+            cl_gl_3d=cl_gl_3d_spline(cov_cs_obj.ells_proj_g),
+            cl_gg_3d=cl_gg_3d_spline(cov_cs_obj.ells_proj_g),
         )
 
     else:
         cl_3x2pt_5d_for_cs = ccl_interface.compute_cl_3x2pt_5d(
             ccl_obj,
-            ells=cov_cs_obj.ells,
+            ells=cov_cs_obj.ells_proj_g,
             zbins=zbins,
             mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
             cl_ccl_kwargs=cl_ccl_kwargs,
@@ -1669,13 +1675,19 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         )
 
     # ! prepare integrands (d2CAB_dVddeltab) and volume element
-    # ! - test k_max_limber vs k_max_dPk and adjust z_min accordingly
-    k_max_resp = np.max(k_grid)
-    ell_grid = ell_obj.ells_GC
+
+    # the finer grid is needed for the non-Gaussian covariance projection
+    if obs_space == 'harmonic':
+        ell_grid = ell_obj.ells_3x2pt
+    elif obs_space in ['real', 'cosebis']:
+        ell_grid = ell_obj.ells_3x2pt_proj_ng
+
     kmax_limber = cosmo_lib.get_kmax_limber(
         ell_grid, z_grid, use_h_units, ccl_obj.cosmo_ccl
     )
 
+    # ! - test k_max_limber vs k_max_dPk and adjust z_min accordingly
+    k_max_resp = np.max(k_grid)
     z_grid_test = z_grid.copy()
     while kmax_limber > k_max_resp:
         print(
@@ -1693,39 +1705,34 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     dPmm_ddeltab_spline = RectBivariateSpline(
         k_grid, z_grid_trisp, dPmm_ddeltab, kx=3, ky=3
     )
-    dPmm_ddeltab_klimb = np.array(
-        [
-            dPmm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-            for ell_val in ell_obj.ells_WL
-        ]
-    )
+    mm_list = [
+        dPmm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
+        for ell_val in ell_grid
+    ]
+    dPmm_ddeltab_klimb = np.array(mm_list)
 
-    dPgm_ddeltab_klimb = np.zeros((len(ell_obj.ells_XC), len(z_grid), zbins))
+    dPgm_ddeltab_klimb = np.zeros((len(ell_grid), len(z_grid), zbins))
     for zi in range(zbins):
         dPgm_ddeltab_spline = RectBivariateSpline(
             k_grid, z_grid_trisp, dPgm_ddeltab[:, :, zi], kx=3, ky=3
         )
-        dPgm_ddeltab_klimb[:, :, zi] = np.array(
-            [
-                dPgm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-                for ell_val in ell_obj.ells_XC
-            ]
-        )
+        gm_list = [
+            dPgm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
+            for ell_val in ell_grid
+        ]
+        dPgm_ddeltab_klimb[:, :, zi] = np.array(gm_list)
 
-    dPgg_ddeltab_klimb = np.zeros((len(ell_obj.ells_GC), len(z_grid), zbins, zbins))
+    dPgg_ddeltab_klimb = np.zeros((len(ell_grid), len(z_grid), zbins, zbins))
     for zi in range(zbins):
         for zj in range(zbins):
             dPgg_ddeltab_spline = RectBivariateSpline(
                 k_grid, z_grid_trisp, dPgg_ddeltab[:, :, zi, zj], kx=3, ky=3
             )
-            dPgg_ddeltab_klimb[:, :, zi, zj] = np.array(
-                [
-                    dPgg_ddeltab_spline(
-                        k_limber_func(ell_val, z_grid), z_grid, grid=False
-                    )
-                    for ell_val in ell_obj.ells_GC
-                ]
-            )
+            gg_list = [
+                dPgg_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
+                for ell_val in ell_grid
+            ]
+            dPgg_ddeltab_klimb[:, :, zi, zj] = np.array(gg_list)
 
     # ! observable densities
     # z: z_grid index (for the radial projection)
@@ -1768,7 +1775,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     else:
         raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
-    cov_hs_obj.cov_ssc_dict = cov_ssc_obj.cov_dict
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
@@ -1873,7 +1879,6 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     start_rs = time.perf_counter()
 
     # precompute COSEBIs kernels W_n(ell)
-    cov_cs_obj.set_w_ells()
 
     # TODO understand a bit better how to treat real-space SSC and cNG
     for _probe, _term in itertools.product(
@@ -1884,9 +1889,19 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
             f'\nCOSEBIs cov: computing probe combination {probe_ab, probe_cd}'
             f' - term {_term.upper()}'
         )
-        _cov_hs_dict = cov_hs_obj.cov_dict if cov_hs_obj is not None else None
+
+        # in case the NG terms are required, pass the corresponding dictionaries.
+        # note that, since cov_hs_obj._add_cov_ng was not called, these dictionaries 
+        # only contain the 4d keys for the moment. Because of this, I project the 4d
+        # covs 
+        cov_hs_ng_dict = {}
+        if cfg['covariance']['SSC']:
+            cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+        if cfg['covariance']['cNG']:
+            cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
+
         cov_cs_obj.compute_cs_cov_term_probe_6d(
-            cov_hs_dict=_cov_hs_dict, probe_abcd=_probe, term=_term
+            cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
         )
 
     for term in cov_cs_obj.terms_toloop:
@@ -2280,6 +2295,7 @@ if cfg['misc']['save_output_as_benchmark']:
     misc_dict = {}
 
     # COSEBIs W_n kernels
+    # TODO bookmark check this
     if obs_space == 'cosebis' and cov_cs_obj is not None:
         if hasattr(cov_cs_obj, 'w_ells'):
             misc_dict['cosebis_w_ells'] = cov_cs_obj.w_ells

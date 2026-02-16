@@ -460,16 +460,22 @@ class EllBinning:
             'nbl_tot does not match ell_max_3x2pt + 1'
         )
 
-    def compute_ells_3x2pt_rs(self):
-        """Needed for the real-space covariance"""
-        self.ells_3x2pt_rs = np.geomspace(
-            self.cfg['precision']['ell_min_rs'],
-            self.cfg['precision']['ell_max_rs'],
-            self.cfg['precision']['ell_bins_rs'],
+    def compute_ells_3x2pt_proj(self):
+        """Needed for the projection of the harmonic-space covariance to 
+        theta/COSEBIs space"""
+        self.ells_3x2pt_proj = np.geomspace(
+            self.cfg['precision']['ell_min_proj'],
+            self.cfg['precision']['ell_max_proj'],
+            self.cfg['precision']['ell_bins_proj'],
+        )
+        self.ells_3x2pt_proj_ng = np.geomspace(
+            self.cfg['precision']['ell_min_proj'],
+            self.cfg['precision']['ell_max_proj'],
+            self.cfg['precision']['ell_bins_proj_nongauss'],
         )
         # these are probably useless, but just to keep consistency
-        self.nbl_3x2pt_rs = len(self.ells_3x2pt_rs)
-        self.ell_max_3x2pt_rs = self.cfg['precision']['ell_max_rs']
+        self.nbl_3x2pt_proj = len(self.ells_3x2pt_proj)
+        self.nbl_3x2pt_proj_ng = len(self.ells_3x2pt_proj_ng)
 
     def _validate_bins(self):
         for probe in ['GC', 'XC', '3x2pt']:

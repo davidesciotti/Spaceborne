@@ -617,13 +617,13 @@ class OneCovarianceInterface:
         # now the ell binning is for the projection!
         elif self.obs_space == 'real':
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
-                self.cfg['precision']['ell_min_rs']
+                self.cfg['precision']['ell_min_proj']
             )
             cfg_oc_ini['covELLspace settings']['ell_max'] = str(
-                self.cfg['precision']['ell_max_rs']
+                self.cfg['precision']['ell_max_proj']
             )
             cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
-                self.cfg['precision']['ell_bins_rs']
+                self.cfg['precision']['ell_bins_proj']
             )
             cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
 

@@ -91,7 +91,7 @@ class Mask:
         if not os.path.exists(self.mask_filename):
             raise FileNotFoundError(f'{self.mask_filename} does not exist.')
 
-        print(f'\nLoading mask file from {self.mask_filename}')
+        print(f'\nLoading mask file from {self.mask_filename}\n')
 
         if self.mask_filename.endswith('.fits') or self.mask_filename.endswith('.fits.gz'):
             try:

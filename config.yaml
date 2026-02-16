@@ -39,7 +39,7 @@ intrinsic_alignment:
 extra_parameters:
   camb:
     halofit_version: mead2020_feedback # Type: str
-    kmax: 100 # Type: float | int
+    kmax: 300 # Type: float | int
     HMCode_logT_AGN: 7.75 # Type: float
     num_massive_neutrinos: 1 # Type: int
     dark_energy_model: ppf # Type: str
@@ -66,7 +66,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: harmonic # Type: str.
+  space: cosebis # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -213,7 +213,7 @@ BNT:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   # ================================== Gaussian cov ====================================
@@ -235,7 +235,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: True # Type: bool
+  split_gaussian_cov: False # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -338,7 +338,7 @@ precision:
 
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
-  log10_k_max: 2.0 # Type: float. Units: 1/Mpc
+  log10_k_max: 2.5 # Type: float. Units: 1/Mpc
   k_steps: 150 # Type: int. Around 150 should be enough
 
   # TODO what is this 0.02?
@@ -359,10 +359,10 @@ precision:
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   # TODO change this to a generic "projection_ell_grid"
-  ell_min_rs: 2 # Type: int
-  ell_max_rs: 100000 # Type: int
-  ell_bins_rs: 500 # Type: int. Should be high to get accurate results with Simpson integration
-  ell_bins_rs_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
+  ell_min_proj: 2 # Type: int
+  ell_max_proj: 100000 # Type: int
+  ell_bins_proj: 500 # Type: int. Should be high to get accurate results with Simpson integration
+  ell_bins_proj_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.

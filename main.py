@@ -1283,18 +1283,20 @@ if obs_space == 'cosebis':
     cov_cs_obj.nbl_proj_g = ell_obj.nbl_3x2pt_proj
     cov_cs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
     cov_cs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
+    
+    # compute projection kernels over ell grids used for the integrals 
+    # of the G and NG terms
     cov_cs_obj.w_ells_arr = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_g)
-    # TODO make this conditional
-    cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
+    if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
+        cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
 
-    # set 3x2pt cls: recompute cls on the finer ell grid...
+    # set 3x2pt cls: recompute cls on the finer ells_proj_g grid...
     if cfg['C_ell']['use_input_cls']:
         cl_3x2pt_5d_for_cs = sl.build_cl_3x2pt_5d(
             cl_ll_3d=cl_ll_3d_spline(cov_cs_obj.ells_proj_g),
             cl_gl_3d=cl_gl_3d_spline(cov_cs_obj.ells_proj_g),
             cl_gg_3d=cl_gg_3d_spline(cov_cs_obj.ells_proj_g),
         )
-
     else:
         cl_3x2pt_5d_for_cs = ccl_interface.compute_cl_3x2pt_5d(
             ccl_obj,
@@ -1878,8 +1880,6 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     print('\nComputing COSEBIs covariance...')
     start_rs = time.perf_counter()
 
-    # precompute COSEBIs kernels W_n(ell)
-
     # TODO understand a bit better how to treat real-space SSC and cNG
     for _probe, _term in itertools.product(
         unique_probe_combs_cs, cov_cs_obj.terms_toloop
@@ -1891,9 +1891,9 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         )
 
         # in case the NG terms are required, pass the corresponding dictionaries.
-        # note that, since cov_hs_obj._add_cov_ng was not called, these dictionaries 
+        # note that, since cov_hs_obj._add_cov_ng was not called, these dictionaries
         # only contain the 4d keys for the moment. Because of this, I project the 4d
-        # covs 
+        # covs directly and reshape them to 6d inside compute_cs_cov_term_probe_6d.
         cov_hs_ng_dict = {}
         if cfg['covariance']['SSC']:
             cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
@@ -1934,12 +1934,9 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
 
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
-# def copy_cov_dict_leaf_level(original, new):
-#     for term in original:
-#         for probe_2tpl in original[term]:
-#             for dim
-#             new[term][probe_2tpl] = deepcopy(original[term][probe_2tpl])
-
+# ! ====================================================================================
+# ! =============================== END OF FUN PART ====================================
+# ! ====================================================================================
 
 if obs_space == 'harmonic':
     _cov_dict = cov_hs_obj.cov_dict

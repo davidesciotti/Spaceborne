@@ -26,6 +26,14 @@ warnings.filterwarnings(
 
 _UNSET = object()
 
+def cov_ng_cs(cov_ng_6d, ells):
+    # TODO compute kernels over the ell_bins_ng projection grid, which should be coarser
+    # than the G one, then perform double simpson integration. You can borrow from cov_rs I think
+    
+    # integrand = 
+    return
+    
+
 
 class CovCOSEBIs(CovarianceProjector):
     def __init__(self, cfg, pvt_cfg, mask_obj):
@@ -276,6 +284,9 @@ class CovCOSEBIs(CovarianceProjector):
                 cov_out_6d = self.cov_sn_cs()
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
+
+        elif term == 'ssc':
+            cov_out_6d = self.cov_ng_cs(cov_hs_dict['ssc'][probe_2tpl]['6d'])
 
         else:
             raise ValueError(

@@ -1,0 +1,215 @@
+BNT:
+  cl_BNT_transform: false
+  cov_BNT_transform: false
+C_ell:
+  cl_CCL_kwargs:
+    l_limber: -1
+    limber_integration_method: spline
+    non_limber_integration_method: FKEM
+  cl_GG_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gg.txt
+  cl_GL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gl.txt
+  cl_LL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_ll.txt
+  gal_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/gal_bias.txt
+  gal_bias_table_interp_method: CubicSpline
+  galaxy_bias_fit_coeff:
+  - 1.33291
+  - -0.72414
+  - 1.0183
+  - -0.14913
+  has_IA: true
+  has_magnification_bias: true
+  has_rsd: false
+  mag_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/mag_bias.txt
+  mag_bias_table_interp_method: CubicSpline
+  magnification_bias_fit_coeff:
+  - -1.50685
+  - 1.35034
+  - 0.08321
+  - 0.04279
+  mult_shear_bias:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  use_input_cls: false
+  which_gal_bias: polynomial_fit
+  which_mag_bias: polynomial_fit
+OneCovariance:
+  compare_against_oc: false
+  consistency_checks: false
+  oc_output_filename: cov_oc
+  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+  path_to_oc_executable: ../OneCovariance/covariance.py
+PyCCL:
+  cov_integration_method: spline
+  load_cached_tkka: false
+  use_default_k_a_grids: false
+binning:
+  binning_type: log
+  ell_bins: 32
+  ell_bins_filename: ../DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
+  ell_max: 3000
+  ell_min: 10
+  n_modes_cosebis: 7
+  theta_bins: 10
+  theta_max_arcmin: 300
+  theta_min_arcmin: 5
+cosmology:
+  N_eff: 3.046
+  ODE: 0.68
+  Ob: 0.05
+  Om: 0.32
+  Om_k0: 0.0
+  h: 0.6737
+  m_nu: 0.06
+  ns: 0.966
+  s8: 0.816
+  wa: 0.0
+  wz: -1.0
+covariance:
+  G: true
+  SSC: false
+  cNG: false
+  coupled_cov: false
+  cov_filename: covmat_TR1
+  cov_type: decoupled
+  covariance_ordering_2D: probe_zpair_scale
+  include_b2g: true
+  include_terasawa_terms: false
+  no_sampling_noise: false
+  partial_sky_method: NaMaster
+  row_col_major: row-major
+  save_cov_fits: false
+  save_full_cov: true
+  sigma_eps_i:
+  - 0.26755087067203576
+  - 0.2665542873655714
+  - 0.2592072487331523
+  - 0.25923875350241427
+  - 0.2551650920064423
+  - 0.2644766584682269
+  split_gaussian_cov: false
+  triu_tril: triu
+  which_b1g_in_resp: from_input
+  which_pk_responses: halo_model
+extra_parameters:
+  camb:
+    HMCode_logT_AGN: 7.75
+    dark_energy_model: ppf
+    halofit_version: mead2020_feedback
+    kmax: 100
+    num_massive_neutrinos: 1
+halo_model:
+  concentration: ConcentrationDuffy08
+  halo_bias: HaloBiasTinker10
+  halo_profile_dm: HaloProfileNFW
+  halo_profile_hod: HaloProfileHOD
+  mass_def: MassDef200m
+  mass_function: MassFuncTinker10
+intrinsic_alignment:
+  Aia: 0.16
+  CIA: 0.0134
+  bIA: 0.0
+  eIA: 1.66
+  lumin_ratio_filename: null
+  z_pivot_IA: 0.0
+mask:
+  apodize: false
+  aposize: 0.1
+  generate_polar_cap: false
+  load_mask: true
+  mask_filename: ../DATA/Euclid_data/TR1/PIC_WebDAV/euclid_tr1_a_v1/aux/maps/EUC_LE3_HPEFFECTIVECOVERAGE-WL_TR1-V1-1_20251216T123321.256977Z_00.00.fits.gz
+  nside: 4096
+  survey_area_deg2: 13245
+misc:
+  cl_triangle_plot: true
+  jax_platform: auto
+  num_threads: 40
+  output_path: /home/cosmo/davide.sciotti/data/DATA/Spaceborne_jobs/TR1_cov/NaMaster_nongaussFalse_coupledFalse
+  plot_probe_names: true
+  save_figs: true
+  test_cholesky_decomposition: true
+  test_condition_number: true
+  test_numpy_inversion: true
+  test_symmetry: true
+  workspace_filename: path/to/workspace.fits
+nz:
+  dzGC:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  dzWL:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  ngal_lenses:
+  - 1.3554020920278584
+  - 1.3012625894696863
+  - 1.0782913478684577
+  - 1.020320288146747
+  - 1.0663890107005203
+  - 1.0125908968843997
+  ngal_sources:
+  - 4.27336537574752
+  - 3.967321235323279
+  - 4.027374640541013
+  - 3.9282049197942084
+  - 4.059704840413571
+  - 3.8357937748650115
+  normalize_nz: true
+  nz_lenses_filename: ../DATA/Euclid_data/TR1/PIC_WebDAV/euclid_tr1_b_v1_1/phz/nz_GC_C2020_sel_pv/nz_pos_tab.txt
+  nz_sources_filename: ../DATA/Euclid_data/TR1/PIC_WebDAV/euclid_tr1_b_v1_1/phz/nz_WL_lensmc_C2020_sel_pv/nz_she_tab.txt
+  shift_nz: false
+  sigma_smoothing: 10
+  smooth_nz: true
+precision:
+  cov_hs_g_ell_bin_average: true
+  ell_bins_rs: 500
+  ell_bins_rs_nongauss: 100
+  ell_max_rs: 100000
+  ell_min_rs: 2
+  gsl_params: null
+  jax_enable_x64: true
+  k_steps: 150
+  log10_k_max: 2.0
+  log10_k_min: -5.0
+  n_iter_nmt: null
+  n_samples_wf: 1000
+  spin0: true
+  spline_params:
+    A_SPLINE_NA_PK: 240
+    K_MAX_SPLINE: 300
+  theta_max_arcmin_cosebis: 300
+  theta_min_arcmin_cosebis: 5
+  theta_steps_cosebis: 1000
+  use_KE_approximation: false
+  use_iNKA: true
+  z_max: 6.0
+  z_min: 0.0001
+  z_steps: 10000
+  z_steps_trisp: 50
+probe_selection:
+  Bn: true
+  En: true
+  GG: true
+  GL: true
+  LL: true
+  cross_cov: true
+  gt: true
+  space: harmonic
+  w: true
+  xim: true
+  xip: true
+sample_covariance:
+  compute_sample_cov: false
+  fix_seed: true
+  nreal: 5000
+  which_cls: namaster

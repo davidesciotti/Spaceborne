@@ -305,14 +305,21 @@ def process_cov_from_list_file(
         )
     )
 
+    # Check if Gaussian covariance is split into components
+    split_gaussian = 'covg sva' in column_names
+    
     # Column mapping for covariance terms
     term_columns = {
-        'sva': 'covg sva',
-        'mix': 'covg mix',
-        'sn': 'covg sn',
         'ssc': 'covssc',
         'cng': 'covng',
     }
+    
+    if split_gaussian:
+        term_columns.update({
+            'sva': 'covg sva',
+            'mix': 'covg mix',
+            'sn': 'covg sn',
+        })
 
     for df_chunk in pd.read_csv(
         oc_output_covlist_fname,
@@ -353,12 +360,17 @@ def process_cov_from_list_file(
             for term, col in term_columns.items():
                 temp_cov_arrays[term][probe_2tpl][index_tuple] = subdf[col].values
 
-            # Compute 'g' term as sum of sva, sn and mix
-            temp_cov_arrays['g'][probe_2tpl][index_tuple] = (
-                subdf['covg sva'].values
-                + subdf['covg sn'].values
-                + subdf['covg mix'].values
-            )
+            # Compute 'g' term
+            if split_gaussian:
+                # Sum of sva, sn and mix terms
+                temp_cov_arrays['g'][probe_2tpl][index_tuple] = (
+                    subdf['covg sva'].values
+                    + subdf['covg sn'].values
+                    + subdf['covg mix'].values
+                )
+            else:
+                # Use total Gaussian covariance directly
+                temp_cov_arrays['g'][probe_2tpl][index_tuple] = subdf['covg'].values
 
             temp_cov_arrays['tot'][probe_2tpl][index_tuple] = (
                 temp_cov_arrays['g'][probe_2tpl][index_tuple]
@@ -599,18 +611,19 @@ class OneCovarianceInterface:
         )
 
         # find best ell_max for OC, since it uses a slightly different recipe
-        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
+        # self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
 
         if self.obs_space == 'harmonic':
             for _probe in ['', '_clustering', '_lensing']:
                 cfg_oc_ini['covELLspace settings'][f'ell_min{_probe}'] = str(
-                    self.pvt_cfg['ell_min_3x2pt']
+                    self.cfg['binning']['ell_min']
                 )
                 cfg_oc_ini['covELLspace settings'][f'ell_max{_probe}'] = str(
-                    self.optimal_ellmax
+                    # self.optimal_ellmax
+                    self.cfg['binning']['ell_max']
                 )
                 cfg_oc_ini['covELLspace settings'][f'ell_bins{_probe}'] = str(
-                    self.pvt_cfg['nbl_3x2pt']
+                    self.cfg['binning']['ell_bins']
                 )
                 cfg_oc_ini['covELLspace settings'][f'ell_type{_probe}'] = str(
                     self.binning_type

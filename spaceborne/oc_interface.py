@@ -504,8 +504,10 @@ class OneCovarianceInterface:
         cfg_oc_ini['misc'] = {}
 
         # ! [covariance terms]
-        cfg_oc_ini['covariance terms']['gauss'] = str(True)
-        cfg_oc_ini['covariance terms']['split_gauss'] = str(True)
+        cfg_oc_ini['covariance terms']['gauss'] = str(self.compute_g)
+        cfg_oc_ini['covariance terms']['split_gauss'] = str(
+            self.cfg['covariance']['split_gaussian_cov']
+        )
         cfg_oc_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_oc_ini['covariance terms']['ssc'] = str(self.compute_ssc)
 
@@ -615,7 +617,7 @@ class OneCovarianceInterface:
                 )
 
         # now the ell binning is for the projection!
-        elif self.obs_space == 'real':
+        elif self.obs_space in ['real', 'cosebis']:
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
                 self.cfg['precision']['ell_min_proj']
             )
@@ -1031,7 +1033,6 @@ class OneCovarianceInterface:
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
             self.zbins
         )
-        
 
         self.cov_dict_matfmt = defaultdict(lambda: defaultdict(dict))
 

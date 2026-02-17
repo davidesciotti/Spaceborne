@@ -32,3 +32,10 @@ dependencies:
     - joblib
     - tqdm
     - pyfiglet  # for the ASCII art - optional
+
+# COSEBIs covariance needs cloelib as an additional dependency, which in turn uses pylevin.
+# please refer to each package's documentation for detailed and up-to-date installation
+# instructions; nonetheless, to install pylevin within this environment, you can do
+# conda install -c conda-forge boost
+# conda install -c conda-forge gsl
+# pip install pylevin

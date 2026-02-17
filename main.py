@@ -7,6 +7,16 @@ import warnings
 
 import yaml
 
+# TODOS BRANCH
+# - test against OC, and update the corresponding dedicated cfg
+# - make sure to compute cng on a finer ell grid
+# - ssc computation should not be in the main, btw, I don't think it'll be difficult to port it to the SSC class
+# - finish commenting out the new code, also to tidy it up
+# - try feeding OC NG covs to the simps projection
+# - port to Melodie for speed?
+# - fix RS shot noise
+# - it would be nice to recycle the implementation for a quick and dirty RS NG simps cov projection
+# - merge to develop in small chunks! After current validation might me a good idea
 
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
@@ -1953,9 +1963,10 @@ else:
     )
 
 # in the harmonic case, this is handled by the cov_harmonic_space class
+# Note that I need to copy arrays at leaf level
 if obs_space != 'harmonic':
+    
     if cfg['covariance']['G_code'] == 'OneCovariance':
-        # Copy arrays at leaf level for 'g' term
         for probe_pair in _cov_dict['g']:
             for dim in _cov_dict['g'][probe_pair]:
                 _cov_dict['g'][probe_pair][dim] = cov_oc_obj.cov_dict['g'][probe_pair][
@@ -1989,25 +2000,25 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
 if cfg['OneCovariance']['compare_against_oc']:
-    #     for term in _cov_dict:
-    #         cov_a = _cov_dict[term]['3x2pt']['2d']
-    #         cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+    for term in _cov_dict:
+        cov_a = _cov_dict[term]['3x2pt']['2d']
+        cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-    #         sl.compare_2d_covs(
-    #             cov_a,
-    #             cov_b,
-    #             'SB',
-    #             'OC',
-    #             f'cov {term} {obs_space} space - ',
-    #             diff_threshold=10,
-    #             compare_cov_2d=True,
-    #             compare_corr_2d=False,
-    #             compare_diag=True,
-    #             compare_flat=True,
-    #             compare_spectrum=True,
-    #         )
-    #         print('=' * 70)
-    #         print('')
+        sl.compare_2d_covs(
+            cov_a,
+            cov_b,
+            'SB',
+            'OC',
+            f'cov {term} {obs_space} space - ',
+            diff_threshold=10,
+            compare_cov_2d=True,
+            compare_corr_2d=False,
+            compare_diag=True,
+            compare_flat=True,
+            compare_spectrum=True,
+        )
+        print('=' * 70)
+        print('')
 
     # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
     # is not "full" (no Psi* covariance blocks)

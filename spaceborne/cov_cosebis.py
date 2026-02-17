@@ -297,6 +297,13 @@ class CovCOSEBIs(CovarianceProjector):
             )
             probe_ab_hs, probe_cd_hs = sl.split_probe_name(probe_abcd_hs, 'harmonic')
 
+            assert probe_ab_hs == 'LL' and probe_cd_hs == 'LL', (
+                'Since no Psi-statistics covariance is implemented, '
+                'the input non-Gaussian harmonic-space covariance matrix to project '
+                'for COSEBIs should only be the (LL, LL) one.'
+                f'found ({probe_ab_hs}, {probe_cd_hs}) instead.'
+            )
+
             # project hs non-gaussian cov to COSEBIs space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 

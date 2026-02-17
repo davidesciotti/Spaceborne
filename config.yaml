@@ -61,7 +61,7 @@ OneCovariance:
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: False
+  compare_against_oc: True
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
@@ -214,7 +214,11 @@ BNT:
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
   SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-  cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+
+  # G_code: OneCovariance
+  # SSC_code: OneCovariance
+  # cNG_code: OneCovariance
 
   # ================================== Gaussian cov ====================================
   # Method to account for partial sky coverage in the Gaussian term.
@@ -420,5 +424,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: ../DATA/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/OC_HS_COV_TMP # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

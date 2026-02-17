@@ -509,9 +509,12 @@ class CovarianceProjector:
             zi, zj, zk, zl 4D matrix (no need for parallel wrappers in this case)
         """
 
-        assert cov_ng_4d.ndim == 4, 'input array must be 6D'
-        assert cov_ng_4d.shape[0] == ells_proj.shape[0], 'input array must be 6D'
-        assert cov_ng_4d.shape[1] == ells_proj.shape[0], 'input array must be 6D'
+        assert cov_ng_4d.ndim == 4, 'input array must be 4D'
+        assert cov_ng_4d.shape[0] == cov_ng_4d.shape[1] == len(ells_proj), (
+            'cov_ng_4d.shape[0] and cov_ng_4d.shape[1] must match len(ells_proj).'
+            f'found cov_ng_4d.shape={cov_ng_4d.shape} and '
+            f'len(ells_proj)={len(ells_proj)}'
+        )
 
         # just to keep track, the two grids are the same
         ells_1 = ells_proj

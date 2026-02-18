@@ -61,7 +61,7 @@ OneCovariance:
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: True
+  compare_against_oc: true
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
@@ -131,7 +131,7 @@ binning:
   theta_bins: 10 # Type: int.
 
   # Number of modes for the COSEBIs covariance
-  n_modes_cosebis: 7 # Type: int.
+  n_modes_cosebis: 2 # Type: int.
 
 C_ell:
   # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
@@ -239,7 +239,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: False # Type: bool
+  split_gaussian_cov: True # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -364,8 +364,8 @@ precision:
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_proj: 2 # Type: int
   ell_max_proj: 100000 # Type: int
-  ell_bins_proj: 500 # Type: int. Should be high to get accurate results with Simpson integration
-  ell_bins_proj_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
+  ell_bins_proj: 400 # Type: int. Should be high to get accurate results with Simpson integration
+  ell_bins_proj_nongauss: 150 # Type: int. Should be high to get accurate results with Simpson integration
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.

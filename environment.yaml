@@ -22,16 +22,21 @@ dependencies:
   - fftw
   - namaster
 
+  # pylevin dependencies - optional
+  - boost
+  - gsl
+
   - pip:
     - jax
     - euclidlib>=2025.2 # optional dependency, only used to read the n(z) and C(l) 
                         # in the official Euclid LE3 format
     - heracles>=25.1  # optional dependency, only used to save the covariance
                       # in the official Euclid LE3 format
+    - pylevin  # optional dependency, only used to compute the COSEBIs covariance
     - pyyaml
     - joblib
     - tqdm
-    - pyfiglet  # for the ASCII art - optional
+    - pyfiglet  # optional dependency, for the ASCII art
 
 # COSEBIs covariance needs cloelib as an additional dependency, which in turn uses pylevin.
 # please refer to each package's documentation for detailed and up-to-date installation

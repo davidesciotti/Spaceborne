@@ -17,6 +17,8 @@ import yaml
 # - fix RS shot noise
 # - it would be nice to recycle the implementation for a quick and dirty RS NG simps cov projection
 # - merge to develop in small chunks! After current validation might me a good idea
+# - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
+
 
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
@@ -1293,8 +1295,8 @@ if obs_space == 'cosebis':
     cov_cs_obj.nbl_proj_g = ell_obj.nbl_3x2pt_proj
     cov_cs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
     cov_cs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
-    
-    # compute projection kernels over ell grids used for the integrals 
+
+    # compute projection kernels over ell grids used for the integrals
     # of the G and NG terms
     cov_cs_obj.w_ells_arr = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_g)
     if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
@@ -1907,8 +1909,27 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict = {}
         if cfg['covariance']['SSC']:
             cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+
+            # TEMP
+            cov_ssc_oc = np.load(
+                '/Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs/OC_HS_COV_TMP/OneCovariance/cov_ssc_mmmm.npy'
+            )
+            cov_ssc_oc = cov_ssc_oc[:, :, 0, 0, ...]
+            _nbl = cov_ssc_oc.shape[0]
+            cov_ssc_oc = sl.cov_6D_to_4D(cov_ssc_oc, _nbl, zpairs_auto, ind_auto)
+            cov_hs_ng_dict['ssc']['LL', 'LL']['4d'] = cov_ssc_oc
+
         if cfg['covariance']['cNG']:
             cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
+
+            # TEMP
+            cov_cng_oc = np.load(
+                '/Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs/OC_HS_COV_TMP/OneCovariance/cov_cng_mmmm.npy'
+            )
+            cov_cng_oc = cov_cng_oc[:, :, 0, 0, ...]
+            _nbl = cov_cng_oc.shape[0]
+            cov_cng_oc = sl.cov_6D_to_4D(cov_cng_oc, _nbl, zpairs_auto, ind_auto)
+            cov_hs_ng_dict['cng']['LL', 'LL']['4d'] = cov_cng_oc
 
         cov_cs_obj.compute_cs_cov_term_probe_6d(
             cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
@@ -1965,7 +1986,6 @@ else:
 # in the harmonic case, this is handled by the cov_harmonic_space class
 # Note that I need to copy arrays at leaf level
 if obs_space != 'harmonic':
-    
     if cfg['covariance']['G_code'] == 'OneCovariance':
         for probe_pair in _cov_dict['g']:
             for dim in _cov_dict['g'][probe_pair]:
@@ -2017,27 +2037,25 @@ if cfg['OneCovariance']['compare_against_oc']:
             compare_flat=True,
             compare_spectrum=True,
         )
-        print('=' * 70)
-        print('')
 
-    # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
-    # is not "full" (no Psi* covariance blocks)
-    if obs_space != 'cosebis':
-        cov_a = _cov_dict['g']['3x2pt']['2d']
-        cov_b = cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d']
-        sl.compare_2d_covs(
-            cov_a,
-            cov_b,
-            'SB',
-            'OC mat fmt',
-            f'cov g {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
-            diff_threshold=10,
-            compare_cov_2d=True,
-            compare_corr_2d=False,
-            compare_diag=True,
-            compare_flat=True,
-            compare_spectrum=True,
-        )
+        # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
+        # is not "full" (no Psi* covariance blocks)
+        if obs_space != 'cosebis':
+            cov_a = _cov_dict[term]['3x2pt']['2d']
+            cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
+            sl.compare_2d_covs(
+                cov_a,
+                cov_b,
+                'SB',
+                'OC mat fmt',
+                f'cov {term} {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
+                diff_threshold=10,
+                compare_cov_2d=True,
+                compare_corr_2d=False,
+                compare_diag=True,
+                compare_flat=True,
+                compare_spectrum=True,
+            )
 
 
 # ! save 2D covs (for each term) in npz archive

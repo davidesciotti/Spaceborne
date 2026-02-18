@@ -155,6 +155,10 @@ class SpaceborneCovariance:
             noise_3x2pt_unb_5d = bnt_utils.cl_bnt_transform_3x2pt(
                 noise_3x2pt_unb_5d, self.bnt_matrix
             )
+            raise NotImplementedError(
+                'Make sure to transform the unbinned Cls as well, '
+                'if using cov_hs_g_ell_bin_average'
+            )
 
         if self.cfg['precision']['cov_hs_g_ell_bin_average']:
             # unbinned cls and noise; need the edges to compute the number of modes
@@ -220,6 +224,15 @@ class SpaceborneCovariance:
                 raise ValueError(
                     'cov_nmt_obj is required when partial_sky_method == "NaMaster" or '
                     'compute_sample_cov is True'
+                )
+
+            if self.cfg['BNT']['cl_BNT_transform']:
+                raise NotImplementedError(
+                    'This BNT noise transformation should be rightbut has never '
+                    'been checked'
+                )
+                noise_3x2pt_unb_5d = bnt_utils.cl_bnt_transform_3x2pt(
+                    noise_3x2pt_unb_5d, self.bnt_matrix
                 )
 
             # noise vector doesn't have to be recomputed, but repeated a larger number

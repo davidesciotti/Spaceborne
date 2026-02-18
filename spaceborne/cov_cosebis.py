@@ -282,7 +282,7 @@ class CovCOSEBIs(CovarianceProjector):
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 
-        elif term in ['ssc', 'cng']:
+        elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) == ('En', 'En'):
             # set normalization depending on the term
             norm = 4 * np.pi**2
             if term == 'cng':
@@ -338,6 +338,9 @@ class CovCOSEBIs(CovarianceProjector):
             cov_ng_cs_6d /= norm
 
             cov_out_6d = cov_ng_cs_6d
+
+        elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) != ('En', 'En'):
+            cov_out_6d = np.zeros(self.cov_shape_6d)
 
         else:
             raise ValueError(

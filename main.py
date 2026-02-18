@@ -20,6 +20,34 @@ import yaml
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 
 
+# UNCOMMENT TO MONITOR CPU COUNT USAGE
+# import threading
+# import time
+# import psutil
+# import pandas as pd
+
+# cpu_data = []
+
+# def monitor_cpu(interval=0.5):
+#     """Monitor CPU usage per core"""
+#     print('Starting CPU monitor...')
+#     while not stop_event.is_set():
+#         timestamp = time.time()
+#         per_core = psutil.cpu_percent(percpu=True, interval=interval)
+#         cpu_data.append(
+#             {
+#                 'time': timestamp,
+#                 'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
+#                 'per_core': per_core,
+#             }
+#         )
+#     print('CPU monitoring stopped')
+
+# stop_event = threading.Event()
+# monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,))
+# monitor_thread.start()
+
+
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
@@ -448,19 +476,6 @@ nonreq_probe_combs_hs = [p for p in nonreq_probe_combs_hs if p in req_probe_comb
 nonreq_probe_combs_rs = [p for p in nonreq_probe_combs_rs if p in req_probe_combs_rs_2d]
 nonreq_probe_combs_cs = [p for p in nonreq_probe_combs_cs if p in req_probe_combs_cs_2d]
 
-# TODO are these necessary??
-unique_probe_combs_ix_hs = [
-    [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
-    for comb in unique_probe_combs_hs
-]
-nonreq_probe_combs_ix_hs = [
-    [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
-    for comb in nonreq_probe_combs_hs
-]
-req_probe_combs_2d_ix_hs = [
-    [const.HS_PROBE_NAME_TO_IX_DICT[idx] for idx in comb]
-    for comb in req_probe_combs_hs_2d
-]
 
 if obs_space == 'harmonic':
     req_probe_combs_2d = req_probe_combs_hs_2d
@@ -733,7 +748,6 @@ pvt_cfg = {
     'probe_ordering': probe_ordering,
     'cov_ordering_2d': cov_ordering_2d,
     'unique_probe_combs': unique_probe_combs_hs,
-    'probe_comb_idxs': unique_probe_combs_ix_hs,
     'req_probe_combs_hs_2d': req_probe_combs_hs_2d,
     'req_probe_combs_rs_2d': req_probe_combs_rs_2d,
     'req_probe_combs_cs_2d': req_probe_combs_cs_2d,
@@ -1322,7 +1336,7 @@ if obs_space == 'cosebis':
     cov_cs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_cs
 
 # !  =============================== Build Gaussian covs ===============================
-if obs_space == 'harmonic':
+if obs_space == 'harmonic' and 'Spaceborne' in cov_terms_and_codes.values():
     cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
         cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
     )
@@ -2507,3 +2521,23 @@ if cfg['misc']['save_figs']:
 
 
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+
+# UNCOMMENT TO MONITOR CPU COUNT USAGE
+
+# # Stop monitoring
+# stop_event.set()
+# monitor_thread.join()
+
+# # Save and plot
+# df = pd.DataFrame(cpu_data)
+# # df.to_csv('cpu_usage.csv', index=False)
+
+# import matplotlib.pyplot as plt
+
+# plt.figure()
+# df['time_elapsed'] = df['time'] - df['time'].min()
+# plt.plot(df['time_elapsed'], df['cores_used'])
+# plt.xlabel('Time (s)')
+# plt.ylabel('Number of Active Cores')
+# plt.title('CPU Core Usage Over Time')
+# plt.show()

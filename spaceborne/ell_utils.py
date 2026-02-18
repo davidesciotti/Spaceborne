@@ -463,18 +463,18 @@ class EllBinning:
     def compute_ells_3x2pt_proj(self):
         """Needed for the projection of the harmonic-space covariance to 
         theta/COSEBIs space"""
-        self.ells_3x2pt_proj = np.geomspace(
+        self.ells_3x2pt_proj_g = np.geomspace(
             self.cfg['precision']['ell_min_proj'],
             self.cfg['precision']['ell_max_proj'],
-            self.cfg['precision']['ell_bins_proj'],
+            self.cfg['precision']['ell_bins_proj_gauss'],
         )
         self.ells_3x2pt_proj_ng = np.geomspace(
             self.cfg['precision']['ell_min_proj'],
             self.cfg['precision']['ell_max_proj'],
             self.cfg['precision']['ell_bins_proj_nongauss'],
         )
-        # these are probably useless, but just to keep consistency
-        self.nbl_3x2pt_proj = len(self.ells_3x2pt_proj)
+        # these are probably useless, but just to be consistent
+        self.nbl_3x2pt_proj_g = len(self.ells_3x2pt_proj_g)
         self.nbl_3x2pt_proj_ng = len(self.ells_3x2pt_proj_ng)
 
     def _validate_bins(self):

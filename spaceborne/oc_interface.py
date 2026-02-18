@@ -638,7 +638,7 @@ class OneCovarianceInterface:
                 self.cfg['precision']['ell_max_proj']
             )
             cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
-                self.cfg['precision']['ell_bins_proj']
+                self.cfg['precision']['ell_bins_proj_gauss']
             )
             cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
 

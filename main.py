@@ -1274,8 +1274,8 @@ if obs_space == 'real':
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
     ell_obj.compute_ells_3x2pt_proj()
     # TODO rename these and add ells_proj_ng as done in COSEBIs case
-    cov_rs_obj.ells = ell_obj.ells_3x2pt_proj
-    cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_proj)
+    cov_rs_obj.ells = ell_obj.ells_3x2pt_proj_g
+    cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_proj_g)
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:
@@ -1305,8 +1305,8 @@ if obs_space == 'cosebis':
     ell_obj.compute_ells_3x2pt_proj()
 
     # ell grid used for the integrals
-    cov_cs_obj.ells_proj_g = ell_obj.ells_3x2pt_proj
-    cov_cs_obj.nbl_proj_g = ell_obj.nbl_3x2pt_proj
+    cov_cs_obj.ells_proj_g = ell_obj.ells_3x2pt_proj_g
+    cov_cs_obj.nbl_proj_g = ell_obj.nbl_3x2pt_proj_g
     cov_cs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
     cov_cs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
 

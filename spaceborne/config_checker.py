@@ -482,8 +482,8 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('ell_max_proj'), int), (
             'precision: ell_max_proj must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_bins_proj'), int), (
-            'precision: ell_bins_proj must be an int'
+        assert isinstance(precision_cfg.get('ell_bins_proj_gauss'), int), (
+            'precision: ell_bins_proj_gauss must be an int'
         )
         assert isinstance(precision_cfg.get('theta_max_arcmin_cosebis'), int), (
             'precision: theta_max_arcmin_cosebis must be an int'

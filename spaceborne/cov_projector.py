@@ -484,7 +484,7 @@ class CovarianceProjector:
         cov_ng_4d: np.ndarray,
         kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
         kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
-    ) -> float:
+    ) -> np.ndarray:
         """
         Simpson integrator for non-Gaussian covariance - projection kernel agnostic.
 

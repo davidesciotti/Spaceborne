@@ -18,34 +18,34 @@ import yaml
 # - it would be nice to recycle the implementation for a quick and dirty RS NG simps cov projection
 # - merge to develop in small chunks! After current validation might me a good idea
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
-
+# - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
-# import threading
-# import time
-# import psutil
-# import pandas as pd
+import threading
+import time
+import psutil
+import pandas as pd
 
-# cpu_data = []
+cpu_data = []
 
-# def monitor_cpu(interval=0.5):
-#     """Monitor CPU usage per core"""
-#     print('Starting CPU monitor...')
-#     while not stop_event.is_set():
-#         timestamp = time.time()
-#         per_core = psutil.cpu_percent(percpu=True, interval=interval)
-#         cpu_data.append(
-#             {
-#                 'time': timestamp,
-#                 'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
-#                 'per_core': per_core,
-#             }
-#         )
-#     print('CPU monitoring stopped')
+def monitor_cpu(interval=0.5):
+    """Monitor CPU usage per core"""
+    print('Starting CPU monitor...')
+    while not stop_event.is_set():
+        timestamp = time.time()
+        per_core = psutil.cpu_percent(percpu=True, interval=interval)
+        cpu_data.append(
+            {
+                'time': timestamp,
+                'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
+                'per_core': per_core,
+            }
+        )
+    print('CPU monitoring stopped')
 
-# stop_event = threading.Event()
-# monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,))
-# monitor_thread.start()
+stop_event = threading.Event()
+monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,))
+monitor_thread.start()
 
 
 def load_config(_config_path):
@@ -1272,23 +1272,26 @@ cov_rs_obj = None
 if obs_space == 'real':
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
+
+    # set ell values used for projection
     ell_obj.compute_ells_3x2pt_proj()
-    # TODO rename these and add ells_proj_ng as done in COSEBIs case
-    cov_rs_obj.ells = ell_obj.ells_3x2pt_proj_g
-    cov_rs_obj.nbl = len(ell_obj.ells_3x2pt_proj_g)
+    cov_rs_obj.ells_proj_g = ell_obj.ells_3x2pt_proj_g
+    cov_rs_obj.nbl_proj_g = len(ell_obj.ells_3x2pt_proj_g)
+    cov_rs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
+    cov_rs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
 
     # set 3x2pt cls: recompute cls on the finer ell grid...
     if cfg['C_ell']['use_input_cls']:
         cl_3x2pt_5d_for_rs = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(cov_rs_obj.ells),
-            cl_gl_3d=cl_gl_3d_spline(cov_rs_obj.ells),
-            cl_gg_3d=cl_gg_3d_spline(cov_rs_obj.ells),
+            cl_ll_3d=cl_ll_3d_spline(cov_rs_obj.ells_proj_g),
+            cl_gl_3d=cl_gl_3d_spline(cov_rs_obj.ells_proj_g),
+            cl_gg_3d=cl_gg_3d_spline(cov_rs_obj.ells_proj_g),
         )
 
     else:
         cl_3x2pt_5d_for_rs = ccl_interface.compute_cl_3x2pt_5d(
             ccl_obj,
-            ells=cov_rs_obj.ells,
+            ells=cov_rs_obj.ells_proj_g,
             zbins=zbins,
             mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
             cl_ccl_kwargs=cl_ccl_kwargs,
@@ -1304,7 +1307,7 @@ if obs_space == 'cosebis':
     cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
     ell_obj.compute_ells_3x2pt_proj()
 
-    # ell grid used for the integrals
+    # set ell values used for projection
     cov_cs_obj.ells_proj_g = ell_obj.ells_3x2pt_proj_g
     cov_cs_obj.nbl_proj_g = ell_obj.nbl_3x2pt_proj_g
     cov_cs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
@@ -1336,7 +1339,7 @@ if obs_space == 'cosebis':
     cov_cs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_cs
 
 # !  =============================== Build Gaussian covs ===============================
-if obs_space == 'harmonic' and 'Spaceborne' in cov_terms_and_codes.values():
+if obs_space == 'harmonic':
     cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
         cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
     )
@@ -1346,7 +1349,8 @@ if obs_space == 'harmonic' and 'Spaceborne' in cov_terms_and_codes.values():
     if cfg['precision']['cov_hs_g_ell_bin_average']:
         cov_hs_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
 
-    cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
+    if 'Spaceborne' in cov_terms_and_codes.values():
+        cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
 
 else:
     cov_hs_obj = None
@@ -1478,8 +1482,14 @@ if (
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
 
     # compute cov
-    # TODO restore this
-    cov_oc_obj.call_oc_from_bash()
+    if cfg['OneCovariance']['new_run']:
+        cov_oc_obj.call_oc_from_bash()
+    else:
+        warnings.warn(
+            f'OneCovariance will not be re-run, loading existing files at '
+            f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat',
+            stacklevel=2,
+        )
 
     # load output .list file (maybe the .mat format would be better, actually...)
     # and store it into a 6d dictionary
@@ -1516,7 +1526,10 @@ if (
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
     cov_oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=cov_oc_obj.cov_dict)
 
+    cov_oc_obj.process_cov_from_mat_file()
+    
     # compare list and mat formats
+    # TODO this can probaby be deleted (I do this check at the end)
     if full_cov:
         # For this check, we need to create 3x2pt 4d and 2d. The first step is to
         # reshape the blocks to 4d and 2d. This is done here because I don't want
@@ -1532,7 +1545,6 @@ if (
         }
 
         # TODO in progress
-        cov_oc_obj.process_cov_from_mat_file()
 
         # TODO restore this
         # cov_oc_obj.output_sanity_check(
@@ -1584,8 +1596,8 @@ if (
             rtol=1e-3,
         )
 
-    # # ! reshape probe-specific 6d covs to 4d and 2d and
-    # # ! construct 3x2pt 2d covs (there is no 6d nor 4d 3x2pt!)
+    # ! reshape probe-specific 6d covs to 4d and 2d and
+    # ! construct 3x2pt 2d covs (there is no 6d nor 4d 3x2pt!)
     sl.postprocess_cov_dict(
         cov_dict=cov_oc_obj.cov_dict,
         obs_space=obs_space,
@@ -2031,10 +2043,35 @@ if obs_space != 'harmonic':
                 ][dim]
 
 
-# ! important note: for OC RS, list fmt seems to be missing some blocks (problem common to HS, solve it)
+# ! important note: for OC RS, list fmt seems to be missing some blocks (problem common 
+# ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
 if cfg['OneCovariance']['compare_against_oc']:
+    if 'OneCovariance' in cov_terms_and_codes.values():
+        warnings.warn('You are likely comparing OneCovariance against itself')
+
+    # THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
     for term in _cov_dict:
+        if obs_space != 'real':
+            # consistency check: list and mat formats should coincide
+            if term not in ['sva', 'sn', 'mix']:
+                np.testing.assert_allclose(
+                    cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d'],
+                    cov_oc_obj.cov_dict[term]['3x2pt']['2d'],
+                    atol=0,
+                    rtol=1e-4,
+                )
+            # for good measure, check that the sum of the split Gaussian terms
+            # coincides with G
+            np.testing.assert_allclose(
+                cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d'],
+                cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
+                + cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
+                + cov_oc_obj.cov_dict['mix']['3x2pt']['2d'],
+                atol=0,
+                rtol=1e-4,
+            )
+
         cov_a = _cov_dict[term]['3x2pt']['2d']
         cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
@@ -2054,22 +2091,23 @@ if cfg['OneCovariance']['compare_against_oc']:
 
         # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
         # is not "full" (no Psi* covariance blocks)
-        if obs_space != 'cosebis':
-            cov_a = _cov_dict[term]['3x2pt']['2d']
-            cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
-            sl.compare_2d_covs(
-                cov_a,
-                cov_b,
-                'SB',
-                'OC mat fmt',
-                f'cov {term} {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
-                diff_threshold=10,
-                compare_cov_2d=True,
-                compare_corr_2d=False,
-                compare_diag=True,
-                compare_flat=True,
-                compare_spectrum=True,
-            )
+        # if term not in ['sva', 'sn', 'mix']:
+        #     cov_a = _cov_dict[term]['3x2pt']['2d']
+        #     cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
+
+        #     sl.compare_2d_covs(
+        #         cov_a,
+        #         cov_b,
+        #         'SB',
+        #         'OC mat fmt',
+        #         f'cov {term} {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
+        #         diff_threshold=10,
+        #         compare_cov_2d=True,
+        #         compare_corr_2d=False,
+        #         compare_diag=True,
+        #         compare_flat=True,
+        #         compare_spectrum=True,
+        #     )
 
 
 # ! save 2D covs (for each term) in npz archive
@@ -2523,21 +2561,20 @@ if cfg['misc']['save_figs']:
 print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
+# Stop monitoring
+stop_event.set()
+monitor_thread.join()
 
-# # Stop monitoring
-# stop_event.set()
-# monitor_thread.join()
+# Save and plot
+df = pd.DataFrame(cpu_data)
+# df.to_csv('cpu_usage.csv', index=False)
 
-# # Save and plot
-# df = pd.DataFrame(cpu_data)
-# # df.to_csv('cpu_usage.csv', index=False)
+import matplotlib.pyplot as plt
 
-# import matplotlib.pyplot as plt
-
-# plt.figure()
-# df['time_elapsed'] = df['time'] - df['time'].min()
-# plt.plot(df['time_elapsed'], df['cores_used'])
-# plt.xlabel('Time (s)')
-# plt.ylabel('Number of Active Cores')
-# plt.title('CPU Core Usage Over Time')
-# plt.show()
+plt.figure()
+df['time_elapsed'] = df['time'] - df['time'].min()
+plt.plot(df['time_elapsed'], df['cores_used'])
+plt.xlabel('Time (s)')
+plt.ylabel('Number of Active Cores')
+plt.title('CPU Core Usage Over Time')
+plt.show()

@@ -1091,7 +1091,7 @@ class OneCovarianceInterface:
         elem_cross = self.zpairs_cross * self.nbx
 
         if self.compute_g:
-            cov_in = np.genfromtxt(
+            cov_in = np.load(
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.npy'
             )
             self.cov_dict_matfmt['g']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
@@ -1099,20 +1099,20 @@ class OneCovarianceInterface:
             )
 
         if self.compute_ssc:
-            cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.npy')
+            cov_in = np.load(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.npy')
             self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross, self.obs_space
             )
 
         if self.compute_cng:
-            cov_in = np.genfromtxt(
+            cov_in = np.load(
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.npy'
             )
             self.cov_dict_matfmt['cng']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross, self.obs_space
             )
 
-        cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.npy')
+        cov_in = np.load(f'{self.oc_path}/{self.cov_oc_fname}_matrix.npy')
         self.cov_dict_matfmt['tot']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
             cov_in, elem_auto, elem_cross, self.obs_space
         )

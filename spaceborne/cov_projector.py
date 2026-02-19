@@ -176,7 +176,7 @@ class CovarianceProjector:
     def _set_neff_and_sigma_eps(self):
         self.n_eff_lns = self.cfg['nz']['ngal_lenses']  # clustering
         self.n_eff_src = self.cfg['nz']['ngal_sources']  # lensing
-        self.n_eff_2d = np.row_stack((self.n_eff_src, self.n_eff_lns))
+        self.n_eff_2d = np.vstack((self.n_eff_src, self.n_eff_lns))
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
 
     def cov_parallel_helper(

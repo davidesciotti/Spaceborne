@@ -30,13 +30,8 @@ class SpaceborneCovariance:
         self.ell_obj = ell_obj
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
-        # TODO these should probably be defined on a higher level
-        self.llll_ixs = (0, 0, 0, 0)
-        self.glgl_ixs = (1, 0, 1, 0)
-        self.gggg_ixs = (1, 1, 1, 1)
 
         self.zbins = pvt_cfg['zbins']
-
         self.fsky = pvt_cfg['fsky']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.unique_probe_combs = pvt_cfg['unique_probe_combs']
@@ -274,7 +269,57 @@ class SpaceborneCovariance:
             if term in self.cov_dict:
                 del self.cov_dict[term]
 
-    def _add_cov_ng(
+    def _add_ext_cov_g(self, cov_oc_obj: OneCovarianceInterface, split_gaussian_cov):
+
+        # make sure that the G code is actually OneCovariance
+        if self.g_code != 'OneCovariance':
+            return
+
+        # select the appropriate terms
+        _gaussian_terms = ['g']
+        if split_gaussian_cov:
+            _gaussian_terms.extend(['sva', 'sn', 'mix'])
+
+        # some sanity checks:
+        for _term in _gaussian_terms:
+            # check terms
+            assert _term in self.cov_dict, '_term not in self.cov_dict'
+            assert _term in cov_oc_obj.cov_dict, '_term not in cov_oc_obj.cov_dict'
+
+            # check probes
+            probe_list_sb = set(self.cov_dict[_term].keys())
+            probe_list_oc = set(cov_oc_obj.cov_dict[_term].keys())
+            assert probe_list_sb == probe_list_oc, (
+                f'probe_list_sb: {probe_list_sb}, probe_list_oc: {probe_list_oc}'
+            )
+
+            # check dims
+            for _probe_2tpl in probe_list_sb:
+                dim_list_sb = set(self.cov_dict[_term][_probe_2tpl].keys())
+                dim_list_oc = set(cov_oc_obj.cov_dict[_term][_probe_2tpl].keys())
+                assert dim_list_sb == dim_list_oc, (
+                    f'dim_list_sb: {dim_list_sb}, dim_list_oc: {dim_list_oc}'
+                )
+
+        # now copy all 6d arrays of the Gaussian terms (g or sn, sva, mix, g)
+        # from cov_oc_obj to self.cov_dict
+        for term in _gaussian_terms:
+            for probe_2tpl in self.cov_dict[term]:
+                if probe_2tpl == '3x2pt':
+                    continue
+
+                # sanity check: no 6d covs should be assigned yet
+                assert self.cov_dict[term][probe_2tpl]['6d'] is None, (
+                    f'self.cov_dict[{term}][{probe_2tpl}][6d] is not None '
+                    'before assignment!'
+                )
+                # overwrite value
+                array = cov_oc_obj.cov_dict[term][probe_2tpl]['6d']
+                self.cov_dict[term][probe_2tpl]['6d'] = (
+                    array if array is None else deepcopy(array)
+                )
+
+    def _add_ext_cov_ng(
         self,
         ccl_obj: CCLInterface,
         cov_ssc_obj: SpaceborneSSC,
@@ -283,7 +328,7 @@ class SpaceborneCovariance:
         """Helper function to retrieve the non-Gaussian covariance from the required
         code-specific object.
 
-        Note:  this function needs to assign the cov_dict['ssc'][<probe_2tpl>]['6d']
+        Note:  this function needs to assign the cov_dict['ssc'/'cng'][<probe_2tpl>]['6d']
                6d covariances only, since the reshaping is handled downstream.
                For Spaceborne and PyCCL, the covariance is computed in 4D for
                efficiency, which means that the array has to be reshaped to 6d here.
@@ -310,8 +355,8 @@ class SpaceborneCovariance:
             elif _cov_ng_code == 'PyCCL':
                 _cov_ng_dict = ccl_obj.cov_dict[ng_term]
 
-            # in these 2 cases, assign only the 6d covs to self.cov_dict, since the
-            # reshaping to 4d and 2d is handled downstream
+            # in these 2 cases, first reshape the 4d covs to 6d covs, then assign them
+            # to self.cov_dict
             if _cov_ng_code in ['Spaceborne', 'PyCCL']:
                 for probe_2tpl in self.cov_dict[ng_term]:
                     if probe_2tpl == '3x2pt':
@@ -337,7 +382,20 @@ class SpaceborneCovariance:
 
             # in the OneCovariance case, assign the 6d covs directly
             elif _cov_ng_code == 'OneCovariance':
-                self.cov_dict[ng_term] = deepcopy(cov_oc_obj.cov_dict[ng_term])
+                for probe_2tpl in self.cov_dict[ng_term]:
+                    if probe_2tpl == '3x2pt':
+                        continue
+                    # sanity check: no 6d covs should be assigned yet
+                    assert self.cov_dict[ng_term][probe_2tpl]['6d'] is None, (
+                        f'self.cov_dict[{ng_term}][{probe_2tpl}][6d] is not None '
+                        'before assignment!'
+                    )
+                    # overwrite value
+                    array = cov_oc_obj.cov_dict[ng_term][probe_2tpl]['6d']
+                    self.cov_dict[ng_term][probe_2tpl]['6d'] = (
+                        array if array is None else deepcopy(array)
+                    )
+
             else:
                 raise ValueError(f'Unknown code: {_cov_ng_code}')
 
@@ -421,52 +479,16 @@ class SpaceborneCovariance:
             3x2pt (WL + XC + GC), XC (cross-correlation)
         """
 
-        if self.g_code == 'OneCovariance':
-            # first of all, check that the keys  coincide
-            _terms_tocheck = ['g']
-            if split_gaussian_cov:
-                _terms_tocheck.extend(['sva', 'sn', 'mix'])
+        # ! add the 6d gaussian covs from cov_oc_obj.cov_dict to self.cov_dict,
+        # ! if the G code is OneCovariance.
+        self._add_ext_cov_g(cov_oc_obj, split_gaussian_cov)
 
-            for _term in _terms_tocheck:
-                # check terms
-                assert _term in self.cov_dict, '_term not in self.cov_dict'
-                assert _term in cov_oc_obj.cov_dict, '_term not in cov_oc_obj.cov_dict'
+        # ! add the 6d non-gaussian covs from ccl_obj/cov_ssc_obj/cov_oc_obj.cov_dict
+        # ! to self.cov_dict (in the first 2 cases these have to be reshaped first),
+        # ! based on the desired code
+        self._add_ext_cov_ng(ccl_obj, cov_ssc_obj, cov_oc_obj)
 
-                # check probes
-                probe_list_sb = set(self.cov_dict[_term].keys())
-                probe_list_oc = set(cov_oc_obj.cov_dict[_term].keys())
-                assert probe_list_sb == probe_list_oc, (
-                    f'probe_list_sb: {probe_list_sb}, probe_list_oc: {probe_list_oc}'
-                )
-
-                # check dims
-                for _probe_2tpl in probe_list_sb:
-                    dim_list_sb = set(self.cov_dict[_term][_probe_2tpl].keys())
-                    dim_list_oc = set(cov_oc_obj.cov_dict[_term][_probe_2tpl].keys())
-                    assert dim_list_sb == dim_list_oc, (
-                        f'dim_list_sb: {dim_list_sb}, dim_list_oc: {dim_list_oc}'
-                    )
-
-            # TODO delete this
-            # having checked the covs, overwrite the relevand dict items
-            # self.cov_dict['g'] = deepcopy(cov_oc_obj.cov_dict['g'])
-            # if split_gaussian_cov:
-            #     self.cov_dict['sva'] = deepcopy(cov_oc_obj.cov_dict['sva'])
-            #     self.cov_dict['sn'] = deepcopy(cov_oc_obj.cov_dict['sn'])
-            #     self.cov_dict['mix'] = deepcopy(cov_oc_obj.cov_dict['mix'])
-
-            for term in self.cov_dict:
-                for probe_2tpl in self.cov_dict[term]:
-                    for dim in self.cov_dict[term][probe_2tpl]:
-                        if self.cov_dict[term][probe_2tpl][dim] is not None:
-                            self.cov_dict[term][probe_2tpl][dim] = deepcopy(
-                                cov_oc_obj.cov_dict[term][probe_2tpl][dim]
-                            )
-
-        # ! reshape and set SSC and cNG - the "if include SSC/cNG"
-        # ! are inside the function
-        self._add_cov_ng(ccl_obj, cov_ssc_obj, cov_oc_obj)
-
+        # at this point, only 6d arrays should be filled: quick check
         for term in self.cov_dict:
             for probe_2tpl in self.cov_dict[term]:
                 assert self.cov_dict[term][probe_2tpl]['4d'] is None, (

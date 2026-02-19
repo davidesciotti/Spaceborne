@@ -504,8 +504,10 @@ class CovRealSpace(CovarianceProjector):
 
         # attributes set at runtime
         self.cl_3x2pt_5d = _UNSET
-        self.ells = _UNSET
-        self.nbl = _UNSET
+        self.ells_proj_g = _UNSET
+        self.nbl_proj_g = _UNSET
+        self.ells_proj_ng = _UNSET
+        self.nbl_proj_ng = _UNSET
 
     def _set_theta_binning(self):
         self.theta_min_arcmin = self.cfg['binning']['theta_min_arcmin']
@@ -619,15 +621,6 @@ class CovRealSpace(CovarianceProjector):
                         self.n_eff_2d[probe_b_ix, zj],
                     )
 
-        # import ipdb
-
-        # ipdb.set_trace()
-        # import matplotlib.pyplot as plt
-
-        # plt.figure()
-        # plt.plot(self.theta_centers_fine, npair_arr[:, 0, 0])
-        # plt.savefig('debug_sb.png')
-
         delta_mu_nu = 1.0 if (mu == nu) else 0.0
         delta_theta = np.eye(self.nbt_fine)
         t_arr = t_sn(
@@ -739,7 +732,7 @@ class CovRealSpace(CovarianceProjector):
         depending on the levin_bin_avg value"""
         integrand_3d = sl.cov_6D_to_4D_blocks(
             cov_6D=integrand_5d,
-            nbl=self.nbl,
+            nbl=self.nbl_proj_g,
             npairs_AB=zpairs_ab,
             npairs_CD=zpairs_cd,
             ind_AB=ind_ab,
@@ -747,8 +740,8 @@ class CovRealSpace(CovarianceProjector):
         )
         assert integrand_3d.shape[1:] == (zpairs_ab, zpairs_cd), 'shape mismatch'
 
-        integrand_2d = integrand_3d.reshape(self.nbl, -1)
-        integrand_2d *= self.ells[:, None]
+        integrand_2d = integrand_3d.reshape(self.nbl_proj_g, -1)
+        integrand_2d *= self.ells_proj_g[:, None]
         integrand_2d /= 2.0 * np.pi * self.amax
 
         if self.levin_bin_avg:
@@ -758,7 +751,7 @@ class CovRealSpace(CovarianceProjector):
         else:
             result_levin = levin_integrate_bessel_double_wrapper(
                 integrand_2d,
-                x_values=self.ells,
+                x_values=self.ells_proj_g,
                 bessel_args=self.theta_centers_fine,
                 bessel_type=3,
                 ell_1=mu,
@@ -797,8 +790,8 @@ class CovRealSpace(CovarianceProjector):
                 theta_q_lower = self.theta_edges_fine[q]
                 theta_q_upper = self.theta_edges_fine[q + 1]
 
-                k_mu_terms = k_mu_nobessel(self.ells, theta_p_lower, theta_p_upper, mu)
-                k_nu_terms = k_mu_nobessel(self.ells, theta_q_lower, theta_q_upper, nu)
+                k_mu_terms = k_mu_nobessel(self.ells_proj_g, theta_p_lower, theta_p_upper, mu)
+                k_nu_terms = k_mu_nobessel(self.ells_proj_g, theta_q_lower, theta_q_upper, nu)
                 product_expansion = kmuknu_nobessel(k_mu_terms, k_nu_terms)
 
                 cov_pq_element = np.zeros(result_shape)
@@ -813,7 +806,7 @@ class CovRealSpace(CovarianceProjector):
                     # Integrate this term using the new single bessel pair function
                     result_levin_1d = integrate_single_bessel_pair(
                         term_integrand_for_bessel,
-                        x_values=self.ells,
+                        x_values=self.ells_proj_g,
                         ord_bes_1=n1,
                         theta1=theta1,
                         ord_bes_2=n2,
@@ -942,16 +935,16 @@ class CovRealSpace(CovarianceProjector):
             )
 
             # expand the noise array along the ell axis
-            noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], self.nbl, axis=2)
+            noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], self.nbl_proj_g, axis=2)
 
             # ! no delta_ell!!
-            delta_ell = np.ones_like(self.ells + 1)
+            delta_ell = np.ones_like(self.ells_proj_g + 1)
 
             cov_sva_sb_hs_10d, _cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = sl.compute_g_cov(
                 self.cl_3x2pt_5d,
                 noise_5d,
                 self.fsky,
-                self.ells,
+                self.ells_proj_g,
                 delta_ell,
                 split_terms=True,
                 return_only_ell_diagonal=True,
@@ -964,10 +957,10 @@ class CovRealSpace(CovarianceProjector):
             )
 
             self.cov_svapmix_rs_6d = levin_integrate_bessel_double_wrapper(
-                integrand=cov_svapmix_hs_6d.reshape(self.nbl, -1)
-                * self.ells[:, None]
-                * self.ells[:, None],
-                x_values=self.ells,
+                integrand=cov_svapmix_hs_6d.reshape(self.nbl_proj_g, -1)
+                * self.ells_proj_g[:, None]
+                * self.ells_proj_g[:, None],
+                x_values=self.ells_proj_g,
                 bessel_args=self.theta_centers_fine,
                 bessel_type=3,
                 ell_1=mu,
@@ -1037,7 +1030,7 @@ class CovRealSpace(CovarianceProjector):
                 cov_hs=cov_ng_hs_6d,
                 mu=mu,
                 nu=nu,
-                ells=self.ells,
+                ells=self.ells_proj_g,
                 thetas=self.theta_centers_fine,
                 zbins=self.zbins,
                 n_jobs=self.n_jobs,

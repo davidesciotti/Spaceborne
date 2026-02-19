@@ -91,6 +91,20 @@ Naming conventions (just to ease the notation):
 """
 
 
+def copy_dict_leaf_level(original_dict, new_dict):
+
+    for term in original_dict:
+        for probe_2tpl in original_dict[term]:
+            for dim in original_dict[term][probe_2tpl]:
+                array = original_dict[term][probe_2tpl][dim]
+                if array is not None:
+                    new_dict[term][probe_2tpl][dim] = deepcopy(array)
+                else:
+                    new_dict[term][probe_2tpl][dim] = None
+
+    return new_dict
+
+
 def build_cl_3x2pt_5d(
     cl_ll_3d: np.ndarray, cl_gl_3d: np.ndarray, cl_gg_3d: np.ndarray
 ) -> np.ndarray:
@@ -340,18 +354,18 @@ def set_cov_tot_2d_and_6d(cov_dict: dict, req_probe_combs_2d: list, space: str) 
             probe_2tpl = split_probe_name(probe_abcd, space=space)
 
             # concise way to check that the key exists and the dict is not empty
+            g = cov_dict['g'][probe_2tpl][dim] if 'g' in cov_dict else 0
             ssc = cov_dict['ssc'][probe_2tpl][dim] if 'ssc' in cov_dict else 0
             cng = cov_dict['cng'][probe_2tpl][dim] if 'cng' in cov_dict else 0
 
-            cov_dict['tot'][probe_2tpl][dim] = (
-                cov_dict['g'][probe_2tpl][dim] + ssc + cng
-            )
+            cov_dict['tot'][probe_2tpl][dim] = g + ssc + cng
 
     # do the same for 3x2pt (for which only 2d exists)
+    g = cov_dict['g']['3x2pt']['2d'] if 'g' in cov_dict else 0
     ssc = cov_dict['ssc']['3x2pt']['2d'] if 'ssc' in cov_dict else 0
     cng = cov_dict['cng']['3x2pt']['2d'] if 'cng' in cov_dict else 0
 
-    cov_dict['tot']['3x2pt']['2d'] = cov_dict['g']['3x2pt']['2d'] + ssc + cng
+    cov_dict['tot']['3x2pt']['2d'] = g + ssc + cng
 
     return cov_dict
 

@@ -41,8 +41,8 @@ def reorder_block_cov(
     if cov.ndim != 2 or cov.shape[0] != cov.shape[1]:
         raise ValueError('cov must be a square 2D array')
 
-    if set(from_order) != set(to_order):
-        raise ValueError('from_order and to_order must contain the same labels')
+    if set(from_order) < set(to_order):
+        raise ValueError('to_order must be equal to or a subset of from_order')
     if any(lab not in block_sizes for lab in from_order):
         raise ValueError('Missing block size for at least one label in from_order')
 
@@ -62,18 +62,47 @@ def reorder_block_cov(
 
 
 def cov_ggglll_to_llglgg(
-    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
+    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int, obs_space: str
 ) -> np.ndarray:
-    n = cov_ggglll_2d.shape[0]
-    elem_apc = elem_auto + elem_cross
-    elem_ll = n - elem_apc
+    """Reorders a 2D covariance matrix in the probe_*_* ordering according to the
+    desired probe blocks ordering.
 
-    block_sizes = {'gg': elem_auto, 'gl': elem_cross, 'll': elem_ll}
+    Note: in the future, this could used to allow the user to specify any arbitrary
+    ordering of the probe blocks.
+
+    TODO pass from_order, to_order and block_sizes instead of obs_space
+    """
+
+    if obs_space == 'harmonic':
+        block_sizes = {'gg': elem_auto, 'gl': elem_cross, 'll': elem_auto}
+        from_order = ['gg', 'gl', 'll']
+        to_order = ['ll', 'gl', 'gg']
+
+    elif obs_space == 'real':
+        block_sizes = {
+            'xip': elem_auto,
+            'xim': elem_auto,
+            'gt': elem_cross,
+            'w': elem_auto,
+        }
+        from_order = ['w', 'gt', 'xip', 'xim']
+        to_order = ['xip', 'xim', 'gt', 'w']
+
+    elif obs_space == 'cosebis':
+        block_sizes = {
+            'En': elem_auto,
+            'Bn': elem_auto,
+        }
+        from_order = ['En', 'Bn']
+        to_order = ['En', 'Bn']
+
+    else:
+        raise ValueError(
+            f'obs_space must be "harmonic", "real" or "cosebis", found {obs_space}'
+        )
+
     return reorder_block_cov(
-        cov_ggglll_2d,
-        block_sizes=block_sizes,
-        from_order=['gg', 'gl', 'll'],
-        to_order=['ll', 'gl', 'gg'],
+        cov_ggglll_2d, block_sizes=block_sizes, from_order=from_order, to_order=to_order
     )
 
 
@@ -307,19 +336,12 @@ def process_cov_from_list_file(
 
     # Check if Gaussian covariance is split into components
     split_gaussian = 'covg sva' in column_names
-    
+
     # Column mapping for covariance terms
-    term_columns = {
-        'ssc': 'covssc',
-        'cng': 'covng',
-    }
-    
+    term_columns = {'ssc': 'covssc', 'cng': 'covng'}
+
     if split_gaussian:
-        term_columns.update({
-            'sva': 'covg sva',
-            'mix': 'covg mix',
-            'sn': 'covg sn',
-        })
+        term_columns.update({'sva': 'covg sva', 'mix': 'covg mix', 'sn': 'covg sn'})
 
     for df_chunk in pd.read_csv(
         oc_output_covlist_fname,
@@ -377,6 +399,21 @@ def process_cov_from_list_file(
                 + temp_cov_arrays['ssc'][probe_2tpl][index_tuple]
                 + temp_cov_arrays['cng'][probe_2tpl][index_tuple]
             )
+
+    # Symmetrize: fill transposed blocks not present in the file
+    all_probe_pairs = set()
+    for term in temp_cov_arrays:
+        all_probe_pairs.update(temp_cov_arrays[term].keys())
+
+    for probe_ab, probe_cd in list(all_probe_pairs):
+        if (probe_cd, probe_ab) not in all_probe_pairs:
+            for term in temp_cov_arrays:
+                if (probe_ab, probe_cd) in temp_cov_arrays[term]:
+                    temp_cov_arrays[term][(probe_cd, probe_ab)] = (
+                        temp_cov_arrays[term][(probe_ab, probe_cd)]
+                        .transpose(1, 0, 4, 5, 2, 3)
+                        .copy()
+                    )
 
     # store in cov_dict
     for term in cov_dict:
@@ -583,6 +620,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_trispectra'] = str(False)
         cfg_oc_ini['output settings']['save_alms'] = str(True)
         cfg_oc_ini['output settings']['use_tex'] = str(False)
+        cfg_oc_ini['output settings']['save_as_binary'] = str(True)
 
         # ! [covELLspace settings]
         np.testing.assert_allclose(
@@ -1054,29 +1092,29 @@ class OneCovarianceInterface:
 
         if self.compute_g:
             cov_in = np.genfromtxt(
-                f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
+                f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.npy'
             )
             self.cov_dict_matfmt['g']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross
+                cov_in, elem_auto, elem_cross, self.obs_space
             )
 
         if self.compute_ssc:
-            cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
+            cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.npy')
             self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross
+                cov_in, elem_auto, elem_cross, self.obs_space
             )
 
         if self.compute_cng:
             cov_in = np.genfromtxt(
-                f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
+                f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.npy'
             )
             self.cov_dict_matfmt['cng']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross
+                cov_in, elem_auto, elem_cross, self.obs_space
             )
 
-        cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
+        cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.npy')
         self.cov_dict_matfmt['tot']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-            cov_in, elem_auto, elem_cross
+            cov_in, elem_auto, elem_cross, self.obs_space
         )
 
     def output_sanity_check(

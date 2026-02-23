@@ -620,7 +620,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_trispectra'] = str(False)
         cfg_oc_ini['output settings']['save_alms'] = str(True)
         cfg_oc_ini['output settings']['use_tex'] = str(False)
-        cfg_oc_ini['output settings']['save_as_binary'] = str(True)
+        cfg_oc_ini['output settings']['save_as_binary'] = str(False)
 
         # ! [covELLspace settings]
         np.testing.assert_allclose(
@@ -1091,28 +1091,28 @@ class OneCovarianceInterface:
         elem_cross = self.zpairs_cross * self.nbx
 
         if self.compute_g:
-            cov_in = np.load(
-                f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.npy'
+            cov_in = np.genfromtxt(
+                f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
             )
             self.cov_dict_matfmt['g']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross, self.obs_space
             )
 
         if self.compute_ssc:
-            cov_in = np.load(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.npy')
+            cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
             self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross, self.obs_space
             )
 
         if self.compute_cng:
-            cov_in = np.load(
-                f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.npy'
+            cov_in = np.genfromtxt(
+                f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
             )
             self.cov_dict_matfmt['cng']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in, elem_auto, elem_cross, self.obs_space
             )
 
-        cov_in = np.load(f'{self.oc_path}/{self.cov_oc_fname}_matrix.npy')
+        cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
         self.cov_dict_matfmt['tot']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
             cov_in, elem_auto, elem_cross, self.obs_space
         )

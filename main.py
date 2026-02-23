@@ -19,33 +19,14 @@ import yaml
 # - merge to develop in small chunks! After current validation might me a good idea
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
+# - SSC and cNG can be computed for mmmm only when projecting En and Bn COSEBIs!!!
+# - put markers in CPU vs time to understand portion of the code which could be parallelised
 
-# UNCOMMENT TO MONITOR CPU COUNT USAGE
-import threading
-import time
-import psutil
-import pandas as pd
 
-cpu_data = []
-
-def monitor_cpu(interval=0.5):
-    """Monitor CPU usage per core"""
-    print('Starting CPU monitor...')
-    while not stop_event.is_set():
-        timestamp = time.time()
-        per_core = psutil.cpu_percent(percpu=True, interval=interval)
-        cpu_data.append(
-            {
-                'time': timestamp,
-                'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
-                'per_core': per_core,
-            }
-        )
-    print('CPU monitoring stopped')
-
-stop_event = threading.Event()
-monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,))
-monitor_thread.start()
+# [QUESTIONS FOR ROBERT]
+# - what is the ell range used to compute the NG HS covs used for projection to COSEBIs NG?
+# - from the comaprison it looks like the SSC normalization factor is 2pi*amax, but in the paper there's no amax...
+# - on the other hand, the code has 1/4pi^2...
 
 
 def load_config(_config_path):
@@ -166,6 +147,17 @@ if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv
     matplotlib.use('Agg')
 
 
+YELLOW = '\033[33m'
+RESET = '\033[0m'
+
+
+def _clean_warning(message, category, filename, lineno, file=None, line=None):
+    return f'\n{YELLOW}{category.__name__}: {message}  \n{filename}:{lineno}{RESET}\n\n'
+
+
+warnings.formatwarning = _clean_warning
+
+
 warnings.filterwarnings(
     'ignore',
     message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
@@ -174,6 +166,36 @@ warnings.filterwarnings(
 
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
+
+
+# UNCOMMENT TO MONITOR CPU COUNT USAGE
+import threading
+import time
+import psutil
+import pandas as pd
+
+cpu_data = []
+
+
+def monitor_cpu(interval=0.5):
+    """Monitor CPU usage per core"""
+    print('Starting CPU monitor...')
+    while not stop_event.is_set():
+        timestamp = time.time()
+        per_core = psutil.cpu_percent(percpu=True, interval=interval)
+        cpu_data.append(
+            {
+                'time': timestamp,
+                'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
+                'per_core': per_core,
+            }
+        )
+    print('CPU monitoring stopped')
+
+
+stop_event = threading.Event()
+monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,))
+monitor_thread.start()
 
 
 def plot_cls():
@@ -409,72 +431,63 @@ which_sigma2_b = cfg['covariance']['which_sigma2_b']
 # nonreq_probe_combs = {'GGGG', 'GGGL', 'GGLL', 'GLGG', 'GLLL', 'LLGG', 'LLGL'}
 # req_probe_combs_2d = ['LLLL', 'LLGL', 'GLLL', 'GLGL']
 
-
-unique_probe_names_hs = [p for p in const.HS_DIAG_PROBES if cfg['probe_selection'][p]]
-unique_probe_names_rs = [p for p in const.RS_DIAG_PROBES if cfg['probe_selection'][p]]
-unique_probe_names_cs = [p for p in const.CS_DIAG_PROBES if cfg['probe_selection'][p]]
-
-
-# add cross terms if requested
-unique_probe_combs_hs = sl.build_probe_list(
-    unique_probe_names_hs, include_cross_terms=cfg['probe_selection']['cross_cov']
+probe_combs_dict_hs = sl.get_probe_combs_wrapper(
+    obs_space='harmonic',
+    probe_selection=cfg['probe_selection'],
+    cross_cov=cfg['probe_selection']['cross_cov'],
 )
-unique_probe_combs_rs = sl.build_probe_list(
-    unique_probe_names_rs, include_cross_terms=cfg['probe_selection']['cross_cov']
+probe_combs_dict_rs = sl.get_probe_combs_wrapper(
+    obs_space='real',
+    probe_selection=cfg['probe_selection'],
+    cross_cov=cfg['probe_selection']['cross_cov'],
 )
-unique_probe_combs_cs = sl.build_probe_list(
-    unique_probe_names_cs, include_cross_terms=cfg['probe_selection']['cross_cov']
-)
-
-# probe combinations to be filled by symmetry or to exclude altogether
-symm_probe_combs_hs, nonreq_probe_combs_hs = sl.get_probe_combs(
-    unique_probe_combs_hs, space='harmonic'
-)
-symm_probe_combs_rs, nonreq_probe_combs_rs = sl.get_probe_combs(
-    unique_probe_combs_rs, space='real'
-)
-symm_probe_combs_cs, nonreq_probe_combs_cs = sl.get_probe_combs(
-    unique_probe_combs_cs, space='cosebis'
+probe_combs_dict_cs = sl.get_probe_combs_wrapper(
+    obs_space='cosebis',
+    probe_selection=cfg['probe_selection'],
+    cross_cov=cfg['probe_selection']['cross_cov'],
 )
 
+# in case real space or cosebis are required, we must compute the harmonic space
+# non-gaussian covariance. This only needs to be evaluated for the appropriate probes,
+# following the mapping below
+if obs_space == 'real':
+    _cps = cfg['probe_selection']
+    probe_combs_dict_hs = sl.get_probe_combs_wrapper(
+        obs_space='harmonic',
+        probe_selection={
+            'LL': bool(_cps['xip'] or _cps['xim']),
+            'GL': bool(_cps['gt']),
+            'GG': bool(_cps['w']),
+        },
+        cross_cov=cfg['probe_selection']['cross_cov'],
+    )
+elif obs_space == 'cosebis':
+    _cps = cfg['probe_selection']
+    probe_combs_dict_hs = sl.get_probe_combs_wrapper(
+        obs_space='harmonic',
+        probe_selection={
+            'LL': bool(_cps['En'] or _cps['Bn']),
+            'GL': bool(_cps['Psigl']),
+            'GG': bool(_cps['Psigg']),
+        },
+        cross_cov=cfg['probe_selection']['cross_cov'],
+    )
 
-# required probe combinations to include in the 2d arrays (must include the
-# cross-terms!)
-_req_probe_combs_hs_2d = sl.build_probe_list(
-    unique_probe_names_hs, include_cross_terms=True
-)
-_req_probe_combs_rs_2d = sl.build_probe_list(
-    unique_probe_names_rs, include_cross_terms=True
-)
-_req_probe_combs_cs_2d = sl.build_probe_list(
-    unique_probe_names_cs, include_cross_terms=True
-)
-# as req_probe_combs_2d still only contains the upper triangle,
-# add the symemtric blocks
-symm_probe_combs_hs_2d, _ = sl.get_probe_combs(_req_probe_combs_hs_2d, space='harmonic')
-symm_probe_combs_rs_2d, _ = sl.get_probe_combs(_req_probe_combs_rs_2d, space='real')
-symm_probe_combs_cs_2d, _ = sl.get_probe_combs(_req_probe_combs_cs_2d, space='cosebis')
-_req_probe_combs_hs_2d += symm_probe_combs_hs_2d
-_req_probe_combs_rs_2d += symm_probe_combs_rs_2d
-_req_probe_combs_cs_2d += symm_probe_combs_cs_2d
 
-# reorder!
-req_probe_combs_hs_2d = []
-req_probe_combs_rs_2d = []
-req_probe_combs_cs_2d = []
-for probe in const.HS_ALL_PROBE_COMBS:
-    if probe in _req_probe_combs_hs_2d:
-        req_probe_combs_hs_2d.append(probe)
-for probe in const.RS_ALL_PROBE_COMBS:
-    if probe in _req_probe_combs_rs_2d:
-        req_probe_combs_rs_2d.append(probe)
-for probe in const.CS_ALL_PROBE_COMBS:
-    if probe in _req_probe_combs_cs_2d:
-        req_probe_combs_cs_2d.append(probe)
+unique_probe_combs_hs = probe_combs_dict_hs['unique_probe_combs']
+req_probe_combs_hs_2d = probe_combs_dict_hs['req_probe_combs_2d']
+nonreq_probe_combs_hs = probe_combs_dict_hs['nonreq_probe_combs']
+symm_probe_combs_hs = probe_combs_dict_hs['symm_probe_combs']
 
-nonreq_probe_combs_hs = [p for p in nonreq_probe_combs_hs if p in req_probe_combs_hs_2d]
-nonreq_probe_combs_rs = [p for p in nonreq_probe_combs_rs if p in req_probe_combs_rs_2d]
-nonreq_probe_combs_cs = [p for p in nonreq_probe_combs_cs if p in req_probe_combs_cs_2d]
+unique_probe_combs_rs = probe_combs_dict_rs['unique_probe_combs']
+req_probe_combs_rs_2d = probe_combs_dict_rs['req_probe_combs_2d']
+nonreq_probe_combs_rs = probe_combs_dict_rs['nonreq_probe_combs']
+symm_probe_combs_rs = probe_combs_dict_rs['symm_probe_combs']
+
+unique_probe_combs_cs = probe_combs_dict_cs['unique_probe_combs']
+req_probe_combs_cs_2d = probe_combs_dict_cs['req_probe_combs_2d']
+nonreq_probe_combs_cs = probe_combs_dict_cs['nonreq_probe_combs']
+symm_probe_combs_cs = probe_combs_dict_cs['symm_probe_combs']
 
 
 if obs_space == 'harmonic':
@@ -747,7 +760,7 @@ pvt_cfg = {
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
     'cov_ordering_2d': cov_ordering_2d,
-    'unique_probe_combs': unique_probe_combs_hs,
+    'unique_probe_combs_hs': unique_probe_combs_hs,
     'req_probe_combs_hs_2d': req_probe_combs_hs_2d,
     'req_probe_combs_rs_2d': req_probe_combs_rs_2d,
     'req_probe_combs_cs_2d': req_probe_combs_cs_2d,
@@ -1527,7 +1540,7 @@ if (
     cov_oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=cov_oc_obj.cov_dict)
 
     cov_oc_obj.process_cov_from_mat_file()
-    
+
     # compare list and mat formats
     # TODO this can probaby be deleted (I do this check at the end)
     if full_cov:
@@ -1543,8 +1556,6 @@ if (
             'zpairs_cross': zpairs_cross,
             'block_index': block_index,
         }
-
-        # TODO in progress
 
         # TODO restore this
         # cov_oc_obj.output_sanity_check(
@@ -1715,10 +1726,10 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         )
 
     # ! prepare integrands (d2CAB_dVddeltab) and volume element
-
     # the finer grid is needed for the non-Gaussian covariance projection
     if obs_space == 'harmonic':
         ell_grid = ell_obj.ells_3x2pt
+    # in these two cases, I have to recompute the SSC over a larger and finer grid
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
 
@@ -1830,27 +1841,40 @@ if compute_ccl_ssc:
     )
 
 if compute_ccl_ssc or compute_ccl_cng:
+    
+    # prepare list of NG covs to compute
     ccl_ng_cov_terms_list = []
     if compute_ccl_ssc:
         ccl_ng_cov_terms_list.append('SSC')
     if compute_ccl_cng:
         ccl_ng_cov_terms_list.append('cNG')
-
+        
+    # prepare ell grid: coarser if you want ell-space covariance, finer (and broader)
+    # if it gets projected to real space or COSEBIs
+    if obs_space == 'harmonic':
+        ell_grid = ell_obj.ells_3x2pt
+    elif obs_space in ['real', 'cosebis']:
+        ell_grid = ell_obj.ells_3x2pt_proj_ng
+        
+    # init cov dict
     ccl_obj.set_cov_dict(pvt_cfg, ccl_ng_cov_terms_list)
 
+    # compute covs
     for which_ng_cov in ccl_ng_cov_terms_list:
         ccl_obj.initialize_trispectrum(
             which_ng_cov, unique_probe_combs_hs, cfg['PyCCL']
         )
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
-            ell_obj.ells_GC,
+            ell_grid,
             mask_obj.fsky,
             integration_method=cfg['PyCCL']['cov_integration_method'],
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
             ind_dict=ind_dict,
         )
+    
+    # symemtry sanity check
     ccl_obj.check_cov_blocks_symmetry()
 
 # ! ========================== Combine covariance terms ================================
@@ -1934,28 +1958,47 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         # covs directly and reshape them to 6d inside compute_cs_cov_term_probe_6d.
         cov_hs_ng_dict = {}
         if cfg['covariance']['SSC']:
+            # ORIGINAL
             cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+            # plt.semilogy(np.diag(cov_hs_ng_dict['ssc']['LL', 'LL']['4d'][:, :, 0, 0]))
 
-            # TEMP
-            cov_ssc_oc = np.load(
-                '/Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs/OC_HS_COV_TMP/OneCovariance/cov_ssc_mmmm.npy'
-            )
-            cov_ssc_oc = cov_ssc_oc[:, :, 0, 0, ...]
-            _nbl = cov_ssc_oc.shape[0]
-            cov_ssc_oc = sl.cov_6D_to_4D(cov_ssc_oc, _nbl, zpairs_auto, ind_auto)
-            cov_hs_ng_dict['ssc']['LL', 'LL']['4d'] = cov_ssc_oc
+            # # TEMP
+            # covs_6d = np.load(
+            #     '/data/sciotti/DATA/Spaceborne_jobs/OC_HS_COV_TMP/covmat_6D.npz'
+            # )
+            # for file in covs_6d.files:
+            #     probe_abcd = file.split('_')[0]
+            #     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            #     term = file.split('_')[1].lower()
+            #     if term == 'ssc':
+            #         cov_ssc_oc = covs_6d[file]
+            #         _nbl = cov_ssc_oc.shape[0]
+            #         cov_ssc_oc = sl.cov_6D_to_4D(
+            #             cov_ssc_oc, _nbl, zpairs_auto, ind_auto
+            #         )
+            #         cov_hs_ng_dict['ssc'][probe_ab, probe_cd]['4d'] = cov_ssc_oc
+
+            # plt.semilogy(np.diag(cov_hs_ng_dict['ssc']['LL', 'LL']['4d'][:, :, 0, 0]))
 
         if cfg['covariance']['cNG']:
+            # ORIGINAL
             cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
             # TEMP
-            cov_cng_oc = np.load(
-                '/Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs/OC_HS_COV_TMP/OneCovariance/cov_cng_mmmm.npy'
-            )
-            cov_cng_oc = cov_cng_oc[:, :, 0, 0, ...]
-            _nbl = cov_cng_oc.shape[0]
-            cov_cng_oc = sl.cov_6D_to_4D(cov_cng_oc, _nbl, zpairs_auto, ind_auto)
-            cov_hs_ng_dict['cng']['LL', 'LL']['4d'] = cov_cng_oc
+            # covs_6d = np.load(
+            #     '/data/sciotti/DATA/Spaceborne_jobs/OC_HS_COV_TMP/covmat_6D.npz'
+            # )
+            # for file in covs_6d.files:
+            #     probe_abcd = file.split('_')[0]
+            #     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            #     term = file.split('_')[1].lower()
+            #     if term == 'cng':
+            #         cov_cng_oc = covs_6d[file]
+            #         _nbl = cov_cng_oc.shape[0]
+            #         cov_cng_oc = sl.cov_6D_to_4D(
+            #             cov_cng_oc, _nbl, zpairs_auto, ind_auto
+            #         )
+            #         cov_hs_ng_dict['cng'][probe_ab, probe_cd]['4d'] = cov_cng_oc
 
         cov_cs_obj.compute_cs_cov_term_probe_6d(
             cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
@@ -2043,7 +2086,7 @@ if obs_space != 'harmonic':
                 ][dim]
 
 
-# ! important note: for OC RS, list fmt seems to be missing some blocks (problem common 
+# ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
 # ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
 if cfg['OneCovariance']['compare_against_oc']:

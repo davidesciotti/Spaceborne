@@ -91,6 +91,62 @@ Naming conventions (just to ease the notation):
 """
 
 
+def get_probe_combs_wrapper(
+    obs_space: str, probe_selection: dict, cross_cov: bool
+) -> dict:
+    """Wrapper function to produce all the different probe combinations lists, 
+    based ont he configs and selected observable"""
+
+    if obs_space == 'harmonic':
+        DIAG_PROBES = const.HS_DIAG_PROBES
+        ALL_PROBE_COMBS = const.HS_ALL_PROBE_COMBS
+    elif obs_space == 'real':
+        DIAG_PROBES = const.RS_DIAG_PROBES
+        ALL_PROBE_COMBS = const.RS_ALL_PROBE_COMBS
+    elif obs_space == 'cosebis':
+        DIAG_PROBES = const.CS_DIAG_PROBES
+        ALL_PROBE_COMBS = const.CS_ALL_PROBE_COMBS
+    else:
+        raise ValueError(f'Unknown observables space: {obs_space:s}')
+
+    # start from the probe names
+    unique_probe_names = [p for p in DIAG_PROBES if probe_selection[p]]
+
+    # add cross terms if requested
+    unique_probe_combs = build_probe_list(
+        unique_probe_names, include_cross_terms=cross_cov
+    )
+
+    # probe combinations to be filled by symmetry or to exclude altogether
+    symm_probe_combs, nonreq_probe_combs = get_probe_combs(
+        unique_probe_combs, space=obs_space
+    )
+
+    # required probe combinations to include in the 2d arrays (must include the
+    # cross-terms!)
+    _req_probe_combs_2d = build_probe_list(unique_probe_names, include_cross_terms=True)
+
+    # as req_probe_combs_2d still only contains the upper triangle,
+    # add the symemtric blocks
+    symm_probe_combs_2d, _ = get_probe_combs(_req_probe_combs_2d, space=obs_space)
+    _req_probe_combs_2d += symm_probe_combs_2d
+
+    # reorder!
+    req_probe_combs_2d = []
+    for probe in ALL_PROBE_COMBS:
+        if probe in _req_probe_combs_2d:
+            req_probe_combs_2d.append(probe)
+
+    nonreq_probe_combs = [p for p in nonreq_probe_combs if p in req_probe_combs_2d]
+
+    return {
+        'unique_probe_combs': unique_probe_combs,
+        'req_probe_combs_2d': req_probe_combs_2d,
+        'nonreq_probe_combs': nonreq_probe_combs,
+        'symm_probe_combs': symm_probe_combs,
+    }
+
+
 def copy_dict_leaf_level(original_dict, new_dict):
 
     for term in original_dict:

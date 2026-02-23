@@ -34,7 +34,7 @@ class SpaceborneCovariance:
         self.zbins = pvt_cfg['zbins']
         self.fsky = pvt_cfg['fsky']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
-        self.unique_probe_combs = pvt_cfg['unique_probe_combs']
+        self.unique_probe_combs = pvt_cfg['unique_probe_combs_hs']
 
         # ordering-related stuff
         self.probe_ordering = pvt_cfg['probe_ordering']  # TODO delete this??

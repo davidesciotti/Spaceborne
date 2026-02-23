@@ -839,7 +839,7 @@ class NmtCov:
         # shorten names for brevity
         nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
         fsky = self.mask_obj.fsky
-        unique_probe_combs = self.pvt_cfg['unique_probe_combs']
+        unique_probe_combs = self.pvt_cfg['unique_probe_combs_hs']
 
         ells_eff = self.ell_obj.ells_3x2pt
         nbl_eff = self.ell_obj.nbl_3x2pt

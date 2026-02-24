@@ -620,6 +620,8 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_trispectra'] = str(False)
         cfg_oc_ini['output settings']['save_alms'] = str(True)
         cfg_oc_ini['output settings']['use_tex'] = str(False)
+        
+        # TODO apparrently, if I set this to True the _list files aren't saved anymore... 
         cfg_oc_ini['output settings']['save_as_binary'] = str(False)
 
         # ! [covELLspace settings]

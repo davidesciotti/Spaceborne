@@ -284,9 +284,14 @@ class CovCOSEBIs(CovarianceProjector):
 
         elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) == ('En', 'En'):
             # set normalization depending on the term
-            norm = 4 * np.pi**2
+            norm = (2 * np.pi)*self.amax
             if term == 'cng':
-                norm *= self.amax
+                # norm = (2 * np.pi)
+                # norm = (2 * np.pi)*self.amax
+                # norm = (4 * np.pi**2)*self.amax
+                # norm = (4 * np.pi)*self.amax
+                norm = (2 * np.pi**2)*self.amax
+                # norm *= self.amax
 
             # recover corresponding harmonic-space probe names
             probe_abcd_hs = (
@@ -309,6 +314,7 @@ class CovCOSEBIs(CovarianceProjector):
 
             # TODO finish commenting out the code
             cov_cs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
+            
 
             # Loop over mode pairs (n, m)
             for mode_n in range(self.nbx):

@@ -283,15 +283,12 @@ class CovCOSEBIs(CovarianceProjector):
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) == ('En', 'En'):
+            
             # set normalization depending on the term
-            norm = (2 * np.pi)*self.amax
+            # norm = (2 * np.pi)*self.amax  # oddly this works better (for SSC)
+            norm = 4 * np.pi**2
             if term == 'cng':
-                # norm = (2 * np.pi)
-                # norm = (2 * np.pi)*self.amax
-                # norm = (4 * np.pi**2)*self.amax
-                # norm = (4 * np.pi)*self.amax
-                norm = (2 * np.pi**2)*self.amax
-                # norm *= self.amax
+                norm *= self.amax
 
             # recover corresponding harmonic-space probe names
             probe_abcd_hs = (
@@ -312,9 +309,8 @@ class CovCOSEBIs(CovarianceProjector):
             # project hs non-gaussian cov to COSEBIs space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
-            # TODO finish commenting out the code
+            # TODO finish commenting the code
             cov_cs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
-            
 
             # Loop over mode pairs (n, m)
             for mode_n in range(self.nbx):

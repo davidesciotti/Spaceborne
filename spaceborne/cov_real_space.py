@@ -479,6 +479,7 @@ class CovRealSpace(CovarianceProjector):
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_rs_2d']
+        self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         dims = ['6d', '4d', '2d']
 
         _req_probe_combs_2d = [
@@ -790,8 +791,12 @@ class CovRealSpace(CovarianceProjector):
                 theta_q_lower = self.theta_edges_fine[q]
                 theta_q_upper = self.theta_edges_fine[q + 1]
 
-                k_mu_terms = k_mu_nobessel(self.ells_proj_g, theta_p_lower, theta_p_upper, mu)
-                k_nu_terms = k_mu_nobessel(self.ells_proj_g, theta_q_lower, theta_q_upper, nu)
+                k_mu_terms = k_mu_nobessel(
+                    self.ells_proj_g, theta_p_lower, theta_p_upper, mu
+                )
+                k_nu_terms = k_mu_nobessel(
+                    self.ells_proj_g, theta_q_lower, theta_q_upper, nu
+                )
                 product_expansion = kmuknu_nobessel(k_mu_terms, k_nu_terms)
 
                 cov_pq_element = np.zeros(result_shape)
@@ -823,7 +828,7 @@ class CovRealSpace(CovarianceProjector):
         return cov_rs_4d
 
     def compute_rs_cov_term_probe_6d(
-        self, cov_hs_dict: dict | None, probe_abcd: str, term: str
+        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str
     ) -> None:
         """
         Computes the real space covariance matrix for the specified term
@@ -935,7 +940,9 @@ class CovRealSpace(CovarianceProjector):
             )
 
             # expand the noise array along the ell axis
-            noise_5d = np.repeat(noise_3x2pt_4D[:, :, None, :, :], self.nbl_proj_g, axis=2)
+            noise_5d = np.repeat(
+                noise_3x2pt_4D[:, :, None, :, :], self.nbl_proj_g, axis=2
+            )
 
             # ! no delta_ell!!
             delta_ell = np.ones_like(self.ells_proj_g + 1)
@@ -1021,21 +1028,75 @@ class CovRealSpace(CovarianceProjector):
             if term == 'cng':
                 norm *= self.amax
 
-            # project hs non-gaussian cov to real space using pylevin
-            cov_ng_hs_6d = cov_hs_dict[term][
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, ...
-            ]['6d']
-
-            cov_ng_rs_6d = dl1dl2_bessel_wrapper(
-                cov_hs=cov_ng_hs_6d,
-                mu=mu,
-                nu=nu,
-                ells=self.ells_proj_g,
-                thetas=self.theta_centers_fine,
-                zbins=self.zbins,
-                n_jobs=self.n_jobs,
-                levin_prec_kw=self.levin_prec_kw,
+            # recover corresponding harmonic-space probe names
+            probe_abcd_hs = (
+                const.HS_PROBE_IX_TO_NAME_DICT[probe_a_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_b_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_c_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_d_ix]
             )
+            probe_ab_hs, probe_cd_hs = sl.split_probe_name(probe_abcd_hs, 'harmonic')
+
+            assert probe_ab_hs == 'LL' and probe_cd_hs == 'LL', (
+                'Since no Psi-statistics covariance is implemented, '
+                'the input non-Gaussian harmonic-space covariance matrix to project '
+                'for COSEBIs should only be the (LL, LL) one.'
+                f'found ({probe_ab_hs}, {probe_cd_hs}) instead.'
+            )
+
+            # project hs non-gaussian cov to real space
+            cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
+
+            # TODO finish commenting the code
+            cov_rs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
+
+            # Loop over mode pairs (n, m)
+            for s1 in range(self.nbx):
+                for s2 in range(self.nbx):
+                    # Build projection kernels for modes n and m
+                    kernel_1 = partial(
+                        k_mu,
+                        thetal=self.theta_edges_fine[s1],
+                        thetau=self.theta_edges_fine[s1 + 1],
+                        mu=mu,
+                    )
+                    kernel_2 = partial(
+                        k_mu,
+                        thetal=self.theta_edges_fine[s2],
+                        thetau=self.theta_edges_fine[s2 + 1],
+                        mu=nu,
+                    )
+
+                    # Integrate over (ell_1, ell_2) for all tomographic bin combinations at once
+                    cov_rs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
+                        ells_proj=self.ells_proj_ng,
+                        cov_ng_4d=cov_hs_ng_4d,
+                        kernel_1_func_of_ell=kernel_1,
+                        kernel_2_func_of_ell=kernel_2,
+                    )
+
+            cov_ng_rs_6d = sl.cov_4D_to_6D_blocks(
+                cov_4D=cov_rs_ng_4d,
+                nbl=self.nbx,
+                zbins=self.zbins,
+                ind_ab=ind_ab,
+                ind_cd=ind_cd,
+                symmetrize_output_ab=self.symmetrize_output_dict[probe_ab_hs],
+                symmetrize_output_cd=self.symmetrize_output_dict[probe_cd_hs],
+            )
+
+            # old
+            # cov_ng_rs_6d = dl1dl2_bessel_wrapper(
+            #     cov_hs=cov_ng_hs_6d,
+            #     mu=mu,
+            #     nu=nu,
+            #     ells=self.ells_proj_g,
+            #     thetas=self.theta_centers_fine,
+            #     zbins=self.zbins,
+            #     n_jobs=self.n_jobs,
+            #     levin_prec_kw=self.levin_prec_kw,
+            # )
+            
             cov_ng_rs_6d /= norm
 
             cov_out_6d = cov_ng_rs_6d

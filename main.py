@@ -571,11 +571,8 @@ cov_terms_and_codes = {
 _condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
 if compute_ccl_cng and _condition:
     warnings.warn(
-        'There seems to be some issue with the symmetry of the GLGL '
-        'block in the '
-        'CCL cNG covariance, so for the moment it is disabled. '
-        'The LLLL and GGGG blocks are not affected, so you can still '
-        'compute the single-probe cNG covariances.',
+        'There may be some issue with the symmetry of the GLGL block in the '
+        'CCL cNG covariance. The LLLL and GGGG blocks are not affected',
         stacklevel=2,
     )
 

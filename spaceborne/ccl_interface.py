@@ -483,12 +483,11 @@ class CCLInterface:
                         tkka_abcd = self._load_and_set_tkka(
                             which_ng_cov, tkka_path, k_a_str, probe_abcd
                         )
-                    except FileNotFoundError as e:
+                    except FileNotFoundError:
                         print(
-                            'No files found in the cache. '
-                            'Proceeding to compute the trispectrum term.\nError message:\n'
+                            f'No trispectrum files found in folder \n{tkka_path}\n. '
+                            'Proceeding to compute the trispectrum...'
                         )
-                        print(e)
 
                 if tkka_abcd is None:
                     tkka_abcd = self._compute_and_save_tkka(

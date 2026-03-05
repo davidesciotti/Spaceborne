@@ -286,9 +286,9 @@ class CovCOSEBIs(CovarianceProjector):
             
             # set normalization depending on the term
             # norm = (2 * np.pi)*self.amax  # oddly this works better (for SSC)
-            norm = 4 * np.pi**2
-            if term == 'cng':
-                norm *= self.amax
+            norm = 4 * np.pi**2  # this works for cNG!
+            # if term == 'ssc':
+                # norm /= self.amax
 
             # recover corresponding harmonic-space probe names
             probe_abcd_hs = (

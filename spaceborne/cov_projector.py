@@ -13,7 +13,9 @@ from functools import partial
 
 import numpy as np
 from joblib import Parallel, delayed
+from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
+from scipy.interpolate import RegularGridInterpolator, make_interp_spline
 from tqdm import tqdm
 
 from spaceborne import constants as const
@@ -538,3 +540,106 @@ class CovarianceProjector:
         cov_ijkl = simps(y=part_integral, x=ells_2, axis=0)
 
         return cov_ijkl
+
+    def cov_ng_quad_vec(
+        self,
+        ells_proj: np.ndarray,
+        cov_ng_4d: np.ndarray,
+        kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
+        kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
+        limit: int = 200,
+        epsrel: float = 1.49e-4,
+        num_threads: int = 1,
+    ) -> np.ndarray:
+        """
+        Adaptive quad_vec integrator for non-Gaussian covariance projection.
+
+        Same interface as cov_ng_simps. Uses scipy.integrate.quad_vec instead
+        of fixed-grid Simpson, exploiting the fact that cov_ng_4d is smooth in
+        ell while the projection kernels (Bessel functions, COSEBIS filters) are
+        oscillatory. The two concerns are separated:
+
+          - cov_ng_4d is interpolated with a 2D cubic spline (accurate on a
+            coarse ells_proj grid because the covariance is smooth).
+          - The adaptive integrator resolves the oscillatory kernels internally,
+            calling the cheap spline at however many ell points it needs.
+
+        Steps
+        -----
+        1. Build a 2D cubic interpolator for cov_ng_4d(ell1, ell2).
+        2. For each ell1 in ells_proj compute the inner integral
+               I(ell1) = ∫ dℓ₂ ℓ₂ K₂(ℓ₂) C(ell1, ℓ₂)
+           using quad_vec, vectorised over all n_flat tomo-bin combinations.
+        3. Fit a cubic spline to I(ell1) (smooth in ell1).
+        4. Compute the outer integral
+               result = ∫ dℓ₁ ℓ₁ K₁(ℓ₁) I(ℓ₁)
+           with a second quad_vec call.
+
+        Parameters
+        ----------
+        ells_proj : np.ndarray
+        cov_ng_4d : np.ndarray
+        kernel_1_func_of_ell : Callable[[np.ndarray], np.ndarray]
+        kernel_2_func_of_ell : Callable[[np.ndarray], np.ndarray]
+        limit : int
+            Maximum number of adaptive subdivisions per quad_vec call.
+        epsrel : float
+            Relative tolerance for quad_vec.
+        num_threads : int
+            Number of worker threads passed to quad_vec. Use -1 for all
+            available CPUs. Note that the inner quad_vec calls (one per ell1
+            grid point) are independent, so threading is most effective there.
+
+        Returns
+        -------
+        cov_ijkl : np.ndarray
+            Shape (zpairs_ab, zpairs_cd), same as cov_ng_simps.
+        """
+        assert cov_ng_4d.ndim == 4, 'input array must be 4D'
+        assert cov_ng_4d.shape[0] == cov_ng_4d.shape[1] == len(ells_proj), (
+            'cov_ng_4d.shape[0] and cov_ng_4d.shape[1] must match len(ells_proj). '
+            f'found cov_ng_4d.shape={cov_ng_4d.shape} and '
+            f'len(ells_proj)={len(ells_proj)}'
+        )
+
+        ell_min, ell_max = ells_proj[0], ells_proj[-1]
+        nbl = len(ells_proj)
+        n_ij = cov_ng_4d.shape[2]
+        n_kl = cov_ng_4d.shape[3]
+        n_flat = n_ij * n_kl
+
+        # Flatten tomo dims: (nbl, nbl, n_flat). Smooth in ell -> cubic is accurate
+        # even on a coarse ells_proj grid.
+        cov_flat = cov_ng_4d.reshape(nbl, nbl, n_flat)
+        interp_2d = RegularGridInterpolator(
+            (ells_proj, ells_proj), cov_flat,
+            method='cubic', bounds_error=False, fill_value=0.0,
+        )
+
+        # Step 1: inner integral I(ell1) = ∫ dℓ₂ ℓ₂ K₂(ℓ₂) C(ell1, ℓ₂)
+        # Evaluated at each ell1 in ells_proj; shape of inner_result: (nbl, n_flat)
+        inner_result = np.zeros((nbl, n_flat))
+        for i, ell1 in enumerate(ells_proj):
+            def _inner(ell2, _ell1=ell1):
+                k2 = kernel_2_func_of_ell(np.atleast_1d(ell2))[0]
+                cov_val = interp_2d([[_ell1, ell2]])[0]  # shape: (n_flat,)
+                return ell2 * k2 * cov_val
+
+            inner_result[i], _ = quad_vec(
+                _inner, ell_min, ell_max, limit=limit, epsrel=epsrel,
+                workers=num_threads,
+            )
+
+        # Step 2: outer integral = ∫ dℓ₁ ℓ₁ K₁(ℓ₁) I(ℓ₁)
+        # I(ell1) is smooth -> a cubic spline on ells_proj is sufficient.
+        # BSpline with 2D coefficients: spl(scalar) -> shape (n_flat,)
+        inner_spline = make_interp_spline(ells_proj, inner_result, k=3)
+
+        def _outer(ell1):
+            k1 = kernel_1_func_of_ell(np.atleast_1d(ell1))[0]
+            return ell1 * k1 * inner_spline(ell1)  # shape: (n_flat,)
+
+        result, _ = quad_vec(_outer, ell_min, ell_max, limit=limit, epsrel=epsrel,
+                             workers=num_threads)
+        return result.reshape(n_ij, n_kl)
+

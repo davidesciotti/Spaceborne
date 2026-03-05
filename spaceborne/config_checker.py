@@ -365,6 +365,17 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('partial_sky_method'), str), (
             'covariance: partial_sky_method must be a string'
         )
+                
+        for _term in ['G', 'SSC', 'cNG']:
+            assert cov_cfg[f'{_term}_code'] in [
+                'Spaceborne',
+                'PyCCL',
+                'OneCovariance',
+            ], (
+                f'Invalid code for covariance term {_term}: {cov_cfg[f"{_term}_code"]}. '
+                "Allowed values are: 'Spaceborne', 'PyCCL', 'OneCovariance'."
+            )
+
         assert cov_cfg.get('partial_sky_method') in ['Knox', 'NaMaster'], (
             'covariance: partial_sky_method must be either "Knox" or "NaMaster"'
         )

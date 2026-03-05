@@ -1517,51 +1517,12 @@ if (
         df_chunk_size=5_000_000,
     )
 
-    # some useful vars to make the cov processing work regardless of the space
-    ps = cfg['probe_selection']
-    full_cov = False  # True if all probes + the cross-covariance are required
-    if obs_space == 'harmonic':
-        _req_probe_combs_2d = req_probe_combs_hs_2d
-        # TODO I think these can be deleted!
-        full_cov = (ps['LL'] + ps['GL'] + ps['GG']) == 3 and ps['cross_cov'] is True
-    elif obs_space == 'real':
-        _req_probe_combs_2d = req_probe_combs_rs_2d
-        full_cov = (ps['xip'] + ps['xim'] + ps['gt'] + ps['w']) == 4 and ps[
-            'cross_cov'
-        ] is True
-    elif obs_space == 'cosebis':
-        _req_probe_combs_2d = req_probe_combs_cs_2d
-        full_cov = (ps['En'] + ps['Bn'] + ps['Psigl'] + ps['Psigg']) == 4 and ps[
-            'cross_cov'
-        ] is True
-
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
     cov_oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=cov_oc_obj.cov_dict)
 
+    # just to make make our lives easier, also import the covs in mat format
+    # (I check that they coincide at the end of this script)
     cov_oc_obj.process_cov_from_mat_file()
-
-    # compare list and mat formats
-    # TODO this can probaby be deleted (I do this check at the end)
-    if full_cov:
-        # For this check, we need to create 3x2pt 4d and 2d. The first step is to
-        # reshape the blocks to 4d and 2d. This is done here because I don't want
-        # to pass
-        cov_dict_6d_to_4d_and_2d_kw = {
-            'obs_space': obs_space,
-            'nbx': nbx,
-            'ind_auto': ind_auto,
-            'ind_cross': ind_cross,
-            'zpairs_auto': zpairs_auto,
-            'zpairs_cross': zpairs_cross,
-            'block_index': block_index,
-        }
-
-        # TODO restore this
-        # cov_oc_obj.output_sanity_check(
-        #     req_probe_combs_2d=_req_probe_combs_2d,
-        #     cov_dict_6d_to_4d_and_2d_kw=cov_dict_6d_to_4d_and_2d_kw,
-        #     rtol=1e-4,
-        # )
 
     # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks

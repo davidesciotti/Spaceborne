@@ -1178,61 +1178,6 @@ class OneCovarianceInterface:
             self.probe_cs_list,
         )
 
-    def output_sanity_check(
-        self,
-        req_probe_combs_2d: list,
-        cov_dict_6d_to_4d_and_2d_kw: dict,
-        rtol: float = 1e-4,
-    ):
-        """
-        Checks that the .dat and .mat outputs give consistent results
-        """
-
-        # process the covariance from the mat file.
-        # This creates the 3x2pt 2D cov for the different terms
-        self.process_cov_from_mat_file()
-
-        if self.obs_space == 'harmonic':
-            cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_hs
-        elif self.obs_space == 'real':
-            cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
-
-        # NOTE: 3x2pt 4d and 2d is created on-the-fly for this check,
-        # and not stored in self. This is because of 2 reasons:
-        # 1. The reshaping is centralized in the SB cov (hs/rs) classes.
-        # 2. The zpair ordering is hardcoded in OC
-        # TODO check point number 2, there is some option in the ini file...
-
-        # create a copy to avoid polluting the original dict,
-        # which has only 6d and no 3x2pt
-        cov_dict_tmplist = deepcopy(self.cov_dict)
-        # reshape individual blocks to 4d and 2d
-        cov_dict_tmplist = sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
-            cov_dict_tmplist, **cov_dict_6d_to_4d_and_2d_kw
-        )
-
-        for term in self.cov_dict_matfmt:
-            # create 3x2pt 4d
-            cov_term_3x2pt_list_4d = sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
-                cov_dict_tmplist[term], self.obs_space
-            )
-            # create 3x2pt 2d
-            cov_term_3x2pt_list_2d = cov_4d_to_2dcloe_func(
-                cov_term_3x2pt_list_4d,
-                zbins=self.zbins,
-                req_probe_combs_2d=req_probe_combs_2d,
-                block_index='zpair',
-            )
-            # compare with mat fmt
-            np.testing.assert_allclose(
-                cov_term_3x2pt_list_2d,
-                self.cov_dict_matfmt[term]['3x2pt']['2d'],
-                rtol=rtol,
-                atol=0,
-                err_msg=f'{term} covariance matrix from .mat file is'
-                ' not consistent with .dat output',
-            )
-
     def find_optimal_ellmax_oc(self, target_ell_array):
         upper_lim = self.ells_sb[-1] + 300
         lower_lim = self.ells_sb[-1] - 300

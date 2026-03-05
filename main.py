@@ -157,7 +157,6 @@ def _clean_warning(message, category, filename, lineno, file=None, line=None):
 
 warnings.formatwarning = _clean_warning
 
-
 warnings.filterwarnings(
     'ignore',
     message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
@@ -167,12 +166,12 @@ warnings.filterwarnings(
 pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
-
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
 import threading
 import time
-import psutil
+
 import pandas as pd
+import psutil
 
 cpu_data = []
 
@@ -1841,21 +1840,20 @@ if compute_ccl_ssc:
     )
 
 if compute_ccl_ssc or compute_ccl_cng:
-    
     # prepare list of NG covs to compute
     ccl_ng_cov_terms_list = []
     if compute_ccl_ssc:
         ccl_ng_cov_terms_list.append('SSC')
     if compute_ccl_cng:
         ccl_ng_cov_terms_list.append('cNG')
-        
+
     # prepare ell grid: coarser if you want ell-space covariance, finer (and broader)
     # if it gets projected to real space or COSEBIs
     if obs_space == 'harmonic':
         ell_grid = ell_obj.ells_3x2pt
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
-        
+
     # init cov dict
     ccl_obj.set_cov_dict(pvt_cfg, ccl_ng_cov_terms_list)
 
@@ -1873,7 +1871,7 @@ if compute_ccl_ssc or compute_ccl_cng:
             nonreq_probe_combs=nonreq_probe_combs_hs,
             ind_dict=ind_dict,
         )
-    
+
     # symemtry sanity check
     ccl_obj.check_cov_blocks_symmetry()
 
@@ -1891,6 +1889,16 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     print('\nComputing real-space covariance...')
     start_rs = time.perf_counter()
 
+    # in case the NG terms are required, pass the corresponding dictionaries.
+    # note that, since cov_hs_obj._add_cov_ng was not called, these dictionaries
+    # only contain the 4d keys for the moment. Because of this, I project the 4d
+    # covs directly and reshape them to 6d inside compute_cs_cov_term_probe_6d.
+    cov_hs_ng_dict = {}
+    if cfg['covariance']['SSC']:
+        cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+    if cfg['covariance']['cNG']:
+        cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
+
     # TODO understand a bit better how to treat real-space SSC and cNG
     for _probe, _term in itertools.product(
         unique_probe_combs_rs, cov_rs_obj.terms_toloop
@@ -1901,9 +1909,8 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
             f' - term {_term.upper()}'
         )
 
-        _cov_hs_dict = cov_hs_obj.cov_dict if cov_hs_obj is not None else None
         cov_rs_obj.compute_rs_cov_term_probe_6d(
-            cov_hs_dict=_cov_hs_dict, probe_abcd=_probe, term=_term
+            cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
         )
 
     for term in cov_rs_obj.terms_toloop:
@@ -1942,6 +1949,16 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     print('\nComputing COSEBIs covariance...')
     start_rs = time.perf_counter()
 
+    # in case the NG terms are required, pass the corresponding dictionaries.
+    # note that, since cov_hs_obj._add_cov_ng was not called, these dictionaries
+    # only contain the 4d keys for the moment. Because of this, I project the 4d
+    # covs directly and reshape them to 6d inside compute_cs_cov_term_probe_6d.
+    cov_hs_ng_dict = {}
+    if cfg['covariance']['SSC']:
+        cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+    if cfg['covariance']['cNG']:
+        cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
+
     # TODO understand a bit better how to treat real-space SSC and cNG
     for _probe, _term in itertools.product(
         unique_probe_combs_cs, cov_cs_obj.terms_toloop
@@ -1951,54 +1968,6 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
             f'\nCOSEBIs cov: computing probe combination {probe_ab, probe_cd}'
             f' - term {_term.upper()}'
         )
-
-        # in case the NG terms are required, pass the corresponding dictionaries.
-        # note that, since cov_hs_obj._add_cov_ng was not called, these dictionaries
-        # only contain the 4d keys for the moment. Because of this, I project the 4d
-        # covs directly and reshape them to 6d inside compute_cs_cov_term_probe_6d.
-        cov_hs_ng_dict = {}
-        if cfg['covariance']['SSC']:
-            # ORIGINAL
-            cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
-            # plt.semilogy(np.diag(cov_hs_ng_dict['ssc']['LL', 'LL']['4d'][:, :, 0, 0]))
-
-            # # TEMP
-            # covs_6d = np.load(
-            #     '/data/sciotti/DATA/Spaceborne_jobs/OC_HS_COV_TMP/covmat_6D.npz'
-            # )
-            # for file in covs_6d.files:
-            #     probe_abcd = file.split('_')[0]
-            #     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-            #     term = file.split('_')[1].lower()
-            #     if term == 'ssc':
-            #         cov_ssc_oc = covs_6d[file]
-            #         _nbl = cov_ssc_oc.shape[0]
-            #         cov_ssc_oc = sl.cov_6D_to_4D(
-            #             cov_ssc_oc, _nbl, zpairs_auto, ind_auto
-            #         )
-            #         cov_hs_ng_dict['ssc'][probe_ab, probe_cd]['4d'] = cov_ssc_oc
-
-            # plt.semilogy(np.diag(cov_hs_ng_dict['ssc']['LL', 'LL']['4d'][:, :, 0, 0]))
-
-        if cfg['covariance']['cNG']:
-            # ORIGINAL
-            cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
-
-            # TEMP
-            # covs_6d = np.load(
-            #     '/data/sciotti/DATA/Spaceborne_jobs/OC_HS_COV_TMP/covmat_6D.npz'
-            # )
-            # for file in covs_6d.files:
-            #     probe_abcd = file.split('_')[0]
-            #     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-            #     term = file.split('_')[1].lower()
-            #     if term == 'cng':
-            #         cov_cng_oc = covs_6d[file]
-            #         _nbl = cov_cng_oc.shape[0]
-            #         cov_cng_oc = sl.cov_6D_to_4D(
-            #             cov_cng_oc, _nbl, zpairs_auto, ind_auto
-            #         )
-            #         cov_hs_ng_dict['cng'][probe_ab, probe_cd]['4d'] = cov_cng_oc
 
         cov_cs_obj.compute_cs_cov_term_probe_6d(
             cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
@@ -2617,6 +2586,7 @@ import matplotlib.pyplot as plt
 plt.figure()
 df['time_elapsed'] = df['time'] - df['time'].min()
 plt.plot(df['time_elapsed'], df['cores_used'])
+plt.axhline(cfg['misc']['num_threads'], label="cfg['misc']['num_threads']")
 plt.xlabel('Time (s)')
 plt.ylabel('Number of Active Cores')
 plt.title('CPU Core Usage Over Time')

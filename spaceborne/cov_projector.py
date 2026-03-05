@@ -467,7 +467,7 @@ class CovarianceProjector:
         c_jk = self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk]
 
         # Evaluate projection kernels
-        # TODO this should probebly be done at init to save time (at the cost of flexibility?)
+        # TODO this should probably be done at init to save time (at the cost of flexibility?)
         kernel_1 = kernel_1_func_of_ell(self.ells_proj_g)
         kernel_2 = kernel_2_func_of_ell(self.ells_proj_g)
 

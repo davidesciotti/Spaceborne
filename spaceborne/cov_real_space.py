@@ -945,7 +945,7 @@ class CovRealSpace(CovarianceProjector):
             )
 
             # ! no delta_ell!!
-            delta_ell = np.ones_like(self.ells_proj_g + 1)
+            delta_ell = np.ones_like(self.ells_proj_g)
 
             cov_sva_sb_hs_10d, _cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = sl.compute_g_cov(
                 self.cl_3x2pt_5d,

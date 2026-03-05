@@ -41,8 +41,9 @@ def reorder_block_cov(
     if cov.ndim != 2 or cov.shape[0] != cov.shape[1]:
         raise ValueError('cov must be a square 2D array')
 
-    if set(from_order) < set(to_order):
-        raise ValueError('to_order must be equal to or a subset of from_order')
+    assert set(to_order) < set(from_order), (
+        'to_order must be equal to or a subset of from_order'
+    )
     if any(lab not in block_sizes for lab in from_order):
         raise ValueError('Missing block size for at least one label in from_order')
 
@@ -81,7 +82,7 @@ def cov_ggglll_to_llglgg(
 
     if obs_space == 'harmonic':
         block_sizes = {'gg': elem_auto, 'gl': elem_cross, 'll': elem_auto}
-        # in this case, OC simly has the opposite order of SB: [gg, gl, ll]
+        # in this case, OC simply has the opposite order of SB: [gg, gl, ll]
         from_order = probe_hs_list[::-1]
         to_order = probe_hs_list
 
@@ -92,7 +93,7 @@ def cov_ggglll_to_llglgg(
             'gt': elem_cross,
             'w': elem_auto,
         }
-        # in this case, OC simly has almost the opposite order of SB:
+        # in this case, OC simply has almost the opposite order of SB:
         # ['w', 'gt', 'xip', 'xim'] (not ['w', 'gt', 'xim', 'xip']!)
         probe_rs_list_oc = ['w', 'gt', 'xip', 'xim']
         from_order = [p for p in probe_rs_list_oc if p in probe_rs_list]
@@ -106,7 +107,7 @@ def cov_ggglll_to_llglgg(
 
     elif obs_space == 'cosebis':
         block_sizes = {'En': elem_auto, 'Bn': elem_auto}
-        # in this case, OC simly has the same order of SB: [En, Bn]
+        # in this case, OC simply has the same order of SB: [En, Bn]
         # (excluding Psigl and Psigg)
         from_order = probe_cs_list
         to_order = probe_cs_list
@@ -656,7 +657,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_alms'] = str(True)
         cfg_oc_ini['output settings']['use_tex'] = str(False)
 
-        # TODO apparrently, if I set this to True the _list files aren't saved anymore...
+        # TODO apparently, if I set this to True the _list files aren't saved anymore...
         cfg_oc_ini['output settings']['save_as_binary'] = str(False)
 
         # ! [covELLspace settings]

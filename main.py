@@ -1327,7 +1327,7 @@ if obs_space == 'cosebis':
 
     # compute projection kernels over ell grids used for the integrals
     # of the G and NG terms
-    cov_cs_obj.w_ells_arr = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_g)
+    cov_cs_obj.w_ells_arr_g = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_g)
     if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
         cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
 

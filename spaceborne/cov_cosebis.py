@@ -61,6 +61,8 @@ class CovCOSEBIs(CovarianceProjector):
         self.ells_proj_ng = _UNSET
         self.nbl_proj_g = _UNSET
         self.nbl_proj_ng = _UNSET
+        self.w_ells_arr_g = _UNSET
+        self.w_ells_arr_ng = _UNSET
 
     @property
     def ch(self):
@@ -245,7 +247,7 @@ class CovCOSEBIs(CovarianceProjector):
         # For COSEBIs it's only w_ells_arr (constant across all mode pairs)
         # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by
         # the wrapper
-        kernel_builder_func_kw = {'w_ells_arr': self.w_ells_arr}
+        kernel_builder_func_kw = {'w_ells_arr': self.w_ells_arr_g}
 
         # Compute term-specific covariance
         if term == 'sva':

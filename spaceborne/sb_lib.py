@@ -95,7 +95,7 @@ def get_probe_combs_wrapper(
     obs_space: str, probe_selection: dict, cross_cov: bool
 ) -> dict:
     """Wrapper function to produce all the different probe combinations lists, 
-    based ont he configs and selected observable"""
+    based on the configs and selected observable"""
 
     if obs_space == 'harmonic':
         DIAG_PROBES = const.HS_DIAG_PROBES

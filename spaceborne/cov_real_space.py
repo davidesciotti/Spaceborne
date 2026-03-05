@@ -993,41 +993,7 @@ class CovRealSpace(CovarianceProjector):
 
             cov_out_6d = cov_gauss_ell_rs_6d
 
-        # elif term in ['ssc', 'cng']:
-        # warnings.warn('HS covs loaded from file', stacklevel=2)
-        # get OC SSC in ell space
-        # covs_oc_hs = oc_cov_list_to_array(f'{covs_path}/{cov_hs_list_name}.dat')
-        # (
-        #     cov_sva_oc_3x2pt_10d,
-        #     cov_mix_oc_3x2pt_10d,
-        #     cov_sn_oc_3x2pt_10d,
-        #     cov_g_oc_3x2pt_10d,
-        #     cov_ssc_oc_3x2pt_10d,
-        # ) = covs_oc_hs
-
-        # np.savez(
-        #     f'{covs_path}/covs_oc_10d.npz',
-        #     cov_sva_oc_3x2pt_10d=cov_sva_oc_3x2pt_10d,
-        #     cov_mix_oc_3x2pt_10d=cov_mix_oc_3x2pt_10d,
-        #     cov_sn_oc_3x2pt_10d=cov_sn_oc_3x2pt_10d,
-        #     cov_g_oc_3x2pt_10d=cov_g_oc_3x2pt_10d,
-        #     cov_ssc_oc_3x2pt_10d=cov_ssc_oc_3x2pt_10d,
-        # )
-
-        # covs_oc_hs_npz = np.load(f'{covs_oc_path}/covs_oc_10d.npz')
-        # cov_ssc_oc_3x2pt_10d = covs_oc_hs_npz['cov_ssc_oc_3x2pt_10d']
-        # cov_cng_oc_3x2pt_10d = covs_oc_hs_npz['cov_ng_oc_3x2pt_10d']
-
         elif term in ['ssc', 'cng']:
-            # TODO this is yet to be checked
-            # TODO this has to be computed on a sufficiently fine ell grid, may pose
-            # TODO memory issues?
-
-            # set normalization depending on the term
-            norm = 4 * np.pi**2
-            if term == 'cng':
-                norm *= self.amax
-
             # recover corresponding harmonic-space probe names
             probe_abcd_hs = (
                 const.HS_PROBE_IX_TO_NAME_DICT[probe_a_ix]
@@ -1037,23 +1003,15 @@ class CovRealSpace(CovarianceProjector):
             )
             probe_ab_hs, probe_cd_hs = sl.split_probe_name(probe_abcd_hs, 'harmonic')
 
-            assert probe_ab_hs == 'LL' and probe_cd_hs == 'LL', (
-                'Since no Psi-statistics covariance is implemented, '
-                'the input non-Gaussian harmonic-space covariance matrix to project '
-                'for COSEBIs should only be the (LL, LL) one.'
-                f'found ({probe_ab_hs}, {probe_cd_hs}) instead.'
-            )
-
             # project hs non-gaussian cov to real space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
-            # TODO finish commenting the code
+            # Loop over scale indices (theta1, theta2)
             cov_rs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
-
-            # Loop over mode pairs (n, m)
             for s1 in range(self.nbx):
                 for s2 in range(self.nbx):
-                    # Build projection kernels for modes n and m
+                    # Build projection kernels for s1 and s2 (theta1, theta2):
+                    # I need callables that are a function of ell
                     kernel_1 = partial(
                         k_mu,
                         thetal=self.theta_edges_fine[s1],
@@ -1067,7 +1025,8 @@ class CovRealSpace(CovarianceProjector):
                         mu=nu,
                     )
 
-                    # Integrate over (ell_1, ell_2) for all tomographic bin combinations at once
+                    # Integrate over (ell_1, ell_2) for all tomographic
+                    # bin combinations at once
                     cov_rs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
                         ells_proj=self.ells_proj_ng,
                         cov_ng_4d=cov_hs_ng_4d,
@@ -1075,6 +1034,7 @@ class CovRealSpace(CovarianceProjector):
                         kernel_2_func_of_ell=kernel_2,
                     )
 
+            # reshape to 6d and symmetrize if needed
             cov_ng_rs_6d = sl.cov_4D_to_6D_blocks(
                 cov_4D=cov_rs_ng_4d,
                 nbl=self.nbx,
@@ -1085,18 +1045,8 @@ class CovRealSpace(CovarianceProjector):
                 symmetrize_output_cd=self.symmetrize_output_dict[probe_cd_hs],
             )
 
-            # old
-            # cov_ng_rs_6d = dl1dl2_bessel_wrapper(
-            #     cov_hs=cov_ng_hs_6d,
-            #     mu=mu,
-            #     nu=nu,
-            #     ells=self.ells_proj_g,
-            #     thetas=self.theta_centers_fine,
-            #     zbins=self.zbins,
-            #     n_jobs=self.n_jobs,
-            #     levin_prec_kw=self.levin_prec_kw,
-            # )
-            
+            # normalize
+            norm = 4 * np.pi**2
             cov_ng_rs_6d /= norm
 
             cov_out_6d = cov_ng_rs_6d

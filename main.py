@@ -1856,7 +1856,10 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     # covs directly and reshape them to 6d inside compute_cs_cov_term_probe_6d.
     cov_hs_ng_dict = {}
     if cfg['covariance']['SSC']:
-        cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+        if cfg['covariance']['SSC_code'] == 'Spaceborne':
+            cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+        elif cfg['covariance']['SSC_code'] == 'PyCCL':
+            cov_hs_ng_dict['ssc'] = ccl_obj.cov_dict['ssc']
     if cfg['covariance']['cNG']:
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
@@ -1916,7 +1919,10 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     # covs directly and reshape them to 6d inside compute_cs_cov_term_probe_6d.
     cov_hs_ng_dict = {}
     if cfg['covariance']['SSC']:
-        cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+        if cfg['covariance']['SSC_code'] == 'Spaceborne':
+            cov_hs_ng_dict['ssc'] = cov_ssc_obj.cov_dict['ssc']
+        elif cfg['covariance']['SSC_code'] == 'PyCCL':
+            cov_hs_ng_dict['ssc'] = ccl_obj.cov_dict['ssc']
     if cfg['covariance']['cNG']:
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 

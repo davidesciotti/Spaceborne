@@ -62,7 +62,13 @@ def reorder_block_cov(
 
 
 def cov_ggglll_to_llglgg(
-    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int, obs_space: str
+    cov_ggglll_2d: np.ndarray,
+    elem_auto: int,
+    elem_cross: int,
+    obs_space: str,
+    probe_hs_list: list,
+    probe_rs_list: list,
+    probe_cs_list: list,
 ) -> np.ndarray:
     """Reorders a 2D covariance matrix in the probe_*_* ordering according to the
     desired probe blocks ordering.
@@ -75,8 +81,9 @@ def cov_ggglll_to_llglgg(
 
     if obs_space == 'harmonic':
         block_sizes = {'gg': elem_auto, 'gl': elem_cross, 'll': elem_auto}
-        from_order = ['gg', 'gl', 'll']
-        to_order = ['ll', 'gl', 'gg']
+        # in this case, OC simly has the opposite order of SB: [gg, gl, ll]
+        from_order = probe_hs_list[::-1]
+        to_order = probe_hs_list
 
     elif obs_space == 'real':
         block_sizes = {
@@ -85,17 +92,30 @@ def cov_ggglll_to_llglgg(
             'gt': elem_cross,
             'w': elem_auto,
         }
-        from_order = ['w', 'gt', 'xip', 'xim']
-        to_order = ['xip', 'xim', 'gt', 'w']
+        # in this case, OC simly has almost the opposite order of SB:
+        # ['w', 'gt', 'xip', 'xim'] (not ['w', 'gt', 'xim', 'xip']!)
+        probe_rs_list_oc = ['w', 'gt', 'xip', 'xim']
+        from_order = [p for p in probe_rs_list_oc if p in probe_rs_list]
+        to_order = probe_rs_list
+
+        if to_order == ['xim'] or to_order == ['xip']:
+            raise ValueError(
+                'xim and xip cannot be treated separately, since OC outputs only '
+                'one block for both. Please select both probes together.'
+            )
 
     elif obs_space == 'cosebis':
-        block_sizes = {
-            'En': elem_auto,
-            'Bn': elem_auto,
-        }
-        from_order = ['En', 'Bn']
-        to_order = ['En', 'Bn']
+        block_sizes = {'En': elem_auto, 'Bn': elem_auto}
+        # in this case, OC simly has the same order of SB: [En, Bn]
+        # (excluding Psigl and Psigg)
+        from_order = probe_cs_list
+        to_order = probe_cs_list
 
+        if to_order == ['En'] or to_order == ['Bn']:
+            raise ValueError(
+                'En and Bn cannot be treated separately, since OC outputs only '
+                'one block for both. Please select both probes together.'
+            )
     else:
         raise ValueError(
             f'obs_space must be "harmonic", "real" or "cosebis", found {obs_space}'
@@ -471,6 +491,21 @@ class OneCovarianceInterface:
 
         self.obs_space = self.cfg['probe_selection']['space']
 
+        self.probe_hs_list = []
+        for p in const.HS_DIAG_PROBES:
+            if self.cfg['probe_selection'][p]:
+                self.probe_hs_list.append(p.lower())
+
+        self.probe_rs_list = []
+        for p in const.RS_DIAG_PROBES:
+            if self.cfg['probe_selection'][p]:
+                self.probe_rs_list.append(p.lower())
+
+        self.probe_cs_list = []
+        for p in const.CS_DIAG_PROBES:
+            if self.cfg['probe_selection'][p]:
+                self.probe_cs_list.append(p)
+
         if self.obs_space == 'harmonic':
             prefix = 'hs'
         elif self.obs_space == 'real':
@@ -620,8 +655,8 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_trispectra'] = str(False)
         cfg_oc_ini['output settings']['save_alms'] = str(True)
         cfg_oc_ini['output settings']['use_tex'] = str(False)
-        
-        # TODO apparrently, if I set this to True the _list files aren't saved anymore... 
+
+        # TODO apparrently, if I set this to True the _list files aren't saved anymore...
         cfg_oc_ini['output settings']['save_as_binary'] = str(False)
 
         # ! [covELLspace settings]
@@ -1097,13 +1132,25 @@ class OneCovarianceInterface:
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
             )
             self.cov_dict_matfmt['g']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross, self.obs_space
+                cov_in,
+                elem_auto,
+                elem_cross,
+                self.obs_space,
+                self.probe_hs_list,
+                self.probe_rs_list,
+                self.probe_cs_list,
             )
 
         if self.compute_ssc:
             cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
             self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross, self.obs_space
+                cov_in,
+                elem_auto,
+                elem_cross,
+                self.obs_space,
+                self.probe_hs_list,
+                self.probe_rs_list,
+                self.probe_cs_list,
             )
 
         if self.compute_cng:
@@ -1111,12 +1158,24 @@ class OneCovarianceInterface:
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
             )
             self.cov_dict_matfmt['cng']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross, self.obs_space
+                cov_in,
+                elem_auto,
+                elem_cross,
+                self.obs_space,
+                self.probe_hs_list,
+                self.probe_rs_list,
+                self.probe_cs_list,
             )
 
         cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
         self.cov_dict_matfmt['tot']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-            cov_in, elem_auto, elem_cross, self.obs_space
+            cov_in,
+            elem_auto,
+            elem_cross,
+            self.obs_space,
+            self.probe_hs_list,
+            self.probe_rs_list,
+            self.probe_cs_list,
         )
 
     def output_sanity_check(

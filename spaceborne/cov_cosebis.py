@@ -283,13 +283,6 @@ class CovCOSEBIs(CovarianceProjector):
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) == ('En', 'En'):
-            
-            # set normalization depending on the term
-            # norm = (2 * np.pi)*self.amax  # oddly this works better (for SSC)
-            norm = 4 * np.pi**2  # this works for cNG!
-            # if term == 'ssc':
-                # norm /= self.amax
-
             # recover corresponding harmonic-space probe names
             probe_abcd_hs = (
                 const.HS_PROBE_IX_TO_NAME_DICT[probe_a_ix]
@@ -309,24 +302,29 @@ class CovCOSEBIs(CovarianceProjector):
             # project hs non-gaussian cov to COSEBIs space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
-            # TODO finish commenting the code
+            # Loop over scale indices (mode_n, mode_m)
             cov_cs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
+            for s1 in range(self.nbx):
+                for s2 in range(self.nbx):
+                    # Build projection kernels for s1 and s2 (mode_n, mode_m):
+                    # I need callables that are a function of ell,
+                    # even though they are not in this case
+                    def kernel_n(ell, n=s1):
+                        return self.w_ells_arr_ng[n, :]
 
-            # Loop over mode pairs (n, m)
-            for mode_n in range(self.nbx):
-                for mode_m in range(self.nbx):
-                    # Build projection kernels for modes n and m
-                    kernel_n = lambda ell, n=mode_n: self.w_ells_arr_ng[n, :]
-                    kernel_m = lambda ell, m=mode_m: self.w_ells_arr_ng[m, :]
+                    def kernel_m(ell, m=s2):
+                        return self.w_ells_arr_ng[m, :]
 
-                    # Integrate over (ell_1, ell_2) for all tomographic bin combinations at once
-                    cov_cs_ng_4d[mode_n, mode_m, :, :] = self.cov_ng_simps(
+                    # Integrate over (ell_1, ell_2) for all tomographic
+                    # bin combinations at once
+                    cov_cs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
                         ells_proj=self.ells_proj_ng,
                         cov_ng_4d=cov_hs_ng_4d,
                         kernel_1_func_of_ell=kernel_n,
                         kernel_2_func_of_ell=kernel_m,
                     )
 
+            # reshape to 6d and symmetrize if needed
             cov_ng_cs_6d = sl.cov_4D_to_6D_blocks(
                 cov_4D=cov_cs_ng_4d,
                 nbl=self.nbx,
@@ -337,6 +335,8 @@ class CovCOSEBIs(CovarianceProjector):
                 symmetrize_output_cd=self.symmetrize_output_dict[probe_cd_hs],
             )
 
+            # normalize
+            norm = 4 * np.pi**2
             cov_ng_cs_6d /= norm
 
             cov_out_6d = cov_ng_cs_6d

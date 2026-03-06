@@ -192,7 +192,7 @@ def monitor_cpu(interval=0.5):
 
 
 stop_event = threading.Event()
-monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,))
+monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
 monitor_thread.start()
 
 
@@ -515,7 +515,9 @@ cov_terms_str = ''.join(cov_terms_list)
 # computed, regardless of the value of split_gaussian_cov in the config.
 req_terms = []
 if cfg['covariance']['G']:
-    req_terms.extend(['sva', 'sn', 'mix', 'g'])
+    if cfg['covariance']['split_gaussian_cov']:
+        req_terms.extend(['sva', 'sn', 'mix'])
+    req_terms.extend(['g'])
 if cfg['covariance']['SSC']:
     req_terms.append('ssc')
 if cfg['covariance']['cNG']:

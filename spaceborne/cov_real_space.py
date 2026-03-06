@@ -14,11 +14,13 @@ mix = mixed term
 
 import itertools
 import warnings
+from functools import partial
 
 import numpy as np
 import pyccl as ccl
 import pylevin as levin
 from joblib import Parallel, delayed
+from scipy.interpolate import RectBivariateSpline
 from tqdm import tqdm
 
 from spaceborne import constants as const
@@ -26,6 +28,7 @@ from spaceborne import cov_dict as cd
 from spaceborne import cov_projector as cp
 from spaceborne import sb_lib as sl
 from spaceborne.cov_projector import CovarianceProjector
+from spaceborne.twobessel_fang import TwoBessel
 
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning
@@ -257,7 +260,90 @@ def integrate_bessel_single_wrapper(
     return result_levin
 
 
-def dl1dl2_bessel_wrapper(
+def dl1dl2_binavg_bessel_wrapper(
+    cov_hs: np.ndarray,
+    mu: int,
+    nu: int,
+    ells: np.ndarray,
+    theta_edges: np.ndarray,
+    n_jobs: int,
+    levin_prec_kw: dict,
+):
+    r"""
+    Wrapper function to compute the bin-averaged double Bessel integral:
+
+    Cov(theta_p, theta_q) =
+        \int d\ell_1 \ell_1 K_mu(\ell_1, theta_p) *
+        \int d\ell_2 \ell_2 K_nu(\ell_2, theta_q) * C(\ell_1, \ell_2)
+
+    where K_mu is the analytic bin-averaging kernel (Eq. E.2), decomposed via
+    k_mu_nobessel into a sum of weighted Bessel terms at the bin edges.
+
+    Parameters
+    ----------
+    cov_hs: np.ndarray
+        Harmonic-space covariance, shape (nbl, nbl, ...).
+    mu, nu: int
+        Bessel orders for the two projections.
+    ells: np.ndarray
+        ell grid, shape (nbl,).
+    theta_edges: np.ndarray
+        Bin edges in radians, shape (nbt + 1,).
+    n_jobs: int
+        Number of parallel threads for Levin integration.
+    """
+    nbl = len(ells)
+    nbt = len(theta_edges) - 1
+
+    assert cov_hs.shape[0] == cov_hs.shape[1] == nbl, (
+        'cov_hs shape must be (ell_bins, ell_bins, ...)'
+    )
+    original_shape_no_scale = cov_hs.shape[2:]
+    flattened_size = (
+        int(np.prod(original_shape_no_scale)) if original_shape_no_scale else 1
+    )
+
+    # Inner integral: for each fixed ell1, integrate over ell2 using ell2*K_nu.
+    # K_nu decomposes as a sum of weighted Bessel terms evaluated at the bin edges.
+    partial_results = np.zeros((nbl, nbt, flattened_size))
+    for ell1_ix in tqdm(range(nbl), desc='ell'):
+        base = cov_hs[ell1_ix, ...].reshape(nbl, -1)  # (nbl, N)
+        for q in range(nbt):
+            for coeff, ord_bes, theta in k_mu_nobessel(
+                ells, thetal=theta_edges[q], thetau=theta_edges[q + 1], mu=nu
+            ):
+                result = integrate_bessel_single_wrapper(
+                    base * (ells * coeff)[:, None],
+                    ord_bes,
+                    ells,
+                    np.array([theta]),
+                    n_jobs,
+                    **levin_prec_kw,
+                )  # (1, N)
+                partial_results[ell1_ix, q] += result[0]
+
+    # Outer integral: for each fixed theta_q, integrate over ell1 using ell1*K_mu.
+    final_result = np.zeros((nbt, nbt, flattened_size))
+    for q in tqdm(range(nbt), desc='theta'):
+        base_second = partial_results[:, q, :]  # (nbl, N)
+        for p in range(nbt):
+            for coeff, ord_bes, theta in k_mu_nobessel(
+                ells, thetal=theta_edges[p], thetau=theta_edges[p + 1], mu=mu
+            ):
+                result = integrate_bessel_single_wrapper(
+                    base_second * (ells * coeff)[:, None],
+                    ord_bes,
+                    ells,
+                    np.array([theta]),
+                    n_jobs,
+                    **levin_prec_kw,
+                )  # (1, N)
+                final_result[p, q] += result[0]
+
+    return final_result.reshape(nbt, nbt, *original_shape_no_scale)
+
+
+def dl1dl2_nobinavg_bessel_wrapper(
     cov_hs: np.ndarray,
     mu: int,
     nu: int,
@@ -461,6 +547,103 @@ def integrate_single_bessel_pair(
     return result_levin[0]
 
 
+def twobessel_project_ng(
+    cov_hs_ng_4d,
+    ells,
+    theta_edges,
+    theta_centers,
+    mu,
+    nu,
+    nu1=1.01,
+    nu2=1.01,
+    c_window_width=0.25,
+    N_pad=0,
+):
+    r"""
+    Project the NG covariance from harmonic to real space using the FFTLog-based
+    double Hankel transform (TwoBessel, Fang et al. 2020).
+
+    Computes the bin-averaged result:
+
+        C_RS(θ_p, θ_q) = ∫ dℓ₁ ℓ₁ K_μ(ℓ₁, θ_p) ∫ dℓ₂ ℓ₂ K_ν(ℓ₂, θ_q) C_HS(ℓ₁, ℓ₂)
+
+    where K_μ(ℓ, θ_p) = 2/(θ_u² − θ_l²) ∫_{θ_l}^{θ_u} θ' J_μ(ℓθ') dθ' is the
+    bin-averaging kernel (Joachimi et al. 2008). The analytic bin-averaging is handled
+    by ``TwoBessel.two_Bessel_binave`` via the ``g_l_smooth`` kernel.
+
+    The result is returned WITHOUT the 1/(4π²) factor, which is applied by the caller.
+
+    Parameters
+    ----------
+    cov_hs_ng_4d : np.ndarray, shape (nbl, nbl, zpairs_ab, zpairs_cd)
+    ells : np.ndarray, shape (nbl,), log-spaced ell grid
+    theta_edges : np.ndarray, shape (nbt+1,), log-spaced bin edges in radians
+    theta_centers : np.ndarray, shape (nbt,), bin centres in radians
+    mu, nu : int, cylindrical Bessel orders
+    nu1, nu2 : float, FFTLog power-law bias parameters (default 1.01)
+    c_window_width : float, smoothing fraction for FFT coefficients (default 0.25)
+    N_pad : int, zero-padding length (default 0)
+
+    Returns
+    -------
+    np.ndarray, shape (nbt, nbt, zpairs_ab, zpairs_cd)
+    """
+    nbl, _, zpairs_ab, zpairs_cd = cov_hs_ng_4d.shape
+    nbt = len(theta_centers)
+
+    if nbl % 2 != 0:
+        raise ValueError(
+            f'ells must have even length for TwoBessel FFT, got {nbl}. '
+            'Set ell_bins_proj_nongauss to an even number.'
+        )
+
+    # Constant log bin width (requires log-spaced theta bins)
+    dlntheta = np.log(theta_edges[1] / theta_edges[0])
+
+    # Warn if theta_centers fall outside the natural FFTLog output range
+    theta_out_min = 1.0 / ells[-1]
+    theta_out_max = 1.0 / ells[0]
+    if theta_centers[0] < theta_out_min or theta_centers[-1] > theta_out_max:
+        warnings.warn(
+            f'theta_centers [{theta_centers[0]:.3e}, {theta_centers[-1]:.3e}] rad '
+            f'extends outside TwoBessel output range '
+            f'[{theta_out_min:.3e}, {theta_out_max:.3e}] rad. '
+            'Consider widening ell_min_proj / ell_max_proj.',
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+    result = np.zeros((nbt, nbt, zpairs_ab, zpairs_cd))
+
+    for i_ab in range(zpairs_ab):
+        for i_cd in range(zpairs_cd):
+            # Build integrand f(ℓ₁,ℓ₂) = ℓ₁² ℓ₂² C_HS so that
+            # TwoBessel gives ∫dℓ₁ ℓ₁ J_μ ∫dℓ₂ ℓ₂ J_ν · C_HS
+            fx1x2 = (
+                cov_hs_ng_4d[:, :, i_ab, i_cd] * ells[:, None] ** 2 * ells[None, :] ** 2
+            )
+            tb = TwoBessel(
+                ells,
+                ells,
+                fx1x2,
+                nu1=nu1,
+                nu2=nu2,
+                c_window_width=c_window_width,
+                N_pad=N_pad,
+            )
+            theta1_out, theta2_out, F = tb.two_Bessel_binave(mu, nu, dlntheta, dlntheta)
+
+            # Interpolate onto the desired theta grid (log-log 2D spline)
+            interp = RectBivariateSpline(
+                np.log(theta1_out), np.log(theta2_out), F, kx=3, ky=3
+            )
+            result[:, :, i_ab, i_cd] = interp(
+                np.log(theta_centers), np.log(theta_centers)
+            )
+
+    return result
+
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -495,8 +678,8 @@ class CovRealSpace(CovarianceProjector):
         self.integration_method = self.cfg['precision']['cov_rs_int_method']
         self.levin_bin_avg = self.cfg['precision']['levin_bin_avg']
 
-        assert self.integration_method in ['simps', 'levin'], (
-            'integration method not implemented'
+        assert self.integration_method in ['simps', 'levin', 'twobessel'], (
+            "integration method not implemented; choose 'simps', 'levin', or 'twobessel'"
         )
 
         # attributes set at runtime
@@ -653,8 +836,12 @@ class CovRealSpace(CovarianceProjector):
         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
     ):  # fmt: skip
         # Use parent method to build the universal SVA integrand
-        integrand_5d = self.build_cov_sva_integrand_5d(
-            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix
+        integrand_5d = cp.build_cov_sva_integrand_5d(
+            cl_5d=self.cl_3x2pt_5d,
+            probe_a_ix=probe_a_ix,
+            probe_b_ix=probe_b_ix,
+            probe_c_ix=probe_c_ix,
+            probe_d_ix=probe_d_ix,
         )
 
         # Child-specific: project with Levin + Bessel kernels
@@ -780,7 +967,7 @@ class CovRealSpace(CovarianceProjector):
         result_shape = (zpairs_ab, zpairs_cd)
         cov_rs_4d = np.zeros((self.nbt_fine, self.nbt_fine, *result_shape))
 
-        for p in tqdm(range(self.nbt_fine)):
+        for p in tqdm(range(self.nbt_fine), desc='theta'):
             for q in range(self.nbt_fine):
                 theta_p_lower = self.theta_edges_fine[p]
                 theta_p_upper = self.theta_edges_fine[p + 1]
@@ -886,7 +1073,6 @@ class CovRealSpace(CovarianceProjector):
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_sva_levin(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
@@ -904,7 +1090,6 @@ class CovRealSpace(CovarianceProjector):
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-
             elif self.integration_method == 'levin':
                 cov_out_6d = self.cov_mix_levin(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
@@ -922,73 +1107,6 @@ class CovRealSpace(CovarianceProjector):
                 probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
             )
 
-        elif term == 'gauss_ell':
-            print('Projecting ell-space Gaussian covariance...')
-
-            # ! Compute HS G SVA, MIX and SN (not used), then project them to RS
-            # build noise vector
-            noise_3x2pt_4D = sl.build_noise(
-                self.zbins,
-                n_probes=self.n_probes_hs,
-                sigma_eps2=(self.sigma_eps_i * np.sqrt(2)) ** 2,
-                ng_shear=self.n_eff_src,
-                ng_clust=self.n_eff_lns,
-            )
-
-            # expand the noise array along the ell axis
-            noise_5d = np.repeat(
-                noise_3x2pt_4D[:, :, None, :, :], self.nbl_proj_g, axis=2
-            )
-
-            # ! no delta_ell!!
-            delta_ell = np.ones_like(self.ells_proj_g)
-
-            cov_sva_sb_hs_10d, _cov_sn_sb_hs_10d, cov_mix_sb_hs_10d = sl.compute_g_cov(
-                self.cl_3x2pt_5d,
-                noise_5d,
-                self.fsky,
-                self.ells_proj_g,
-                delta_ell,
-                split_terms=True,
-                return_only_ell_diagonal=True,
-            )
-
-            # sum sva and mix in harmonic space ("svapmix" = "sva plus mix")
-            cov_svapmix_hs_6d = (
-                cov_sva_sb_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-                + cov_mix_sb_hs_10d[probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix]
-            )
-
-            self.cov_svapmix_rs_6d = levin_integrate_bessel_double_wrapper(
-                integrand=cov_svapmix_hs_6d.reshape(self.nbl_proj_g, -1)
-                * self.ells_proj_g[:, None]
-                * self.ells_proj_g[:, None],
-                x_values=self.ells_proj_g,
-                bessel_args=self.theta_centers_fine,
-                bessel_type=3,
-                ell_1=mu,
-                ell_2=nu,
-                n_jobs=self.n_jobs,
-                **self.levin_prec_kw,
-            )
-            self.cov_svapmix_rs_6d = self.cov_svapmix_rs_6d.reshape(
-                self.nbt_fine, self.nbt_fine,
-                self.zbins, self.zbins, self.zbins, self.zbins,
-            )  # fmt: skip
-
-            norm = 4 * np.pi**2
-            self.cov_svapmix_rs_6d /= norm
-
-            # add sn - projection is numerically unstable,
-            # I compute it in real space directly
-            self.cov_sn_rs_6d = self.cov_sn_rs(
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
-            )
-            # diagonal is noise-dominated, you won't see much of a diff
-            cov_gauss_ell_rs_6d = self.cov_svapmix_rs_6d + self.cov_sn_rs_6d
-
-            cov_out_6d = cov_gauss_ell_rs_6d
-
         elif term in ['ssc', 'cng']:
             # recover corresponding harmonic-space probe names
             probe_abcd_hs = (
@@ -1002,44 +1120,58 @@ class CovRealSpace(CovarianceProjector):
             # project hs non-gaussian cov to real space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
-            # # Loop over scale indices (theta1, theta2)
-            # cov_rs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
-            # for s1 in range(self.nbx):
-            #     for s2 in range(self.nbx):
-            #         # Build projection kernels for s1 and s2 (theta1, theta2):
-            #         # I need callables that are a function of ell
-            #         kernel_1 = partial(
-            #             k_mu,
-            #             thetal=self.theta_edges_fine[s1],
-            #             thetau=self.theta_edges_fine[s1 + 1],
-            #             mu=mu,
-            #         )
-            #         kernel_2 = partial(
-            #             k_mu,
-            #             thetal=self.theta_edges_fine[s2],
-            #             thetau=self.theta_edges_fine[s2 + 1],
-            #             mu=nu,
-            #         )
+            if self.integration_method == 'simps':
+                # Loop over scale indices (theta1, theta2)
+                cov_rs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
+                for s1 in range(self.nbx):
+                    for s2 in range(self.nbx):
+                        # Build projection kernels for s1 and s2 (theta1, theta2):
+                        # I need callables that are a function of ell
+                        kernel_1 = partial(
+                            k_mu,
+                            thetal=self.theta_edges_fine[s1],
+                            thetau=self.theta_edges_fine[s1 + 1],
+                            mu=mu,
+                        )
+                        kernel_2 = partial(
+                            k_mu,
+                            thetal=self.theta_edges_fine[s2],
+                            thetau=self.theta_edges_fine[s2 + 1],
+                            mu=nu,
+                        )
 
-            #         # Integrate over (ell_1, ell_2) for all tomographic
-            #         # bin combinations at once
-            #         cov_rs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
-            #             ells_proj=self.ells_proj_ng,
-            #             cov_ng_4d=cov_hs_ng_4d,
-            #             kernel_1_func_of_ell=kernel_1,
-            #             kernel_2_func_of_ell=kernel_2,
-            #         )
-
-            # TODO try this:
-            cov_rs_ng_4d = dl1dl2_bessel_wrapper(
-                cov_hs=cov_hs_ng_4d,
-                mu=mu,
-                nu=nu,
-                ells=self.ells_proj_ng,
-                thetas=self.theta_centers_fine,
-                n_jobs=self.n_jobs,
-                levin_prec_kw=self.levin_prec_kw,
-            )
+                        # Integrate over (ell_1, ell_2) for all tomographic
+                        # bin combinations at once
+                        cov_rs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
+                            ells_proj=self.ells_proj_ng,
+                            cov_ng_4d=cov_hs_ng_4d,
+                            kernel_1_func_of_ell=kernel_1,
+                            kernel_2_func_of_ell=kernel_2,
+                        )
+            elif self.integration_method == 'levin':
+                cov_rs_ng_4d = dl1dl2_binavg_bessel_wrapper(
+                    cov_hs=cov_hs_ng_4d,
+                    mu=mu,
+                    nu=nu,
+                    ells=self.ells_proj_ng,
+                    theta_edges=self.theta_edges_fine,
+                    n_jobs=self.n_jobs,
+                    levin_prec_kw=self.levin_prec_kw,
+                )
+            elif self.integration_method == 'twobessel':
+                if self.cfg['binning']['binning_type'] != 'log':
+                    raise ValueError(
+                        "integration_method='twobessel' requires log-spaced theta bins "
+                        "(binning_type: 'log')."
+                    )
+                cov_rs_ng_4d = twobessel_project_ng(
+                    cov_hs_ng_4d=cov_hs_ng_4d,
+                    ells=self.ells_proj_ng,
+                    theta_edges=self.theta_edges_fine,
+                    theta_centers=self.theta_centers_fine,
+                    mu=mu,
+                    nu=nu,
+                )
 
             # reshape to 6d and symmetrize if needed
             cov_ng_rs_6d = sl.cov_4D_to_6D_blocks(
@@ -1094,15 +1226,7 @@ class CovRealSpace(CovarianceProjector):
 
             cov_out_6d = cov_rs_6d_binned
 
-        # ! reshape 6D to 2D and store this as well in the object
-
-        # setattr(self, f'cov_{probe_abcd}_{term}_6d', cov_out_6d)
-        # these are needed for 3x2pt 2D
-        # setattr(self, f'cov_{probe_abcd}_{term}_4d', cov_out_4d)
-        # This is not necessary since I don't save the probe-specific 2D covs anymore
-        # (see comment in combine_terms_and_probes)
-        # setattr(self, f'cov_{probe}_{term}_2d', cov_out_2d)
-
+        # finally, assign the newly computed 6D cov to the appropriate key in cov_dict
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
 
     def k_mu(self, ell, *, thetal, thetau, mu):

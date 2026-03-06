@@ -62,15 +62,15 @@ OneCovariance:
   consistency_checks: False
   oc_output_filename: cov_oc
   compare_against_oc: True
-  new_run: False
+  new_run: True
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: cosebis # Type: str.
+  space: real # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
-  GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
+  GL: False # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
   GG: True # Type: bool. Whether to compute the photometric clustering ('GG') covariance
 
   xip: True # Type: bool. Whether to compute \xi_+
@@ -129,7 +129,7 @@ binning:
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 5 # Type: float | int.
   theta_max_arcmin: 300 # Type: float | int.
-  theta_bins: 10 # Type: int.
+  theta_bins: 3 # Type: int.
 
   # Number of modes for the COSEBIs covariance
   n_modes_cosebis: 2 # Type: int.
@@ -219,7 +219,7 @@ covariance:
 
   G_code: Spaceborne
   SSC_code: Spaceborne
-  # cNG_code: Spaceborne
+  cNG_code: PyCCL
 
   # ================================== Gaussian cov ====================================
   # Method to account for partial sky coverage in the Gaussian term.
@@ -358,7 +358,7 @@ precision:
   z_steps_trisp: 50 # Type: int.
 
   # Whether or not to use the single-redshift integral approximation for the SSC.
-  use_KE_approximation: False # Type: bool.
+  use_KE_approximation: True # Type: bool.
 
   # ================================= real-space cov ===================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
@@ -425,5 +425,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: /data/sciotti/DATA/Spaceborne_jobs/COSEBIs_NG # Type: str. Path to the output directory
+  output_path: /data/sciotti/DATA/Spaceborne_jobs/develop # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

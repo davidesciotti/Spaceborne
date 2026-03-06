@@ -47,6 +47,8 @@ class SpaceborneCovariance:
         self.zpairs_3x2pt = pvt_cfg['zpairs_3x2pt']
         self.block_index = pvt_cfg['block_index']
 
+
+
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_hs_2d']
@@ -190,14 +192,17 @@ class SpaceborneCovariance:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             probe_2tpl = (probe_ab, probe_cd)
             probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
-            self.cov_dict['sva'][probe_2tpl]['6d'] = cov_3x2pt_sva_10d[*probe_ixs]
-            self.cov_dict['sn'][probe_2tpl]['6d'] = cov_3x2pt_sn_10d[*probe_ixs]
-            self.cov_dict['mix'][probe_2tpl]['6d'] = cov_3x2pt_mix_10d[*probe_ixs]
+            _cov_3x2pt_sva_6d = cov_3x2pt_sva_10d[*probe_ixs]
+            _cov_3x2pt_sn_6d = cov_3x2pt_sn_10d[*probe_ixs]
+            _cov_3x2pt_mix_6d = cov_3x2pt_mix_10d[*probe_ixs]
+            # if split_gaussian_cov is True, store them in cov_dict
+            if self.cov_cfg['split_gaussian_cov']:
+                self.cov_dict['sva'][probe_2tpl]['6d'] = _cov_3x2pt_sva_6d
+                self.cov_dict['sn'][probe_2tpl]['6d'] = _cov_3x2pt_sn_6d
+                self.cov_dict['mix'][probe_2tpl]['6d'] = _cov_3x2pt_mix_6d
             # sum to get G
             self.cov_dict['g'][probe_2tpl]['6d'] = (
-                self.cov_dict['sva'][probe_2tpl]['6d']
-                + self.cov_dict['sn'][probe_2tpl]['6d']
-                + self.cov_dict['mix'][probe_2tpl]['6d']
+                _cov_3x2pt_sva_6d + _cov_3x2pt_sn_6d + _cov_3x2pt_mix_6d
             )
 
         # zero-out the blocks not requested

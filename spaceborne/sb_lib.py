@@ -1392,6 +1392,7 @@ def compare_funcs(
     y: dict,
     logscale_y=(False, False),
     logscale_x=False,
+    ylabel=None,
     title=None,
     ylim_diff=None,
     plt_kw=None,
@@ -1438,6 +1439,9 @@ def compare_funcs(
 
     if title is not None:
         fig.suptitle(title)
+        
+    if ylabel is not None:
+        ax[0].set_ylabel(ylabel)
 
 
 def get_git_info():

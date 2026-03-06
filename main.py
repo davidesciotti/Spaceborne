@@ -168,7 +168,6 @@ script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
 import threading
-import time
 
 import pandas as pd
 import psutil
@@ -302,11 +301,11 @@ cfg['covariance']['n_probes'] = 2
 # https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
 
 # number of collocation points in each bisection. default: 8
-cfg['precision']['n_sub'] = 50
+cfg['precision']['n_sub'] = 16
 # maximum number of bisections used. default: 32
-cfg['precision']['n_bisec_max'] = 500
+cfg['precision']['n_bisec_max'] = 128
 # relative accuracy target. default: 1.e-4
-cfg['precision']['rel_acc'] = 1.0e-7
+cfg['precision']['rel_acc'] = 1.0e-4
 # Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
 cfg['precision']['boost_bessel'] = True
 # Type: bool. Whether to display warnings
@@ -386,7 +385,7 @@ cfg['covariance']['probe_ordering'] = [['L', 'L'], ['G', 'L'], ['G', 'G']]
 probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
 GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 
-# This has been deprecated since i am no longer using Levin integration.
+# This has been deprecated since I am no longer using Levin integration.
 # This variable used to control the number of bins over which to compute the Levin
 # RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu).
 # From then, the covariance was rebinned to cfg['binning']['theta_bins'].
@@ -2022,14 +2021,15 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
 # ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
+oc_fmt = 'list'
 if cfg['OneCovariance']['compare_against_oc']:
     if 'OneCovariance' in cov_terms_and_codes.values():
         warnings.warn('You are likely comparing OneCovariance against itself')
 
-    # THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
     for term in _cov_dict:
+        # ! sanity check: mat and list formats must coincide for OC
+        # * THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
         if obs_space != 'real':
-            # consistency check: list and mat formats should coincide
             if term not in ['sva', 'sn', 'mix']:
                 np.testing.assert_allclose(
                     cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d'],
@@ -2048,42 +2048,43 @@ if cfg['OneCovariance']['compare_against_oc']:
                 rtol=1e-4,
             )
 
-        cov_a = _cov_dict[term]['3x2pt']['2d']
-        cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+        # ! now compare SB and OC
+        if oc_fmt == 'list':
+            cov_a = _cov_dict[term]['3x2pt']['2d']
+            cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
 
-        sl.compare_2d_covs(
-            cov_a,
-            cov_b,
-            'SB',
-            'OC',
-            f'cov {term} {obs_space} space - ',
-            diff_threshold=10,
-            compare_cov_2d=True,
-            compare_corr_2d=False,
-            compare_diag=True,
-            compare_flat=True,
-            compare_spectrum=True,
-        )
+            sl.compare_2d_covs(
+                cov_a,
+                cov_b,
+                'SB',
+                'OC',
+                f'cov {term} {obs_space} space nbx {pvt_cfg["nbx"]} -',
+                diff_threshold=10,
+                compare_cov_2d=True,
+                compare_corr_2d=False,
+                compare_diag=True,
+                compare_flat=True,
+                compare_spectrum=False,
+            )
 
-        # compare G against mat fmt of OC. For Cosebis this is not done, since the covariance
-        # is not "full" (no Psi* covariance blocks)
-        # if term not in ['sva', 'sn', 'mix']:
-        #     cov_a = _cov_dict[term]['3x2pt']['2d']
-        #     cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
+        elif oc_fmt == 'mat':
+            if term not in ['sva', 'sn', 'mix']:
+                cov_a = _cov_dict[term]['3x2pt']['2d']
+                cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
 
-        #     sl.compare_2d_covs(
-        #         cov_a,
-        #         cov_b,
-        #         'SB',
-        #         'OC mat fmt',
-        #         f'cov {term} {obs_space} space nbl {ell_obj.nbl_3x2pt} -',
-        #         diff_threshold=10,
-        #         compare_cov_2d=True,
-        #         compare_corr_2d=False,
-        #         compare_diag=True,
-        #         compare_flat=True,
-        #         compare_spectrum=True,
-        #     )
+                sl.compare_2d_covs(
+                    cov_a,
+                    cov_b,
+                    'SB',
+                    'OC mat fmt',
+                    f'cov {term} {obs_space} space nbx {pvt_cfg["nbx"]} -',
+                    diff_threshold=10,
+                    compare_cov_2d=True,
+                    compare_corr_2d=False,
+                    compare_diag=True,
+                    compare_flat=True,
+                    compare_spectrum=False,
+                )
 
 
 # ! save 2D covs (for each term) in npz archive
@@ -2543,14 +2544,14 @@ monitor_thread.join()
 
 # Save and plot
 df = pd.DataFrame(cpu_data)
-# df.to_csv('cpu_usage.csv', index=False)
 
-import matplotlib.pyplot as plt
 
 plt.figure()
 df['time_elapsed'] = df['time'] - df['time'].min()
 plt.plot(df['time_elapsed'], df['cores_used'])
-plt.axhline(cfg['misc']['num_threads'], label="cfg['misc']['num_threads']")
+plt.axhline(
+    cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
+)
 plt.xlabel('Time (s)')
 plt.ylabel('Number of Active Cores')
 plt.title('CPU Core Usage Over Time')

@@ -99,7 +99,7 @@ def cov_ggglll_to_llglgg(
         from_order = [p for p in probe_rs_list_oc if p in probe_rs_list]
         to_order = probe_rs_list
 
-        if to_order == ['xim'] or to_order == ['xip']:
+        if to_order in (['xim'], ['xip']):
             raise ValueError(
                 'xim and xip cannot be treated separately, since OC outputs only '
                 'one block for both. Please select both probes together.'
@@ -112,7 +112,7 @@ def cov_ggglll_to_llglgg(
         from_order = probe_cs_list
         to_order = probe_cs_list
 
-        if to_order == ['En'] or to_order == ['Bn']:
+        if to_order in (['En'], ['Bn']):
             raise ValueError(
                 'En and Bn cannot be treated separately, since OC outputs only '
                 'one block for both. Please select both probes together.'
@@ -657,7 +657,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_alms'] = str(True)
         cfg_oc_ini['output settings']['use_tex'] = str(False)
 
-        # TODO apparently, if I set this to True the _list files aren't saved anymore...
+        # apparently, if I set this to True the _list files aren't saved anymore...
         cfg_oc_ini['output settings']['save_as_binary'] = str(False)
 
         # ! [covELLspace settings]
@@ -1129,9 +1129,13 @@ class OneCovarianceInterface:
         elem_cross = self.zpairs_cross * self.nbx
 
         if self.compute_g:
-            cov_in = np.genfromtxt(
-                f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
-            )
+            _gauss_mat_fname = f'{self.oc_path}/{self.cov_oc_fname}'
+            if not self.compute_ssc and not self.compute_cng:
+                _gauss_mat_fname += '_matrix.mat'
+            else:
+                _gauss_mat_fname += '_matrix_gauss.mat'
+
+            cov_in = np.genfromtxt(_gauss_mat_fname)
             self.cov_dict_matfmt['g']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
                 cov_in,
                 elem_auto,

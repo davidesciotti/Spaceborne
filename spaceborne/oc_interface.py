@@ -41,7 +41,7 @@ def reorder_block_cov(
     if cov.ndim != 2 or cov.shape[0] != cov.shape[1]:
         raise ValueError('cov must be a square 2D array')
 
-    assert set(to_order) < set(from_order), (
+    assert set(to_order) <= set(from_order), (
         'to_order must be equal to or a subset of from_order'
     )
     if any(lab not in block_sizes for lab in from_order):

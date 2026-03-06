@@ -14,15 +14,11 @@ mix = mixed term
 
 import itertools
 import warnings
-from collections.abc import Callable
-from functools import partial
 
 import numpy as np
 import pyccl as ccl
-
-# import pylevin as levin
+import pylevin as levin
 from joblib import Parallel, delayed
-from scipy.integrate import simpson as simps
 from tqdm import tqdm
 
 from spaceborne import constants as const
@@ -267,7 +263,6 @@ def dl1dl2_bessel_wrapper(
     nu: int,
     ells: np.ndarray,
     thetas: np.ndarray,
-    zbins: int,
     n_jobs: int,
     levin_prec_kw: dict,
 ):
@@ -308,10 +303,11 @@ def dl1dl2_bessel_wrapper(
     assert cov_hs.shape[0] == cov_hs.shape[1] == nbl, (
         'cov_hs shape must be (ell_bins, ell_bins, ...)'
     )
+    original_shape_no_scale = cov_hs.shape[2:]
 
     # First integration: for each fixed ell1, integrate over ell2.
     partial_results = []
-    for ell1_ix in tqdm(range(nbl)):
+    for ell1_ix in tqdm(range(nbl), desc='ell'):
         # Extract the 2D slice for fixed ell1.
         integrand = cov_hs[ell1_ix, ...].reshape(nbl, -1) * ells[:, None]
         partial_int = integrate_bessel_single_wrapper(
@@ -327,7 +323,7 @@ def dl1dl2_bessel_wrapper(
     flattened_size = partial_results.shape[2]
     final_result = np.zeros((nbt, nbt, flattened_size))
 
-    for theta_idx in tqdm(range(nbt)):
+    for theta_idx in tqdm(range(nbt), desc='theta'):
         # For fixed theta from the first integration, extract the integrand:
         integrand_second = partial_results[:, theta_idx, :] * ells[:, None]
         final_int = integrate_bessel_single_wrapper(
@@ -335,9 +331,9 @@ def dl1dl2_bessel_wrapper(
         )
         final_result[:, theta_idx, :] = final_int
 
-    cov_rs_6d = final_result.reshape(nbt, nbt, zbins, zbins, zbins, zbins)
+    cov_rs_out = final_result.reshape(nbt, nbt, *original_shape_no_scale)
 
-    return cov_rs_6d
+    return cov_rs_out
 
 
 def levin_integrate_bessel_double_wrapper(
@@ -792,10 +788,10 @@ class CovRealSpace(CovarianceProjector):
                 theta_q_upper = self.theta_edges_fine[q + 1]
 
                 k_mu_terms = k_mu_nobessel(
-                    self.ells_proj_g, theta_p_lower, theta_p_upper, mu
+                    self.ells_proj_g, thetal=theta_p_lower, thetau=theta_p_upper, mu=mu
                 )
                 k_nu_terms = k_mu_nobessel(
-                    self.ells_proj_g, theta_q_lower, theta_q_upper, nu
+                    self.ells_proj_g, thetal=theta_q_lower, thetau=theta_q_upper, mu=nu
                 )
                 product_expansion = kmuknu_nobessel(k_mu_terms, k_nu_terms)
 
@@ -1006,33 +1002,44 @@ class CovRealSpace(CovarianceProjector):
             # project hs non-gaussian cov to real space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
-            # Loop over scale indices (theta1, theta2)
-            cov_rs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
-            for s1 in range(self.nbx):
-                for s2 in range(self.nbx):
-                    # Build projection kernels for s1 and s2 (theta1, theta2):
-                    # I need callables that are a function of ell
-                    kernel_1 = partial(
-                        k_mu,
-                        thetal=self.theta_edges_fine[s1],
-                        thetau=self.theta_edges_fine[s1 + 1],
-                        mu=mu,
-                    )
-                    kernel_2 = partial(
-                        k_mu,
-                        thetal=self.theta_edges_fine[s2],
-                        thetau=self.theta_edges_fine[s2 + 1],
-                        mu=nu,
-                    )
+            # # Loop over scale indices (theta1, theta2)
+            # cov_rs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
+            # for s1 in range(self.nbx):
+            #     for s2 in range(self.nbx):
+            #         # Build projection kernels for s1 and s2 (theta1, theta2):
+            #         # I need callables that are a function of ell
+            #         kernel_1 = partial(
+            #             k_mu,
+            #             thetal=self.theta_edges_fine[s1],
+            #             thetau=self.theta_edges_fine[s1 + 1],
+            #             mu=mu,
+            #         )
+            #         kernel_2 = partial(
+            #             k_mu,
+            #             thetal=self.theta_edges_fine[s2],
+            #             thetau=self.theta_edges_fine[s2 + 1],
+            #             mu=nu,
+            #         )
 
-                    # Integrate over (ell_1, ell_2) for all tomographic
-                    # bin combinations at once
-                    cov_rs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
-                        ells_proj=self.ells_proj_ng,
-                        cov_ng_4d=cov_hs_ng_4d,
-                        kernel_1_func_of_ell=kernel_1,
-                        kernel_2_func_of_ell=kernel_2,
-                    )
+            #         # Integrate over (ell_1, ell_2) for all tomographic
+            #         # bin combinations at once
+            #         cov_rs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
+            #             ells_proj=self.ells_proj_ng,
+            #             cov_ng_4d=cov_hs_ng_4d,
+            #             kernel_1_func_of_ell=kernel_1,
+            #             kernel_2_func_of_ell=kernel_2,
+            #         )
+
+            # TODO try this:
+            cov_rs_ng_4d = dl1dl2_bessel_wrapper(
+                cov_hs=cov_hs_ng_4d,
+                mu=mu,
+                nu=nu,
+                ells=self.ells_proj_ng,
+                thetas=self.theta_centers_fine,
+                n_jobs=self.n_jobs,
+                levin_prec_kw=self.levin_prec_kw,
+            )
 
             # reshape to 6d and symmetrize if needed
             cov_ng_rs_6d = sl.cov_4D_to_6D_blocks(

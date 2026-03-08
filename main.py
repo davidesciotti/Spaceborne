@@ -167,33 +167,33 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
-import threading
+# import threading
 
-import pandas as pd
-import psutil
+# import pandas as pd
+# import psutil
 
-cpu_data = []
-
-
-def monitor_cpu(interval=0.5):
-    """Monitor CPU usage per core"""
-    print('Starting CPU monitor...')
-    while not stop_event.is_set():
-        timestamp = time.time()
-        per_core = psutil.cpu_percent(percpu=True, interval=interval)
-        cpu_data.append(
-            {
-                'time': timestamp,
-                'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
-                'per_core': per_core,
-            }
-        )
-    print('CPU monitoring stopped')
+# cpu_data = []
 
 
-stop_event = threading.Event()
-monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
-monitor_thread.start()
+# def monitor_cpu(interval=0.5):
+#     """Monitor CPU usage per core"""
+#     print('Starting CPU monitor...')
+#     while not stop_event.is_set():
+#         timestamp = time.time()
+#         per_core = psutil.cpu_percent(percpu=True, interval=interval)
+#         cpu_data.append(
+#             {
+#                 'time': timestamp,
+#                 'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
+#                 'per_core': per_core,
+#             }
+#         )
+#     print('CPU monitoring stopped')
+
+
+# stop_event = threading.Event()
+# monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
+# monitor_thread.start()
 
 
 def plot_cls():
@@ -511,13 +511,14 @@ if cfg['covariance']['cNG']:
     cov_terms_list.append('cNG')
 cov_terms_str = ''.join(cov_terms_list)
 
-# set required terms based on config. Note that the sva, sn and mix terms are always
-# computed, regardless of the value of split_gaussian_cov in the config.
+# set required terms based on config.
 req_terms = []
+req_g_terms = []
 if cfg['covariance']['G']:
     if cfg['covariance']['split_gaussian_cov']:
-        req_terms.extend(['sva', 'sn', 'mix'])
-    req_terms.extend(['g'])
+        req_g_terms.extend(['sva', 'sn', 'mix'])
+    req_g_terms.extend(['g'])
+    req_terms = req_g_terms.copy()
 if cfg['covariance']['SSC']:
     req_terms.append('ssc')
 if cfg['covariance']['cNG']:
@@ -754,6 +755,7 @@ pvt_cfg = {
     'zpairs_3x2pt': zpairs_3x2pt,
     'block_index': block_index,
     'req_terms': req_terms,
+    'req_g_terms': req_g_terms,
     'n_probes': n_probes,
     'probe_ordering': probe_ordering,
     'cov_ordering_2d': cov_ordering_2d,
@@ -960,7 +962,7 @@ ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 
 # ! ================================= BNT and z means ==================================
-if cfg['BNT']['cl_BNT_transform'] or cfg['BNT']['cov_BNT_transform']:
+if cfg['BNT']['cov_BNT_transform']:
     bnt_matrix = bnt.compute_bnt_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
     )
@@ -971,16 +973,6 @@ else:
     z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
 
 z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
-
-
-# assert np.all(np.diff(z_means_ll) > 0), 'z_means_ll should be monotonically
-# increasing'
-# assert np.all(np.diff(z_means_gg) > 0), 'z_means_gg should be monotonically
-# increasing'
-# assert np.all(np.diff(z_means_ll_bnt) > 0), (
-#     'z_means_ll_bnt should be monotonically increasing '
-#     '(not a strict condition, valid only if we do not shift the n(z) in this part)'
-# )
 
 
 # ! ===================================== \ell cuts ====================================
@@ -1137,32 +1129,6 @@ if cfg['misc']['cl_triangle_plot']:
     )
 
 
-# ! BNT transform the cls (and responses?) - it's more complex since I also have to
-# ! transform the noise spectra, better to transform directly the covariance matrix
-if cfg['BNT']['cl_BNT_transform']:
-    print('BNT-transforming the Cls...')
-    assert cfg['BNT']['cov_BNT_transform'] is False, (
-        'the BNT transform should be applied either to the Cls or to the covariance, '
-        'not both'
-    )
-    from spaceborne import bnt
-
-    cl_ll_3d = bnt.cl_bnt_transform(ccl_obj.cl_ll_3d, bnt_matrix, 'L', 'L')
-    cl_3x2pt_5d = bnt.cl_bnt_transform_3x2pt(ccl_obj.cl_3x2pt_5d, bnt_matrix)
-    warnings.warn('you should probably BNT-transform the responses too!', stacklevel=2)
-    if 'OneCovariance' in cov_terms_and_codes.values():
-        raise NotImplementedError('You should cut also the OC Cls')
-
-
-if cfg['ell_cuts']['center_or_min'] == 'center':
-    ell_prefix = 'ell'
-elif cfg['ell_cuts']['center_or_min'] == 'min':
-    ell_prefix = 'ell_edges'
-else:
-    raise ValueError(
-        'cfg["ell_cuts"]["center_or_min"] should be either "center" or "min"'
-    )
-
 # ell_dict['idxs_to_delete_dict'] = {
 #     'LL': ell_utils.get_idxs_to_delete(
 #         ell_dict[f'{ell_prefix}_WL'],
@@ -1192,14 +1158,6 @@ else:
 #         ell_dict[f'{ell_prefix}_3x2pt'], ell_cuts_dict, zbins, cfg['covariance']
 #     ),
 # }
-
-
-# cov_rs_2d_full = np.hstack((cov_obj.cov_rs_obj.cov_rs_2d_dict[xipxip, xipxim, xipxip]))
-
-# for _, cov in cov_obj.cov_rs_obj.cov_rs_full_2d:
-#     print(_)
-#     sl.plot_correlation_matrix(corr_dav)
-#     plt.title(_)
 
 
 # ! 3d cl ell cuts (*after* BNT!!)
@@ -1867,7 +1825,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     ):
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
         print(
-            f'\n2PCF cov: computing probe combination {probe_ab, probe_cd}'
+            f'\n2PCF cov: computing probe combination {(probe_ab, probe_cd)}'
             f' - term {_term.upper()}'
         )
 
@@ -1930,7 +1888,7 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     ):
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
         print(
-            f'\nCOSEBIs cov: computing probe combination {probe_ab, probe_cd}'
+            f'\nCOSEBIs cov: computing probe combination {(probe_ab, probe_cd)}'
             f' - term {_term.upper()}'
         )
 
@@ -2039,16 +1997,22 @@ if cfg['OneCovariance']['compare_against_oc']:
                     atol=0,
                     rtol=1e-4,
                 )
-            # for good measure, check that the sum of the split Gaussian terms
+
+            # for good measure, also check that the sum of the split Gaussian terms
             # coincides with G
-            np.testing.assert_allclose(
-                cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d'],
-                cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
-                + cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
-                + cov_oc_obj.cov_dict['mix']['3x2pt']['2d'],
-                atol=0,
-                rtol=1e-4,
-            )
+            if (
+                'sva' in cov_oc_obj.cov_dict
+                and 'sn' in cov_oc_obj.cov_dict
+                and 'mix' in cov_oc_obj.cov_dict
+            ):
+                np.testing.assert_allclose(
+                    cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d'],
+                    cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
+                    + cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
+                    + cov_oc_obj.cov_dict['mix']['3x2pt']['2d'],
+                    atol=0,
+                    rtol=1e-4,
+                )
 
         # ! now compare SB and OC
         if oc_fmt == 'list':
@@ -2541,20 +2505,20 @@ print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
 # Stop monitoring
-stop_event.set()
-monitor_thread.join()
+# stop_event.set()
+# monitor_thread.join()
 
-# Save and plot
-df = pd.DataFrame(cpu_data)
+# # Save and plot
+# df = pd.DataFrame(cpu_data)
 
 
-plt.figure()
-df['time_elapsed'] = df['time'] - df['time'].min()
-plt.plot(df['time_elapsed'], df['cores_used'])
-plt.axhline(
-    cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
-)
-plt.xlabel('Time (s)')
-plt.ylabel('Number of Active Cores')
-plt.title('CPU Core Usage Over Time')
-plt.show()
+# plt.figure()
+# df['time_elapsed'] = df['time'] - df['time'].min()
+# plt.plot(df['time_elapsed'], df['cores_used'])
+# plt.axhline(
+#     cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
+# )
+# plt.xlabel('Time (s)')
+# plt.ylabel('Number of Active Cores')
+# plt.title('CPU Core Usage Over Time')
+# plt.show()

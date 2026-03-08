@@ -208,7 +208,7 @@ def cov_3x2pt_8d_dict_to_4d(cov_3x2pt_8d_dict, req_probe_combs_2d, space='harmon
                 row_gg_list.append(cov_3x2pt_8d_dict[probe_ab, probe_cd])
             else:
                 raise ValueError(
-                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    f'Probe combination {(probe_ab, probe_cd)} does not start with '
                     '("xip") or ("xim") or ("gt") or ("gg") '
                 )
         # concatenate the lists to make rows

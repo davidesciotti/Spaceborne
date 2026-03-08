@@ -94,7 +94,7 @@ Naming conventions (just to ease the notation):
 def get_probe_combs_wrapper(
     obs_space: str, probe_selection: dict, cross_cov: bool
 ) -> dict:
-    """Wrapper function to produce all the different probe combinations lists, 
+    """Wrapper function to produce all the different probe combinations lists,
     based on the configs and selected observable"""
 
     if obs_space == 'harmonic':
@@ -127,7 +127,7 @@ def get_probe_combs_wrapper(
     _req_probe_combs_2d = build_probe_list(unique_probe_names, include_cross_terms=True)
 
     # as req_probe_combs_2d still only contains the upper triangle,
-    # add the symemtric blocks
+    # add the symmetric blocks
     symm_probe_combs_2d, _ = get_probe_combs(_req_probe_combs_2d, space=obs_space)
     _req_probe_combs_2d += symm_probe_combs_2d
 
@@ -361,7 +361,7 @@ def symmetrize_and_fill_probe_blocks(
         probe_ab, probe_cd = split_probe_name(probe_abcd, space=obs_space)
         probe_2tpl_orig = (probe_ab, probe_cd)
         probe_2tpl_symm = (probe_cd, probe_ab)
-        print(f'{msg}filling probe combination {probe_ab, probe_cd} by symmetry')
+        print(f'{msg}filling probe combination {(probe_ab, probe_cd)} by symmetry')
 
         if dim == '4d':
             transpose_axes = (1, 0, 3, 2)
@@ -381,7 +381,7 @@ def symmetrize_and_fill_probe_blocks(
         probe_2tpl = (probe_ab, probe_cd)
         zpairs_ab = ind_dict[probe_ab].shape[0]
         zpairs_cd = ind_dict[probe_cd].shape[0]
-        print(f'{msg}skipping probe combination {probe_ab, probe_cd}')
+        print(f'{msg}skipping probe combination {(probe_ab, probe_cd)}')
 
         if dim == '4d':
             shape = (nbx, nbx, zpairs_ab, zpairs_cd)
@@ -1439,7 +1439,7 @@ def compare_funcs(
 
     if title is not None:
         fig.suptitle(title)
-        
+
     if ylabel is not None:
         ax[0].set_ylabel(ylabel)
 
@@ -3888,7 +3888,7 @@ def cov_dict_6d_probe_blocks_to_4d_and_2d(
             # additional check: the input dictionary should only contain the '6d' dim
             for dim in ['4d', '2d']:
                 assert cov_dict[term][probe_ab, probe_cd][dim] is None, (
-                    f'In term {term}, probe combination {probe_ab, probe_cd}, '
+                    f'In term {term}, probe combination {(probe_ab, probe_cd)}, '
                     f'dimension {dim} is already set to a non-None value. '
                     f'Please provide only the 6d array in the input dictionary.'
                 )
@@ -3996,7 +3996,7 @@ def cov_3x2pt_8D_dict_to_4D(cov_3x2pt_8D_dict, req_probe_combs_2d, space='harmon
                 row_gg_list.append(cov_3x2pt_8D_dict[probe_ab, probe_cd])
             else:
                 raise ValueError(
-                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    f'Probe combination {(probe_ab, probe_cd)} does not start with '
                     '("xip") or ("xim") or ("gt") or ("gg") '
                 )
         # concatenate the lists to make rows
@@ -4061,7 +4061,7 @@ def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: s
                 row_gg_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
             else:
                 raise ValueError(
-                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    f'Probe combination {(probe_ab, probe_cd)} does not start with '
                     '("LL") or ("GL") or ("GG") '
                 )
 
@@ -4095,7 +4095,7 @@ def cov_dict_4d_probeblocks_to_3x2pt_4d_array(cov_probe_dict: dict, obs_space: s
                 row_gg_list.append(cov_probe_dict[probe_ab, probe_cd]['4d'])
             else:
                 raise ValueError(
-                    f'Probe combination {probe_ab, probe_cd} does not start with '
+                    f'Probe combination {(probe_ab, probe_cd)} does not start with '
                     '("xip") or ("xim") or ("gt") or ("gg") '
                 )
         # concatenate the lists to make rows
@@ -4728,7 +4728,7 @@ def build_cov_3x2pt_2d(
 
     diag_probes = const.__getattribute__(f'{prefix}_DIAG_PROBES')
 
-    # grab the number of ell bins
+    # get the number of ell bins
     probe_blocks = [k for k in cov_term_dict if cov_term_dict[k] is not None]
     first_block = probe_blocks[0]
     nbx = cov_term_dict[first_block]['4d'].shape[0]

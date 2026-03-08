@@ -474,7 +474,7 @@ class CCLInterface:
 
             with sl.timer(
                 f'{comp_load_str} {which_ng_cov} trispectrum, '
-                f'probe combination {probe_ab, probe_cd}'
+                f'probe combination {(probe_ab, probe_cd)}'
             ):
                 # Attempt to load from cache, fall back to computing if necessary
                 tkka_abcd = None
@@ -766,7 +766,7 @@ class CCLInterface:
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
 
             tqdm.write(
-                f'CCL {which_ng_cov} cov: computing probe combination {probe_ab, probe_cd}'
+                f'CCL {which_ng_cov} cov: computing probe combination {(probe_ab, probe_cd)}'
             )
 
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(

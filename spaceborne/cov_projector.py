@@ -140,6 +140,12 @@ class CovarianceProjector:
         self.n_jobs = cfg['misc']['num_threads']
         self.n_probes_hs = 2
 
+        # both real space and COSEBIs covariances are becessarily split into
+        # sva, sn and mix
+        base_terms = pvt_cfg['req_terms']
+        prepend = [t for t in ['sva', 'sn', 'mix'] if t not in base_terms]
+        self.req_terms = prepend + list(base_terms)
+
         self._set_survey_info(mask_obj)
         self._set_terms_toloop()
         self._set_neff_and_sigma_eps()
@@ -492,7 +498,7 @@ class CovarianceProjector:
 
         This function projects a 4D harmonic-space non-Gaussian covariance to real (TBD)
         or COSEBIs space. It includes the evaluation of the projection kernels
-        (e.g., k_mwu for real space, W_n for COSEBIs over the (possibly different)
+        (e.g., k_mu for real space, W_n for COSEBIs over the (possibly different)
         ell_1 and ell_2 grids.
         It then buils the integrand: ell_1 * ell_2 * kernel_1 * kernel_2 * cov_hs_ng_4d
         and integrates it with Simpson's rule.
@@ -612,21 +618,29 @@ class CovarianceProjector:
         # even on a coarse ells_proj grid.
         cov_flat = cov_ng_4d.reshape(nbl, nbl, n_flat)
         interp_2d = RegularGridInterpolator(
-            (ells_proj, ells_proj), cov_flat,
-            method='cubic', bounds_error=False, fill_value=0.0,
+            (ells_proj, ells_proj),
+            cov_flat,
+            method='cubic',
+            bounds_error=False,
+            fill_value=0.0,
         )
 
         # Step 1: inner integral I(ell1) = ∫ dℓ₂ ℓ₂ K₂(ℓ₂) C(ell1, ℓ₂)
         # Evaluated at each ell1 in ells_proj; shape of inner_result: (nbl, n_flat)
         inner_result = np.zeros((nbl, n_flat))
         for i, ell1 in enumerate(ells_proj):
+
             def _inner(ell2, _ell1=ell1):
                 k2 = kernel_2_func_of_ell(np.atleast_1d(ell2))[0]
                 cov_val = interp_2d([[_ell1, ell2]])[0]  # shape: (n_flat,)
                 return ell2 * k2 * cov_val
 
             inner_result[i], _ = quad_vec(
-                _inner, ell_min, ell_max, limit=limit, epsrel=epsrel,
+                _inner,
+                ell_min,
+                ell_max,
+                limit=limit,
+                epsrel=epsrel,
                 workers=num_threads,
             )
 
@@ -639,7 +653,7 @@ class CovarianceProjector:
             k1 = kernel_1_func_of_ell(np.atleast_1d(ell1))[0]
             return ell1 * k1 * inner_spline(ell1)  # shape: (n_flat,)
 
-        result, _ = quad_vec(_outer, ell_min, ell_max, limit=limit, epsrel=epsrel,
-                             workers=num_threads)
+        result, _ = quad_vec(
+            _outer, ell_min, ell_max, limit=limit, epsrel=epsrel, workers=num_threads
+        )
         return result.reshape(n_ij, n_kl)
-

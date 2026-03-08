@@ -36,23 +36,17 @@ class CovCOSEBIs(CovarianceProjector):
 
         self.n_modes = cfg['binning']['n_modes_cosebis']
         assert self.n_modes == self.nbx, 'n_modes_cosebis must equal nbx!'
-
-        # instantiate cov dict with the required terms and probe combinations
-        # for real space, the gaussian term is always split
-        self.req_terms = pvt_cfg['req_terms']
-        for _term in ['sva', 'sn', 'mix']:
-            if _term not in self.req_terms:
-                self.req_terms.insert(0, _term)
-
-        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_cs_2d']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
-        dims = ['6d', '4d', '2d']
 
+        # ! instantiate cov_dict
+        self.req_probe_combs_2d = pvt_cfg['req_probe_combs_cs_2d']
+        dims = ['6d', '4d', '2d']
         _req_probe_combs_2d = [
             sl.split_probe_name(probe, space='cosebis')
             for probe in self.req_probe_combs_2d
         ]
         _req_probe_combs_2d.append('3x2pt')
+        # note: self.req_terms is instantiated in the parent class
         self.cov_dict = cd.create_cov_dict(
             self.req_terms, _req_probe_combs_2d, dims=dims
         )
@@ -290,6 +284,13 @@ class CovCOSEBIs(CovarianceProjector):
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) == ('En', 'En'):
+            
+            if cov_hs_ng_dict is None:
+                raise ValueError(
+                    f'Non-Gaussian covariance term {term} requested, '
+                    'but no harmonic-space non-Gaussian covariance dictionary provided.'
+                )
+            
             # recover corresponding harmonic-space probe names
             probe_abcd_hs = (
                 const.HS_PROBE_IX_TO_NAME_DICT[probe_a_ix]

@@ -47,10 +47,9 @@ class SpaceborneCovariance:
         self.zpairs_3x2pt = pvt_cfg['zpairs_3x2pt']
         self.block_index = pvt_cfg['block_index']
 
-
-
         # instantiate cov dict with the required terms and probe combinations
         self.req_terms = pvt_cfg['req_terms']
+        self.req_g_terms = pvt_cfg['req_g_terms']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_hs_2d']
         self.nonreq_probe_combs = pvt_cfg['nonreq_probe_combs_hs']
         dims = ['6d', '4d', '2d']
@@ -143,20 +142,6 @@ class SpaceborneCovariance:
             noise_3x2pt_4d[:, :, np.newaxis, :, :], self.ell_obj.nbl_3x2pt_unb, axis=2
         )
 
-        # bnt-transform the noise spectra if needed
-        if self.cfg['BNT']['cl_BNT_transform']:
-            print('BNT-transforming the noise spectra...')
-            noise_3x2pt_5d = bnt_utils.cl_bnt_transform_3x2pt(
-                noise_3x2pt_5d, self.bnt_matrix
-            )
-            noise_3x2pt_unb_5d = bnt_utils.cl_bnt_transform_3x2pt(
-                noise_3x2pt_unb_5d, self.bnt_matrix
-            )
-            raise NotImplementedError(
-                'Make sure to transform the unbinned Cls as well, '
-                'if using cov_hs_g_ell_bin_average'
-            )
-
         if self.cfg['precision']['cov_hs_g_ell_bin_average']:
             # unbinned cls and noise; need the edges to compute the number of modes
             # (after casting them to int. n_modes is equivalent to delta_ell modulo the
@@ -205,12 +190,13 @@ class SpaceborneCovariance:
                 _cov_3x2pt_sva_6d + _cov_3x2pt_sn_6d + _cov_3x2pt_mix_6d
             )
 
-        # zero-out the blocks not requested
+        # zero-out the probe blocks not requested
+        # note: these have to be 0, not None!
         for probe_abcd in self.nonreq_probe_combs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             probe_2tpl = (probe_ab, probe_cd)
             probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
-            for term in ('sva', 'sn', 'mix', 'g'):
+            for term in self.req_g_terms:
                 self.cov_dict[term][probe_2tpl]['6d'] = np.zeros_like(
                     self.cov_dict[term][probe_2tpl]['6d']
                 )
@@ -224,15 +210,6 @@ class SpaceborneCovariance:
                 raise ValueError(
                     'cov_nmt_obj is required when partial_sky_method == "NaMaster" or '
                     'compute_sample_cov is True'
-                )
-
-            if self.cfg['BNT']['cl_BNT_transform']:
-                raise NotImplementedError(
-                    'This BNT noise transformation should be rightbut has never '
-                    'been checked'
-                )
-                noise_3x2pt_unb_5d = bnt_utils.cl_bnt_transform_3x2pt(
-                    noise_3x2pt_unb_5d, self.bnt_matrix
                 )
 
             # noise vector doesn't have to be recomputed, but repeated a larger number
@@ -260,19 +237,6 @@ class SpaceborneCovariance:
                     del self.cov_dict[term]
 
         print(f'...done in {(time.perf_counter() - start):.2f} s')
-
-    def _remove_split_terms_from_dict(self, split_gaussian_cov: bool):
-        """Helper function to remove the SVA/SN/MIX parts of the G cov if
-        split_gaussian_cov is False (i.e., when we don't need the split terms).
-
-        Note: I already remove the sva, sn, mix terms when saving the covs at the end
-        of main.py, so strictly speaking this is redundant."""
-        if split_gaussian_cov:
-            return
-
-        for term in ('sva', 'sn', 'mix'):
-            if term in self.cov_dict:
-                del self.cov_dict[term]
 
     def _add_ext_cov_g(self, cov_oc_obj: OneCovarianceInterface, split_gaussian_cov):
 
@@ -543,9 +507,6 @@ class SpaceborneCovariance:
             req_probe_combs_2d=self.req_probe_combs_2d,
             space='harmonic',
         )
-
-        # ! clean up dictionaries:
-        self._remove_split_terms_from_dict(split_gaussian_cov)
 
         # ! perform ell cuts on the 2D covs
         self._cov_2d_ell_cuts(split_gaussian_cov)

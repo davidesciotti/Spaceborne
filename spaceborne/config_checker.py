@@ -24,16 +24,6 @@ class SpaceborneConfigChecker:
 
     def check_BNT_transform(self) -> None:
         if self.cfg['BNT']['cov_BNT_transform']:
-            assert not self.cfg['BNT']['cl_BNT_transform'], (
-                'The BNT transform should be applied either to the Cls '
-                'or to the covariance.'
-            )
-        if self.cfg['BNT']['cl_BNT_transform']:
-            assert not self.cfg['BNT']['cov_BNT_transform'], (
-                'The BNT transform should be applied either to the Cls '
-                'or to the covariance.'
-            )
-        if self.cfg['BNT']['cov_BNT_transform'] or self.cfg['BNT']['cl_BNT_transform']:
             assert self.cfg['probe_selection']['space'] == 'harmonic', (
                 'The BNT transform can only be applied in harmonic space.'
             )
@@ -347,9 +337,6 @@ class SpaceborneConfigChecker:
             "Section 'BNT' must be a dictionary"
         )
         bnt_cfg = self.cfg['BNT']
-        assert isinstance(bnt_cfg.get('cl_BNT_transform'), bool), (
-            'BNT: cl_BNT_transform must be a boolean'
-        )
         assert isinstance(bnt_cfg.get('cov_BNT_transform'), bool), (
             'BNT: cov_BNT_transform must be a boolean'
         )

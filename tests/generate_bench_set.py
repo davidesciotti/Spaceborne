@@ -338,7 +338,7 @@ base_cfg = {
         'apodize': False,
         'aposize': 0.1,
     },
-    'BNT': {'cl_BNT_transform': False, 'cov_BNT_transform': False},
+    'BNT': {'cov_BNT_transform': False},
     'OneCovariance': {
         'path_to_oc_env': '/opt/miniconda3/envs/cov20_env/bin/python',
         'path_to_oc_executable': f'{ROOT}/OneCovariance/covariance.py',

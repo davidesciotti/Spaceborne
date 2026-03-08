@@ -38,7 +38,12 @@ class CovCOSEBIs(CovarianceProjector):
         assert self.n_modes == self.nbx, 'n_modes_cosebis must equal nbx!'
 
         # instantiate cov dict with the required terms and probe combinations
+        # for real space, the gaussian term is always split
         self.req_terms = pvt_cfg['req_terms']
+        for _term in ['sva', 'sn', 'mix']:
+            if _term not in self.req_terms:
+                self.req_terms.insert(0, _term)
+
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_cs_2d']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         dims = ['6d', '4d', '2d']

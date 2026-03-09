@@ -8,18 +8,18 @@ import warnings
 import yaml
 
 # TODOS BRANCH
-# - test against OC, and update the corresponding dedicated cfg
-# - make sure to compute cng on a finer ell grid
+# ok test against OC, and update the corresponding dedicated cfg
+# ok make sure to compute cng on a finer ell grid
 # - ssc computation should not be in the main, btw, I don't think it'll be difficult to port it to the SSC class
-# - finish commenting out the new code, also to tidy it up
+# ok finish commenting out the new code, also to tidy it up
 # - try feeding OC NG covs to the simps projection
 # - port to Melodie for speed?
-# - fix RS shot noise
-# - it would be nice to recycle the implementation for a quick and dirty RS NG simps cov projection
-# - merge to develop in small chunks! After current validation might me a good idea
+# ok fix RS shot noise
+# ok it would be nice to recycle the implementation for a quick and dirty RS NG simps cov projection
+# ok merge to develop in small chunks! After current validation might me a good idea
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
-# - SSC and cNG can be computed for mmmm only when projecting En and Bn COSEBIs!!!
+# ok SSC and cNG can be computed for mmmm only when projecting En and Bn COSEBIs!!!
 # - put markers in CPU vs time to understand portion of the code which could be parallelised
 
 
@@ -27,6 +27,7 @@ import yaml
 # - what is the ell range used to compute the NG HS covs used for projection to COSEBIs NG?
 # - from the comaprison it looks like the SSC normalization factor is 2pi*amax, but in the paper there's no amax...
 # - on the other hand, the code has 1/4pi^2...
+
 
 
 def load_config(_config_path):

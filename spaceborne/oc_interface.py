@@ -686,8 +686,7 @@ class OneCovarianceInterface:
             map(str, mult_shear_bias_list)
         )
 
-        # find best ell_max for OC, since it uses a slightly different recipe
-        # self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
+        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
 
         if self.obs_space == 'harmonic':
             for _probe in ['', '_clustering', '_lensing']:
@@ -695,7 +694,6 @@ class OneCovarianceInterface:
                     self.cfg['binning']['ell_min']
                 )
                 cfg_oc_ini['covELLspace settings'][f'ell_max{_probe}'] = str(
-                    # self.optimal_ellmax
                     self.cfg['binning']['ell_max']
                 )
                 cfg_oc_ini['covELLspace settings'][f'ell_bins{_probe}'] = str(
@@ -1182,91 +1180,6 @@ class OneCovarianceInterface:
             self.probe_rs_list,
             self.probe_cs_list,
         )
-
-    def find_optimal_ellmax_oc(self, target_ell_array):
-        upper_lim = self.ells_sb[-1] + 300
-        lower_lim = self.ells_sb[-1] - 300
-        lower_lim = max(lower_lim, 0)
-
-        # Perform the minimization
-        result = minimize_scalar(
-            self.objective_function, bounds=[lower_lim, upper_lim], method='bounded'
-        )
-
-        # Check the result
-        if result.success:
-            self.optimal_ellmax = result.x
-            print(f'Optimal ellmax found: {self.optimal_ellmax}')
-        else:
-            print('Optimization failed.')
-
-        # self.new_ells_oc = self.compute_ells_oc(
-        #     nbl=int(self.pvt_cfg['nbl_3x2pt']),
-        #     ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
-        #     ell_max=self.optimal_ellmax,
-        # )
-        self.new_ells_oc, _ = ell_utils.compute_ells_oc(
-            nbl=int(self.pvt_cfg['nbl_3x2pt']),
-            ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
-            ell_max=self.optimal_ellmax,
-            binning_type=self.binning_type,
-            output_ell_bin_edges=False,
-        )
-
-        fig, ax = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
-        fig.subplots_adjust(hspace=0)
-        ax[0].plot(target_ell_array, label='target ells (SB)', marker='o', alpha=0.6)
-        ax[0].plot(self.new_ells_oc, label='ells OC', marker='o', alpha=0.6)
-        ax[1].plot(
-            sl.percent_diff(target_ell_array, self.new_ells_oc),
-            label='% diff',
-            marker='o',
-        )
-        ax[0].legend()
-        ax[1].legend()
-        ax[0].set_ylabel('$\\ell$')
-        ax[1].set_ylabel('SB/OC - 1 [%]')
-        fig.supxlabel('ell idx')
-
-    # def compute_ells_oc(self, nbl, ell_min, ell_max):
-    #     if self.binning_type == 'log':
-    #         # log-spaced bin edges and geometric mean for the bin centers
-    #         # OC casts the ell bin edges to int
-    #         ell_bin_edges_oc_int = np.unique(
-    #             np.geomspace(ell_min, ell_max, nbl + 1).astype(int)
-    #         )
-    #         # this is the geometric mean
-    #         ells_oc_int = np.exp(
-    #             0.5
-    #             * (np.log(ell_bin_edges_oc_int[1:]) + np.log(ell_bin_edges_oc_int[:-1]))
-    #         )
-
-    #     # lin-spaced bin edges and arithmetic mean for the bin centers
-    #     elif self.binning_type == 'lin':
-    #         ell_bin_edges_oc_int = np.linspace(ell_min, ell_max, nbl + 1).astype(int)
-    #         ells_oc_int = 0.5 * (ell_bin_edges_oc_int[1:] + ell_bin_edges_oc_int[:-1])
-
-    #     else:
-    #         raise ValueError(f'Binning type {self.binning_type} not recognized')
-
-    #     return ells_oc_int
-
-    def objective_function(self, ell_max):
-        # ells_oc = self.compute_ells_oc(
-        #     nbl=int(self.pvt_cfg['nbl_3x2pt']),
-        #     ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
-        #     ell_max=ell_max,
-        # )
-        ells_oc, _ = ell_utils.compute_ells_oc(
-            nbl=int(self.pvt_cfg['nbl_3x2pt']),
-            ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
-            ell_max=ell_max,
-            binning_type=self.binning_type,
-            output_ell_bin_edges=False,
-        )
-        ssd = np.sum((self.ells_sb - ells_oc) ** 2)
-        # ssd = np.sum(sl.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this
-        return ssd
 
     def get_oc_responses(self, ini_filename, h):
         import sys

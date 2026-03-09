@@ -1789,7 +1789,7 @@ if compute_ccl_ssc or compute_ccl_cng:
             ind_dict=ind_dict,
         )
 
-    # symemtry sanity check
+    # symmetry sanity check
     ccl_obj.check_cov_blocks_symmetry()
 
 # ! ========================== Combine covariance terms ================================
@@ -1930,6 +1930,7 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
 # ! =============================== END OF FUN PART ====================================
 # ! ====================================================================================
 
+# ! select the appropriate cov_dict to save, based on the required obs_space and probes
 if obs_space == 'harmonic':
     _cov_dict = cov_hs_obj.cov_dict
     _probes = unique_probe_combs_hs
@@ -1944,6 +1945,7 @@ else:
         f'Unknown cfg["probe_selection"]["space"]: {cfg["probe_selection"]["space"]}'
     )
 
+# ! overwrite the appropriate terms with the OneCov covs, if requested.
 # in the harmonic case, this is handled by the cov_harmonic_space class
 # Note that I need to copy arrays at leaf level
 if obs_space != 'harmonic':

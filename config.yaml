@@ -322,7 +322,7 @@ precision:
 
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
-  log10_k_max: 2.0 # Type: float. Units: 1/Mpc
+  log10_k_max: 2.5 # Type: float. Units: 1/Mpc
   k_steps: 150 # Type: int. Around 150 should be enough
 
   z_min: 0.02 # Type: float

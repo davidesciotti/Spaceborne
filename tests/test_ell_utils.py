@@ -228,21 +228,21 @@ class TestEllBinning:
         assert len(ell_obj.ells_3x2pt_unb) == ell_obj.nbl_3x2pt_unb
         assert ell_obj.ells_3x2pt_unb[-1] == ell_obj.ell_max_3x2pt
 
-    def test_compute_ells_3x2pt_rs(self, basic_config):
-        """Test real space 3x2pt ell computation."""
+    def test_compute_ells_3x2pt_proj(self, basic_config):
+        """Test ell computation for covariance projection."""
         basic_config['precision'] = {
-            'ell_min_rs': 1,
-            'ell_max_rs': 10000,
-            'ell_bins_rs': 100,
+            'ell_min_proj': 1,
+            'ell_max_proj': 10000,
+            'ell_bins_proj_gauss': 100,
         }
         
         ell_obj = ell_utils.EllBinning(basic_config)
         ell_obj.build_ell_bins()
-        ell_obj.compute_ells_3x2pt_rs()
+        ell_obj.compute_ells_3x2pt_proj()
         
-        assert len(ell_obj.ells_3x2pt_rs) == 100
-        assert ell_obj.nbl_3x2pt_rs == 100
-        assert ell_obj.ell_max_3x2pt_rs == 10000
+        assert len(ell_obj.ells_3x2pt_proj_g) == 100
+        assert ell_obj.nbl_3x2pt_proj_g == 100
+        assert ell_obj.ell_max_3x2pt_proj == 10000
 
 
 class TestLoadEllCuts:

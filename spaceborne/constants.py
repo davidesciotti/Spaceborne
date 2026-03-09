@@ -161,6 +161,7 @@ RS_PROBE_NAME_TO_IX_DICT_SHORT = {
     'xim': 3,
 }
 
+HS_PROBE_NAME_TO_LATEX = {'LL': r'${\rm LL}$', 'GL': r'${\rm GL}$', 'GG': r'${\rm GG}$'}
 RS_PROBE_NAME_TO_LATEX = {
     'xip': r'$\xi_{+}$',
     'xim': r'$\xi_{-}$',
@@ -173,7 +174,6 @@ CS_PROBE_NAME_TO_LATEX = {
     'Psigl': r'$\Psi_{\rm gl}$',
     'Psigg': r'$\Psi_{\rm gg}$',
 }
-HS_PROBE_NAME_TO_LATEX = {'LL': r'${\rm LL}$', 'GL': r'${\rm GL}$', 'GG': r'${\rm GG}$'}
 
 # adapted from notebook by G. C. Herrera
 labels_tex = {

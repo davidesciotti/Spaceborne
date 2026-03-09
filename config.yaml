@@ -50,7 +50,7 @@ halo_model:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: harmonic # Type: str.
+  space: real # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -191,14 +191,13 @@ mask:
   apodize: False # Type: bool
   aposize: 0.1 # Type: float. Apodization scale in deg
 
-BNT:
-  cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
-  cov_BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+
+  BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
   # ================================== Gaussian cov ====================================
   # Method to account for partial sky coverage in the Gaussian term.
@@ -266,6 +265,7 @@ covariance:
   # - scale_probe_zpair: Ordered by scale index (ell/theta/n), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
+  # =================================== output =======================================
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
   # The output will be a npz file for each term, containing arrays of shape
   # ({ell, theta}_bins, {ell, theta}_bins, zbins, zbins, zbins, zbins).
@@ -341,10 +341,10 @@ precision:
   # ================================= real-space cov ===================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
-  ell_min_rs: 2 # Type: int
-  ell_max_rs: 100000 # Type: int
-  ell_bins_rs: 500 # Type: int. Should be high to get accurate results with Simpson integration
-  ell_bins_rs_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
+  ell_min_proj: 10 # Type: int
+  ell_max_proj: 100000 # Type: int
+  ell_bins_proj_gauss: 500 # Type: int. Should be high to get accurate results with Simpson integration
+  ell_bins_proj_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.
@@ -381,7 +381,7 @@ precision:
 misc:
   # note if you work from an interactive environment (e.g. jupyter notebook), you might
   # have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 200 # Type: int. How many threads to use for the parallel computations
+  num_threads: 127 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.
@@ -403,5 +403,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: ../DATA/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/develop # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

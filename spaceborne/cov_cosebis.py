@@ -36,17 +36,17 @@ class CovCOSEBIs(CovarianceProjector):
 
         self.n_modes = cfg['binning']['n_modes_cosebis']
         assert self.n_modes == self.nbx, 'n_modes_cosebis must equal nbx!'
+        self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
 
-        # instantiate cov dict with the required terms and probe combinations
-        self.req_terms = pvt_cfg['req_terms']
+        # ! instantiate cov_dict
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_cs_2d']
         dims = ['6d', '4d', '2d']
-
         _req_probe_combs_2d = [
             sl.split_probe_name(probe, space='cosebis')
             for probe in self.req_probe_combs_2d
         ]
         _req_probe_combs_2d.append('3x2pt')
+        # note: self.req_terms is instantiated in the parent class
         self.cov_dict = cd.create_cov_dict(
             self.req_terms, _req_probe_combs_2d, dims=dims
         )
@@ -56,8 +56,12 @@ class CovCOSEBIs(CovarianceProjector):
 
         # attributes set at runtime
         self.cl_3x2pt_5d = _UNSET
-        self.ells = _UNSET
-        self.nbl = _UNSET
+        self.ells_proj_g = _UNSET
+        self.ells_proj_ng = _UNSET
+        self.nbl_proj_g = _UNSET
+        self.nbl_proj_ng = _UNSET
+        self.w_ells_arr_g = _UNSET
+        self.w_ells_arr_ng = _UNSET
 
     @property
     def ch(self):
@@ -65,6 +69,7 @@ class CovCOSEBIs(CovarianceProjector):
         if self._ch is None:
             try:
                 import cloelib.auxiliary.cosebi_helpers as ch
+
                 self._ch = ch
             except ImportError as e:
                 raise ImportError(
@@ -92,7 +97,7 @@ class CovCOSEBIs(CovarianceProjector):
         assert len(self.theta_grid_rad) == self.nbt, 'theta_grid_rad length mismatch'
         assert np.min(np.diff(self.theta_grid_rad)) > 0, 'theta_grid_rad not sorted!'
 
-    def set_w_ells(self):
+    def set_w_ells(self, ells):
         """
         Compute and set the COSEBIs W_n(ell) kernels for all modes and ells.
 
@@ -105,12 +110,13 @@ class CovCOSEBIs(CovarianceProjector):
             w_ells_dict = self.ch.get_W_ell(
                 thetagrid=self.theta_grid_rad,
                 Nmax=self.nbx,
-                ells=self.ells,
+                ells=ells,
                 N_thread=self.n_jobs,
             )
 
         # turn to array of shape (n_modes, n_ells) and assign to self
-        self.w_ells_arr = np.array(list(w_ells_dict.values()))
+        w_ells_arr = np.array(list(w_ells_dict.values()))
+        return w_ells_arr
 
     def cov_sn_cs(self):
         """Compute the COSEBIs shape noise covariance term."""
@@ -191,7 +197,7 @@ class CovCOSEBIs(CovarianceProjector):
         return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]
 
     def compute_cs_cov_term_probe_6d(
-        self, cov_hs_dict: dict | None, probe_abcd: str, term: str
+        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str
     ) -> None:
         """
         Computes the COSEBIs covariance matrix for the specified term and probe combination.
@@ -240,7 +246,7 @@ class CovCOSEBIs(CovarianceProjector):
         # For COSEBIs it's only w_ells_arr (constant across all mode pairs)
         # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by
         # the wrapper
-        kernel_builder_func_kw = {'w_ells_arr': self.w_ells_arr}
+        kernel_builder_func_kw = {'w_ells_arr': self.w_ells_arr_g}
 
         # Compute term-specific covariance
         if term == 'sva':
@@ -276,6 +282,75 @@ class CovCOSEBIs(CovarianceProjector):
                 cov_out_6d = self.cov_sn_cs()
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
+
+        elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) == ('En', 'En'):
+            
+            if cov_hs_ng_dict is None:
+                raise ValueError(
+                    f'Non-Gaussian covariance term {term} requested, '
+                    'but no harmonic-space non-Gaussian covariance dictionary provided.'
+                )
+            
+            # recover corresponding harmonic-space probe names
+            probe_abcd_hs = (
+                const.HS_PROBE_IX_TO_NAME_DICT[probe_a_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_b_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_c_ix]
+                + const.HS_PROBE_IX_TO_NAME_DICT[probe_d_ix]
+            )
+            probe_ab_hs, probe_cd_hs = sl.split_probe_name(probe_abcd_hs, 'harmonic')
+
+            assert probe_ab_hs == 'LL' and probe_cd_hs == 'LL', (
+                'Since no Psi-statistics covariance is implemented, '
+                'the input non-Gaussian harmonic-space covariance matrix to project '
+                'for COSEBIs should only be the (LL, LL) one.'
+                f'found ({probe_ab_hs}, {probe_cd_hs}) instead.'
+            )
+
+            # project hs non-gaussian cov to COSEBIs space
+            cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
+
+            # Loop over scale indices (mode_n, mode_m)
+            cov_cs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
+            for s1 in range(self.nbx):
+                for s2 in range(self.nbx):
+                    # Build projection kernels for s1 and s2 (mode_n, mode_m):
+                    # I need callables that are a function of ell,
+                    # even though they are not in this case
+                    def kernel_n(ell, n=s1):
+                        return self.w_ells_arr_ng[n, :]
+
+                    def kernel_m(ell, m=s2):
+                        return self.w_ells_arr_ng[m, :]
+
+                    # Integrate over (ell_1, ell_2) for all tomographic
+                    # bin combinations at once
+                    cov_cs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
+                        ells_proj=self.ells_proj_ng,
+                        cov_ng_4d=cov_hs_ng_4d,
+                        kernel_1_func_of_ell=kernel_n,
+                        kernel_2_func_of_ell=kernel_m,
+                    )
+
+            # reshape to 6d and symmetrize if needed
+            cov_ng_cs_6d = sl.cov_4D_to_6D_blocks(
+                cov_4D=cov_cs_ng_4d,
+                nbl=self.nbx,
+                zbins=self.zbins,
+                ind_ab=ind_ab,
+                ind_cd=ind_cd,
+                symmetrize_output_ab=self.symmetrize_output_dict[probe_ab_hs],
+                symmetrize_output_cd=self.symmetrize_output_dict[probe_cd_hs],
+            )
+
+            # normalize
+            norm = 4 * np.pi**2
+            cov_ng_cs_6d /= norm
+
+            cov_out_6d = cov_ng_cs_6d
+
+        elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) != ('En', 'En'):
+            cov_out_6d = np.zeros(self.cov_shape_6d)
 
         else:
             raise ValueError(

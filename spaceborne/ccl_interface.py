@@ -473,7 +473,8 @@ class CCLInterface:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
 
             with sl.timer(
-                f'{comp_load_str} {which_ng_cov} trispectrum, probe combination {probe_abcd}'
+                f'{comp_load_str} {which_ng_cov} trispectrum, '
+                f'probe combination {(probe_ab, probe_cd)}'
             ):
                 # Attempt to load from cache, fall back to computing if necessary
                 tkka_abcd = None
@@ -482,12 +483,11 @@ class CCLInterface:
                         tkka_abcd = self._load_and_set_tkka(
                             which_ng_cov, tkka_path, k_a_str, probe_abcd
                         )
-                    except FileNotFoundError as e:
+                    except FileNotFoundError:
                         print(
-                            'No files found in the cache. '
-                            'Proceeding to compute the trispectrum term.\nError message:\n'
+                            f'No trispectrum files found in folder \n{tkka_path}\n. '
+                            'Proceeding to compute the trispectrum...'
                         )
-                        print(e)
 
                 if tkka_abcd is None:
                     tkka_abcd = self._compute_and_save_tkka(
@@ -766,7 +766,7 @@ class CCLInterface:
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
 
             tqdm.write(
-                f'CCL {which_ng_cov} cov: computing probe combination {probe_ab, probe_cd}'
+                f'CCL {which_ng_cov} cov: computing probe combination {(probe_ab, probe_cd)}'
             )
 
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(

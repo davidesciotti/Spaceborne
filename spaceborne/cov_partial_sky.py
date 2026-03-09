@@ -178,7 +178,7 @@ def nmt_gaussian_cov_opt(
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
         probe_a, probe_b, probe_c, probe_d = list(probe_abcd)
 
-        tqdm.write(f'NaMaster G cov: computing probe combination {probe_ab, probe_cd}')
+        tqdm.write(f'NaMaster G cov: computing probe combination {(probe_ab, probe_cd)}')
 
         s1 = spin_dict[probe_a]
         s2 = spin_dict[probe_b]
@@ -839,7 +839,7 @@ class NmtCov:
         # shorten names for brevity
         nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
         fsky = self.mask_obj.fsky
-        unique_probe_combs = self.pvt_cfg['unique_probe_combs']
+        unique_probe_combs = self.pvt_cfg['unique_probe_combs_hs']
 
         ells_eff = self.ell_obj.ells_3x2pt
         nbl_eff = self.ell_obj.nbl_3x2pt

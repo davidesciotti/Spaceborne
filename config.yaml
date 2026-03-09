@@ -57,7 +57,7 @@ halo_model:
 OneCovariance:
   # Path to Python executable in OneCovariance conda environment
   # Update this to match your system's conda installation
-  path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
+  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
@@ -70,7 +70,7 @@ probe_selection:
   space: real # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
-  GL: False # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
+  GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
   GG: True # Type: bool. Whether to compute the photometric clustering ('GG') covariance
 
   xip: True # Type: bool. Whether to compute \xi_+
@@ -89,8 +89,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/nz_demo.dat # Type: str
+  nz_sources_filename: ../DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
+  nz_lenses_filename: ../DATA/Spaceborne_jobs/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -124,7 +124,7 @@ binning:
   # with `ell` the ell bin center, `delta_ell` its width,
   # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
   # The file can be in .txt, .dat or .ascii format.
-  ell_bins_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
+  ell_bins_filename: ../DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 5 # Type: float | int.
@@ -150,9 +150,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -169,8 +169,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /data/sciotti/DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
 
   # Interpolation methods for the galaxy and magnification bias tables.
   # This should be set to "linear" or "nearest" for step-like, or in general discontinuous, 
@@ -208,18 +208,17 @@ mask:
   apodize: False # Type: bool
   aposize: 0.1 # Type: float. Apodization scale in deg
 
-BNT:
-  cl_BNT_transform: False # Type: bool. Whether to BNT-transform the Cls
-  cov_BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-  cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   G_code: Spaceborne
   SSC_code: Spaceborne
   cNG_code: PyCCL
+
+  BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
   # ================================== Gaussian cov ====================================
   # Method to account for partial sky coverage in the Gaussian term.
@@ -287,6 +286,8 @@ covariance:
   # - scale_probe_zpair: Ordered by scale index (ell/theta/n), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
+
+  # =================================== output =======================================
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
   # The output will be a npz file for each term, containing arrays of shape
   # ({ell, theta}_bins, {ell, theta}_bins, zbins, zbins, zbins, zbins).
@@ -363,7 +364,7 @@ precision:
   # ================================= real-space cov ===================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
-  ell_min_proj: 1 # Type: int
+  ell_min_proj: 10 # Type: int
   ell_max_proj: 100000 # Type: int
   ell_bins_proj_gauss: 500 # Type: int. Should be high to get accurate results with Simpson integration
   ell_bins_proj_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
@@ -425,5 +426,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: /data/sciotti/DATA/Spaceborne_jobs/develop # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/develop # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

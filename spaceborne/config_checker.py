@@ -23,7 +23,7 @@ class SpaceborneConfigChecker:
             )
 
     def check_BNT_transform(self) -> None:
-        if self.cfg['BNT']['cov_BNT_transform']:
+        if self.cfg['covariance']['BNT_transform']:
             assert self.cfg['probe_selection']['space'] == 'harmonic', (
                 'The BNT transform can only be applied in harmonic space.'
             )
@@ -332,27 +332,21 @@ class SpaceborneConfigChecker:
             'binning: n_modes_cosebis must be an int'
         )
 
-        # BNT
-        assert isinstance(self.cfg.get('BNT'), dict), (
-            "Section 'BNT' must be a dictionary"
-        )
-        bnt_cfg = self.cfg['BNT']
-        assert isinstance(bnt_cfg.get('cov_BNT_transform'), bool), (
-            'BNT: cov_BNT_transform must be a boolean'
-        )
-
         # Covariance
         assert isinstance(self.cfg.get('covariance'), dict), (
             "Section 'covariance' must be a dictionary"
         )
         cov_cfg = self.cfg['covariance']
+        assert isinstance(cov_cfg.get('BNT_transform'), bool), (
+            'covariance: BNT_transform must be a boolean'
+        )
         assert isinstance(cov_cfg.get('G'), bool), 'covariance: G must be a boolean'
         assert isinstance(cov_cfg.get('SSC'), bool), 'covariance: SSC must be a boolean'
         assert isinstance(cov_cfg.get('cNG'), bool), 'covariance: cNG must be a boolean'
         assert isinstance(cov_cfg.get('partial_sky_method'), str), (
             'covariance: partial_sky_method must be a string'
         )
-                
+
         for _term in ['G', 'SSC', 'cNG']:
             if cov_cfg.get(_term):  # Only validate code if term is enabled
                 assert cov_cfg.get(f'{_term}_code') in [
@@ -450,7 +444,6 @@ class SpaceborneConfigChecker:
         assert isinstance(pyccl_cfg.get('use_default_k_a_grids'), bool), (
             'PyCCL: use_default_k_a_grids must be a boolean'
         )
-
 
         # precision
         assert isinstance(self.cfg.get('precision'), dict), (

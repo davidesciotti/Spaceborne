@@ -962,7 +962,7 @@ ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 
 # ! ================================= BNT and z means ==================================
-if cfg['BNT']['cov_BNT_transform']:
+if cfg['covariance']['BNT_transform']:
     bnt_matrix = bnt.compute_bnt_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
     )

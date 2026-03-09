@@ -468,7 +468,7 @@ class SpaceborneCovariance:
                 )
 
         # ! BNT transform (6/10D covs needed for this implementation)
-        if self.cfg['BNT']['cov_BNT_transform']:
+        if self.cfg['covariance']['BNT_transform']:
             print('BNT-transforming the covariance matrix...')
             start = time.perf_counter()
             self.cov_dict = bnt_utils.bnt_transform_cov_dict(
@@ -515,7 +515,7 @@ class SpaceborneCovariance:
         if self.cov_cfg['cov_type'] == 'decoupled':
             return
 
-        if self.cfg['BNT']['cov_BNT_transform']:
+        if self.cfg['covariance']['BNT_transform']:
             warnings.warn(
                 'BNT transformation has not been tested for coupled covariance '
                 'matrices.',

@@ -1473,9 +1473,6 @@ if (
         df_chunk_size=5_000_000,
     )
 
-    # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
-    cov_oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=cov_oc_obj.cov_dict)
-
     # just to make make our lives easier, also import the covs in mat format
     # (I check that they coincide at the end of this script)
     cov_oc_obj.process_cov_from_mat_file()

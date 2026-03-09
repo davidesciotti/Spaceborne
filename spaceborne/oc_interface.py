@@ -686,8 +686,6 @@ class OneCovarianceInterface:
             map(str, mult_shear_bias_list)
         )
 
-        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
-
         if self.obs_space == 'harmonic':
             for _probe in ['', '_clustering', '_lensing']:
                 cfg_oc_ini['covELLspace settings'][f'ell_min{_probe}'] = str(

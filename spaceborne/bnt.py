@@ -93,8 +93,8 @@ def cl_bnt_transform(cl_3d, bnt_matrix, probe_A, probe_B):
 
 
 def cl_bnt_transform_3x2pt(cl_3x2pt_5d, bnt_matrix):
-    """Wrapper function to quickly implement the cl (or derivatives) BNT transform
-    for the 3x2pt datavector
+    """Wrapper function to quickly implement the BNT transform
+    for the 3x2pt Cls/Cl derivatives/noise spectra
     """
     cl_3x2pt_bnt_5d = np.zeros(cl_3x2pt_5d.shape)
     cl_3x2pt_bnt_5d[0, 0, :, :, :] = cl_bnt_transform(

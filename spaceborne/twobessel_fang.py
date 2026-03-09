@@ -66,8 +66,9 @@ class TwoSphBessel:
         if (self.N1 + N_extrap_low + N_extrap_high) % 2 == 1 or (
             self.N2 + N_extrap_low + N_extrap_high
         ) % 2 == 1:  # Make sure the array sizes are even
-            print('Error: array sizes have to be even!')
-            sys.exit()
+            raise ValueError(
+                'TwoBessel: array sizes (including extrapolation) must be even.'
+            )
 
         # extrapolate x and f(x) linearly in log(x), and log(f(x))
         if N_extrap_low or N_extrap_high:
@@ -77,7 +78,6 @@ class TwoSphBessel:
             self.N1 += N_extrap_low + N_extrap_high
             self.N2 += N_extrap_low + N_extrap_high
 
-        print(self.N1, self.N2)
         # zero-padding
         self.N_pad = N_pad
         if N_pad:
@@ -115,8 +115,6 @@ class TwoSphBessel:
         number of x1, x2 values should be even
         c_window_width: the fraction of any row/column c_mn elements that are smoothed.
         """
-        print(self.fx1x2.shape)
-        print(self.x2.size, self.x1.size)
         f_b = ((self.fx1x2 * self.x2 ** (-self.nu2)).T * self.x1 ** (-self.nu1)).T
         c_mn = rfft2(f_b)
 
@@ -171,7 +169,12 @@ class TwoSphBessel:
     def two_sph_bessel_binave(self, ell1, ell2, binwidth_dlny1, binwidth_dlny2):
         """
         Bin-averaging for 3D statistics: alpha_pow = D = 3
-        Calculate F(y_1,y_2) = \int_0^\infty dx_1 / x_1 \int_0^\infty dx_2 / x_2 * f(x_1,x_2) * j_{\ell_1}(x_1y_1) * j_{\ell_2}(x_2y_2),
+        Calculate 
+        
+        .. math::
+        
+            F(y_1,y_2) = \int_0^\infty dx_1 / x_1 \int_0^\infty dx_2 / x_2 * f(x_1,x_2) * j_{\ell_1}(x_1y_1) * j_{\ell_2}(x_2y_2),
+        
         where j_\ell is the spherical Bessel func of order ell.
         array y is set as y[:] = 1/x[::-1]
         """

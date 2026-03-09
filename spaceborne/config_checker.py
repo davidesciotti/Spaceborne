@@ -23,17 +23,7 @@ class SpaceborneConfigChecker:
             )
 
     def check_BNT_transform(self) -> None:
-        if self.cfg['BNT']['cov_BNT_transform']:
-            assert not self.cfg['BNT']['cl_BNT_transform'], (
-                'The BNT transform should be applied either to the Cls '
-                'or to the covariance.'
-            )
-        if self.cfg['BNT']['cl_BNT_transform']:
-            assert not self.cfg['BNT']['cov_BNT_transform'], (
-                'The BNT transform should be applied either to the Cls '
-                'or to the covariance.'
-            )
-        if self.cfg['BNT']['cov_BNT_transform'] or self.cfg['BNT']['cl_BNT_transform']:
+        if self.cfg['covariance']['BNT_transform']:
             assert self.cfg['probe_selection']['space'] == 'harmonic', (
                 'The BNT transform can only be applied in harmonic space.'
             )
@@ -342,29 +332,32 @@ class SpaceborneConfigChecker:
             'binning: n_modes_cosebis must be an int'
         )
 
-        # BNT
-        assert isinstance(self.cfg.get('BNT'), dict), (
-            "Section 'BNT' must be a dictionary"
-        )
-        bnt_cfg = self.cfg['BNT']
-        assert isinstance(bnt_cfg.get('cl_BNT_transform'), bool), (
-            'BNT: cl_BNT_transform must be a boolean'
-        )
-        assert isinstance(bnt_cfg.get('cov_BNT_transform'), bool), (
-            'BNT: cov_BNT_transform must be a boolean'
-        )
-
         # Covariance
         assert isinstance(self.cfg.get('covariance'), dict), (
             "Section 'covariance' must be a dictionary"
         )
         cov_cfg = self.cfg['covariance']
+        assert isinstance(cov_cfg.get('BNT_transform'), bool), (
+            'covariance: BNT_transform must be a boolean'
+        )
         assert isinstance(cov_cfg.get('G'), bool), 'covariance: G must be a boolean'
         assert isinstance(cov_cfg.get('SSC'), bool), 'covariance: SSC must be a boolean'
         assert isinstance(cov_cfg.get('cNG'), bool), 'covariance: cNG must be a boolean'
         assert isinstance(cov_cfg.get('partial_sky_method'), str), (
             'covariance: partial_sky_method must be a string'
         )
+
+        for _term in ['G', 'SSC', 'cNG']:
+            if cov_cfg.get(_term):  # Only validate code if term is enabled
+                assert cov_cfg.get(f'{_term}_code') in [
+                    'Spaceborne',
+                    'PyCCL',
+                    'OneCovariance',
+                ], (
+                    f'Invalid code for covariance term {_term}: {cov_cfg[f"{_term}_code"]}. '
+                    "Allowed values are: 'Spaceborne', 'PyCCL', 'OneCovariance'."
+                )
+
         assert cov_cfg.get('partial_sky_method') in ['Knox', 'NaMaster'], (
             'covariance: partial_sky_method must be either "Knox" or "NaMaster"'
         )
@@ -452,7 +445,6 @@ class SpaceborneConfigChecker:
             'PyCCL: use_default_k_a_grids must be a boolean'
         )
 
-
         # precision
         assert isinstance(self.cfg.get('precision'), dict), (
             "Section 'precision' must be a dictionary"
@@ -476,14 +468,14 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('verbose'), bool), (
             'precision: verbose must be a boolean'
         )
-        assert isinstance(precision_cfg.get('ell_min_rs'), int), (
-            'precision: ell_min_rs must be an int'
+        assert isinstance(precision_cfg.get('ell_min_proj'), int), (
+            'precision: ell_min_proj must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_max_rs'), int), (
-            'precision: ell_max_rs must be an int'
+        assert isinstance(precision_cfg.get('ell_max_proj'), int), (
+            'precision: ell_max_proj must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_bins_rs'), int), (
-            'precision: ell_bins_rs must be an int'
+        assert isinstance(precision_cfg.get('ell_bins_proj_gauss'), int), (
+            'precision: ell_bins_proj_gauss must be an int'
         )
         assert isinstance(precision_cfg.get('theta_max_arcmin_cosebis'), int), (
             'precision: theta_max_arcmin_cosebis must be an int'
@@ -491,8 +483,8 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('theta_steps_cosebis'), int), (
             'precision: theta_steps_cosebis must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_bins_rs_nongauss'), int), (
-            'precision: ell_bins_rs_nongauss must be an int'
+        assert isinstance(precision_cfg.get('ell_bins_proj_nongauss'), int), (
+            'precision: ell_bins_proj_nongauss must be an int'
         )
         assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
             'precision: cov_rs_int_method must be a string'
@@ -717,11 +709,6 @@ class SpaceborneConfigChecker:
                     'The projection of the partial-sky Gaussian covariance to real '
                     'space is not implemented yet'
                 )
-            if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']:
-                raise NotImplementedError(
-                    'The projection of non-gaussian covariance terms to real space '
-                    'is not implemented yet'
-                )
         elif self.cfg['probe_selection']['space'] == 'harmonic':
             assert (
                 self.cfg['probe_selection']['LL']
@@ -741,10 +728,6 @@ class SpaceborneConfigChecker:
                 'At least one of En, Bn, Psigl, or Psigg must be selected for '
                 'cosebis space covariance'
             )
-            if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']:
-                raise NotImplementedError(
-                    'The non-gaussian COSEBIs covariance has not been implemented yet'
-                )
 
         else:
             raise ValueError(

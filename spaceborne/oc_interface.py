@@ -41,8 +41,9 @@ def reorder_block_cov(
     if cov.ndim != 2 or cov.shape[0] != cov.shape[1]:
         raise ValueError('cov must be a square 2D array')
 
-    if set(from_order) != set(to_order):
-        raise ValueError('from_order and to_order must contain the same labels')
+    assert set(to_order) <= set(from_order), (
+        'to_order must be equal to or a subset of from_order'
+    )
     if any(lab not in block_sizes for lab in from_order):
         raise ValueError('Missing block size for at least one label in from_order')
 
@@ -62,18 +63,67 @@ def reorder_block_cov(
 
 
 def cov_ggglll_to_llglgg(
-    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
+    cov_ggglll_2d: np.ndarray,
+    elem_auto: int,
+    elem_cross: int,
+    obs_space: str,
+    probe_hs_list: list,
+    probe_rs_list: list,
+    probe_cs_list: list,
 ) -> np.ndarray:
-    n = cov_ggglll_2d.shape[0]
-    elem_apc = elem_auto + elem_cross
-    elem_ll = n - elem_apc
+    """Reorders a 2D covariance matrix in the probe_*_* ordering according to the
+    desired probe blocks ordering.
 
-    block_sizes = {'gg': elem_auto, 'gl': elem_cross, 'll': elem_ll}
+    Note: in the future, this could used to allow the user to specify any arbitrary
+    ordering of the probe blocks.
+
+    TODO pass from_order, to_order and block_sizes instead of obs_space
+    """
+
+    if obs_space == 'harmonic':
+        block_sizes = {'gg': elem_auto, 'gl': elem_cross, 'll': elem_auto}
+        # in this case, OC simply has the opposite order of SB: [gg, gl, ll]
+        from_order = probe_hs_list[::-1]
+        to_order = probe_hs_list
+
+    elif obs_space == 'real':
+        block_sizes = {
+            'xip': elem_auto,
+            'xim': elem_auto,
+            'gt': elem_cross,
+            'w': elem_auto,
+        }
+        # in this case, OC simply has almost the opposite order of SB:
+        # ['w', 'gt', 'xip', 'xim'] (not ['w', 'gt', 'xim', 'xip']!)
+        probe_rs_list_oc = ['w', 'gt', 'xip', 'xim']
+        from_order = [p for p in probe_rs_list_oc if p in probe_rs_list]
+        to_order = probe_rs_list
+
+        if to_order in (['xim'], ['xip']):
+            raise ValueError(
+                'xim and xip cannot be treated separately, since OC outputs only '
+                'one block for both. Please select both probes together.'
+            )
+
+    elif obs_space == 'cosebis':
+        block_sizes = {'En': elem_auto, 'Bn': elem_auto}
+        # in this case, OC simply has the same order of SB: [En, Bn]
+        # (excluding Psigl and Psigg)
+        from_order = probe_cs_list
+        to_order = probe_cs_list
+
+        if to_order in (['En'], ['Bn']):
+            raise ValueError(
+                'En and Bn cannot be treated separately, since OC outputs only '
+                'one block for both. Please select both probes together.'
+            )
+    else:
+        raise ValueError(
+            f'obs_space must be "harmonic", "real" or "cosebis", found {obs_space}'
+        )
+
     return reorder_block_cov(
-        cov_ggglll_2d,
-        block_sizes=block_sizes,
-        from_order=['gg', 'gl', 'll'],
-        to_order=['ll', 'gl', 'gg'],
+        cov_ggglll_2d, block_sizes=block_sizes, from_order=from_order, to_order=to_order
     )
 
 
@@ -305,14 +355,14 @@ def process_cov_from_list_file(
         )
     )
 
+    # Check if Gaussian covariance is split into components
+    split_gaussian = 'covg sva' in column_names
+
     # Column mapping for covariance terms
-    term_columns = {
-        'sva': 'covg sva',
-        'mix': 'covg mix',
-        'sn': 'covg sn',
-        'ssc': 'covssc',
-        'cng': 'covng',
-    }
+    term_columns = {'ssc': 'covssc', 'cng': 'covng'}
+
+    if split_gaussian:
+        term_columns.update({'sva': 'covg sva', 'mix': 'covg mix', 'sn': 'covg sn'})
 
     for df_chunk in pd.read_csv(
         oc_output_covlist_fname,
@@ -353,18 +403,38 @@ def process_cov_from_list_file(
             for term, col in term_columns.items():
                 temp_cov_arrays[term][probe_2tpl][index_tuple] = subdf[col].values
 
-            # Compute 'g' term as sum of sva, sn and mix
-            temp_cov_arrays['g'][probe_2tpl][index_tuple] = (
-                subdf['covg sva'].values
-                + subdf['covg sn'].values
-                + subdf['covg mix'].values
-            )
+            # Compute 'g' term
+            if split_gaussian:
+                # Sum of sva, sn and mix terms
+                temp_cov_arrays['g'][probe_2tpl][index_tuple] = (
+                    subdf['covg sva'].values
+                    + subdf['covg sn'].values
+                    + subdf['covg mix'].values
+                )
+            else:
+                # Use total Gaussian covariance directly
+                temp_cov_arrays['g'][probe_2tpl][index_tuple] = subdf['covg'].values
 
             temp_cov_arrays['tot'][probe_2tpl][index_tuple] = (
                 temp_cov_arrays['g'][probe_2tpl][index_tuple]
                 + temp_cov_arrays['ssc'][probe_2tpl][index_tuple]
                 + temp_cov_arrays['cng'][probe_2tpl][index_tuple]
             )
+
+    # Symmetrize: fill transposed blocks not present in the file
+    all_probe_pairs = set()
+    for term in temp_cov_arrays:
+        all_probe_pairs.update(temp_cov_arrays[term].keys())
+
+    for probe_ab, probe_cd in list(all_probe_pairs):
+        if (probe_cd, probe_ab) not in all_probe_pairs:
+            for term in temp_cov_arrays:
+                if (probe_ab, probe_cd) in temp_cov_arrays[term]:
+                    temp_cov_arrays[term][(probe_cd, probe_ab)] = (
+                        temp_cov_arrays[term][(probe_ab, probe_cd)]
+                        .transpose(1, 0, 4, 5, 2, 3)
+                        .copy()
+                    )
 
     # store in cov_dict
     for term in cov_dict:
@@ -421,6 +491,21 @@ class OneCovarianceInterface:
         self.compute_cng = do_cng
 
         self.obs_space = self.cfg['probe_selection']['space']
+
+        self.probe_hs_list = []
+        for p in const.HS_DIAG_PROBES:
+            if self.cfg['probe_selection'][p]:
+                self.probe_hs_list.append(p.lower())
+
+        self.probe_rs_list = []
+        for p in const.RS_DIAG_PROBES:
+            if self.cfg['probe_selection'][p]:
+                self.probe_rs_list.append(p.lower())
+
+        self.probe_cs_list = []
+        for p in const.CS_DIAG_PROBES:
+            if self.cfg['probe_selection'][p]:
+                self.probe_cs_list.append(p)
 
         if self.obs_space == 'harmonic':
             prefix = 'hs'
@@ -504,8 +589,10 @@ class OneCovarianceInterface:
         cfg_oc_ini['misc'] = {}
 
         # ! [covariance terms]
-        cfg_oc_ini['covariance terms']['gauss'] = str(True)
-        cfg_oc_ini['covariance terms']['split_gauss'] = str(True)
+        cfg_oc_ini['covariance terms']['gauss'] = str(self.compute_g)
+        cfg_oc_ini['covariance terms']['split_gauss'] = str(
+            self.cfg['covariance']['split_gaussian_cov']
+        )
         cfg_oc_ini['covariance terms']['nongauss'] = str(self.compute_cng)
         cfg_oc_ini['covariance terms']['ssc'] = str(self.compute_ssc)
 
@@ -570,6 +657,9 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_alms'] = str(True)
         cfg_oc_ini['output settings']['use_tex'] = str(False)
 
+        # apparently, if I set this to True the _list files aren't saved anymore...
+        cfg_oc_ini['output settings']['save_as_binary'] = str(False)
+
         # ! [covELLspace settings]
         np.testing.assert_allclose(
             np.diff(self.z_grid_trisp_sb)[0],
@@ -596,34 +686,33 @@ class OneCovarianceInterface:
             map(str, mult_shear_bias_list)
         )
 
-        # find best ell_max for OC, since it uses a slightly different recipe
         self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
 
         if self.obs_space == 'harmonic':
             for _probe in ['', '_clustering', '_lensing']:
                 cfg_oc_ini['covELLspace settings'][f'ell_min{_probe}'] = str(
-                    self.pvt_cfg['ell_min_3x2pt']
+                    self.cfg['binning']['ell_min']
                 )
                 cfg_oc_ini['covELLspace settings'][f'ell_max{_probe}'] = str(
-                    self.optimal_ellmax
+                    self.cfg['binning']['ell_max']
                 )
                 cfg_oc_ini['covELLspace settings'][f'ell_bins{_probe}'] = str(
-                    self.pvt_cfg['nbl_3x2pt']
+                    self.cfg['binning']['ell_bins']
                 )
                 cfg_oc_ini['covELLspace settings'][f'ell_type{_probe}'] = str(
                     self.binning_type
                 )
 
         # now the ell binning is for the projection!
-        elif self.obs_space == 'real':
+        elif self.obs_space in ['real', 'cosebis']:
             cfg_oc_ini['covELLspace settings']['ell_min'] = str(
-                self.cfg['precision']['ell_min_rs']
+                self.cfg['precision']['ell_min_proj']
             )
             cfg_oc_ini['covELLspace settings']['ell_max'] = str(
-                self.cfg['precision']['ell_max_rs']
+                self.cfg['precision']['ell_max_proj']
             )
             cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
-                self.cfg['precision']['ell_bins_rs']
+                self.cfg['precision']['ell_bins_proj_gauss']
             )
             cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
 
@@ -1031,7 +1120,6 @@ class OneCovarianceInterface:
         self.zpairs_auto, self.zpairs_cross, self.zpairs_3x2pt = sl.get_zpairs(
             self.zbins
         )
-        
 
         self.cov_dict_matfmt = defaultdict(lambda: defaultdict(dict))
 
@@ -1039,17 +1127,33 @@ class OneCovarianceInterface:
         elem_cross = self.zpairs_cross * self.nbx
 
         if self.compute_g:
-            cov_in = np.genfromtxt(
-                f'{self.oc_path}/{self.cov_oc_fname}_matrix_gauss.mat'
-            )
+            _gauss_mat_fname = f'{self.oc_path}/{self.cov_oc_fname}'
+            if not self.compute_ssc and not self.compute_cng:
+                _gauss_mat_fname += '_matrix.mat'
+            else:
+                _gauss_mat_fname += '_matrix_gauss.mat'
+
+            cov_in = np.genfromtxt(_gauss_mat_fname)
             self.cov_dict_matfmt['g']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross
+                cov_in,
+                elem_auto,
+                elem_cross,
+                self.obs_space,
+                self.probe_hs_list,
+                self.probe_rs_list,
+                self.probe_cs_list,
             )
 
         if self.compute_ssc:
             cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix_SSC.mat')
             self.cov_dict_matfmt['ssc']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross
+                cov_in,
+                elem_auto,
+                elem_cross,
+                self.obs_space,
+                self.probe_hs_list,
+                self.probe_rs_list,
+                self.probe_cs_list,
             )
 
         if self.compute_cng:
@@ -1057,153 +1161,25 @@ class OneCovarianceInterface:
                 f'{self.oc_path}/{self.cov_oc_fname}_matrix_nongauss.mat'
             )
             self.cov_dict_matfmt['cng']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-                cov_in, elem_auto, elem_cross
+                cov_in,
+                elem_auto,
+                elem_cross,
+                self.obs_space,
+                self.probe_hs_list,
+                self.probe_rs_list,
+                self.probe_cs_list,
             )
 
         cov_in = np.genfromtxt(f'{self.oc_path}/{self.cov_oc_fname}_matrix.mat')
         self.cov_dict_matfmt['tot']['3x2pt']['2d'] = cov_ggglll_to_llglgg(
-            cov_in, elem_auto, elem_cross
+            cov_in,
+            elem_auto,
+            elem_cross,
+            self.obs_space,
+            self.probe_hs_list,
+            self.probe_rs_list,
+            self.probe_cs_list,
         )
-
-    def output_sanity_check(
-        self,
-        req_probe_combs_2d: list,
-        cov_dict_6d_to_4d_and_2d_kw: dict,
-        rtol: float = 1e-4,
-    ):
-        """
-        Checks that the .dat and .mat outputs give consistent results
-        """
-
-        # process the covariance from the mat file.
-        # This creates the 3x2pt 2D cov for the different terms
-        self.process_cov_from_mat_file()
-
-        if self.obs_space == 'harmonic':
-            cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_hs
-        elif self.obs_space == 'real':
-            cov_4d_to_2dcloe_func = sl.cov_4D_to_2DCLOE_3x2pt_rs
-
-        # NOTE: 3x2pt 4d and 2d is created on-the-fly for this check,
-        # and not stored in self. This is because of 2 reasons:
-        # 1. The reshaping is centralized in the SB cov (hs/rs) classes.
-        # 2. The zpair ordering is hardcoded in OC
-        # TODO check point number 2, there is some option in the ini file...
-
-        # create a copy to avoid polluting the original dict,
-        # which has only 6d and no 3x2pt
-        cov_dict_tmplist = deepcopy(self.cov_dict)
-        # reshape individual blocks to 4d and 2d
-        cov_dict_tmplist = sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
-            cov_dict_tmplist, **cov_dict_6d_to_4d_and_2d_kw
-        )
-
-        for term in self.cov_dict_matfmt:
-            # create 3x2pt 4d
-            cov_term_3x2pt_list_4d = sl.cov_dict_4d_probeblocks_to_3x2pt_4d_array(
-                cov_dict_tmplist[term], self.obs_space
-            )
-            # create 3x2pt 2d
-            cov_term_3x2pt_list_2d = cov_4d_to_2dcloe_func(
-                cov_term_3x2pt_list_4d,
-                zbins=self.zbins,
-                req_probe_combs_2d=req_probe_combs_2d,
-                block_index='zpair',
-            )
-            # compare with mat fmt
-            np.testing.assert_allclose(
-                cov_term_3x2pt_list_2d,
-                self.cov_dict_matfmt[term]['3x2pt']['2d'],
-                rtol=rtol,
-                atol=0,
-                err_msg=f'{term} covariance matrix from .mat file is'
-                ' not consistent with .dat output',
-            )
-
-    def find_optimal_ellmax_oc(self, target_ell_array):
-        upper_lim = self.ells_sb[-1] + 300
-        lower_lim = self.ells_sb[-1] - 300
-        lower_lim = max(lower_lim, 0)
-
-        # Perform the minimization
-        result = minimize_scalar(
-            self.objective_function, bounds=[lower_lim, upper_lim], method='bounded'
-        )
-
-        # Check the result
-        if result.success:
-            self.optimal_ellmax = result.x
-            print(f'Optimal ellmax found: {self.optimal_ellmax}')
-        else:
-            print('Optimization failed.')
-
-        # self.new_ells_oc = self.compute_ells_oc(
-        #     nbl=int(self.pvt_cfg['nbl_3x2pt']),
-        #     ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
-        #     ell_max=self.optimal_ellmax,
-        # )
-        self.new_ells_oc, _ = ell_utils.compute_ells_oc(
-            nbl=int(self.pvt_cfg['nbl_3x2pt']),
-            ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
-            ell_max=self.optimal_ellmax,
-            binning_type=self.binning_type,
-            output_ell_bin_edges=False,
-        )
-
-        fig, ax = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
-        fig.subplots_adjust(hspace=0)
-        ax[0].plot(target_ell_array, label='target ells (SB)', marker='o', alpha=0.6)
-        ax[0].plot(self.new_ells_oc, label='ells OC', marker='o', alpha=0.6)
-        ax[1].plot(
-            sl.percent_diff(target_ell_array, self.new_ells_oc),
-            label='% diff',
-            marker='o',
-        )
-        ax[0].legend()
-        ax[1].legend()
-        ax[0].set_ylabel('$\\ell$')
-        ax[1].set_ylabel('SB/OC - 1 [%]')
-        fig.supxlabel('ell idx')
-
-    # def compute_ells_oc(self, nbl, ell_min, ell_max):
-    #     if self.binning_type == 'log':
-    #         # log-spaced bin edges and geometric mean for the bin centers
-    #         # OC casts the ell bin edges to int
-    #         ell_bin_edges_oc_int = np.unique(
-    #             np.geomspace(ell_min, ell_max, nbl + 1).astype(int)
-    #         )
-    #         # this is the geometric mean
-    #         ells_oc_int = np.exp(
-    #             0.5
-    #             * (np.log(ell_bin_edges_oc_int[1:]) + np.log(ell_bin_edges_oc_int[:-1]))
-    #         )
-
-    #     # lin-spaced bin edges and arithmetic mean for the bin centers
-    #     elif self.binning_type == 'lin':
-    #         ell_bin_edges_oc_int = np.linspace(ell_min, ell_max, nbl + 1).astype(int)
-    #         ells_oc_int = 0.5 * (ell_bin_edges_oc_int[1:] + ell_bin_edges_oc_int[:-1])
-
-    #     else:
-    #         raise ValueError(f'Binning type {self.binning_type} not recognized')
-
-    #     return ells_oc_int
-
-    def objective_function(self, ell_max):
-        # ells_oc = self.compute_ells_oc(
-        #     nbl=int(self.pvt_cfg['nbl_3x2pt']),
-        #     ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
-        #     ell_max=ell_max,
-        # )
-        ells_oc, _ = ell_utils.compute_ells_oc(
-            nbl=int(self.pvt_cfg['nbl_3x2pt']),
-            ell_min=float(self.pvt_cfg['ell_min_3x2pt']),
-            ell_max=ell_max,
-            binning_type=self.binning_type,
-            output_ell_bin_edges=False,
-        )
-        ssd = np.sum((self.ells_sb - ells_oc) ** 2)
-        # ssd = np.sum(sl.percent_diff(self.ells_sb, ells_oc)**2)  # TODO test this
-        return ssd
 
     def get_oc_responses(self, ini_filename, h):
         import sys

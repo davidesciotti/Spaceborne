@@ -54,6 +54,7 @@ import glob
 import os
 import subprocess
 import sys
+import time
 
 import numpy as np
 import yaml
@@ -135,20 +136,13 @@ bench_yaml_names.sort()
 # real space
 # bench_yaml_names = [f'config_{i:04d}' for i in range(84, 120)]
 
-# skip OneCov
-# bench_yaml_names = bench_yaml_names[3:]  
 
 # run certain tests only
-# bench_yaml_names = bench_yaml_names[603:610] 
+# bench_yaml_names = bench_yaml_names[603:610]
 
 # slow_benchs = [
-#     'config_0004',
-#     'config_0005',
-#     'config_0008',
-#     'config_0009',
-#     'config_0010',
-#     'config_0013',
 #     'config_0018',
+#     ...,
 # ]
 
 # remove slow_benchs from bench_yaml_names
@@ -167,6 +161,8 @@ bench_yaml_names.sort()
 #     'config_0012',
 #     'config_0013',
 # ]
+
+start_time = time.perf_counter()
 
 main_script_path = f'{ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'
@@ -216,4 +212,4 @@ for bench_name in bench_yaml_names:
             os.remove(file_path)
 
 
-print('All tests run ☑️')
+print(f'\nAll tests run in {(time.perf_counter() - start_time) / 60:.2f} m☑️')

@@ -55,7 +55,11 @@ def reorder_block_cov(
         ranges[lab] = (s, s + n)
         s += n
     if s != cov.shape[0]:
-        raise ValueError(f'Sum(block_sizes)={s} does not match cov size {cov.shape[0]}')
+        raise ValueError(
+            f'Sum(block_sizes)={s} does not match cov size {cov.shape[0]}. '
+            'This may be due to the fact that the previously saved .mat files '
+            'are for a different number of probes'
+        )
 
     # Concatenate indices in the *target* order and permute both axes
     idx = np.concatenate([np.arange(*ranges[lab]) for lab in to_order])
@@ -685,8 +689,6 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
             map(str, mult_shear_bias_list)
         )
-
-        self.find_optimal_ellmax_oc(target_ell_array=self.ells_sb)
 
         if self.obs_space == 'harmonic':
             for _probe in ['', '_clustering', '_lensing']:

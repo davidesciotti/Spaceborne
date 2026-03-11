@@ -547,7 +547,7 @@ def integrate_single_bessel_pair(
     return result_levin[0]
 
 
-def twobessel_project_ng(
+def proj_cov_2d_fftlog(
     cov_hs_ng_4d,
     ells,
     theta_edges,
@@ -593,7 +593,7 @@ def twobessel_project_ng(
 
     if nbl % 2 != 0:
         raise ValueError(
-            f'ells must have even length for TwoBessel FFT, got {nbl}. '
+            f'ells must have even length for 2D-FFTLog, got {nbl}. '
             'Set ell_bins_proj_nongauss to an even number.'
         )
 
@@ -606,7 +606,7 @@ def twobessel_project_ng(
     if theta_centers[0] < theta_out_min or theta_centers[-1] > theta_out_max:
         warnings.warn(
             f'theta_centers [{theta_centers[0]:.3e}, {theta_centers[-1]:.3e}] rad '
-            f'extends outside TwoBessel output range '
+            f'extends outside 2D-FFTLog output range '
             f'[{theta_out_min:.3e}, {theta_out_max:.3e}] rad. '
             'Consider widening ell_min_proj / ell_max_proj.',
             RuntimeWarning,
@@ -714,8 +714,9 @@ class CovRealSpace(CovarianceProjector):
         assert self.proj_g_int_method in ['simps', 'levin'], (
             "integration method not implemented; choose 'simps' or 'levin'"
         )
-        assert self.proj_ng_int_method in ['simps', 'levin', 'quad'], (
-            "integration method not implemented; choose 'simps', 'levin', or 'quad'"
+        assert self.proj_ng_int_method in ['simps', 'levin', 'quad', '2D-FFTLog'], (
+            "integration method not implemented; choose 'simps', 'levin', 'quad', "
+            "or '2D-FFTLog'"
         )
 
         # attributes set at runtime
@@ -1099,7 +1100,7 @@ class CovRealSpace(CovarianceProjector):
 
         # Compute covariance:
         if term == 'sva':
-            if self.proj_g_int_method in ['simps', 'quad']:
+            if self.proj_g_int_method == 'simps':
                 cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
                     zpairs_ab=zpairs_ab,
                     zpairs_cd=zpairs_cd,
@@ -1195,13 +1196,13 @@ class CovRealSpace(CovarianceProjector):
                     n_jobs=self.n_jobs,
                     levin_prec_kw=self.levin_prec_kw,
                 )
-            elif self.proj_ng_int_method == 'twobessel':
+            elif self.proj_ng_int_method == '2D-FFTLog':
                 if self.cfg['binning']['binning_type'] != 'log':
                     raise ValueError(
-                        "integration_method='twobessel' requires log-spaced theta bins "
+                        "integration_method='2D-FFTLog' requires log-spaced theta bins "
                         "(binning_type: 'log')."
                     )
-                cov_rs_ng_4d = twobessel_project_ng(
+                cov_rs_ng_4d = proj_cov_2d_fftlog(
                     cov_hs_ng_4d=cov_hs_ng_4d,
                     ells=self.ells_proj_ng,
                     theta_edges=self.theta_edges_fine,

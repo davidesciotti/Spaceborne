@@ -29,7 +29,6 @@ import yaml
 # - on the other hand, the code has 1/4pi^2...
 
 
-
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
@@ -104,7 +103,6 @@ os.environ['XLA_FLAGS'] = (
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
-import itertools
 import pprint
 import time
 from functools import partial
@@ -397,7 +395,7 @@ cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
 # Integration method for the covariance projection to real space. Options:
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
-cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
+# cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
 # setting this to False makes the code resort to the less accurate bin averaging method
 # mentioned above
 cfg['precision']['levin_bin_avg'] = True  # Type: bool.
@@ -1479,7 +1477,8 @@ if (
 
     # just to make make our lives easier, also import the covs in mat format
     # (I check that they coincide at the end of this script)
-    cov_oc_obj.process_cov_from_mat_file()
+    if cfg['OneCovariance']['process_cov_from_mat_file']:
+        cov_oc_obj.process_cov_from_mat_file()
 
     # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks
@@ -1821,23 +1820,19 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
-    for _probe, _term in itertools.product(
-        unique_probe_combs_rs, cov_rs_obj.terms_toloop
-    ):
+    for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
-        print(
-            f'\n2PCF cov: computing probe combination {(probe_ab, probe_cd)}'
-            f' - term {_term.upper()}'
-        )
+        print(f'\n2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
+        for _term in cov_rs_obj.terms_toloop:
+            print(f'Computing term {_term}...')
+            cov_rs_obj.compute_rs_cov_term_probe_6d(
+                cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
+            )
 
-        cov_rs_obj.compute_rs_cov_term_probe_6d(
-            cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
-        )
-
-    for term in cov_rs_obj.terms_toloop:
+    for _term in cov_rs_obj.terms_toloop:
         sl.fill_remaining_probe_blocks_6d(
             cov_dict=cov_rs_obj.cov_dict,
-            term=term,
+            term=_term,
             symm_probe_combs=symm_probe_combs_rs,
             nonreq_probe_combs=nonreq_probe_combs_rs,
             space='real',
@@ -1884,23 +1879,18 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
-    for _probe, _term in itertools.product(
-        unique_probe_combs_cs, cov_cs_obj.terms_toloop
-    ):
+    for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
-        print(
-            f'\nCOSEBIs cov: computing probe combination {(probe_ab, probe_cd)}'
-            f' - term {_term.upper()}'
-        )
+        print(f'\nCOSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
+        for _term in cov_cs_obj.terms_toloop:
+            cov_cs_obj.compute_cs_cov_term_probe_6d(
+                cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
+            )
 
-        cov_cs_obj.compute_cs_cov_term_probe_6d(
-            cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
-        )
-
-    for term in cov_cs_obj.terms_toloop:
+    for _term in cov_cs_obj.terms_toloop:
         sl.fill_remaining_probe_blocks_6d(
             cov_dict=cov_cs_obj.cov_dict,
-            term=term,
+            term=_term,
             symm_probe_combs=symm_probe_combs_cs,
             nonreq_probe_combs=nonreq_probe_combs_cs,
             space='cosebis',
@@ -1984,7 +1974,7 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
 # ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
-oc_fmt = 'list'
+oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
 if cfg['OneCovariance']['compare_against_oc']:
     if 'OneCovariance' in cov_terms_and_codes.values():
         warnings.warn('You are likely comparing OneCovariance against itself')
@@ -2055,6 +2045,11 @@ if cfg['OneCovariance']['compare_against_oc']:
                     compare_spectrum=False,
                 )
 
+        else:
+            raise ValueError(
+                f'Unknown oc_format_to_compare_against: {oc_fmt}. '
+                'Should be either "list" or "mat".'
+            )
 
 # ! save 2D covs (for each term) in npz archive
 covs_3x2pt_2d_tosave_dict = {}

@@ -644,6 +644,36 @@ def twobessel_project_ng(
     return result
 
 
+def proj_cov_2d_parallel_helper(
+    s1: int,
+    s2: int,
+    theta_edges_fine: np.ndarray,
+    mu: int,
+    nu: int,
+    integration_method: str,
+    ells_proj_ng: np.ndarray,
+    cov_hs_ng_4d: np.ndarray,
+):
+    # TODO make kernel agnostic using kernel builder
+    # TODO move to covariance_projector.py
+    kernel_1 = partial(
+        k_mu, thetal=theta_edges_fine[s1], thetau=theta_edges_fine[s1 + 1], mu=mu
+    )
+    kernel_2 = partial(
+        k_mu, thetal=theta_edges_fine[s2], thetau=theta_edges_fine[s2 + 1], mu=nu
+    )
+
+    block = cp.proj_cov_2d(
+        ells_proj=ells_proj_ng,
+        cov_hs_ng_4d=cov_hs_ng_4d,
+        kernel_1_func_of_ell=kernel_1,
+        kernel_2_func_of_ell=kernel_2,
+        integration_method=integration_method,
+    )
+
+    return s1, s2, block
+
+
 # ! ====================================================================================
 # ! ====================================================================================
 # ! ====================================================================================
@@ -669,17 +699,23 @@ class CovRealSpace(CovarianceProjector):
         )
 
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
-        
+
         # setters
         self._set_theta_binning()
         self._set_levin_bessel_precision()
 
         # other miscellaneous settings
-        self.integration_method = self.cfg['precision']['cov_rs_int_method']
+        self.proj_g_int_method = self.cfg['precision']['proj_gauss_integration_method']
+        self.proj_ng_int_method = self.cfg['precision'][
+            'proj_nongauss_integration_method'
+        ]
         self.levin_bin_avg = self.cfg['precision']['levin_bin_avg']
 
-        assert self.integration_method in ['simps', 'levin', 'twobessel'], (
-            "integration method not implemented; choose 'simps', 'levin', or 'twobessel'"
+        assert self.proj_g_int_method in ['simps', 'levin'], (
+            "integration method not implemented; choose 'simps' or 'levin'"
+        )
+        assert self.proj_ng_int_method in ['simps', 'levin', 'quad'], (
+            "integration method not implemented; choose 'simps', 'levin', or 'quad'"
         )
 
         # attributes set at runtime
@@ -1063,34 +1099,34 @@ class CovRealSpace(CovarianceProjector):
 
         # Compute covariance:
         if term == 'sva':
-            if self.integration_method in ['simps', 'quad']:
-                cov_out_6d = self.cov_simps_wrapper(
+            if self.proj_g_int_method in ['simps', 'quad']:
+                cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
                     zpairs_ab=zpairs_ab,
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    cov_simps_func=self.cov_sva_simps,
+                    cov_simps_func=self.proj_cov_sva_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-            elif self.integration_method == 'levin':
+            elif self.proj_g_int_method == 'levin':
                 cov_out_6d = self.cov_sva_levin(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
                 )  # fmt: skip
 
         elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
-            if self.integration_method == 'simps':
-                cov_out_6d = self.cov_simps_wrapper(
+            if self.proj_g_int_method == 'simps':
+                cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
                     zpairs_ab=zpairs_ab,
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    cov_simps_func=self.cov_mix_simps,
+                    cov_simps_func=self.proj_cov_mix_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-            elif self.integration_method == 'levin':
+            elif self.proj_g_int_method == 'levin':
                 cov_out_6d = self.cov_mix_levin(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
@@ -1126,35 +1162,30 @@ class CovRealSpace(CovarianceProjector):
             # project hs non-gaussian cov to real space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
-            if self.integration_method == 'simps':
-                # Loop over scale indices (theta1, theta2)
+            if self.proj_ng_int_method in ['simps', 'quad']:
                 cov_rs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
-                for s1 in range(self.nbx):
-                    for s2 in range(self.nbx):
-                        # Build projection kernels for s1 and s2 (theta1, theta2):
-                        # I need callables that are a function of ell
-                        kernel_1 = partial(
-                            k_mu,
-                            thetal=self.theta_edges_fine[s1],
-                            thetau=self.theta_edges_fine[s1 + 1],
-                            mu=mu,
-                        )
-                        kernel_2 = partial(
-                            k_mu,
-                            thetal=self.theta_edges_fine[s2],
-                            thetau=self.theta_edges_fine[s2 + 1],
-                            mu=nu,
-                        )
 
-                        # Integrate over (ell_1, ell_2) for all tomographic
-                        # bin combinations at once
-                        cov_rs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
-                            ells_proj=self.ells_proj_ng,
-                            cov_ng_4d=cov_hs_ng_4d,
-                            kernel_1_func_of_ell=kernel_1,
-                            kernel_2_func_of_ell=kernel_2,
-                        )
-            elif self.integration_method == 'levin':
+                # to parallelize over the scale (theta, in this case) indices s1 and s2,
+                # rely on proj_cov_2d_parallel_helper
+                results = Parallel(n_jobs=self.n_jobs, backend='loky')(
+                    delayed(proj_cov_2d_parallel_helper)(
+                        s1=s1,
+                        s2=s2,
+                        theta_edges_fine=self.theta_edges_fine,
+                        mu=mu,
+                        nu=nu,
+                        integration_method=self.proj_ng_int_method,
+                        ells_proj_ng=self.ells_proj_ng,
+                        cov_hs_ng_4d=cov_hs_ng_4d,
+                    )
+                    for s1 in range(self.nbx)
+                    for s2 in range(self.nbx)
+                )
+
+                for s1, s2, block in results:
+                    cov_rs_ng_4d[s1, s2] = block
+
+            elif self.proj_ng_int_method == 'levin':
                 cov_rs_ng_4d = dl1dl2_binavg_bessel_wrapper(
                     cov_hs=cov_hs_ng_4d,
                     mu=mu,
@@ -1164,7 +1195,7 @@ class CovRealSpace(CovarianceProjector):
                     n_jobs=self.n_jobs,
                     levin_prec_kw=self.levin_prec_kw,
                 )
-            elif self.integration_method == 'twobessel':
+            elif self.proj_ng_int_method == 'twobessel':
                 if self.cfg['binning']['binning_type'] != 'log':
                     raise ValueError(
                         "integration_method='twobessel' requires log-spaced theta bins "
@@ -1180,7 +1211,7 @@ class CovRealSpace(CovarianceProjector):
                 )
 
             # reshape to 6d and symmetrize if needed
-            cov_ng_rs_6d = sl.cov_4D_to_6D_blocks(
+            cov_rs_ng_6d = sl.cov_4D_to_6D_blocks(
                 cov_4D=cov_rs_ng_4d,
                 nbl=self.nbx,
                 zbins=self.zbins,
@@ -1192,9 +1223,9 @@ class CovRealSpace(CovarianceProjector):
 
             # normalize
             norm = 4 * np.pi**2
-            cov_ng_rs_6d /= norm
+            cov_rs_ng_6d /= norm
 
-            cov_out_6d = cov_ng_rs_6d
+            cov_out_6d = cov_rs_ng_6d
 
         # ! bin sb cov 2d
         if self.nbt_coarse != self.nbt_fine:
@@ -1236,5 +1267,5 @@ class CovRealSpace(CovarianceProjector):
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d
 
     def k_mu(self, ell, *, thetal, thetau, mu):
-        """Thin wrapper around k_mu, just to make it a method of the class"""
+        """Thin wrapper around k_mu, just to make it a class method"""
         return k_mu(ell, thetal=thetal, thetau=thetau, mu=mu)

@@ -486,9 +486,13 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('ell_bins_proj_nongauss'), int), (
             'precision: ell_bins_proj_nongauss must be an int'
         )
-        assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
-            'precision: cov_rs_int_method must be a string'
+        assert isinstance(precision_cfg.get('proj_gauss_integration_method'), str), (
+            'precision: proj_gauss_integration_method must be a string'
         )
+        assert isinstance(precision_cfg.get('proj_nongauss_integration_method'), str), (
+            'precision: proj_nongauss_integration_method must be a string'
+        )
+
         assert isinstance(precision_cfg.get('jax_enable_x64'), bool), (
             'precision: jax_enable_x64 must be a boolean'
         )

@@ -853,7 +853,6 @@ class OneCovarianceInterface:
         cfg_oc_ini['halomodel evaluation']['mdef_params'] = ', '.join(
             ['overdensity', str(200)]
         )
-
         cfg_oc_ini['halomodel evaluation']['disable_mass_conversion'] = str(True)
         cfg_oc_ini['halomodel evaluation']['delta_c'] = str(1.686)
         cfg_oc_ini['halomodel evaluation']['transfer_model'] = 'CAMB'

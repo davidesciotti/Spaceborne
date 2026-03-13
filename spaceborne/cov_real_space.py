@@ -1168,6 +1168,8 @@ class CovRealSpace(CovarianceProjector):
 
                 # to parallelize over the scale (theta, in this case) indices s1 and s2,
                 # rely on proj_cov_2d_parallel_helper
+                # TODO I could only loop over the upper triangle of s1, s2 and then
+                # symmetrize...
                 results = Parallel(n_jobs=self.n_jobs, backend='loky')(
                     delayed(proj_cov_2d_parallel_helper)(
                         s1=s1,

@@ -21,16 +21,10 @@ import yaml
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
 # ok SSC and cNG can be computed for mmmm only when projecting En and Bn COSEBIs!!!
 # - put markers in CPU vs time to understand portion of the code which could be parallelised
-
-
-# [QUESTIONS FOR ROBERT]
-# - what is the ell range used to compute the NG HS covs used for projection to COSEBIs NG?
-# - from the comaprison it looks like the SSC normalization factor is 2pi*amax, but in the paper there's no amax...
-# - on the other hand, the code has 1/4pi^2...
+# - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
 
 
 def load_config(_config_path):
-    # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
         # Running interactively, so use default config file
         config_path = _config_path
@@ -390,6 +384,7 @@ GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 # From then, the covariance was rebinned to cfg['binning']['theta_bins'].
 # This works but is not ideal, as the proper bin averaging is more correct.
 # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+# TODO DELETE THIS, it complicates things
 cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
 
 # Integration method for the covariance projection to real space. Options:
@@ -1980,6 +1975,11 @@ if cfg['OneCovariance']['compare_against_oc']:
         warnings.warn('You are likely comparing OneCovariance against itself')
 
     for term in _cov_dict:
+        title = (
+            f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, '
+            f'int {cfg["precision"]["proj_nongauss_integration_method"]} -'
+        )
+
         # ! sanity check: mat and list formats must coincide for OC
         # * THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
         if obs_space != 'real':
@@ -2017,7 +2017,7 @@ if cfg['OneCovariance']['compare_against_oc']:
                 cov_b,
                 'SB',
                 'OC',
-                f'cov {term} {obs_space} space nbx {pvt_cfg["nbx"]} -',
+                title=title,
                 diff_threshold=10,
                 compare_cov_2d=True,
                 compare_corr_2d=False,
@@ -2036,13 +2036,13 @@ if cfg['OneCovariance']['compare_against_oc']:
                     cov_b,
                     'SB',
                     'OC mat fmt',
-                    f'cov {term} {obs_space} space nbx {pvt_cfg["nbx"]} -',
+                    title=title,
                     diff_threshold=10,
                     compare_cov_2d=True,
                     compare_corr_2d=False,
                     compare_diag=True,
                     compare_flat=True,
-                    compare_spectrum=False,
+                    compare_spectrum=True,
                 )
 
         else:

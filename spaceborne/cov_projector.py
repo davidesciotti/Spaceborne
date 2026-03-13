@@ -121,6 +121,10 @@ def proj_cov_2d(
     The quad_vec branch does *not* interpolate the challenging part of the integrand,
     i.e. the kernels! This means that it only assumes the 2D input covariance to be
     a smooth function of ell1, ell2
+    
+    Also, the fact that I'm not passing workers to quad_vec is intentional, I can't 
+    quite get it to work even when turning off the other layers of parallelism
+    (I think I should move ell*_integrand_func outside the function)
     """
 
     # inputs sanity checks
@@ -147,7 +151,7 @@ def proj_cov_2d(
 
     if integration_method not in ['quad', 'simps']:
         raise ValueError(
-            f'integration_method {integration_method} not recognized!'
+            f'integration_method {integration_method} not recognized! '
             'Must be either "quad" or "simps"'
         )
 

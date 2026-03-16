@@ -363,15 +363,19 @@ precision:
   # Whether or not to use the single-redshift integral approximation for the SSC.
   use_KE_approximation: True # Type: bool.
 
-  # ================================= real-space cov ===================================
+  # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
-  ell_bins_proj_gauss: 500 # Type: int. Should be high to get accurate results with Simpson integration
-  ell_bins_proj_nongauss: 200 # Type: int. Should be high to get accurate results with Simpson integration
-  proj_gauss_integration_method: 2D-FFTLog # Type: str. Integration method for the projection of the non-Gaussian covariance
-  proj_nongauss_integration_method: 2D-FFTLog # Type: str. Integration method for the projection of the Gaussian covariance
+  ell_bins_proj_gauss: 500 # Type: int.
+  ell_bins_proj_nongauss: 200 # Type: int. 
+
+  # integration method for the projection of the Gaussian and non-Gaussian covariance 
+  # from harmonic to real space. In the case of COSEBIs, the projection is always
+  # performed with simpson integration.
+  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin']
+  proj_nongauss_integration_method: FFTLog # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.

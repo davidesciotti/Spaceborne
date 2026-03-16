@@ -423,9 +423,6 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('n_probes'), int), (
             'covariance: n_probes must be an int'
         )
-        assert isinstance(cov_cfg.get('probe_ordering'), list), (
-            'covariance: probe_ordering must be a list'
-        )
 
         # PyCCL
         assert isinstance(self.cfg.get('PyCCL'), dict), (
@@ -648,11 +645,6 @@ class SpaceborneConfigChecker:
         assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), (
             'triu_tril must be either "triu" or "tril"'
         )
-        assert self.cfg['covariance']['probe_ordering'] == [
-            ['L', 'L'],
-            ['G', 'L'],
-            ['G', 'G'],
-        ], 'Other probe orderings not tested at the moment'
         assert self.cfg['covariance']['row_col_major'] in ('row-major', 'col-major'), (
             'row_col_major must be either "row-major" or "col-major"'
         )

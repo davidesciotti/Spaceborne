@@ -364,12 +364,6 @@ cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
 cfg['covariance']['sigma2_b_int_method'] = 'fft'  # Type: str.
 
 
-# ordering of the different 3x2pt probes in the covariance matrix
-cfg['covariance']['probe_ordering'] = [['L', 'L'], ['G', 'L'], ['G', 'G']]
-
-probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
-GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
-
 # This has been deprecated since I am no longer using Levin integration.
 # This variable used to control the number of bins over which to compute the Levin
 # RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu).
@@ -743,7 +737,6 @@ pvt_cfg = {
     'req_terms': req_terms,
     'req_g_terms': req_g_terms,
     'n_probes': n_probes,
-    'probe_ordering': probe_ordering,
     'cov_ordering_2d': cov_ordering_2d,
     'unique_probe_combs_hs': unique_probe_combs_hs,
     'req_probe_combs_hs_2d': req_probe_combs_hs_2d,
@@ -754,7 +747,6 @@ pvt_cfg = {
     'nonreq_probe_combs_cs': nonreq_probe_combs_cs,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
-    'GL_OR_LG': GL_OR_LG,
     'symmetrize_output_dict': const.HS_SYMMETRIZE_OUTPUT_DICT,
     'use_h_units': use_h_units,
     'z_grid': z_grid,

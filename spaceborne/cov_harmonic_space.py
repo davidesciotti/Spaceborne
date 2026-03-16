@@ -37,7 +37,6 @@ class SpaceborneCovariance:
         self.unique_probe_combs = pvt_cfg['unique_probe_combs_hs']
 
         # ordering-related stuff
-        self.probe_ordering = pvt_cfg['probe_ordering']  # TODO delete this??
         self.ind = pvt_cfg['ind']
         self.ind_auto = pvt_cfg['ind_auto']
         self.ind_cross = pvt_cfg['ind_cross']
@@ -85,12 +84,6 @@ class SpaceborneCovariance:
             'not both (but they can both be False)'
         )
 
-        assert tuple(self.probe_ordering[0]) == ('L', 'L'), (
-            'the XC probe should be in position 1 (not 0) of the datavector'
-        )
-        assert tuple(self.probe_ordering[2]) == ('G', 'G'), (
-            'the XC probe should be in position 1 (not 0) of the datavector'
-        )
 
         if (
             self.ell_obj.ells_WL.max() < 15

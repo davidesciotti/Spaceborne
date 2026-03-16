@@ -485,8 +485,6 @@ class OneCovarianceInterface:
         self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
         self.zbins = pvt_cfg['zbins']
         self.ind = pvt_cfg['ind']
-        self.probe_ordering = pvt_cfg['probe_ordering']
-        self.GL_OR_LG = pvt_cfg['GL_OR_LG']
         self.nbx = pvt_cfg['nbx']
 
         # set which cov terms to compute from cfg file

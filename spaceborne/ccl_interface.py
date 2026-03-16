@@ -170,10 +170,6 @@ class CCLInterface:
         assert self.which_ng_cov in ['SSC', 'cNG'], (
             'which_ng_cov must be either SSC or cNG'
         )
-        assert self.GL_or_LG == 'GL', (
-            'you should update ind_cross (used in ind_dict) '
-            'for GL, but we work with GL...'
-        )
         assert self.has_rsd is False, 'RSD not validated yet...'
 
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):

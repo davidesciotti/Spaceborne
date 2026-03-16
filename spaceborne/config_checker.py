@@ -408,9 +408,6 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('sigma2_b_int_method'), str), (
             'covariance: sigma2_b_int_method must be a string'
         )
-        assert isinstance(cov_cfg.get('load_cached_sigma2_b'), bool), (
-            'covariance: load_cached_sigma2_b must be a boolean'
-        )
         assert isinstance(cov_cfg.get('cov_filename'), str), (
             'covariance: cov_filename must be a string'
         )
@@ -579,9 +576,6 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(misc_cfg.get('plot_probe_names'), bool), (
             'misc: plot_probe_names must be a boolean'
-        )
-        assert isinstance(misc_cfg.get('levin_batch_size'), int), (
-            'misc: levin_batch_size must be an int'
         )
         assert isinstance(misc_cfg.get('workspace_filename'), str), (
             'misc: workspace_filename must be a string'

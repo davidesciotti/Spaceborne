@@ -1,6 +1,7 @@
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
+from copy import deepcopy
 import os
 import sys
 import warnings
@@ -2193,6 +2194,10 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
 
 # save cfg file
+run_cfg = deepcopy(cfg)
+for key in ['OneCovariance', 'ell_cuts']:
+    if key in run_cfg['covariance']:
+        del run_cfg['covariance'][key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.dump(cfg, yaml_file, default_flow_style=False)
 
@@ -2243,14 +2248,14 @@ header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 # ))
 # sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
 
-# for probe in ['WL', 'GC', '3x2pt']:
-for probe in ['3x2pt']:
+# TODO save theta
+if obs_space == 'harmonic':
     ells_2d_save = np.column_stack(
         (
-            getattr(ell_obj, f'ells_{probe}'),
-            getattr(ell_obj, f'delta_l_{probe}'),
-            getattr(ell_obj, f'ell_edges_{probe}')[:-1],
-            getattr(ell_obj, f'ell_edges_{probe}')[1:],
+            ell_obj.ells_3x2pt,
+            ell_obj.delta_l_3x2pt,
+            ell_obj.ell_edges_3x2pt[:-1],
+            ell_obj.ell_edges_3x2pt[1:],
         )
     )
     sl.savetxt_aligned(f'{output_path}/ell_values.txt', ells_2d_save, header_list)

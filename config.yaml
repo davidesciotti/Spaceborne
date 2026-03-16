@@ -1,9 +1,9 @@
 # Example configuration file for Spaceborne. A further explanation of the different
 # options can be found in the official documentation, at https://spaceborne.readthedocs.io/en/latest/
 # The type of the different values is given in the comments, and is checked at runtime.
-# Note: When not on the same line, comments always refer to the option/section immediately below.
-# Note: `None` is `null` in YAML
-# Note: Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
+# [Note] When not on the same line, comments always refer to the option/section immediately below.
+# [Note] `None` is `null` in YAML
+# [Note] Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
 
 # ROOTS:
 # pleiadi: /_u/dsciotti/code
@@ -99,7 +99,7 @@ nz:
   ngal_sources: [8.09216, 7.09215, 6.09215] # Type: list[float]
   ngal_lenses: [1.09216, 2.09215, 3.09215] # Type: list[float]
 
-  # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
+  # [Note] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
   #        modification to the n(z) by setting shift_nz and smooth_nz (and possibly normalize_nz)
   #        to False.
@@ -139,8 +139,8 @@ binning:
 C_ell:
   # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
   # These should be the theoretical, decoupled Cls.
-  # Note: the multiplicative shear bias specified below will NOT be applied to the input Cls.
-  # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
+  # [Note] The multiplicative shear bias specified below will NOT be applied to the input Cls.
+  # [Note] If the non-Gaussian covariance is requested, the code will compute intermediate quantities
   # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology
   # and n(z) used to generate the input Cls and the ones specified in this cfg file are compatible.
   # The Cls should be passed in a .txt, .dat or .ascii file with columns corresponding to
@@ -305,7 +305,8 @@ PyCCL:
   # Options:
   # - 'qag_quad' (GSL's qag method backed up by quad when it fails)
   # - 'spline' (the integrand is splined and then integrated analytically).
-  # DSnote: note that the former could give errors.
+  
+  # [Note] The former could give errors.
   cov_integration_method: spline # Type: str
 
   # Whether or not to load the previously computed trispectrum.
@@ -341,7 +342,7 @@ precision:
   # - False: Evaluate at bin centers assuming slowly-varying covariance (approximation).
   #          Divide by Delta_ell.
   #          Slightly faster but less accurate, especially for wide bins or low ell.
-  # Note: N_modes = Delta_ell for integer ells
+  # [Note] N_modes = Delta_ell for integer ells
   cov_hs_g_ell_bin_average: True
 
   # k grid used for power spectrum and trispectrum computation
@@ -410,8 +411,8 @@ precision:
   gsl_params: null # Type: dict | None
 
 misc:
-  # note if you work from an interactive environment (e.g. jupyter notebook), you might
-  # have to restart the kernel after changing the num_threads, and jax_platform
+  # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
+  #        have to restart the kernel after changing the num_threads, and jax_platform
   num_threads: 127 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'

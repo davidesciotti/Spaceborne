@@ -85,7 +85,7 @@ def k_mu(ell, *, thetal, thetau, mu):
 
 def k_mu_nobessel(ell, *, thetal, thetau, mu):
     """
-    Generates a list of decomposed terms for the kernel K_μ.
+    Generates a list of decomposed terms for the kernel K_mu.
 
     Returns: List of tuples (const_coeff, bessel_order, theta)
     """
@@ -108,7 +108,7 @@ def k_mu_nobessel(ell, *, thetal, thetau, mu):
 
 def kmuknu_nobessel(k_mu_terms, k_nu_terms):
     """
-    Computes the product of two expanded kernels K_μ and K_ν.
+    Computes the product of two expanded kernels K_mu and K_nu.
 
     Returns: List of tuples (final_coeff, n1, theta1, n2, theta2)
     """
@@ -548,16 +548,18 @@ def integrate_single_bessel_pair(
 
 
 def proj_cov_2d_fftlog(
-    cov_hs_ng_4d,
-    ells,
+    cov_hs_ell1ell2_in,
+    ells_proj,
     theta_edges,
     theta_centers,
     mu,
     nu,
-    nu1=1.01,
-    nu2=1.01,
+    nu1=1.01,  # for accuracy issues, play witin ~ [0.5, 1.5]
+    nu2=1.01,  # for accuracy issues, play witin ~ [0.5, 1.5]
+    N_extrap_low=0,  # number of extrapolation points at high ell (default 0, no extrapolation)
+    N_extrap_high=0,  # number of extrapolation points at low ell (default 0, no extrapolation)
     c_window_width=0.25,
-    N_pad=0,
+    N_pad=0,  # pads the input with 0s (less precise than extrapolation, but faster)
 ):
     r"""
     Project the NG covariance from harmonic to real space using the FFTLog-based
@@ -565,17 +567,16 @@ def proj_cov_2d_fftlog(
 
     Computes the bin-averaged result:
 
-        C_RS(θ_p, θ_q) = ∫ dℓ₁ ℓ₁ K_μ(ℓ₁, θ_p) ∫ dℓ₂ ℓ₂ K_ν(ℓ₂, θ_q) C_HS(ℓ₁, ℓ₂)
+        C_RS(θ_p, θ_q) = ∫ dell1 ell1 K_mu(ell1, θ_p)
+        * ∫ dell2 ell2 K_nu(ell2, θ_q) C_HS(ell1, ell2)
 
-    where K_μ(ℓ, θ_p) = 2/(θ_u² − θ_l²) ∫_{θ_l}^{θ_u} θ' J_μ(ℓθ') dθ' is the
+    where K_mu(ell, θ_p) = 2/(θ_u² - θ_l²) ∫_{θ_l}^{θ_u} θ' J_mu(ellθ') dθ' is the
     bin-averaging kernel (Joachimi et al. 2008). The analytic bin-averaging is handled
     by ``TwoBessel.two_Bessel_binave`` via the ``g_l_smooth`` kernel.
 
-    The result is returned WITHOUT the 1/(4π²) factor, which is applied by the caller.
-
     Parameters
     ----------
-    cov_hs_ng_4d : np.ndarray, shape (nbl, nbl, zpairs_ab, zpairs_cd)
+    cov_hs_ell1ell2_in : np.ndarray, shape (nbl, nbl, tomo_shape)
     ells : np.ndarray, shape (nbl,), log-spaced ell grid
     theta_edges : np.ndarray, shape (nbt+1,), log-spaced bin edges in radians
     theta_centers : np.ndarray, shape (nbt,), bin centres in radians
@@ -588,7 +589,17 @@ def proj_cov_2d_fftlog(
     -------
     np.ndarray, shape (nbt, nbt, zpairs_ab, zpairs_cd)
     """
-    nbl, _, zpairs_ab, zpairs_cd = cov_hs_ng_4d.shape
+
+    # preparations and some sanity checks
+    nbl = cov_hs_ell1ell2_in.shape[0]
+    assert cov_hs_ell1ell2_in.shape[1] == nbl, (
+        'cov_hs_ell1ell2_in must have shape (nbl, nbl, ...)'
+    )
+    assert len(ells_proj) == nbl, (
+        'ells_proj length must match cov_hs_ell1ell2_in shape, '
+        f'got {len(ells_proj)} vs {nbl}.'
+    )
+
     nbt = len(theta_centers)
 
     if nbl % 2 != 0:
@@ -597,51 +608,71 @@ def proj_cov_2d_fftlog(
             'Set ell_bins_proj_nongauss to an even number.'
         )
 
+    dlnells = np.diff(np.log(ells_proj))
+    if not np.allclose(dlnells, dlnells[0], rtol=1e-8, atol=0.0):
+        raise ValueError(
+            '2D-FFTLog requires a log-spaced ell grid. '
+            'Ensure ells_proj_ng is generated with np.geomspace.'
+        )
+
+    dln_theta_edges = np.diff(np.log(theta_edges))
+    if not np.allclose(dln_theta_edges, dln_theta_edges[0], rtol=1e-8, atol=0.0):
+        raise ValueError(
+            "integration_method='2D-FFTLog' requires log-spaced theta bins."
+        )
+
     # Constant log bin width (requires log-spaced theta bins)
     dlntheta = np.log(theta_edges[1] / theta_edges[0])
 
     # Warn if theta_centers fall outside the natural FFTLog output range
-    theta_out_min = 1.0 / ells[-1]
-    theta_out_max = 1.0 / ells[0]
+    theta_out_min = 1.0 / ells_proj[-1]
+    theta_out_max = 1.0 / ells_proj[0]
+
     if theta_centers[0] < theta_out_min or theta_centers[-1] > theta_out_max:
         warnings.warn(
-            f'theta_centers [{theta_centers[0]:.3e}, {theta_centers[-1]:.3e}] rad '
+            f'theta_centers [{theta_centers[0]}, {theta_centers[-1]}] rad '
             f'extends outside 2D-FFTLog output range '
-            f'[{theta_out_min:.3e}, {theta_out_max:.3e}] rad. '
+            f'[{theta_out_min}, {theta_out_max}] rad. '
             'Consider widening ell_min_proj / ell_max_proj.',
-            RuntimeWarning,
             stacklevel=2,
         )
 
-    result = np.zeros((nbt, nbt, zpairs_ab, zpairs_cd))
+    tomo_shape = cov_hs_ell1ell2_in.shape[2:]
+    tomo_elements = int(np.prod(tomo_shape)) if tomo_shape else 1
 
-    for i_ab in range(zpairs_ab):
-        for i_cd in range(zpairs_cd):
-            # Build integrand f(ℓ₁,ℓ₂) = ℓ₁² ℓ₂² C_HS so that
-            # TwoBessel gives ∫dℓ₁ ℓ₁ J_μ ∫dℓ₂ ℓ₂ J_ν · C_HS
-            fx1x2 = (
-                cov_hs_ng_4d[:, :, i_ab, i_cd] * ells[:, None] ** 2 * ells[None, :] ** 2
-            )
-            tb = TwoBessel(
-                ells,
-                ells,
-                fx1x2,
-                nu1=nu1,
-                nu2=nu2,
-                c_window_width=c_window_width,
-                N_pad=N_pad,
-            )
-            theta1_out, theta2_out, F = tb.two_Bessel_binave(mu, nu, dlntheta, dlntheta)
+    cov_hs_3d = cov_hs_ell1ell2_in.reshape(nbl, nbl, tomo_elements)
 
-            # Interpolate onto the desired theta grid (log-log 2D spline)
-            interp = RectBivariateSpline(
-                np.log(theta1_out), np.log(theta2_out), F, kx=3, ky=3
-            )
-            result[:, :, i_ab, i_cd] = interp(
-                np.log(theta_centers), np.log(theta_centers)
-            )
+    result_3d = np.zeros((nbt, nbt, tomo_elements))
 
-    return result
+    for tomo_ix in range(tomo_elements):
+        # Build integrand f(ell1,ell2) = ell1² ell2² C_HS so that
+        # TwoBessel gives ∫dell1 ell1 J_mu ∫dell2 ell2 J_nu · C_HS
+        fx1x2 = (
+            cov_hs_3d[:, :, tomo_ix] * ells_proj[:, None] ** 2 * ells_proj[None, :] ** 2
+        )
+        tb = TwoBessel(
+            x1=ells_proj,
+            x2=ells_proj,
+            fx1x2=fx1x2,
+            nu1=nu1,
+            nu2=nu2,
+            N_extrap_low=N_extrap_low,
+            N_extrap_high=N_extrap_high,
+            c_window_width=c_window_width,
+            N_pad=N_pad,
+        )
+
+        theta1_out, theta2_out, integral = tb.two_Bessel_binave(
+            mu, nu, dlntheta, dlntheta
+        )
+
+        # Interpolate onto the desired theta grid (log-log 2D spline)
+        interp = RectBivariateSpline(
+            np.log(theta1_out), np.log(theta2_out), integral, kx=3, ky=3
+        )
+        result_3d[:, :, tomo_ix] = interp(np.log(theta_centers), np.log(theta_centers))
+
+    return result_3d.reshape(nbt, nbt, *tomo_shape)
 
 
 def proj_cov_2d_parallel_helper(
@@ -711,8 +742,9 @@ class CovRealSpace(CovarianceProjector):
         ]
         self.levin_bin_avg = self.cfg['precision']['levin_bin_avg']
 
-        assert self.proj_g_int_method in ['simps', 'levin'], (
-            "integration method not implemented; choose 'simps' or 'levin'"
+        assert self.proj_g_int_method in ['simps', 'levin', '2D-FFTLog'], (
+            "integration method not implemented; choose 'simps', 'levin', or "
+            "'2D-FFTLog'"
         )
         assert self.proj_ng_int_method in ['simps', 'levin', 'quad', '2D-FFTLog'], (
             "integration method not implemented; choose 'simps', 'levin', 'quad', "
@@ -752,12 +784,12 @@ class CovRealSpace(CovarianceProjector):
             )
             theta_edges = np.deg2rad(theta_edges_deg)  # in radians
 
-            # [BOOKMARK 9 dec] finish checking this
             if self.cfg['binning']['binning_type'] == 'log':
                 theta_centers = np.sqrt(theta_edges[:-1] * theta_edges[1:])
             elif self.cfg['binning']['binning_type'] == 'lin':
                 theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
 
+            # ! the theta values used throughout the code are in radians!
             setattr(self, f'theta_edges_{bin_type}', theta_edges)
             setattr(self, f'theta_centers_{bin_type}', theta_centers)
 
@@ -868,7 +900,7 @@ class CovRealSpace(CovarianceProjector):
 
         return cov_sn_rs_6d
 
-    def cov_sva_levin(
+    def proj_sva_levin_fftlog(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
     ):  # fmt: skip
@@ -882,13 +914,48 @@ class CovRealSpace(CovarianceProjector):
         )
 
         # Child-specific: project with Levin + Bessel kernels
-        cov_sva_rs_6d = self.cov_levin_wrapper(
-            integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-        )
+
+        if self.proj_g_int_method == 'levin':
+            cov_sva_rs_6d = self.proj_levin_wrapper(
+                integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+            )
+        elif self.proj_g_int_method == '2D-FFTLog':
+            cov_sva_rs_6d = self.proj_sva_mix_fftlog_wrapper(integrand_5d, mu, nu)
 
         return cov_sva_rs_6d
 
-    def cov_mix_levin(
+    def proj_sva_mix_fftlog_wrapper(self, integrand_5d, mu, nu):
+        # expand the first 2 axis and create an ell1, ell2 diagonal matrix
+        # (as needed by the twobessel module)
+        # Also, in the G case, the delta function collapses two integrals into one,
+        # but TwoBessel still sees a 2D array and applies both ell-measures — leaving
+        # one ell too many that I must cancel manually by dividing by ell when
+        # building the diagonal.
+        nbl = integrand_5d.shape[0]
+        integrand_6d = np.zeros((nbl, nbl) + integrand_5d.shape[1:])
+        for i in range(nbl):
+            integrand_6d[i, i, ...] = integrand_5d[i, ...] / self.ells_proj_g[i]
+
+        # prefactors
+        integrand_6d /= 2.0 * np.pi * self.amax
+
+        # integrate
+        integral_6d = proj_cov_2d_fftlog(
+            cov_hs_ell1ell2_in=integrand_6d,
+            ells_proj=self.ells_proj_g,
+            theta_edges=self.theta_edges_fine,
+            theta_centers=self.theta_centers_fine,
+            mu=mu,
+            nu=nu,
+            # c_window_width=.5,
+            N_pad=200,
+            N_extrap_low=200,
+            N_extrap_high=200
+        )
+
+        return integral_6d
+
+    def proj_mix_levin_fftlog(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
     ):  # fmt: skip
@@ -939,13 +1006,73 @@ class CovRealSpace(CovarianceProjector):
             "ind_cd must have two columns, maybe you didn't cut it"
         )
 
-        cov_mix_rs_6d = self.cov_levin_wrapper(
+        if self.proj_g_int_method == 'levin':
+            cov_mix_rs_6d = self.proj_levin_wrapper(
+                integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+            )
+        elif self.proj_g_int_method == '2D-FFTLog':
+            cov_mix_rs_6d = self.proj_sva_mix_fftlog_wrapper(integrand_5d, mu, nu)
+
+        return cov_mix_rs_6d
+
+    def cov_mix_fftlog(
+        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
+        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+    ):  # fmt: skip
+        def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
+            prefac = (
+                cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
+                * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
+                / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
+            )
+            return prefac
+
+        prefac = np.zeros((self.n_probes_hs, self.n_probes_hs, self.zbins, self.zbins))
+        for _probe_a_ix in range(self.n_probes_hs):
+            for _probe_b_ix in range(self.n_probes_hs):
+                for _zi in range(self.zbins):
+                    for _zj in range(self.zbins):
+                        prefac[_probe_a_ix, _probe_b_ix, _zi, _zj] = _get_mix_prefac(
+                            _probe_a_ix, _probe_b_ix, _zi, _zj
+                        )
+
+        a = np.einsum(
+            'jl,Lik->Lijkl',
+            prefac[probe_b_ix, probe_d_ix],
+            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
+        )
+        b = np.einsum(
+            'ik,Ljl->Lijkl',
+            prefac[probe_a_ix, probe_c_ix],
+            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
+        )
+        c = np.einsum(
+            'jk,Lil->Lijkl',
+            prefac[probe_b_ix, probe_c_ix],
+            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
+        )
+        d = np.einsum(
+            'il,Ljk->Lijkl',
+            prefac[probe_a_ix, probe_d_ix],
+            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
+        )
+        integrand_5d = a + b + c + d
+
+        # compress integrand selecting only unique zpairs
+        assert ind_ab.shape[1] == 2, (
+            "ind_ab must have two columns, maybe you didn't cut it"
+        )
+        assert ind_cd.shape[1] == 2, (
+            "ind_cd must have two columns, maybe you didn't cut it"
+        )
+
+        cov_mix_rs_6d = self.proj_levin_wrapper(
             integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
         )
 
         return cov_mix_rs_6d
 
-    def cov_levin_wrapper(
+    def proj_levin_wrapper(
         self, integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
     ):
         """This function abstracts the reshaping of the integral before and after the
@@ -1110,8 +1237,8 @@ class CovRealSpace(CovarianceProjector):
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-            elif self.proj_g_int_method == 'levin':
-                cov_out_6d = self.cov_sva_levin(
+            elif self.proj_g_int_method in ['levin', '2D-FFTLog']:
+                cov_out_6d = self.proj_sva_levin_fftlog(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
                 )  # fmt: skip
@@ -1127,8 +1254,8 @@ class CovRealSpace(CovarianceProjector):
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-            elif self.proj_g_int_method == 'levin':
-                cov_out_6d = self.cov_mix_levin(
+            elif self.proj_g_int_method in ['levin', '2D-FFTLog']:
+                cov_out_6d = self.proj_mix_levin_fftlog(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
                 )  # fmt: skip
@@ -1205,8 +1332,8 @@ class CovRealSpace(CovarianceProjector):
                         "(binning_type: 'log')."
                     )
                 cov_rs_ng_4d = proj_cov_2d_fftlog(
-                    cov_hs_ng_4d=cov_hs_ng_4d,
-                    ells=self.ells_proj_ng,
+                    cov_hs_ell1ell2_in=cov_hs_ng_4d,
+                    ells_proj=self.ells_proj_ng,
                     theta_edges=self.theta_edges_fine,
                     theta_centers=self.theta_centers_fine,
                     mu=mu,

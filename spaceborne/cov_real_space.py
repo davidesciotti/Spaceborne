@@ -604,21 +604,21 @@ def proj_cov_2d_fftlog(
 
     if nbl % 2 != 0:
         raise ValueError(
-            f'ells must have even length for 2D-FFTLog, got {nbl}. '
+            f'ells must have even length for FFTLog{nbl}. '
             'Set ell_bins_proj_nongauss to an even number.'
         )
 
     dlnells = np.diff(np.log(ells_proj))
     if not np.allclose(dlnells, dlnells[0], rtol=1e-8, atol=0.0):
         raise ValueError(
-            '2D-FFTLog requires a log-spaced ell grid. '
+            'FFTLog requires a log-spaced ell grid. '
             'Ensure ells_proj_ng is generated with np.geomspace.'
         )
 
     dln_theta_edges = np.diff(np.log(theta_edges))
     if not np.allclose(dln_theta_edges, dln_theta_edges[0], rtol=1e-8, atol=0.0):
         raise ValueError(
-            "integration_method='2D-FFTLog' requires log-spaced theta bins."
+            "integration_method='FFTLog' requires log-spaced theta bins."
         )
 
     # Constant log bin width (requires log-spaced theta bins)
@@ -631,7 +631,7 @@ def proj_cov_2d_fftlog(
     if theta_centers[0] < theta_out_min or theta_centers[-1] > theta_out_max:
         warnings.warn(
             f'theta_centers [{theta_centers[0]}, {theta_centers[-1]}] rad '
-            f'extends outside 2D-FFTLog output range '
+            f'extends outside FFTLog output range '
             f'[{theta_out_min}, {theta_out_max}] rad. '
             'Consider widening ell_min_proj / ell_max_proj.',
             stacklevel=2,
@@ -742,13 +742,13 @@ class CovRealSpace(CovarianceProjector):
         ]
         self.levin_bin_avg = self.cfg['precision']['levin_bin_avg']
 
-        assert self.proj_g_int_method in ['simps', 'levin', '2D-FFTLog'], (
+        assert self.proj_g_int_method in ['simps', 'levin', 'FFTLog'], (
             "integration method not implemented; choose 'simps', 'levin', or "
-            "'2D-FFTLog'"
+            "'FFTLog'"
         )
-        assert self.proj_ng_int_method in ['simps', 'levin', 'quad', '2D-FFTLog'], (
+        assert self.proj_ng_int_method in ['simps', 'levin', 'quad', 'FFTLog'], (
             "integration method not implemented; choose 'simps', 'levin', 'quad', "
-            "or '2D-FFTLog'"
+            "or 'FFTLog'"
         )
 
         # attributes set at runtime
@@ -919,7 +919,7 @@ class CovRealSpace(CovarianceProjector):
             cov_sva_rs_6d = self.proj_levin_wrapper(
                 integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
             )
-        elif self.proj_g_int_method == '2D-FFTLog':
+        elif self.proj_g_int_method == 'FFTLog':
             cov_sva_rs_6d = self.proj_sva_mix_fftlog_wrapper(integrand_5d, mu, nu)
 
         return cov_sva_rs_6d
@@ -948,9 +948,9 @@ class CovRealSpace(CovarianceProjector):
             mu=mu,
             nu=nu,
             # c_window_width=.5,
-            N_pad=200,
-            N_extrap_low=200,
-            N_extrap_high=200
+            # N_pad=200,
+            # N_extrap_low=200,
+            # N_extrap_high=200
         )
 
         return integral_6d
@@ -1010,7 +1010,7 @@ class CovRealSpace(CovarianceProjector):
             cov_mix_rs_6d = self.proj_levin_wrapper(
                 integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
             )
-        elif self.proj_g_int_method == '2D-FFTLog':
+        elif self.proj_g_int_method == 'FFTLog':
             cov_mix_rs_6d = self.proj_sva_mix_fftlog_wrapper(integrand_5d, mu, nu)
 
         return cov_mix_rs_6d
@@ -1237,7 +1237,7 @@ class CovRealSpace(CovarianceProjector):
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-            elif self.proj_g_int_method in ['levin', '2D-FFTLog']:
+            elif self.proj_g_int_method in ['levin', 'FFTLog']:
                 cov_out_6d = self.proj_sva_levin_fftlog(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
@@ -1254,7 +1254,7 @@ class CovRealSpace(CovarianceProjector):
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
-            elif self.proj_g_int_method in ['levin', '2D-FFTLog']:
+            elif self.proj_g_int_method in ['levin', 'FFTLog']:
                 cov_out_6d = self.proj_mix_levin_fftlog(
                     probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
                     zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
@@ -1325,10 +1325,10 @@ class CovRealSpace(CovarianceProjector):
                     n_jobs=self.n_jobs,
                     levin_prec_kw=self.levin_prec_kw,
                 )
-            elif self.proj_ng_int_method == '2D-FFTLog':
+            elif self.proj_ng_int_method == 'FFTLog':
                 if self.cfg['binning']['binning_type'] != 'log':
                     raise ValueError(
-                        "integration_method='2D-FFTLog' requires log-spaced theta bins "
+                        "integration_method='FFTLog' requires log-spaced theta bins "
                         "(binning_type: 'log')."
                     )
                 cov_rs_ng_4d = proj_cov_2d_fftlog(

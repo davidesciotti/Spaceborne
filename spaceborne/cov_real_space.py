@@ -556,8 +556,8 @@ def proj_cov_2d_fftlog(
     nu,
     nu1=1.01,  # for accuracy issues, play witin ~ [0.5, 1.5]
     nu2=1.01,  # for accuracy issues, play witin ~ [0.5, 1.5]
-    N_extrap_low=0,  # number of extrapolation points at high ell (default 0, no extrapolation)
-    N_extrap_high=0,  # number of extrapolation points at low ell (default 0, no extrapolation)
+    N_extrap_low=0,  # number of extrapolation points at low ell (default 0, no extrapolation)
+    N_extrap_high=0,  # number of extrapolation points at high ell (default 0, no extrapolation)
     c_window_width=0.25,
     N_pad=0,  # pads the input with 0s (less precise than extrapolation, but faster)
 ):
@@ -604,7 +604,7 @@ def proj_cov_2d_fftlog(
 
     if nbl % 2 != 0:
         raise ValueError(
-            f'ells must have even length for FFTLog{nbl}. '
+            f'ells must have even length for FFTLog (got {nbl}). '
             'Set ell_bins_proj_nongauss to an even number.'
         )
 
@@ -617,9 +617,7 @@ def proj_cov_2d_fftlog(
 
     dln_theta_edges = np.diff(np.log(theta_edges))
     if not np.allclose(dln_theta_edges, dln_theta_edges[0], rtol=1e-8, atol=0.0):
-        raise ValueError(
-            "integration_method='FFTLog' requires log-spaced theta bins."
-        )
+        raise ValueError("integration_method='FFTLog' requires log-spaced theta bins.")
 
     # Constant log bin width (requires log-spaced theta bins)
     dlntheta = np.log(theta_edges[1] / theta_edges[0])
@@ -743,8 +741,7 @@ class CovRealSpace(CovarianceProjector):
         self.levin_bin_avg = self.cfg['precision']['levin_bin_avg']
 
         assert self.proj_g_int_method in ['simps', 'levin', 'FFTLog'], (
-            "integration method not implemented; choose 'simps', 'levin', or "
-            "'FFTLog'"
+            "integration method not implemented; choose 'simps', 'levin', or 'FFTLog'"
         )
         assert self.proj_ng_int_method in ['simps', 'levin', 'quad', 'FFTLog'], (
             "integration method not implemented; choose 'simps', 'levin', 'quad', "
@@ -947,10 +944,6 @@ class CovRealSpace(CovarianceProjector):
             theta_centers=self.theta_centers_fine,
             mu=mu,
             nu=nu,
-            # c_window_width=.5,
-            # N_pad=200,
-            # N_extrap_low=200,
-            # N_extrap_high=200
         )
 
         return integral_6d

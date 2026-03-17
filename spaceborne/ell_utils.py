@@ -254,11 +254,16 @@ class EllBinning:
     def set_ell_min_max_from_cfg(self, cfg):
         self.ell_min_WL = cfg['binning']['ell_min']
         self.ell_max_WL = cfg['binning']['ell_max']
-        self.nbl_WL = cfg['binning']['ell_bins']
 
         self.ell_min_GC = cfg['binning']['ell_min']
         self.ell_max_GC = cfg['binning']['ell_max']
-        self.nbl_GC = cfg['binning']['ell_bins']
+
+        if cfg['binning']['binning_type'] == 'unbinned':
+            self.nbl_WL = self.ell_max_WL - self.ell_min_WL + 1
+            self.nbl_GC = self.ell_max_GC - self.ell_min_GC + 1
+        else:
+            self.nbl_WL = cfg['binning']['ell_bins']
+            self.nbl_GC = cfg['binning']['ell_bins']
 
     def build_ell_bins(self):
         """Builds ell bins based on the specified configuration."""
@@ -273,6 +278,14 @@ class EllBinning:
             # TODO this is a bit sloppy, but it's never used
             self.ell_edges_WL = np.arange(self.ell_min_WL, self.ell_max_WL + 2)
             self.ell_edges_GC = np.arange(self.ell_min_GC, self.ell_max_GC + 2)
+
+            # dumb sanity check
+            assert self.nbl_WL == len(self.ells_WL) == len(self.delta_l_WL), (
+                'Check failed: nbl_WL == len(ells_WL) == len(delta_l_WL) is False'
+            )
+            assert self.nbl_GC == len(self.ells_GC) == len(self.delta_l_GC), (
+                'Check failed: nbl_GC == len(ells_GC) == len(delta_l_GC) is False'
+            )
 
         elif self.binning_type == 'log':
             self.ells_WL, self.delta_l_WL, self.ell_edges_WL = compute_ells(
@@ -405,10 +418,10 @@ class EllBinning:
             self.ell_edges_GC = self.ell_edges_GC.astype(int)
 
             self.nmt_bin_obj_WL = nmt.NmtBin.from_edges(
-                self.ell_edges_WL[:-1], self.ell_edges_WL[1:] + 1
+                self.ell_edges_WL[:-1], self.ell_edges_WL[1:]
             )
             self.nmt_bin_obj_GC = nmt.NmtBin.from_edges(
-                self.ell_edges_GC[:-1], self.ell_edges_GC[1:] + 1
+                self.ell_edges_GC[:-1], self.ell_edges_GC[1:]
             )
 
             self.ells_WL = self.nmt_bin_obj_WL.get_effective_ells()
@@ -423,12 +436,16 @@ class EllBinning:
             self.ell_max_GC = self.nmt_bin_obj_GC.lmax
 
             # test that ell_max retrieved with the two methods coincide
+            _nbl_WL = len(self.nmt_bin_obj_WL.get_effective_ells())
+            _nbl_GC = len(self.nmt_bin_obj_GC.get_effective_ells())
+
+            # more sanity checks
             assert self.nmt_bin_obj_WL.lmax == self.nmt_bin_obj_WL.get_ell_max(
-                self.nbl_WL - 1
-            ), 'ell_max from nmt_bin_obj_WL does not match ell_max from get_ell_max'
+                _nbl_WL - 1
+            ), 'ell_max from nmt_bin_obj_WL does not match ell_max from get_ell_max()'
             assert self.nmt_bin_obj_GC.lmax == self.nmt_bin_obj_GC.get_ell_max(
-                self.nbl_GC - 1
-            ), 'ell_max from nmt_bin_obj_GC does not match ell_max from get_ell_max'
+                _nbl_GC - 1
+            ), 'ell_max from nmt_bin_obj_GC does not match ell_max from get_ell_max()'
 
         # XC follows GC
         self.ells_XC = self.ells_GC.copy()
@@ -453,6 +470,8 @@ class EllBinning:
 
     def compute_ells_3x2pt_unbinned(self):
         """Needed for the partial-sky covariance"""
+        
+        # the lack of ell_min in np.arange() below should be correct!
         self.ells_3x2pt_unb = np.arange(self.ell_max_3x2pt + 1)
         self.nbl_3x2pt_unb = len(self.ells_3x2pt_unb)
         self.ell_max_3x2pt_unb = self.ells_3x2pt_unb[-1]
@@ -461,7 +480,7 @@ class EllBinning:
         )
 
     def compute_ells_3x2pt_proj(self):
-        """Needed for the projection of the harmonic-space covariance to 
+        """Needed for the projection of the harmonic-space covariance to
         theta/COSEBIs space"""
         self.ells_3x2pt_proj_g = np.geomspace(
             self.cfg['precision']['ell_min_proj'],

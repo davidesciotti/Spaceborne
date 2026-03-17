@@ -189,11 +189,11 @@ def proj_cov_2d(
         )
 
         # define callable of ell1
-        def ell1_integrand_func(ells_1):
+        def ell1_integrand_func(ells_1, _interp=ell2_integral_interp_func):
             return (
                 ells_1
                 * kernel_1_func_of_ell(ells_1)
-                * ell2_integral_interp_func(ells_1)
+                * _interp(ells_1)
             )
 
         # integrate again

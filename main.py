@@ -1,26 +1,19 @@
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
-from copy import deepcopy
 import os
 import sys
 import warnings
+from copy import deepcopy
 
 import yaml
 
 # TODOS BRANCH
-# ok test against OC, and update the corresponding dedicated cfg
-# ok make sure to compute cng on a finer ell grid
 # - ssc computation should not be in the main, btw, I don't think it'll be difficult to port it to the SSC class
-# ok finish commenting out the new code, also to tidy it up
 # - try feeding OC NG covs to the simps projection
 # - port to Melodie for speed?
-# ok fix RS shot noise
-# ok it would be nice to recycle the implementation for a quick and dirty RS NG simps cov projection
-# ok merge to develop in small chunks! After current validation might me a good idea
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
-# ok SSC and cNG can be computed for mmmm only when projecting En and Bn COSEBIs!!!
 # - put markers in CPU vs time to understand portion of the code which could be parallelised
 # - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
 
@@ -472,13 +465,10 @@ symm_probe_combs_cs = probe_combs_dict_cs['symm_probe_combs']
 
 if obs_space == 'harmonic':
     req_probe_combs_2d = req_probe_combs_hs_2d
-    nbx = cfg['binning']['ell_bins']
 elif obs_space == 'real':
     req_probe_combs_2d = req_probe_combs_rs_2d
-    nbx = cfg['binning']['theta_bins']
 elif obs_space == 'cosebis':
     req_probe_combs_2d = req_probe_combs_cs_2d
-    nbx = cfg['binning']['n_modes_cosebis']
 else:
     raise ValueError(f'Unknown observables space: {obs_space:s}')
 
@@ -785,7 +775,6 @@ pvt_cfg = {
     'symmetrize_output_dict': const.HS_SYMMETRIZE_OUTPUT_DICT,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
-    'nbx': nbx,
 }
 
 # instantiate data handler class
@@ -802,9 +791,25 @@ ell_obj.build_ell_bins()
 ell_obj.compute_ells_3x2pt_unbinned()
 ell_obj._validate_bins()
 
+
+if obs_space == 'harmonic':
+    nbx = ell_obj.nbl_3x2pt
+elif obs_space == 'real':
+    nbx = cfg['binning']['theta_bins']
+elif obs_space == 'cosebis':
+    nbx = cfg['binning']['n_modes_cosebis']
+else:
+    raise ValueError(f'Unknown observables space: {obs_space:s}')
+
+
 pvt_cfg['nbl_3x2pt'] = ell_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
+pvt_cfg['nbx'] = nbx
 
+# TODO rename ell_obj to bin_obj
+# TODO add to it theta and cosebis binning
+# TODO use geometric mean for ell centers!
+# TODO arange(ell_max_3x2pt)? are we sure?
 
 # ! ===================================== Mask =========================================
 mask_obj = mask_utils.Mask(cfg['mask'])

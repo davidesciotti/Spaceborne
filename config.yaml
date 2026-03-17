@@ -348,7 +348,7 @@ precision:
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc
-  k_steps: 150 # Type: int. Around 150 should be enough
+  k_steps: 250 # Type: int. Around 250 should be enough
 
   # TODO what is this 0.02?
   z_min: 0.02 # Type: float
@@ -376,7 +376,7 @@ precision:
   # from harmonic to real space. In the case of COSEBIs, the projection is always
   # performed with simpson integration.
   proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin']
-  proj_nongauss_integration_method: FFTLog # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
+  proj_nongauss_integration_method: simps # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.
@@ -406,8 +406,7 @@ precision:
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
   spline_params: # Type: dict | None
-    A_SPLINE_NA_PK: 240 # Type: int
-    K_MAX_SPLINE: 300 # Type: int
+    A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 
 misc:

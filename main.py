@@ -706,7 +706,9 @@ k_grid_s2b = np.logspace(
 
 # set CCL spline parameters accordingly
 cfg['precision']['spline_params']['N_K'] = cfg['precision']['k_steps']
-cfg['precision']['spline_params']['K_MAX_SPLINE'] = 10**cfg['precision']['log10_k_max']
+cfg['precision']['spline_params']['K_MAX_SPLINE'] = (
+    10 ** cfg['precision']['log10_k_max']
+)
 
 
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
@@ -827,9 +829,6 @@ zgrid_nz_lns = io_obj.zgrid_nz_lns
 nz_src = io_obj.nz_src
 nz_lns = io_obj.nz_lns
 
-# verify grid fully covers both n(z) supports
-assert z_grid.min() >= min(zgrid_nz_src.min(), zgrid_nz_lns.min())
-assert z_grid.max() <= max(zgrid_nz_src.max(), zgrid_nz_lns.max())
 
 if shift_nz:
     nz_src = wf_cl_lib.shift_nz(

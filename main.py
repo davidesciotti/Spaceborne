@@ -300,7 +300,8 @@ cfg['precision']['n_sub'] = 16
 cfg['precision']['n_bisec_max'] = 128
 # relative accuracy target. default: 1.e-4
 cfg['precision']['rel_acc'] = 1.0e-4
-# Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
+# Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at
+# high Bessel orders)
 cfg['precision']['boost_bessel'] = True
 # Type: bool. Whether to display warnings
 cfg['precision']['verbose'] = True
@@ -634,11 +635,6 @@ if cfg['intrinsic_alignment']['lumin_ratio_filename'] is not None:
 else:
     ccl_obj.lumin_ratio_2d_arr = None
 
-# define k_limber function
-k_limber_func = partial(
-    cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units
-)
-
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
@@ -652,17 +648,6 @@ z_grid_trisp = np.linspace(
     cfg['precision']['z_max'],
     cfg['precision']['z_steps_trisp'],
 )
-k_grid = np.logspace(
-    cfg['precision']['log10_k_min'],
-    cfg['precision']['log10_k_max'],
-    cfg['precision']['k_steps'],
-)
-# in this case we need finer k binning because of the bessel functions
-k_grid_s2b = np.logspace(
-    cfg['precision']['log10_k_min'],
-    cfg['precision']['log10_k_max'],
-    k_steps_sigma2_simps
-)  # fmt: skip
 
 if len(z_grid) < 1000:
     warnings.warn(
@@ -676,6 +661,53 @@ zgrid_str = (
     f'zmax{cfg["precision"]["z_max"]}_'
     f'zsteps{cfg["precision"]["z_steps"]}'
 )
+
+
+# ! check that the required k_max is compatible with k_max_limber given the required
+# ! ell grids and redshift ranges
+k_limber_func = partial(
+    cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units
+)
+
+_z_min = cfg['precision']['z_min']
+_ell_max = cfg['binning']['ell_max']
+if obs_space != 'harmonic' and ('ssc' in req_terms or 'cng' in req_terms):
+    _ell_max = cfg['precision']['ell_max_proj']
+
+kmax_limber = cosmo_lib.get_kmax_limber(
+    _ell_max, _z_min, use_h_units, ccl_obj.cosmo_ccl
+)
+
+k_max_cfg = 10 ** cfg['precision']['log10_k_max']
+if kmax_limber > k_max_cfg:
+    _k_txt_label = k_txt_label.replace('over', '/')
+    warnings.warn(
+        f'The maximum ell and minimum redshift of the required grids imply \n'
+        f'kmax_limber > k_max_cfg = 10**cfg["precision"]["log10_k_max"]:\n'
+        f'{kmax_limber = :.2f} {_k_txt_label} > {k_max_cfg = :.2f} {_k_txt_label}\n'
+        f'for ell_max = {_ell_max} and z_min = {_z_min}.\n'
+        f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
+        stacklevel=2,
+    )
+    cfg['precision']['log10_k_max'] = np.log10(kmax_limber)
+
+# now define k_grids
+k_grid = np.logspace(
+    cfg['precision']['log10_k_min'],
+    cfg['precision']['log10_k_max'],
+    cfg['precision']['k_steps'],
+)
+# in this case we need finer k binning because of the bessel functions
+k_grid_s2b = np.logspace(
+    cfg['precision']['log10_k_min'],
+    cfg['precision']['log10_k_max'],
+    k_steps_sigma2_simps,
+)
+
+# set CCL spline parameters accordingly
+cfg['precision']['spline_params']['N_K'] = cfg['precision']['k_steps']
+cfg['precision']['spline_params']['K_MAX_SPLINE'] = 10**cfg['precision']['log10_k_max']
+
 
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
@@ -794,6 +826,10 @@ zgrid_nz_src = io_obj.zgrid_nz_src
 zgrid_nz_lns = io_obj.zgrid_nz_lns
 nz_src = io_obj.nz_src
 nz_lns = io_obj.nz_lns
+
+# verify grid fully covers both n(z) supports
+assert z_grid.min() >= min(zgrid_nz_src.min(), zgrid_nz_lns.min())
+assert z_grid.max() <= max(zgrid_nz_src.max(), zgrid_nz_lns.max())
 
 if shift_nz:
     nz_src = wf_cl_lib.shift_nz(
@@ -1156,7 +1192,7 @@ if cfg['misc']['cl_triangle_plot']:
 # ccl_obj.cl_gg_3d = cl_gg_3d
 # ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
-# ! =========================== Unbinned Cls for nmt/sample/HS bin avg cov =====================
+# ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
 if (
     cfg['covariance']['partial_sky_method'] == 'NaMaster'
     or cfg['sample_covariance']['compute_sample_cov']
@@ -1629,26 +1665,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
 
-    kmax_limber = cosmo_lib.get_kmax_limber(
-        ell_grid, z_grid, use_h_units, ccl_obj.cosmo_ccl
-    )
-
-    # ! - test k_max_limber vs k_max_dPk and adjust z_min accordingly
-    k_max_resp = np.max(k_grid)
-    z_grid_test = z_grid.copy()
-    while kmax_limber > k_max_resp:
-        print(
-            f'kmax_limber > k_max_dPk '
-            f'({kmax_limber:.2f} {k_txt_label} > {k_max_resp:.2f} {k_txt_label}): '
-            f'Increasing z_min until kmax_limber < k_max_dPk. '
-            f'Alternatively, increase k_max_dPk or decrease ell_max.'
-        )
-        z_grid_test = z_grid_test[1:]
-        kmax_limber = cosmo_lib.get_kmax_limber(
-            ell_grid, z_grid_test, use_h_units, ccl_obj.cosmo_ccl
-        )
-        print(f'Retrying with z_min = {z_grid_test[0]:.3f}')
-
     dPmm_ddeltab_spline = RectBivariateSpline(
         k_grid, z_grid_trisp, dPmm_ddeltab, kx=3, ky=3
     )
@@ -1957,7 +1973,9 @@ if obs_space != 'harmonic':
 oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
 if cfg['OneCovariance']['compare_against_oc']:
     if 'OneCovariance' in cov_terms_and_codes.values():
-        warnings.warn('You are likely comparing OneCovariance against itself')
+        warnings.warn(
+            'You are likely comparing OneCovariance against itself', stacklevel=2
+        )
 
     for term in _cov_dict:
         title = (
@@ -2199,7 +2217,7 @@ for key in ['OneCovariance', 'ell_cuts']:
     if key in run_cfg['covariance']:
         del run_cfg['covariance'][key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
-    yaml.dump(cfg, yaml_file, default_flow_style=False)
+    yaml.dump(run_cfg, yaml_file, default_flow_style=False)
 
 # save nz
 nz_header = (

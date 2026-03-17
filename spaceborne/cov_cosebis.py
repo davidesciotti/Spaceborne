@@ -253,12 +253,12 @@ class CovCOSEBIs(CovarianceProjector):
             if 'Bn' in probe_2tpl:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
             else:
-                cov_out_6d = self.cov_simps_wrapper(
+                cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
                     zpairs_ab=zpairs_ab,
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    cov_simps_func=self.cov_sva_simps,
+                    cov_simps_func=self.proj_cov_sva_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
@@ -267,12 +267,12 @@ class CovCOSEBIs(CovarianceProjector):
             if 'Bn' in probe_2tpl:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
             else:
-                cov_out_6d = self.cov_simps_wrapper(
+                cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
                     zpairs_ab=zpairs_ab,
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    cov_simps_func=self.cov_mix_simps,
+                    cov_simps_func=self.proj_cov_mix_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
@@ -325,9 +325,9 @@ class CovCOSEBIs(CovarianceProjector):
 
                     # Integrate over (ell_1, ell_2) for all tomographic
                     # bin combinations at once
-                    cov_cs_ng_4d[s1, s2, :, :] = self.cov_ng_simps(
+                    cov_cs_ng_4d[s1, s2, :, :] = self.proj_cov_2d_simps(
                         ells_proj=self.ells_proj_ng,
-                        cov_ng_4d=cov_hs_ng_4d,
+                        cov_hs_ng_4d=cov_hs_ng_4d,
                         kernel_1_func_of_ell=kernel_n,
                         kernel_2_func_of_ell=kernel_m,
                     )

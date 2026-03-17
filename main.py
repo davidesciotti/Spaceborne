@@ -4,33 +4,21 @@ import contextlib
 import os
 import sys
 import warnings
+from copy import deepcopy
 
 import yaml
 
 # TODOS BRANCH
-# ok test against OC, and update the corresponding dedicated cfg
-# ok make sure to compute cng on a finer ell grid
 # - ssc computation should not be in the main, btw, I don't think it'll be difficult to port it to the SSC class
-# ok finish commenting out the new code, also to tidy it up
 # - try feeding OC NG covs to the simps projection
 # - port to Melodie for speed?
-# ok fix RS shot noise
-# ok it would be nice to recycle the implementation for a quick and dirty RS NG simps cov projection
-# ok merge to develop in small chunks! After current validation might me a good idea
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
-# ok SSC and cNG can be computed for mmmm only when projecting En and Bn COSEBIs!!!
 # - put markers in CPU vs time to understand portion of the code which could be parallelised
-
-
-# [QUESTIONS FOR ROBERT]
-# - what is the ell range used to compute the NG HS covs used for projection to COSEBIs NG?
-# - from the comaprison it looks like the SSC normalization factor is 2pi*amax, but in the paper there's no amax...
-# - on the other hand, the code has 1/4pi^2...
+# - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
 
 
 def load_config(_config_path):
-    # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
         # Running interactively, so use default config file
         config_path = _config_path
@@ -103,7 +91,6 @@ os.environ['XLA_FLAGS'] = (
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
-import itertools
 import pprint
 import time
 from functools import partial
@@ -306,7 +293,8 @@ cfg['precision']['n_sub'] = 16
 cfg['precision']['n_bisec_max'] = 128
 # relative accuracy target. default: 1.e-4
 cfg['precision']['rel_acc'] = 1.0e-4
-# Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at high Bessel orders)
+# Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at
+# high Bessel orders)
 cfg['precision']['boost_bessel'] = True
 # Type: bool. Whether to display warnings
 cfg['precision']['verbose'] = True
@@ -369,21 +357,7 @@ cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
 cfg['covariance']['sigma2_b_int_method'] = 'fft'  # Type: str.
-# Whether to load the previously computed sigma2_b.
-# No need anymore since it's quite fast
-cfg['covariance']['load_cached_sigma2_b'] = False  # Type: bool.
 
-# How many integrals to compute at once for the  numerical integration of
-# the sigma^2_b(z_1, z_2) function with pylevin.
-# IMPORTANT NOTE: in case of memory issues, (i.e., if you notice the code crashing
-# while computing sigma2_b), decrease this or num_threads.
-cfg['misc']['levin_batch_size'] = 1000  # Type: int.
-
-# ordering of the different 3x2pt probes in the covariance matrix
-cfg['covariance']['probe_ordering'] = [['L', 'L'], ['G', 'L'], ['G', 'G']]
-
-probe_ordering = cfg['covariance']['probe_ordering']  # TODO deprecate this
-GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 
 # This has been deprecated since I am no longer using Levin integration.
 # This variable used to control the number of bins over which to compute the Levin
@@ -391,12 +365,13 @@ GL_OR_LG = probe_ordering[1][0] + probe_ordering[1][1]
 # From then, the covariance was rebinned to cfg['binning']['theta_bins'].
 # This works but is not ideal, as the proper bin averaging is more correct.
 # Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
+# TODO DELETE THIS, it complicates things
 cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
 
 # Integration method for the covariance projection to real space. Options:
 # - 'simps': uses simpson integration. This is faster but less accurate
 # - 'levin': uses levin integration. This is slower but more accurate
-cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
+# cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
 # setting this to False makes the code resort to the less accurate bin averaging method
 # mentioned above
 cfg['precision']['levin_bin_avg'] = True  # Type: bool.
@@ -490,13 +465,10 @@ symm_probe_combs_cs = probe_combs_dict_cs['symm_probe_combs']
 
 if obs_space == 'harmonic':
     req_probe_combs_2d = req_probe_combs_hs_2d
-    nbx = cfg['binning']['ell_bins']
 elif obs_space == 'real':
     req_probe_combs_2d = req_probe_combs_rs_2d
-    nbx = cfg['binning']['theta_bins']
 elif obs_space == 'cosebis':
     req_probe_combs_2d = req_probe_combs_cs_2d
-    nbx = cfg['binning']['n_modes_cosebis']
 else:
     raise ValueError(f'Unknown observables space: {obs_space:s}')
 
@@ -653,11 +625,6 @@ if cfg['intrinsic_alignment']['lumin_ratio_filename'] is not None:
 else:
     ccl_obj.lumin_ratio_2d_arr = None
 
-# define k_limber function
-k_limber_func = partial(
-    cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units
-)
-
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
@@ -671,17 +638,6 @@ z_grid_trisp = np.linspace(
     cfg['precision']['z_max'],
     cfg['precision']['z_steps_trisp'],
 )
-k_grid = np.logspace(
-    cfg['precision']['log10_k_min'],
-    cfg['precision']['log10_k_max'],
-    cfg['precision']['k_steps'],
-)
-# in this case we need finer k binning because of the bessel functions
-k_grid_s2b = np.logspace(
-    cfg['precision']['log10_k_min'],
-    cfg['precision']['log10_k_max'],
-    k_steps_sigma2_simps
-)  # fmt: skip
 
 if len(z_grid) < 1000:
     warnings.warn(
@@ -695,6 +651,55 @@ zgrid_str = (
     f'zmax{cfg["precision"]["z_max"]}_'
     f'zsteps{cfg["precision"]["z_steps"]}'
 )
+
+
+# ! check that the required k_max is compatible with k_max_limber given the required
+# ! ell grids and redshift ranges
+k_limber_func = partial(
+    cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units
+)
+
+_z_min = cfg['precision']['z_min']
+_ell_max = cfg['binning']['ell_max']
+if obs_space != 'harmonic' and ('ssc' in req_terms or 'cng' in req_terms):
+    _ell_max = cfg['precision']['ell_max_proj']
+
+kmax_limber = cosmo_lib.get_kmax_limber(
+    _ell_max, _z_min, use_h_units, ccl_obj.cosmo_ccl
+)
+
+k_max_cfg = 10 ** cfg['precision']['log10_k_max']
+if kmax_limber > k_max_cfg:
+    _k_txt_label = k_txt_label.replace('over', '/')
+    warnings.warn(
+        f'The maximum ell and minimum redshift of the required grids imply \n'
+        f'kmax_limber > k_max_cfg = 10**cfg["precision"]["log10_k_max"]:\n'
+        f'{kmax_limber = :.2f} {_k_txt_label} > {k_max_cfg = :.2f} {_k_txt_label}\n'
+        f'for ell_max = {_ell_max} and z_min = {_z_min}.\n'
+        f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
+        stacklevel=2,
+    )
+    cfg['precision']['log10_k_max'] = np.log10(kmax_limber)
+
+# now define k_grids
+k_grid = np.logspace(
+    cfg['precision']['log10_k_min'],
+    cfg['precision']['log10_k_max'],
+    cfg['precision']['k_steps'],
+)
+# in this case we need finer k binning because of the bessel functions
+k_grid_s2b = np.logspace(
+    cfg['precision']['log10_k_min'],
+    cfg['precision']['log10_k_max'],
+    k_steps_sigma2_simps,
+)
+
+# set CCL spline parameters accordingly
+cfg['precision']['spline_params']['N_K'] = cfg['precision']['k_steps']
+cfg['precision']['spline_params']['K_MAX_SPLINE'] = (
+    10 ** cfg['precision']['log10_k_max']
+)
+
 
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
@@ -757,7 +762,6 @@ pvt_cfg = {
     'req_terms': req_terms,
     'req_g_terms': req_g_terms,
     'n_probes': n_probes,
-    'probe_ordering': probe_ordering,
     'cov_ordering_2d': cov_ordering_2d,
     'unique_probe_combs_hs': unique_probe_combs_hs,
     'req_probe_combs_hs_2d': req_probe_combs_hs_2d,
@@ -768,11 +772,9 @@ pvt_cfg = {
     'nonreq_probe_combs_cs': nonreq_probe_combs_cs,
     'which_ng_cov': cov_terms_str,
     'cov_terms_list': cov_terms_list,
-    'GL_OR_LG': GL_OR_LG,
     'symmetrize_output_dict': const.HS_SYMMETRIZE_OUTPUT_DICT,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
-    'nbx': nbx,
 }
 
 # instantiate data handler class
@@ -789,9 +791,25 @@ ell_obj.build_ell_bins()
 ell_obj.compute_ells_3x2pt_unbinned()
 ell_obj._validate_bins()
 
+
+if obs_space == 'harmonic':
+    nbx = ell_obj.nbl_3x2pt
+elif obs_space == 'real':
+    nbx = cfg['binning']['theta_bins']
+elif obs_space == 'cosebis':
+    nbx = cfg['binning']['n_modes_cosebis']
+else:
+    raise ValueError(f'Unknown observables space: {obs_space:s}')
+
+
 pvt_cfg['nbl_3x2pt'] = ell_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
+pvt_cfg['nbx'] = nbx
 
+# TODO rename ell_obj to bin_obj
+# TODO add to it theta and cosebis binning
+# TODO use geometric mean for ell centers!
+# TODO arange(ell_max_3x2pt)? are we sure?
 
 # ! ===================================== Mask =========================================
 mask_obj = mask_utils.Mask(cfg['mask'])
@@ -815,6 +833,7 @@ zgrid_nz_src = io_obj.zgrid_nz_src
 zgrid_nz_lns = io_obj.zgrid_nz_lns
 nz_src = io_obj.nz_src
 nz_lns = io_obj.nz_lns
+
 
 if shift_nz:
     nz_src = wf_cl_lib.shift_nz(
@@ -1177,7 +1196,7 @@ if cfg['misc']['cl_triangle_plot']:
 # ccl_obj.cl_gg_3d = cl_gg_3d
 # ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
-# ! =========================== Unbinned Cls for nmt/sample/HS bin avg cov =====================
+# ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
 if (
     cfg['covariance']['partial_sky_method'] == 'NaMaster'
     or cfg['sample_covariance']['compute_sample_cov']
@@ -1475,7 +1494,8 @@ if (
 
     # just to make make our lives easier, also import the covs in mat format
     # (I check that they coincide at the end of this script)
-    cov_oc_obj.process_cov_from_mat_file()
+    if cfg['OneCovariance']['process_cov_from_mat_file']:
+        cov_oc_obj.process_cov_from_mat_file()
 
     # This is an alternative method to call OC (more convoluted but more maintanable).
     # I keep the code for optional consistency checks
@@ -1646,26 +1666,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
 
-    kmax_limber = cosmo_lib.get_kmax_limber(
-        ell_grid, z_grid, use_h_units, ccl_obj.cosmo_ccl
-    )
-
-    # ! - test k_max_limber vs k_max_dPk and adjust z_min accordingly
-    k_max_resp = np.max(k_grid)
-    z_grid_test = z_grid.copy()
-    while kmax_limber > k_max_resp:
-        print(
-            f'kmax_limber > k_max_dPk '
-            f'({kmax_limber:.2f} {k_txt_label} > {k_max_resp:.2f} {k_txt_label}): '
-            f'Increasing z_min until kmax_limber < k_max_dPk. '
-            f'Alternatively, increase k_max_dPk or decrease ell_max.'
-        )
-        z_grid_test = z_grid_test[1:]
-        kmax_limber = cosmo_lib.get_kmax_limber(
-            ell_grid, z_grid_test, use_h_units, ccl_obj.cosmo_ccl
-        )
-        print(f'Retrying with z_min = {z_grid_test[0]:.3f}')
-
     dPmm_ddeltab_spline = RectBivariateSpline(
         k_grid, z_grid_trisp, dPmm_ddeltab, kx=3, ky=3
     )
@@ -1817,23 +1817,19 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
-    for _probe, _term in itertools.product(
-        unique_probe_combs_rs, cov_rs_obj.terms_toloop
-    ):
+    for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
-        print(
-            f'\n2PCF cov: computing probe combination {(probe_ab, probe_cd)}'
-            f' - term {_term.upper()}'
-        )
+        print(f'\n2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
+        for _term in cov_rs_obj.terms_toloop:
+            print(f'Computing term {_term}...')
+            cov_rs_obj.compute_rs_cov_term_probe_6d(
+                cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
+            )
 
-        cov_rs_obj.compute_rs_cov_term_probe_6d(
-            cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
-        )
-
-    for term in cov_rs_obj.terms_toloop:
+    for _term in cov_rs_obj.terms_toloop:
         sl.fill_remaining_probe_blocks_6d(
             cov_dict=cov_rs_obj.cov_dict,
-            term=term,
+            term=_term,
             symm_probe_combs=symm_probe_combs_rs,
             nonreq_probe_combs=nonreq_probe_combs_rs,
             space='real',
@@ -1880,23 +1876,18 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
-    for _probe, _term in itertools.product(
-        unique_probe_combs_cs, cov_cs_obj.terms_toloop
-    ):
+    for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
-        print(
-            f'\nCOSEBIs cov: computing probe combination {(probe_ab, probe_cd)}'
-            f' - term {_term.upper()}'
-        )
+        print(f'\nCOSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
+        for _term in cov_cs_obj.terms_toloop:
+            cov_cs_obj.compute_cs_cov_term_probe_6d(
+                cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
+            )
 
-        cov_cs_obj.compute_cs_cov_term_probe_6d(
-            cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
-        )
-
-    for term in cov_cs_obj.terms_toloop:
+    for _term in cov_cs_obj.terms_toloop:
         sl.fill_remaining_probe_blocks_6d(
             cov_dict=cov_cs_obj.cov_dict,
-            term=term,
+            term=_term,
             symm_probe_combs=symm_probe_combs_cs,
             nonreq_probe_combs=nonreq_probe_combs_cs,
             space='cosebis',
@@ -1980,12 +1971,19 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
 # ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
-oc_fmt = 'list'
+oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
 if cfg['OneCovariance']['compare_against_oc']:
     if 'OneCovariance' in cov_terms_and_codes.values():
-        warnings.warn('You are likely comparing OneCovariance against itself')
+        warnings.warn(
+            'You are likely comparing OneCovariance against itself', stacklevel=2
+        )
 
     for term in _cov_dict:
+        title = (
+            f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, '
+            f'int {cfg["precision"]["proj_nongauss_integration_method"]} -'
+        )
+
         # ! sanity check: mat and list formats must coincide for OC
         # * THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
         if obs_space != 'real':
@@ -2023,7 +2021,7 @@ if cfg['OneCovariance']['compare_against_oc']:
                 cov_b,
                 'SB',
                 'OC',
-                f'cov {term} {obs_space} space nbx {pvt_cfg["nbx"]} -',
+                title=title,
                 diff_threshold=10,
                 compare_cov_2d=True,
                 compare_corr_2d=False,
@@ -2042,15 +2040,20 @@ if cfg['OneCovariance']['compare_against_oc']:
                     cov_b,
                     'SB',
                     'OC mat fmt',
-                    f'cov {term} {obs_space} space nbx {pvt_cfg["nbx"]} -',
+                    title=title,
                     diff_threshold=10,
                     compare_cov_2d=True,
                     compare_corr_2d=False,
                     compare_diag=True,
                     compare_flat=True,
-                    compare_spectrum=False,
+                    compare_spectrum=True,
                 )
 
+        else:
+            raise ValueError(
+                f'Unknown oc_format_to_compare_against: {oc_fmt}. '
+                'Should be either "list" or "mat".'
+            )
 
 # ! save 2D covs (for each term) in npz archive
 covs_3x2pt_2d_tosave_dict = {}
@@ -2210,8 +2213,12 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
 
 # save cfg file
+run_cfg = deepcopy(cfg)
+for key in ['OneCovariance', 'ell_cuts']:
+    if key in run_cfg['covariance']:
+        del run_cfg['covariance'][key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
-    yaml.dump(cfg, yaml_file, default_flow_style=False)
+    yaml.dump(run_cfg, yaml_file, default_flow_style=False)
 
 # save nz
 nz_header = (
@@ -2260,14 +2267,14 @@ header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 # ))
 # sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
 
-# for probe in ['WL', 'GC', '3x2pt']:
-for probe in ['3x2pt']:
+# TODO save theta
+if obs_space == 'harmonic':
     ells_2d_save = np.column_stack(
         (
-            getattr(ell_obj, f'ells_{probe}'),
-            getattr(ell_obj, f'delta_l_{probe}'),
-            getattr(ell_obj, f'ell_edges_{probe}')[:-1],
-            getattr(ell_obj, f'ell_edges_{probe}')[1:],
+            ell_obj.ells_3x2pt,
+            ell_obj.delta_l_3x2pt,
+            ell_obj.ell_edges_3x2pt[:-1],
+            ell_obj.ell_edges_3x2pt[1:],
         )
     )
     sl.savetxt_aligned(f'{output_path}/ell_values.txt', ells_2d_save, header_list)

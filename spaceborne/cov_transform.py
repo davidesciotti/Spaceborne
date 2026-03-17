@@ -1,7 +1,6 @@
 import numpy as np
 
 HS_PROBE_NAME_TO_IX_DICT = {'L': 0, 'G': 1}
-PROBE_ORDERING = [('L', 'L'), ('G', 'L'), ('G', 'G')]
 HS_DIAG_PROBES = ['LL', 'GL', 'GG']
 RS_DIAG_PROBES = ['xip', 'xim', 'gt', 'gg']
 

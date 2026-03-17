@@ -84,7 +84,6 @@ class SpaceborneCovariance:
             'not both (but they can both be False)'
         )
 
-
         if (
             self.ell_obj.ells_WL.max() < 15
         ):  # very rudimental check of whether they're in lin or log scale
@@ -505,7 +504,11 @@ class SpaceborneCovariance:
         self._cov_2d_ell_cuts(split_gaussian_cov)
 
     def _couple_cov_ng(self):
-        if self.cov_cfg['cov_type'] == 'decoupled':
+        if (
+            self.cov_cfg['cov_type'] == 'decoupled'
+            or 'ssc' not in self.req_terms
+            or 'cng' not in self.req_terms
+        ):
             return
 
         if self.cfg['covariance']['BNT_transform']:

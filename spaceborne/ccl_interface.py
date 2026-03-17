@@ -790,7 +790,7 @@ class CCLInterface:
             nbx=len(ells),
             zbins=None,
             ind_dict=ind_dict,
-            msg=f'CCL {which_ng_cov} cov: ',
+            msg=f'{which_ng_cov} cov: ',
         )
 
     def check_cov_blocks_symmetry(self):

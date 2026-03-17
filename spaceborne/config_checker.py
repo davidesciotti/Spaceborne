@@ -526,17 +526,12 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('spline_params'), (dict, type(None))), (
             'precision: spline_params must be a dictionary or None'
         )
-        if isinstance(precision_cfg.get('spline_params'), dict):
-            spline_params = precision_cfg['spline_params']
-            assert isinstance(spline_params.get('A_SPLINE_NA_PK'), int), (
-                'precision: spline_params: A_SPLINE_NA_PK must be an int'
-            )
-            assert isinstance(spline_params.get('K_MAX_SPLINE'), int), (
-                'precision: spline_params: K_MAX_SPLINE must be an int'
-            )
 
         assert isinstance(precision_cfg.get('gsl_params'), (dict, type(None))), (
             'precision: gsl_params must be a dictionary or None'
+        )
+        assert isinstance(precision_cfg.get('spline_params'), (dict, type(None))), (
+            'precision: spline_params must be a dictionary or None'
         )
 
         # misc

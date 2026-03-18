@@ -1,8 +1,12 @@
-import collections.abc
+import warnings
 
 import numpy as np
 
+
 from spaceborne import cosmo_lib
+
+RED = '\033[31m'
+RESET = '\033[0m'
 
 
 class SpaceborneConfigChecker:
@@ -142,14 +146,12 @@ class SpaceborneConfigChecker:
         assert isinstance(c_ell_cfg.get('which_mag_bias'), str), (
             'C_ell: which_mag_bias must be a string'
         )
-
         assert isinstance(c_ell_cfg.get('galaxy_bias_fit_coeff'), list), (
             'C_ell: galaxy_bias_fit_coeff must be a list'
         )
         assert all(isinstance(x, float) for x in c_ell_cfg['galaxy_bias_fit_coeff']), (
             'C_ell: All elements in galaxy_bias_fit_coeff must be floats'
         )
-
         assert isinstance(c_ell_cfg.get('magnification_bias_fit_coeff'), list), (
             'C_ell: magnification_bias_fit_coeff must be a list'
         )
@@ -486,7 +488,6 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('proj_nongauss_integration_method'), str), (
             'precision: proj_nongauss_integration_method must be a string'
         )
-
         assert isinstance(precision_cfg.get('jax_enable_x64'), bool), (
             'precision: jax_enable_x64 must be a boolean'
         )
@@ -747,10 +748,41 @@ class SpaceborneConfigChecker:
                 '`covariance: G_code` should not be set (or set to "Spaceborne").'
             )
 
+    def check_onecov(self) -> None:
+
+        uses_oc = (
+            self.cfg['OneCovariance']['compare_against_oc']
+            or self.cfg['covariance']['G_code'] == 'OneCovariance'
+            or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
+            or self.cfg['covariance']['cNG_code'] == 'OneCovariance'
+        )
+
+        if self.cfg['C_ell']['has_magnification_bias'] and any(uses_oc):
+            warnings.warn(
+                f'{RED}Magnification bias is enabled in the configuration, '
+                'but OneCovariance does not include it. Results for GGL and GG might '
+                f'be inconsistent.{RESET}',
+                stacklevel=2,
+            )
+
+        if (
+            self.cfg['covariance']['SSC']
+            and not self.cfg['precision']['use_KE_approximation']
+        ) and (
+            self.cfg['OneCovariance']['compare_against_oc']
+            or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
+        ):
+            raise ValueError(
+                'The KE approximation for the SSC term is disabled in the '
+                'configuration, but OneCovariance uses it.'
+                'Results for GGL and GG might be inconsistent.'
+            )
+
     def run_all_checks(self) -> None:
         self.check_ell_cuts()
         self.check_nmt()
         self.check_BNT_transform()
+        self.check_onecov()
         self.check_KE_approximation()
         self.check_lists()
         # self.check_fsky()

@@ -119,11 +119,14 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-# ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
-ROOT = '/data/sciotti/DATA'  # mileva
-CODE_ROOT = '/home/sciotti/code'  # mileva
+ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
+# ROOT = '/data/sciotti/DATA'  # mileva
 # ROOT = '/u/dsciotti/code'  # orlanth
 # ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
+
+# CODE_ROOT = '/home/sciotti/code'  # mileva
+CODE_ROOT = ROOT  # all the others
+
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file

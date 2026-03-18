@@ -15,15 +15,8 @@
 *.xml
 tmp/*
 tmp*/
-.aider*
 input/*
 output/*
-misc/test_davide_tri.ipynb
-tests/realspace_test/*
-tests/benchmark_configs/*
-tests/bench_set/*
 docs/build/
-_config.yaml
-.env
 node_modules
 dist/*

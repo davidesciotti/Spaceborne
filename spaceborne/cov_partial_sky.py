@@ -160,7 +160,7 @@ def nmt_gaussian_cov_opt(
         '20': cl_20_list,
         '22': cl_22_list,
     }
-    
+
     wsp_spin2_dict = {'00': w00, '02': w02, '22': w22}
     wsp_spin0_dict = {'00': w00, '02': w00, '22': w00}
     wsp_dict = wsp_spin0_dict if spin0 else wsp_spin2_dict
@@ -178,7 +178,9 @@ def nmt_gaussian_cov_opt(
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
         probe_a, probe_b, probe_c, probe_d = list(probe_abcd)
 
-        tqdm.write(f'NaMaster G cov: computing probe combination {(probe_ab, probe_cd)}')
+        tqdm.write(
+            f'NaMaster G cov: computing probe combination {(probe_ab, probe_cd)}'
+        )
 
         s1 = spin_dict[probe_a]
         s2 = spin_dict[probe_b]
@@ -811,7 +813,7 @@ class NmtCov:
 
         _req_probe_combs_2d = [
             sl.split_probe_name(probe, space='harmonic')
-            for probe in const.HS_ALL_PROBE_COMBS
+            for probe in pvt_cfg['req_probe_combs_hs_2d']
         ]
         self.cov_dict = cd.create_cov_dict(
             self.req_terms, _req_probe_combs_2d, dims=dims

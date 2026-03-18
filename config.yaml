@@ -1,9 +1,9 @@
 # Example configuration file for Spaceborne. A further explanation of the different
 # options can be found in the official documentation, at https://spaceborne.readthedocs.io/en/latest/
 # The type of the different values is given in the comments, and is checked at runtime.
-# Note: When not on the same line, comments always refer to the option/section immediately below.
-# Note: `None` is `null` in YAML
-# Note: Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
+# [Note] When not on the same line, comments always refer to the option/section immediately below.
+# [Note] `None` is `null` in YAML
+# [Note] Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
 
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
@@ -80,7 +80,7 @@ nz:
   ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
   ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
 
-  # [NOTE] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
+  # [Note] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
   #        modification to the n(z) by setting shift_nz and smooth_nz (and possibly normalize_nz)
   #        to False.
@@ -96,7 +96,9 @@ nz:
 binning:
   binning_type: log # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
-  # ell binning for the harmonic-space covariance matrix
+  # ell binning for the harmonic-space covariance matrix (not used in the 'from_input' case)
+  # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
+  # so ell_bins is ignored and ell_max is included in the grid. 
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
   ell_bins: 30 # Type: int. Number of ell bins. Not used in the 'unbinned' case
@@ -107,7 +109,7 @@ binning:
   # with `ell` the ell bin center, `delta_ell` its width,
   # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
   # The file can be in .txt, .dat or .ascii format.
-  ell_bins_filename: ../DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
+  ell_bins_filename: ../../data/DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 5 # Type: float | int.
@@ -120,8 +122,8 @@ binning:
 C_ell:
   # Whether or not to read user-provided Cls for the computation of the Gaussian covariance.
   # These should be the theoretical, decoupled Cls.
-  # Note: the multiplicative shear bias specified below will NOT be applied to the input Cls.
-  # Note: if the non-Gaussian covariance is requested, the code will compute intermediate quantities
+  # [Note] The multiplicative shear bias specified below will NOT be applied to the input Cls.
+  # [Note] If the non-Gaussian covariance is requested, the code will compute intermediate quantities
   # such as the radial kernels for lensing and clustering. The user should make sure that the cosmology
   # and n(z) used to generate the input Cls and the ones specified in this cfg file are compatible.
   # The Cls should be passed in a .txt, .dat or .ascii file with columns corresponding to
@@ -133,9 +135,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -152,8 +154,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../../data/DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../../data/DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
 
   # Interpolation methods for the galaxy and magnification bias tables.
   # This should be set to "linear" or "nearest" for step-like, or in general discontinuous, 
@@ -194,7 +196,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -281,7 +283,8 @@ PyCCL:
   # Options:
   # - 'qag_quad' (GSL's qag method backed up by quad when it fails)
   # - 'spline' (the integrand is splined and then integrated analytically).
-  # DSnote: note that the former could give errors.
+  
+  # [Note] The former could give errors.
   cov_integration_method: spline # Type: str
 
   # Whether or not to load the previously computed trispectrum.
@@ -317,13 +320,13 @@ precision:
   # - False: Evaluate at bin centers assuming slowly-varying covariance (approximation).
   #          Divide by Delta_ell.
   #          Slightly faster but less accurate, especially for wide bins or low ell.
-  # Note: N_modes = Delta_ell for integer ells
+  # [Note] N_modes = Delta_ell for integer ells
   cov_hs_g_ell_bin_average: True
 
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc
-  k_steps: 150 # Type: int. Around 150 should be enough
+  k_steps: 250 # Type: int. Around 250 should be enough
 
   z_min: 0.02 # Type: float
   z_max: 3.0 # Type: float
@@ -338,13 +341,19 @@ precision:
   # Whether or not to use the single-redshift integral approximation for the SSC.
   use_KE_approximation: False # Type: bool.
 
-  # ================================= real-space cov ===================================
+  # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
-  ell_min_proj: 10 # Type: int
-  ell_max_proj: 100000 # Type: int
-  ell_bins_proj_gauss: 500 # Type: int. Should be high to get accurate results with Simpson integration
-  ell_bins_proj_nongauss: 100 # Type: int. Should be high to get accurate results with Simpson integration
+  ell_min_proj: 2 # Type: int
+  ell_max_proj: 50000 # Type: int
+  ell_bins_proj_gauss: 500 # Type: int.
+  ell_bins_proj_nongauss: 200 # Type: int. 
+
+  # integration method for the projection of the Gaussian and non-Gaussian covariance 
+  # from harmonic to real space. In the case of COSEBIs, the projection is always
+  # performed with simpson integration.
+  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin']
+  proj_nongauss_integration_method: simps # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.
@@ -374,13 +383,12 @@ precision:
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
   spline_params: # Type: dict | None
-    A_SPLINE_NA_PK: 240 # Type: int
-    K_MAX_SPLINE: 300 # Type: int
+    A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 
 misc:
-  # note if you work from an interactive environment (e.g. jupyter notebook), you might
-  # have to restart the kernel after changing the num_threads, and jax_platform
+  # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
+  #        have to restart the kernel after changing the num_threads, and jax_platform
   num_threads: 127 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
@@ -403,5 +411,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: ../DATA/Spaceborne_jobs/develop # Type: str. Path to the output directory
+  output_path: ../../data/DATA/Spaceborne_jobs/RS_NG # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

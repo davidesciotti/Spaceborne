@@ -142,6 +142,7 @@ def k_limber(ell, z, use_h_units, cosmo_ccl):
 def get_kmax_limber(ell_grid, z_grid, use_h_units, cosmo_ccl):
     """Returns the maximum k_limber value for a given ell_grid and z_grid"""
     k_limber_list = []
+    z_grid = np.atleast_1d(z_grid)
     for z in z_grid:
         k_limber_list.append(k_limber(ell_grid, z, use_h_units, cosmo_ccl))
     return np.max(k_limber_list)

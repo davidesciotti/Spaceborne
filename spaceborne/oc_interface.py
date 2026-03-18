@@ -55,7 +55,11 @@ def reorder_block_cov(
         ranges[lab] = (s, s + n)
         s += n
     if s != cov.shape[0]:
-        raise ValueError(f'Sum(block_sizes)={s} does not match cov size {cov.shape[0]}')
+        raise ValueError(
+            f'Sum(block_sizes)={s} does not match cov size {cov.shape[0]}. '
+            'This may be due to the fact that the previously saved .mat files '
+            'are for a different number of probes'
+        )
 
     # Concatenate indices in the *target* order and permute both axes
     idx = np.concatenate([np.arange(*ranges[lab]) for lab in to_order])
@@ -481,8 +485,6 @@ class OneCovarianceInterface:
         self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
         self.zbins = pvt_cfg['zbins']
         self.ind = pvt_cfg['ind']
-        self.probe_ordering = pvt_cfg['probe_ordering']
-        self.GL_OR_LG = pvt_cfg['GL_OR_LG']
         self.nbx = pvt_cfg['nbx']
 
         # set which cov terms to compute from cfg file
@@ -849,7 +851,6 @@ class OneCovarianceInterface:
         cfg_oc_ini['halomodel evaluation']['mdef_params'] = ', '.join(
             ['overdensity', str(200)]
         )
-
         cfg_oc_ini['halomodel evaluation']['disable_mass_conversion'] = str(True)
         cfg_oc_ini['halomodel evaluation']['delta_c'] = str(1.686)
         cfg_oc_ini['halomodel evaluation']['transfer_model'] = 'CAMB'

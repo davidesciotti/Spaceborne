@@ -4315,10 +4315,16 @@ def cov_4D_to_6D_blocks(
     assert ind_ab.shape[1] == 2 or ind_ab.shape[1] == 4, (
         'ind_ab and ind_cd must have 2 or 4 columns'
     )
+    assert cov_4D.ndim == 4, 'cov_4D must be a 4D array'
+    assert cov_4D.shape[0] == nbl, 'cov_4D.shape[0] != nbl'
+    assert cov_4D.shape[1] == nbl, 'cov_4D.shape[1] != nbl'
+    
     ncols = ind_ab.shape[1]
-
     zpairs_ab = ind_ab.shape[0]
     zpairs_cd = ind_cd.shape[0]
+    
+    assert cov_4D.shape[2] == zpairs_ab, 'cov_4D.shape[2] != zpairs_ab'
+    assert cov_4D.shape[3] == zpairs_cd, 'cov_4D.shape[3] != zpairs_cd'
 
     cov_6D = np.zeros((nbl, nbl, zbins, zbins, zbins, zbins))
     for ell2 in range(nbl):

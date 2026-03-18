@@ -170,10 +170,6 @@ class CCLInterface:
         assert self.which_ng_cov in ['SSC', 'cNG'], (
             'which_ng_cov must be either SSC or cNG'
         )
-        assert self.GL_or_LG == 'GL', (
-            'you should update ind_cross (used in ind_dict) '
-            'for GL, but we work with GL...'
-        )
         assert self.has_rsd is False, 'RSD not validated yet...'
 
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):
@@ -766,7 +762,7 @@ class CCLInterface:
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
 
             tqdm.write(
-                f'CCL {which_ng_cov} cov: computing probe combination {(probe_ab, probe_cd)}'
+                f'{which_ng_cov} cov: computing probe combination {(probe_ab, probe_cd)}'
             )
 
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
@@ -794,7 +790,7 @@ class CCLInterface:
             nbx=len(ells),
             zbins=None,
             ind_dict=ind_dict,
-            msg=f'CCL {which_ng_cov} cov: ',
+            msg=f'{which_ng_cov} cov: ',
         )
 
     def check_cov_blocks_symmetry(self):

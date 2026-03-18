@@ -1,8 +1,12 @@
-import collections.abc
+import warnings
 
 import numpy as np
 
+
 from spaceborne import cosmo_lib
+
+RED = '\033[31m'
+RESET = '\033[0m'
 
 
 class SpaceborneConfigChecker:
@@ -142,14 +146,12 @@ class SpaceborneConfigChecker:
         assert isinstance(c_ell_cfg.get('which_mag_bias'), str), (
             'C_ell: which_mag_bias must be a string'
         )
-
         assert isinstance(c_ell_cfg.get('galaxy_bias_fit_coeff'), list), (
             'C_ell: galaxy_bias_fit_coeff must be a list'
         )
         assert all(isinstance(x, float) for x in c_ell_cfg['galaxy_bias_fit_coeff']), (
             'C_ell: All elements in galaxy_bias_fit_coeff must be floats'
         )
-
         assert isinstance(c_ell_cfg.get('magnification_bias_fit_coeff'), list), (
             'C_ell: magnification_bias_fit_coeff must be a list'
         )
@@ -408,9 +410,6 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('sigma2_b_int_method'), str), (
             'covariance: sigma2_b_int_method must be a string'
         )
-        assert isinstance(cov_cfg.get('load_cached_sigma2_b'), bool), (
-            'covariance: load_cached_sigma2_b must be a boolean'
-        )
         assert isinstance(cov_cfg.get('cov_filename'), str), (
             'covariance: cov_filename must be a string'
         )
@@ -425,9 +424,6 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(cov_cfg.get('n_probes'), int), (
             'covariance: n_probes must be an int'
-        )
-        assert isinstance(cov_cfg.get('probe_ordering'), list), (
-            'covariance: probe_ordering must be a list'
         )
 
         # PyCCL
@@ -486,8 +482,11 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('ell_bins_proj_nongauss'), int), (
             'precision: ell_bins_proj_nongauss must be an int'
         )
-        assert isinstance(precision_cfg.get('cov_rs_int_method'), str), (
-            'precision: cov_rs_int_method must be a string'
+        assert isinstance(precision_cfg.get('proj_gauss_integration_method'), str), (
+            'precision: proj_gauss_integration_method must be a string'
+        )
+        assert isinstance(precision_cfg.get('proj_nongauss_integration_method'), str), (
+            'precision: proj_nongauss_integration_method must be a string'
         )
         assert isinstance(precision_cfg.get('jax_enable_x64'), bool), (
             'precision: jax_enable_x64 must be a boolean'
@@ -528,17 +527,12 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg.get('spline_params'), (dict, type(None))), (
             'precision: spline_params must be a dictionary or None'
         )
-        if isinstance(precision_cfg.get('spline_params'), dict):
-            spline_params = precision_cfg['spline_params']
-            assert isinstance(spline_params.get('A_SPLINE_NA_PK'), int), (
-                'precision: spline_params: A_SPLINE_NA_PK must be an int'
-            )
-            assert isinstance(spline_params.get('K_MAX_SPLINE'), int), (
-                'precision: spline_params: K_MAX_SPLINE must be an int'
-            )
 
         assert isinstance(precision_cfg.get('gsl_params'), (dict, type(None))), (
             'precision: gsl_params must be a dictionary or None'
+        )
+        assert isinstance(precision_cfg.get('spline_params'), (dict, type(None))), (
+            'precision: spline_params must be a dictionary or None'
         )
 
         # misc
@@ -575,9 +569,6 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(misc_cfg.get('plot_probe_names'), bool), (
             'misc: plot_probe_names must be a boolean'
-        )
-        assert isinstance(misc_cfg.get('levin_batch_size'), int), (
-            'misc: levin_batch_size must be an int'
         )
         assert isinstance(misc_cfg.get('workspace_filename'), str), (
             'misc: workspace_filename must be a string'
@@ -650,11 +641,6 @@ class SpaceborneConfigChecker:
         assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), (
             'triu_tril must be either "triu" or "tril"'
         )
-        assert self.cfg['covariance']['probe_ordering'] == [
-            ['L', 'L'],
-            ['G', 'L'],
-            ['G', 'G'],
-        ], 'Other probe orderings not tested at the moment'
         assert self.cfg['covariance']['row_col_major'] in ('row-major', 'col-major'), (
             'row_col_major must be either "row-major" or "col-major"'
         )
@@ -762,10 +748,41 @@ class SpaceborneConfigChecker:
                 '`covariance: G_code` should not be set (or set to "Spaceborne").'
             )
 
+    def check_onecov(self) -> None:
+
+        uses_oc = (
+            self.cfg['OneCovariance']['compare_against_oc']
+            or self.cfg['covariance']['G_code'] == 'OneCovariance'
+            or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
+            or self.cfg['covariance']['cNG_code'] == 'OneCovariance'
+        )
+
+        if self.cfg['C_ell']['has_magnification_bias'] and uses_oc:
+            warnings.warn(
+                f'{RED}Magnification bias is enabled in the configuration, '
+                'but OneCovariance does not include it. Results for GGL and GG might '
+                f'be inconsistent.{RESET}',
+                stacklevel=2,
+            )
+
+        if (
+            self.cfg['covariance']['SSC']
+            and not self.cfg['precision']['use_KE_approximation']
+        ) and (
+            self.cfg['OneCovariance']['compare_against_oc']
+            or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
+        ):
+            raise ValueError(
+                'The KE approximation for the SSC term is disabled in the '
+                'configuration, but OneCovariance uses it.'
+                'Results for GGL and GG might be inconsistent.'
+            )
+
     def run_all_checks(self) -> None:
         self.check_ell_cuts()
         self.check_nmt()
         self.check_BNT_transform()
+        self.check_onecov()
         self.check_KE_approximation()
         self.check_lists()
         # self.check_fsky()

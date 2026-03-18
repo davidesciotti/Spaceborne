@@ -120,8 +120,13 @@ def test_main_script(test_cfg_path):
 
 # Path
 ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
+# ROOT = '/data/sciotti/DATA'  # mileva
 # ROOT = '/u/dsciotti/code'  # orlanth
 # ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
+
+# CODE_ROOT = '/home/sciotti/code'  # mileva
+CODE_ROOT = ROOT  # all the others
+
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file
@@ -138,7 +143,7 @@ bench_yaml_names.sort()
 
 
 # run certain tests only
-# bench_yaml_names = bench_yaml_names[603:610]
+# bench_yaml_names = bench_yaml_names[606:]
 
 # slow_benchs = [
 #     'config_0018',
@@ -164,7 +169,7 @@ bench_yaml_names.sort()
 
 start_time = time.perf_counter()
 
-main_script_path = f'{ROOT}/Spaceborne/main.py'
+main_script_path = f'{CODE_ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'
 temp_output_folder = os.path.dirname(temp_output_filename)
 excluded_keys = ['backup_cfg', 'metadata']
@@ -212,4 +217,4 @@ for bench_name in bench_yaml_names:
             os.remove(file_path)
 
 
-print(f'\nAll tests run in {(time.perf_counter() - start_time) / 60:.2f} m☑️')
+print(f'\nAll tests run in {(time.perf_counter() - start_time) / 60:.2f} m ☑️')

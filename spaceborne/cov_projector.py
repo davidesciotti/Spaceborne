@@ -99,6 +99,134 @@ def build_cov_sva_integrand_5d(cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_
     return a + b
 
 
+def proj_cov_2d(
+    ells_proj: np.ndarray,
+    cov_hs_ng_4d: np.ndarray,
+    kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
+    kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
+    integration_method: str,
+) -> np.ndarray:
+    """Projects a 2D array (a non-Gaussian covariance in harmonic space) using the
+    equation
+        \int d\ell_1 d\ell_2 k_1(\ell_1) k_2(\ell_1) cov(\ell_1, \ell_2)
+    The input array should be 4D, with shape
+    (nbl_proj_ng, nbl_proj_ng, zpairs_ab, zpairs_cd).
+
+    Notes
+    -----
+    Here we're only parallelizing over s1 and s2 from outside this function,
+    as opposed to the 1d case (see sva and mix) terms, where we also parallelize over
+    zpairs_ab and zpairs_cd. Here we vectorize instead.
+
+    The quad_vec branch does *not* interpolate the challenging part of the integrand,
+    i.e. the kernels! This means that it only assumes the 2D input covariance to be
+    a smooth function of ell1, ell2
+    
+    Also, the fact that I'm not passing workers to quad_vec is intentional, I can't 
+    quite get it to work even when turning off the other layers of parallelism
+    (I think I should move ell*_integrand_func outside the function)
+    """
+
+    # inputs sanity checks
+    if cov_hs_ng_4d.ndim != 4:
+        raise ValueError('cov_hs_ng_4d must be 4D')
+
+    if cov_hs_ng_4d.shape[0] != cov_hs_ng_4d.shape[1]:
+        raise ValueError(
+            f'First two axes of cov_hs_ng_4d must match, got {cov_hs_ng_4d.shape[:2]}'
+        )
+
+    nbl = len(ells_proj)
+    if cov_hs_ng_4d.shape[0] != nbl:
+        raise ValueError(
+            f'cov_hs_ng_4d.shape={cov_hs_ng_4d.shape} inconsistent with '
+            f'len(ells_proj)={nbl}'
+        )
+
+    if nbl < 2:
+        raise ValueError('Need at least 2 ell points for interpolation/integration')
+
+    if not np.all(np.diff(ells_proj) > 0):
+        raise ValueError('ells_proj must be strictly increasing')
+
+    if integration_method not in ['quad', 'simps']:
+        raise ValueError(
+            f'integration_method {integration_method} not recognized! '
+            'Must be either "quad" or "simps"'
+        )
+
+    if integration_method == 'quad':
+        ell_min = ells_proj[0]
+        ell_max = ells_proj[-1]
+
+        zpairs_ab = cov_hs_ng_4d.shape[2]
+        zpairs_cd = cov_hs_ng_4d.shape[3]
+        zpairs_flat = zpairs_ab * zpairs_cd
+
+        # flatten covariance to shape (nbl, nbl, zpairs_flat) for easier
+        # interpolation and integration
+        cov_ell1ell2 = cov_hs_ng_4d.reshape(nbl, nbl, zpairs_flat)
+        ell2_integral = np.zeros((nbl, zpairs_flat))
+
+        # Inner integral (d\ell2)
+        for i in range(nbl):
+            # for each ell1, interpolate along ell2
+            cov_ell1ell2_interp_func = make_interp_spline(
+                ells_proj, cov_ell1ell2[i], k=3, axis=0
+            )
+
+            # define callable of ell2 as required by quad. note that the kernel,
+            # which is the oscillatory part, is not interpolated!
+            def ell2_integrand_func(ells_2, _interp=cov_ell1ell2_interp_func):
+                return ells_2 * kernel_2_func_of_ell(ells_2) * _interp(ells_2)
+
+            # evaluate integral
+            ell2_integral[i], _ = quad_vec(ell2_integrand_func, ell_min, ell_max)
+
+        # now do the same along ell1: interpolate the result...
+        ell2_integral_interp_func = make_interp_spline(
+            ells_proj, ell2_integral, k=3, axis=0
+        )
+
+        # define callable of ell1
+        def ell1_integrand_func(ells_1, _interp=ell2_integral_interp_func):
+            return (
+                ells_1
+                * kernel_1_func_of_ell(ells_1)
+                * _interp(ells_1)
+            )
+
+        # integrate again
+        outer_result, _ = quad_vec(ell1_integrand_func, ell_min, ell_max)
+
+        # finally, reshape the result
+        cov_out = np.asarray(outer_result).reshape(zpairs_ab, zpairs_cd)
+
+    elif integration_method == 'simps':
+        # just to keep track, the two grids are the same
+        ells_1 = ells_proj
+        ells_2 = ells_proj
+
+        # Evaluate projection kernels
+        kernel_1 = kernel_1_func_of_ell(ells_1)
+        kernel_2 = kernel_2_func_of_ell(ells_2)
+
+        # construct integrand, reshaping the ell and kernel arrays
+        integrand = (
+            ells_1[:, None, None, None]
+            * ells_2[None, :, None, None]
+            * kernel_1[:, None, None, None]
+            * kernel_2[None, :, None, None]
+            * cov_hs_ng_4d
+        )
+
+        # integrate along ells_1 and ells_2
+        part_integral = simps(y=integrand, x=ells_1, axis=0)
+        cov_out = simps(y=part_integral, x=ells_2, axis=0)
+
+    return cov_out
+
+
 class CovarianceProjector:
     """
     Base class for all projected covariance computations.
@@ -187,7 +315,7 @@ class CovarianceProjector:
         self.n_eff_2d = np.vstack((self.n_eff_src, self.n_eff_lns))
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
 
-    def cov_parallel_helper(
+    def proj_cov_parallel_helper(
         self,
         scale_ix_1,
         scale_ix_2,
@@ -213,7 +341,7 @@ class CovarianceProjector:
             First and second projection indices. These represent:
             - Theta bin indices for real space (theta_1_ix, theta_2_ix)
             - Mode indices for COSEBIs (mode_n, mode_m)
-            - Ell bin indices for band powers, etc.
+            - ell bin indices for band powers, etc.
         zij, zkl : int
             Tomographic bin pair indices
         ind_ab, ind_cd : np.ndarray
@@ -273,7 +401,7 @@ class CovarianceProjector:
 
         return (scale_ix_1, scale_ix_2, zi, zj, zk, zl, cov_value)
 
-    def cov_simps_wrapper(
+    def proj_cov_simps_parallel_helper_wrapper(
         self,
         zpairs_ab: int,
         zpairs_cd: int,
@@ -289,7 +417,7 @@ class CovarianceProjector:
         cov_out_6d = np.zeros(self.cov_shape_6d)
 
         results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.cov_parallel_helper)(
+            delayed(self.proj_cov_parallel_helper)(
                 scale_ix_1=s1,
                 scale_ix_2=s2,
                 zij=zij,
@@ -370,7 +498,7 @@ class CovarianceProjector:
 
         return kernel_func_of_ell
 
-    def cov_mix_simps(
+    def proj_cov_mix_simps(
         self,
         probe_a_ix: int,
         probe_b_ix: int,
@@ -428,7 +556,7 @@ class CovarianceProjector:
 
         return integral
 
-    def cov_sva_simps(
+    def proj_cov_sva_simps(
         self,
         probe_a_ix: int,
         probe_b_ix: int,
@@ -485,175 +613,3 @@ class CovarianceProjector:
 
         # Apply normalization factor
         return integral / (2.0 * np.pi * self.amax)
-
-    def cov_ng_simps(
-        self,
-        ells_proj: np.ndarray,
-        cov_ng_4d: np.ndarray,
-        kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
-        kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
-    ) -> np.ndarray:
-        """
-        Simpson integrator for non-Gaussian covariance - projection kernel agnostic.
-
-        This function projects a 4D harmonic-space non-Gaussian covariance to real (TBD)
-        or COSEBIs space. It includes the evaluation of the projection kernels
-        (e.g., k_mu for real space, W_n for COSEBIs over the (possibly different)
-        ell_1 and ell_2 grids.
-        It then buils the integrand: ell_1 * ell_2 * kernel_1 * kernel_2 * cov_hs_ng_4d
-        and integrates it with Simpson's rule.
-
-        Parameters
-        ----------
-        ells_proj : np.ndarray
-        cov_ng_4d : np.ndarray
-        kernel_1_func_of_ell : Callable[[np.ndarray], np.ndarray]
-        kernel_2_func_of_ell : Callable[[np.ndarray], np.ndarray]
-
-        Returns
-        -------
-        cov_ijkl : np.ndarray
-            for the input probe combination and term (ssc or cng), returns the
-            zi, zj, zk, zl 4D matrix (no need for parallel wrappers in this case)
-        """
-
-        assert cov_ng_4d.ndim == 4, 'input array must be 4D'
-        assert cov_ng_4d.shape[0] == cov_ng_4d.shape[1] == len(ells_proj), (
-            'cov_ng_4d.shape[0] and cov_ng_4d.shape[1] must match len(ells_proj).'
-            f'found cov_ng_4d.shape={cov_ng_4d.shape} and '
-            f'len(ells_proj)={len(ells_proj)}'
-        )
-
-        # just to keep track, the two grids are the same
-        ells_1 = ells_proj
-        ells_2 = ells_proj
-
-        # Evaluate projection kernels
-        kernel_1 = kernel_1_func_of_ell(ells_1)
-        kernel_2 = kernel_2_func_of_ell(ells_2)
-
-        # reshape everything to match the NG cov shape
-        integrand = (
-            ells_1[:, None, None, None]
-            * ells_2[None, :, None, None]
-            * kernel_1[:, None, None, None]
-            * kernel_2[None, :, None, None]
-            * cov_ng_4d
-        )
-
-        # integrate along ells_1 and ells_2
-        part_integral = simps(y=integrand, x=ells_1, axis=0)
-        cov_ijkl = simps(y=part_integral, x=ells_2, axis=0)
-
-        return cov_ijkl
-
-    def cov_ng_quad_vec(
-        self,
-        ells_proj: np.ndarray,
-        cov_ng_4d: np.ndarray,
-        kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
-        kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
-        limit: int = 200,
-        epsrel: float = 1.49e-4,
-        num_threads: int = 1,
-    ) -> np.ndarray:
-        """
-        Adaptive quad_vec integrator for non-Gaussian covariance projection.
-
-        Same interface as cov_ng_simps. Uses scipy.integrate.quad_vec instead
-        of fixed-grid Simpson, exploiting the fact that cov_ng_4d is smooth in
-        ell while the projection kernels (Bessel functions, COSEBIS filters) are
-        oscillatory. The two concerns are separated:
-
-          - cov_ng_4d is interpolated with a 2D cubic spline (accurate on a
-            coarse ells_proj grid because the covariance is smooth).
-          - The adaptive integrator resolves the oscillatory kernels internally,
-            calling the cheap spline at however many ell points it needs.
-
-        Steps
-        -----
-        1. Build a 2D cubic interpolator for cov_ng_4d(ell1, ell2).
-        2. For each ell1 in ells_proj compute the inner integral
-               I(ell1) = ∫ dℓ₂ ℓ₂ K₂(ℓ₂) C(ell1, ℓ₂)
-           using quad_vec, vectorised over all n_flat tomo-bin combinations.
-        3. Fit a cubic spline to I(ell1) (smooth in ell1).
-        4. Compute the outer integral
-               result = ∫ dℓ₁ ℓ₁ K₁(ℓ₁) I(ℓ₁)
-           with a second quad_vec call.
-
-        Parameters
-        ----------
-        ells_proj : np.ndarray
-        cov_ng_4d : np.ndarray
-        kernel_1_func_of_ell : Callable[[np.ndarray], np.ndarray]
-        kernel_2_func_of_ell : Callable[[np.ndarray], np.ndarray]
-        limit : int
-            Maximum number of adaptive subdivisions per quad_vec call.
-        epsrel : float
-            Relative tolerance for quad_vec.
-        num_threads : int
-            Number of worker threads passed to quad_vec. Use -1 for all
-            available CPUs. Note that the inner quad_vec calls (one per ell1
-            grid point) are independent, so threading is most effective there.
-
-        Returns
-        -------
-        cov_ijkl : np.ndarray
-            Shape (zpairs_ab, zpairs_cd), same as cov_ng_simps.
-        """
-        assert cov_ng_4d.ndim == 4, 'input array must be 4D'
-        assert cov_ng_4d.shape[0] == cov_ng_4d.shape[1] == len(ells_proj), (
-            'cov_ng_4d.shape[0] and cov_ng_4d.shape[1] must match len(ells_proj). '
-            f'found cov_ng_4d.shape={cov_ng_4d.shape} and '
-            f'len(ells_proj)={len(ells_proj)}'
-        )
-
-        ell_min, ell_max = ells_proj[0], ells_proj[-1]
-        nbl = len(ells_proj)
-        n_ij = cov_ng_4d.shape[2]
-        n_kl = cov_ng_4d.shape[3]
-        n_flat = n_ij * n_kl
-
-        # Flatten tomo dims: (nbl, nbl, n_flat). Smooth in ell -> cubic is accurate
-        # even on a coarse ells_proj grid.
-        cov_flat = cov_ng_4d.reshape(nbl, nbl, n_flat)
-        interp_2d = RegularGridInterpolator(
-            (ells_proj, ells_proj),
-            cov_flat,
-            method='cubic',
-            bounds_error=False,
-            fill_value=0.0,
-        )
-
-        # Step 1: inner integral I(ell1) = ∫ dℓ₂ ℓ₂ K₂(ℓ₂) C(ell1, ℓ₂)
-        # Evaluated at each ell1 in ells_proj; shape of inner_result: (nbl, n_flat)
-        inner_result = np.zeros((nbl, n_flat))
-        for i, ell1 in enumerate(ells_proj):
-
-            def _inner(ell2, _ell1=ell1):
-                k2 = kernel_2_func_of_ell(np.atleast_1d(ell2))[0]
-                cov_val = interp_2d([[_ell1, ell2]])[0]  # shape: (n_flat,)
-                return ell2 * k2 * cov_val
-
-            inner_result[i], _ = quad_vec(
-                _inner,
-                ell_min,
-                ell_max,
-                limit=limit,
-                epsrel=epsrel,
-                workers=num_threads,
-            )
-
-        # Step 2: outer integral = ∫ dℓ₁ ℓ₁ K₁(ℓ₁) I(ℓ₁)
-        # I(ell1) is smooth -> a cubic spline on ells_proj is sufficient.
-        # BSpline with 2D coefficients: spl(scalar) -> shape (n_flat,)
-        inner_spline = make_interp_spline(ells_proj, inner_result, k=3)
-
-        def _outer(ell1):
-            k1 = kernel_1_func_of_ell(np.atleast_1d(ell1))[0]
-            return ell1 * k1 * inner_spline(ell1)  # shape: (n_flat,)
-
-        result, _ = quad_vec(
-            _outer, ell_min, ell_max, limit=limit, epsrel=epsrel, workers=num_threads
-        )
-        return result.reshape(n_ij, n_kl)

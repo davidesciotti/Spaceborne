@@ -120,7 +120,7 @@ binning:
   # so ell_bins is ignored and ell_max is included in the grid. 
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
-  ell_bins: 32 # Type: int. Number of ell bins. Not used in the 'unbinned' case
+  ell_bins: 32 # Type: int. Number of ell bins.
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
   # The file should have the following columns:

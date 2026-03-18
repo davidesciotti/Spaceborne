@@ -143,7 +143,7 @@ bench_yaml_names.sort()
 
 
 # run certain tests only
-bench_yaml_names = bench_yaml_names[606:]
+# bench_yaml_names = bench_yaml_names[606:]
 
 # slow_benchs = [
 #     'config_0018',

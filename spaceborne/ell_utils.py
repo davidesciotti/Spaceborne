@@ -165,7 +165,7 @@ def compute_ells(
 
     elif binning_type == 'ISTNL':
         ell_bin_edges = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
-        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
+        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0 # arithmetic mean
         ells = np.exp(ells)
         deltas = np.diff(np.exp(ell_bin_edges))
 

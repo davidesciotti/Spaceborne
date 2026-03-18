@@ -757,7 +757,7 @@ class SpaceborneConfigChecker:
             or self.cfg['covariance']['cNG_code'] == 'OneCovariance'
         )
 
-        if self.cfg['C_ell']['has_magnification_bias'] and any(uses_oc):
+        if self.cfg['C_ell']['has_magnification_bias'] and uses_oc:
             warnings.warn(
                 f'{RED}Magnification bias is enabled in the configuration, '
                 'but OneCovariance does not include it. Results for GGL and GG might '

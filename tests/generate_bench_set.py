@@ -588,10 +588,10 @@ for ke_approx in [True, False]:
             configs_to_test.append(
                 {
                     'covariance': {
-                        'use_KE_approximation': ke_approx,
                         'include_b2g': include_b2g,
                         'include_terasawa_terms': include_terasawa,
-                    }
+                    },
+                    'precision': {'use_KE_approximation': ke_approx},
                 }
             )
 
@@ -636,10 +636,7 @@ for cov_type in ['coupled', 'decoupled']:
                             'cov_type': cov_type,
                             'partial_sky_method': 'NaMaster',
                         },
-                        'precision': {
-                            'spin0': spin0,
-                            'use_iNKA': use_iNKA,
-                        },
+                        'precision': {'spin0': spin0, 'use_iNKA': use_iNKA},
                         'binning': {
                             # to speed up significantly Nmt
                             'ell_max': 1000,

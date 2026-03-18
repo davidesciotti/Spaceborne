@@ -418,10 +418,10 @@ class EllBinning:
             self.ell_edges_GC = self.ell_edges_GC.astype(int)
 
             self.nmt_bin_obj_WL = nmt.NmtBin.from_edges(
-                self.ell_edges_WL[:-1], self.ell_edges_WL[1:]
+                self.ell_edges_WL[:-1], self.ell_edges_WL[1:] # CHANGED, had + 1            
             )
             self.nmt_bin_obj_GC = nmt.NmtBin.from_edges(
-                self.ell_edges_GC[:-1], self.ell_edges_GC[1:]
+                self.ell_edges_GC[:-1], self.ell_edges_GC[1:] # CHANGED, had + 1            
             )
 
             self.ells_WL = self.nmt_bin_obj_WL.get_effective_ells()

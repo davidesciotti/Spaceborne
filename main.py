@@ -1974,8 +1974,8 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
 # ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
-oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
 if cfg['OneCovariance']['compare_against_oc']:
+    oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
     if 'OneCovariance' in cov_terms_and_codes.values():
         warnings.warn(
             'You are likely comparing OneCovariance against itself', stacklevel=2

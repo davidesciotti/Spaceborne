@@ -352,8 +352,7 @@ precision:
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc
   k_steps: 250 # Type: int. Around 250 should be enough
 
-  # TODO what is this 0.02?
-  z_min: 0.02 # Type: float
+  z_min: 0.01 # Type: float
   z_max: 3.0 # Type: float
   # Number of z steps used for the NG covariance projection.
   # Should be quite high, e.g., to trace the rapid variation of the sigma2_b function.

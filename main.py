@@ -19,6 +19,7 @@ import yaml
 
 
 def load_config(_config_path):
+    # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
         # Running interactively, so use default config file
         config_path = _config_path

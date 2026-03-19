@@ -61,7 +61,7 @@ OneCovariance:
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: True
+  compare_against_oc: False
   new_run: False
   oc_format_to_compare_against: list
   process_cov_from_mat_file: False
@@ -91,8 +91,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: ../../data/DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
-  nz_lenses_filename: ../../data/DATA/Spaceborne_jobs/develop/input/nz_demo.txt # Type: str
+  nz_sources_filename: ../DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
+  nz_lenses_filename: ../DATA/Spaceborne_jobs/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -128,7 +128,7 @@ binning:
   # with `ell` the ell bin center, `delta_ell` its width,
   # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
   # The file can be in .txt, .dat or .ascii format.
-  ell_bins_filename: ../../data/DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
+  ell_bins_filename: ../DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 5 # Type: float | int.
@@ -154,9 +154,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: ../DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -173,8 +173,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: ../../data/DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: ../../data/DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
 
   # Interpolation methods for the galaxy and magnification bias tables.
   # This should be set to "linear" or "nearest" for step-like, or in general discontinuous, 
@@ -436,5 +436,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: ../../data/DATA/Spaceborne_jobs/RS_NG # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs/develop # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

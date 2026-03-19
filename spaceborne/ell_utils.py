@@ -165,7 +165,7 @@ def compute_ells(
 
     elif binning_type == 'ISTNL':
         ell_bin_edges = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
-        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0 # arithmetic mean
+        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0  # arithmetic mean
         ells = np.exp(ells)
         deltas = np.diff(np.exp(ell_bin_edges))
 
@@ -418,10 +418,12 @@ class EllBinning:
             self.ell_edges_GC = self.ell_edges_GC.astype(int)
 
             self.nmt_bin_obj_WL = nmt.NmtBin.from_edges(
-                self.ell_edges_WL[:-1], self.ell_edges_WL[1:] + 1 # CHANGED, had + 1            
+                self.ell_edges_WL[:-1],
+                self.ell_edges_WL[1:],  # CHANGED, had + 1
             )
             self.nmt_bin_obj_GC = nmt.NmtBin.from_edges(
-                self.ell_edges_GC[:-1], self.ell_edges_GC[1:] + 1 # CHANGED, had + 1            
+                self.ell_edges_GC[:-1],
+                self.ell_edges_GC[1:],  # CHANGED, had + 1
             )
 
             self.ells_WL = self.nmt_bin_obj_WL.get_effective_ells()
@@ -470,7 +472,7 @@ class EllBinning:
 
     def compute_ells_3x2pt_unbinned(self):
         """Needed for the partial-sky covariance"""
-        
+
         # the lack of ell_min in np.arange() below should be correct!
         self.ells_3x2pt_unb = np.arange(self.ell_max_3x2pt + 1)
         self.nbl_3x2pt_unb = len(self.ells_3x2pt_unb)

@@ -32,7 +32,7 @@ intrinsic_alignment:
 extra_parameters:
   camb:
     halofit_version: mead2020_feedback # Type: str
-    kmax: 100 # Type: float | int
+    kmax: 300 # Type: float | int
     HMCode_logT_AGN: 7.75 # Type: float
     num_massive_neutrinos: 1 # Type: int
     dark_energy_model: ppf # Type: str
@@ -275,7 +275,7 @@ covariance:
   save_full_cov: True # Type: bool
 
   # Name of the output covariance file.
-  cov_filename: covmat # Type: str.
+  cov_filename: covmats # Type: str.
   save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
 
 PyCCL:
@@ -361,13 +361,13 @@ precision:
   theta_steps_cosebis: 1000 # Type: int. Increase for higher precision. Around 1000 should be enough.
 
   # ==================================== NaMaster ======================================
-  # Number of iterations when computing the alms of the input map. See
-  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-  n_iter_nmt: null # Type: None | int.
   # Whether to treat all fields as having spin 0 in the NaMaster Gaussian covariance.
   # This is (significantly) faster, but less accurate.
   spin0: True # Type: bool.
   use_iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
+  # Number of iterations when computing the alms of the input map. See
+  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
+  n_iter_nmt: null # Type: None | int.
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

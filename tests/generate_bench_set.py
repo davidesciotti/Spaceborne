@@ -10,23 +10,25 @@ performs the following operations:
 2. Change some settings to test the different parts of the code (and, to ensure fast
    execution), thereby producing a list of cfg dicts to test (`configs_to_test`).
 3. Save the list of cfg dicts to yaml files in the folder
-   {ROOT}/Spaceborne_bench/bench_set_cfg.
+   {DATA_ROOT}/Spaceborne_bench/bench_set_cfg.
 4. Run SB with these yaml files, generating a set of benchmarks (npz archives) to use as
    an exhaustive reference to test the code against. The benchmarks are stored in
-   {ROOT}/Spaceborne_bench/bench_set_output
+   {DATA_ROOT}/Spaceborne_bench/bench_set_output
 
 
 NOTES
 
 -  The code will raise an error if a benchmark file already exists.
    If you want to overwrite them, delete the existing ones (e.g.):
-   {ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
+   {DATA_ROOT}/Spaceborne_bench/bench_set_output/config_0005.yaml
    or change the benchmark filename.
 
 -  The SB output produced at runtime during the production of these benchmarks
    is in
-   {ROOT}/Spaceborne_bench/bench_set_output/_sb_output,
+   {DATA_ROOT}/Spaceborne_bench/bench_set_output/_sb_output,
    but you don't need to care about this.
+
+-  This script should be run from the main branch.
 """
 
 # ruff: noqa: PERF401

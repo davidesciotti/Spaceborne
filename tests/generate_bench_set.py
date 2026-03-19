@@ -221,8 +221,8 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
 
 # variables to play with
-ROOT = '/u/dsciotti/code'
-skip_existing = True  # Skip benchmarks that already exist
+ROOT = '/u/dsciotti/code'  # pleiadi
+skip_existing = False  # Skip benchmarks that already exist
 
 # set some paths
 bench_set_path = f'{ROOT}/Spaceborne_bench'
@@ -258,7 +258,7 @@ base_cfg = {
     'extra_parameters': {
         'camb': {
             'halofit_version': 'mead2020_feedback',
-            'kmax': 100,
+            'kmax': 300,
             'HMCode_logT_AGN': 7.75,
             'num_massive_neutrinos': 1,
             'dark_energy_model': 'ppf',
@@ -286,8 +286,8 @@ base_cfg = {
         'cross_cov': True,
     },
     'nz': {
-        'nz_sources_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
-        'nz_lenses_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat',
+        'nz_sources_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt',
+        'nz_lenses_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/nz_demo.txt',
         'normalize_nz': True,
         'ngal_sources': [7.09216, 8.09215, 9.09215],
         'ngal_lenses': [3.09216, 2.09215, 4.09215],
@@ -319,6 +319,8 @@ base_cfg = {
         'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
         'gal_bias_table_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/gal_bias_table.txt',
         'mag_bias_table_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/mag_bias_table.txt',
+        'gal_bias_table_interp_method': 'CubicSpline',
+        'mag_bias_table_interp_method': 'CubicSpline',
         'mult_shear_bias': [0.0, 0.0, 0.0],
         'has_rsd': False,
         'has_IA': False,
@@ -344,6 +346,9 @@ base_cfg = {
         'consistency_checks': False,
         'oc_output_filename': 'cov_oc',
         'compare_against_oc': False,
+        'new_run': True,
+        'oc_format_to_compare_against': 'list',
+        'process_cov_from_mat_file': False,
     },
     'covariance': {
         'G': True,
@@ -352,10 +357,6 @@ base_cfg = {
         'BNT_transform': False,
         'partial_sky_method': 'Knox',
         'cov_type': 'decoupled',
-        'triu_tril': 'triu',
-        'row_col_major': 'row-major',
-        'covariance_ordering_2D': 'probe_scale_zpair',
-        'save_full_cov': True,
         'split_gaussian_cov': False,
         'sigma_eps_i': [0.16, 0.26, 0.36],
         'no_sampling_noise': False,
@@ -363,7 +364,11 @@ base_cfg = {
         'which_b1g_in_resp': 'from_input',
         'include_b2g': True,
         'include_terasawa_terms': False,
-        'cov_filename': 'cov_{which_ng_cov:s}_{probe:s}_{ndim}.npz',
+        'triu_tril': 'triu',
+        'row_col_major': 'row-major',
+        'covariance_ordering_2D': 'probe_scale_zpair',
+        'save_full_cov': True,
+        'cov_filename': 'covmats',
         'save_cov_fits': False,
     },
     'PyCCL': {
@@ -378,21 +383,7 @@ base_cfg = {
         'fix_seed': True,
     },
     'precision': {
-        'n_iter_nmt': None,
-        'n_sub': 20,
-        'n_bisec_max': 500,
-        'rel_acc': 1.0e-7,
-        'boost_bessel': True,
-        'verbose': True,
-        'ell_min_proj': 2,
-        'ell_max_proj': 100000,
-        'ell_bins_proj_gauss': 50,
-        'ell_bins_proj_nongauss': 50,
-        'theta_min_arcmin_cosebis': 2,
-        'theta_max_arcmin_cosebis': 300,
-        'theta_steps_cosebis': 500,
-        'jax_enable_x64': True,
-        'cov_hs_g_ell_bin_average': False,
+        'cov_hs_g_ell_bin_average': True,
         'log10_k_min': -5.0,
         'log10_k_max': 2.0,
         'k_steps': 20,
@@ -401,11 +392,22 @@ base_cfg = {
         'z_steps': 500,
         'z_steps_trisp': 10,
         'use_KE_approximation': False,
-        'n_samples_wf': 1000,
-        'spline_params': {'A_SPLINE_NA_PK': 240, 'K_MAX_SPLINE': 300},
-        'gsl_params': None,
+        'ell_min_proj': 2,
+        'ell_max_proj': 500000,
+        'ell_bins_proj_gauss': 100,
+        'ell_bins_proj_nongauss': 50,
+        'proj_gauss_integration_method': 'simps',
+        'proj_nongauss_integration_method': 'simps',
+        'theta_min_arcmin_cosebis': 2,
+        'theta_max_arcmin_cosebis': 300,
+        'theta_steps_cosebis': 500,
         'spin0': False,
         'use_iNKA': True,
+        'n_iter_nmt': None,
+        'jax_enable_x64': True,
+        'n_samples_wf': 1000,
+        'spline_params': {'A_SPLINE_NA_PK': 200},
+        'gsl_params': None,
     },
     'misc': {
         'num_threads': 50,
@@ -416,10 +418,10 @@ base_cfg = {
         'test_symmetry': False,
         'cl_triangle_plot': False,
         'plot_probe_names': True,
-        'output_path': './output',
-        'save_output_as_benchmark': True,
-        'save_figs': False,
         'workspace_filename': '...',
+        'save_output_as_benchmark': True,
+        'output_path': './output',
+        'save_figs': False,
     },
 }
 
@@ -428,7 +430,7 @@ base_cfg = {
 # Each dictionary represents one configuration to test
 configs_to_test = []
 
-# ! OneCovariance
+# ! OneCovariance - Gauss only, 3 spaces
 for obs_space in ['harmonic', 'real', 'cosebis']:
     configs_to_test.append(
         {
@@ -438,8 +440,7 @@ for obs_space in ['harmonic', 'real', 'cosebis']:
         }
     )
 
-
-# ! covariance ordering
+# ! Ordering, probe selection, input Cls
 triu_tril = 'triu'
 row_col = 'row-major'
 for space in ['harmonic', 'real', 'cosebis']:
@@ -527,6 +528,23 @@ for space in ['harmonic', 'real', 'cosebis']:
                                 }
                             )
 
+# ! COSEBIs, real space
+for obs_space in ['real', 'cosebis']:
+    for proj_gauss_integration_method, proj_nongauss_integration_method in [
+        ('simps', 'simps'),
+        ('levin', 'levin'),
+        ('simps', 'FFTLog'),
+    ]:
+        configs_to_test.append(
+            {
+                'covariance': {'SSC': True, 'cNG': True},
+                'probe_selection': {'space': obs_space},
+                'precision': {
+                    'proj_gauss_integration_method': proj_gauss_integration_method,
+                    'proj_nongauss_integration_method': proj_nongauss_integration_method,
+                },
+            }
+        )
 
 # ! Bias models
 for which_gal_bias in ['from_input', 'polynomial_fit']:
@@ -581,7 +599,7 @@ for no_sampling_noise in [True, False]:
     configs_to_test.append({'covariance': {'no_sampling_noise': no_sampling_noise}})
 
 
-# ! SSC  variations
+# ! SSC
 for ke_approx in [True, False]:
     for include_b2g in [True, False]:
         for include_terasawa in [True, False]:
@@ -645,10 +663,6 @@ for cov_type in ['coupled', 'decoupled']:
                         },
                     }
                 )
-
-# ! cNG
-for cng in [True, False]:
-    configs_to_test.append({'covariance': {'cNG': cng}})
 
 
 # Generate configurations

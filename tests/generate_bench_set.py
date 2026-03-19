@@ -222,11 +222,18 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
 # variables to play with
 # ROOT = '/u/dsciotti/code'  # pleiadi
-ROOT = '/Users/davidesciotti/Documents/Work/Code'
+# ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
+ROOT = '/home/sciotti/code'  # mileva
+
+DATA_ROOT = '/data/sciotti/DATA'  # mileva
+# DATA_ROOT = ROOT  # others
+
+CONDA_ENV_ROOT = '/home/sciotti/.conda/envs'  # mileva
+
 skip_existing = False  # Skip benchmarks that already exist
 
 # set some paths
-bench_set_path = f'{ROOT}/Spaceborne_bench'
+bench_set_path = f'{DATA_ROOT}/Spaceborne_bench'
 bench_set_cfg_path = f'{bench_set_path}/bench_set_cfg'
 bench_set_output_path = f'{bench_set_path}/bench_set_output'
 output_path = f'{bench_set_output_path}/_sb_output'
@@ -287,8 +294,8 @@ base_cfg = {
         'cross_cov': True,
     },
     'nz': {
-        'nz_sources_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt',
-        'nz_lenses_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/nz_demo.txt',
+        'nz_sources_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt',
+        'nz_lenses_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/nz_demo.txt',
         'normalize_nz': True,
         'ngal_sources': [7.09216, 8.09215, 9.09215],
         'ngal_lenses': [3.09216, 2.09215, 4.09215],
@@ -303,7 +310,7 @@ base_cfg = {
         'ell_min': 10,
         'ell_max': 3000,
         'ell_bins': 4,
-        'ell_bins_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt',
+        'ell_bins_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt',
         'theta_min_arcmin': 50,
         'theta_max_arcmin': 300,
         'theta_bins': 4,
@@ -311,15 +318,15 @@ base_cfg = {
     },
     'C_ell': {
         'use_input_cls': False,
-        'cl_LL_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_ll.txt',
-        'cl_GL_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gl.txt',
-        'cl_GG_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/cl_gg.txt',
+        'cl_LL_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/cl_ll.txt',
+        'cl_GL_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/cl_gl.txt',
+        'cl_GG_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/cl_gg.txt',
         'which_gal_bias': 'polynomial_fit',
         'which_mag_bias': 'polynomial_fit',
         'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
         'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
-        'gal_bias_table_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/gal_bias_table.txt',
-        'mag_bias_table_filename': f'{ROOT}/DATA/Spaceborne_jobs/develop/input/mag_bias_table.txt',
+        'gal_bias_table_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/gal_bias_table.txt',
+        'mag_bias_table_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/mag_bias_table.txt',
         'gal_bias_table_interp_method': 'CubicSpline',
         'mag_bias_table_interp_method': 'CubicSpline',
         'mult_shear_bias': [0.0, 0.0, 0.0],
@@ -334,7 +341,7 @@ base_cfg = {
     },
     'mask': {
         'load_mask': False,
-        'mask_filename': f'{ROOT}/DATA/Euclid_data/RR2/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
+        'mask_filename': f'{DATA_ROOT}/Euclid_data/RR2/Davide/Coverage/EUC_LE3_COVERAGE_RR2-R1-TEST_20250519T100352.127658Z_00.00_NSIDE1024.fits',
         'generate_polar_cap': True,
         'nside': 1024,
         'survey_area_deg2': 13245,
@@ -342,7 +349,7 @@ base_cfg = {
         'aposize': 0.1,
     },
     'OneCovariance': {
-        'path_to_oc_env': '/opt/miniconda3/envs/cov20_env/bin/python',
+        'path_to_oc_env': f'{CONDA_ENV_ROOT}/cov20_env/bin/python',
         'path_to_oc_executable': f'{ROOT}/OneCovariance/covariance.py',
         'consistency_checks': False,
         'oc_output_filename': 'cov_oc',
@@ -411,7 +418,7 @@ base_cfg = {
         'gsl_params': None,
     },
     'misc': {
-        'num_threads': 50,
+        'num_threads': 250,
         'jax_platform': 'auto',
         'test_numpy_inversion': False,
         'test_condition_number': False,
@@ -647,7 +654,7 @@ for load_input_mask, generate_polar_cap in zip(
 for cov_type in ['coupled', 'decoupled']:
     for spin0 in [True, False]:
         for use_iNKA in [True, False]:
-            for binning_type in ['log', 'lin', 'from_input']:
+            for binning_type in ['log', 'lin', 'from_input', 'unbinned']:
                 configs_to_test.append(
                     {
                         'covariance': {
@@ -658,7 +665,7 @@ for cov_type in ['coupled', 'decoupled']:
                         'precision': {'spin0': spin0, 'use_iNKA': use_iNKA},
                         'binning': {
                             # to speed up significantly Nmt
-                            'ell_max': 1000,
+                            'ell_max': 300 if binning_type == 'unbinned' else 1000,
                             'ell_bins': 5,
                             'binning_type': binning_type,
                         },

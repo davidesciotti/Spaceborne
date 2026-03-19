@@ -221,7 +221,8 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
 
 # variables to play with
-ROOT = '/u/dsciotti/code'  # pleiadi
+# ROOT = '/u/dsciotti/code'  # pleiadi
+ROOT = '/Users/davidesciotti/Documents/Work/Code'
 skip_existing = False  # Skip benchmarks that already exist
 
 # set some paths

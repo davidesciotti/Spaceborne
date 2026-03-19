@@ -28,6 +28,7 @@ from spaceborne import cov_dict as cd
 from spaceborne import cov_projector as cp
 from spaceborne import sb_lib as sl
 from spaceborne.cov_projector import CovarianceProjector
+from spaceborne.twobessel_fang import TwoBessel
 
 warnings.filterwarnings(
     'ignore', message=r'.*invalid escape sequence.*', category=SyntaxWarning

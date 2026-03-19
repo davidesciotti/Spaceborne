@@ -231,9 +231,10 @@ class TestEllBinning:
     def test_compute_ells_3x2pt_proj(self, basic_config):
         """Test ell computation for covariance projection."""
         basic_config['precision'] = {
-            'ell_min_proj': 1,
-            'ell_max_proj': 10000,
+            'ell_min_proj': 2,
+            'ell_max_proj': 50_000,
             'ell_bins_proj_gauss': 100,
+            'ell_bins_proj_nongauss': 50,
         }
         
         ell_obj = ell_utils.EllBinning(basic_config)
@@ -241,8 +242,9 @@ class TestEllBinning:
         ell_obj.compute_ells_3x2pt_proj()
         
         assert len(ell_obj.ells_3x2pt_proj_g) == 100
+        assert len(ell_obj.ells_3x2pt_proj_ng) == 50
         assert ell_obj.nbl_3x2pt_proj_g == 100
-        assert ell_obj.ell_max_3x2pt_proj == 10000
+        assert ell_obj.nbl_3x2pt_proj_ng == 50
 
 
 class TestLoadEllCuts:

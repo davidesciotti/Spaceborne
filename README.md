@@ -8,10 +8,11 @@
 
 # Spaceborne: fast and accurate analytical covariance matrices for precision cosmology
 
-
+[![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%7C3.13-blue)](https://www.python.org/downloads/)
 [![Documentation Status](https://readthedocs.org/projects/spaceborne/badge/?version=latest)](https://spaceborne.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Linter](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![demo notebook](https://img.shields.io/badge/demo-notebook-orange?logo=jupyter)](./DEMO.ipynb)
 
 </div>
 
@@ -29,6 +30,8 @@ Some of its features include:
 
 
 For detailed instructions on how to install and use Spaceborne, please refer to the official [documentation](https://spaceborne.readthedocs.io/en/latest/).
+
+📔 For a hands-on walkthrough, you can check out the `DEMO.ipynb` notebook.
 
 ## Installation
 

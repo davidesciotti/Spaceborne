@@ -758,11 +758,10 @@ class SpaceborneConfigChecker:
         )
 
         if self.cfg['C_ell']['has_magnification_bias'] and uses_oc:
-            warnings.warn(
-                f'{RED}Magnification bias is enabled in the configuration, '
-                'but OneCovariance does not include it. Results for GGL and GG might '
-                f'be inconsistent.{RESET}',
-                stacklevel=2,
+            raise ValueError(
+                'Magnification bias is enabled in the configuration, '
+                'but OneCovariance does not include it. '
+                'Results for GGL and GG might be inconsistent.'
             )
 
         if (
@@ -774,7 +773,7 @@ class SpaceborneConfigChecker:
         ):
             raise ValueError(
                 'The KE approximation for the SSC term is disabled in the '
-                'configuration, but OneCovariance uses it.'
+                'configuration, but OneCovariance uses it. '
                 'Results for GGL and GG might be inconsistent.'
             )
 

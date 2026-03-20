@@ -474,9 +474,9 @@ def sample_covariance( # fmt: skip
                 sim_cl_LL[i, :, zi, zj] = sim_cl_LL_ij
 
     # * 3. compute sample covariance
-    # TODO only loop over required probes! 
+    # TODO only loop over required probes!
     for zi, zj, zk, zl in tqdm(zijkl_combinations):
-        # you could also cut the mixed cov terms, 
+        # you could also cut the mixed cov terms,
         # but for cross-redshifts it becomes a bit tricky
         kwargs = {'rowvar': False, 'bias': False}
         cov_dict['g']['LL', 'LL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
@@ -828,8 +828,9 @@ class NmtCov:
             _lmax = getattr(self.ell_obj, f'ell_max_{probe}')
             if _lmax >= 3 * self.mask_obj.nside - 1:
                 warnings.warn(
-                    f'lmax = {_lmax} >= 3 * NSIDE = {self.mask_obj.nside} - 1'
-                    'you should probably increase NSIDE or decrease lmax ',
+                    f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.mask_obj.nside - 1}\n'
+                    f'(NSIDE = {self.mask_obj.nside}) for probe {probe}. '
+                    'You should probably increase NSIDE or decrease lmax ',
                     stacklevel=2,
                 )
 

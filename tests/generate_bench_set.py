@@ -675,6 +675,14 @@ for cov_type in ['coupled', 'decoupled']:
                 )
 
 
+# make sure we don't have duplicated configurations
+unique_configs = []
+for cfg in configs_to_test:
+    if cfg not in unique_configs:
+        unique_configs.append(cfg)
+configs_to_test = unique_configs
+
+
 # Generate configurations
 configs = generate_zipped_configs(base_cfg, configs_to_test, bench_set_cfg_path)
 print(f'Generated {len(configs)} configurations')

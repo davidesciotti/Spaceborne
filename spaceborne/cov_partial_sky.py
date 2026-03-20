@@ -363,6 +363,7 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
 
 
 def sample_covariance( # fmt: skip
+    cov_dict,
     cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned,
     cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned,
     nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, nmt_bin_obj,
@@ -374,14 +375,16 @@ def sample_covariance( # fmt: skip
     if fix_seed:
         SEEDVALUE = np.arange(nreal)
 
+    # instantiate arrays
+    for probe_2tpl in cov_dict['g']:
+        cov_dict['g'][probe_2tpl]['6d'] = np.zeros(
+            (nbl, nbl, zbins, zbins, zbins, zbins)
+        )
+
     # NmtField kwargs
     nmt_field_kw = {'n_iter': n_iter, 'lite': lite, 'lmax': lmax}
 
     # TODO use only independent z pairs
-    # TODO update this too to the new dict structure
-    cov_sim_10d = np.zeros(
-        (n_probes, n_probes, n_probes, n_probes, nbl, nbl, zbins, zbins, zbins, zbins)
-    )
     sim_cl_GG = np.zeros((nreal, nbl, zbins, zbins))
     sim_cl_GL = np.zeros((nreal, nbl, zbins, zbins))
     sim_cl_LL = np.zeros((nreal, nbl, zbins, zbins))
@@ -471,39 +474,40 @@ def sample_covariance( # fmt: skip
                 sim_cl_LL[i, :, zi, zj] = sim_cl_LL_ij
 
     # * 3. compute sample covariance
+    # TODO only loop over required probes! 
     for zi, zj, zk, zl in tqdm(zijkl_combinations):
-        # ! compute the sample covariance
-        # you could also cut the mixed cov terms, but for cross-redshifts it becomes a bit tricky
+        # you could also cut the mixed cov terms, 
+        # but for cross-redshifts it becomes a bit tricky
         kwargs = {'rowvar': False, 'bias': False}
-        cov_sim_10d[0, 0, 0, 0, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['LL', 'LL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_LL[:, :, zi, zj], sim_cl_LL[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
-        cov_sim_10d[0, 0, 1, 0, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['LL', 'GL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_LL[:, :, zi, zj], sim_cl_GL[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
-        cov_sim_10d[0, 0, 1, 1, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['LL', 'GG']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_LL[:, :, zi, zj], sim_cl_GG[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
-        cov_sim_10d[1, 0, 0, 0, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['GL', 'LL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_GL[:, :, zi, zj], sim_cl_LL[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
-        cov_sim_10d[1, 0, 1, 0, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['GL', 'GL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_GL[:, :, zi, zj], sim_cl_GL[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
-        cov_sim_10d[1, 0, 1, 1, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['GL', 'GG']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_GL[:, :, zi, zj], sim_cl_GG[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
-        cov_sim_10d[1, 1, 0, 0, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['GG', 'LL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_GG[:, :, zi, zj], sim_cl_LL[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
-        cov_sim_10d[1, 1, 1, 0, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['GG', 'GL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_GG[:, :, zi, zj], sim_cl_GL[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
-        cov_sim_10d[1, 1, 1, 1, :, :, zi, zj, zk, zl] = np.cov(
+        cov_dict['g']['GG', 'GG']['6d'][:, :, zi, zj, zk, zl] = np.cov(
             sim_cl_GG[:, :, zi, zj], sim_cl_GG[:, :, zk, zl], **kwargs
         )[:nbl, nbl:]
 
-    return cov_sim_10d, sim_cl_GG, sim_cl_GL, sim_cl_LL
+    return sim_cl_GG, sim_cl_GL, sim_cl_LL
 
 
 def pcls_from_maps(  # fmt: skip
@@ -1015,7 +1019,9 @@ class NmtCov:
             cl_eb_4covsim = np.zeros_like(cl_tt_4covsim)
             cl_bb_4covsim = np.zeros_like(cl_tt_4covsim)
 
+            # ! note that self.cov_dict is mutated in-place, no need to return it
             result = sample_covariance(
+                cov_dict=self.cov_dict,
                 cl_GG_unbinned=cl_tt_4covsim,
                 cl_LL_unbinned=cl_ee_4covsim,
                 cl_GL_unbinned=cl_te_4covsim,
@@ -1038,9 +1044,6 @@ class NmtCov:
                 n_iter=self.cfg['precision']['n_iter_nmt'],
                 lite=True,
             )
-            raise NotImplementedError(
-                'the sample_covariance case should also return a dict!!'
-            )
-            cov_10d_out, self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
+            self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
 
         return self.cov_dict

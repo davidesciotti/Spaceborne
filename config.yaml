@@ -69,7 +69,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: real # Type: str.
+  space: harmonic # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -119,7 +119,7 @@ binning:
   # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
   # so ell_bins is ignored and ell_max is included in the grid. 
   ell_min: 10 # Type: int | float. Minimum ell
-  ell_max: 3000 # Type: int | float. Maximum ell
+  ell_max: 1500 # Type: int | float. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins.
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
@@ -206,7 +206,7 @@ mask:
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
   # If null (None), the nside of the input mask will be used, without up/downgrading.
-  nside: 1024 # Type: int | None.
+  nside: 512 # Type: int | None.
 
   survey_area_deg2: 13245 # Type: int
   apodize: False # Type: bool
@@ -215,7 +215,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   G_code: Spaceborne
@@ -320,7 +320,7 @@ PyCCL:
 
 sample_covariance:
   # Whether to compute the sample covariance from a set of Gaussian realizations
-  compute_sample_cov: False # Type: bool.
+  compute_sample_cov: True # Type: bool.
 
   # Which code to use to compute the coupled Cls on the masked maps. The results are
   # essentially equivalent, but 'namaster' is a bit faster.
@@ -329,8 +329,8 @@ sample_covariance:
   # Documentation:
   # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
   # Options: ['namaster', 'healpy'].
-  which_cls: namaster # Type: str.
-  nreal: 100 # Type: int. Number of realizations for the sample covariance matrix
+  which_cls: healpy # Type: str.
+  nreal: 5 # Type: int. Number of realizations for the sample covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 precision:
@@ -413,7 +413,7 @@ precision:
 misc:
   # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
   #        have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 127 # Type: int. How many threads to use for the parallel computations
+  num_threads: 250 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.

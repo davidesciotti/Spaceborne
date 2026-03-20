@@ -155,33 +155,33 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
-# import threading
+import threading
 
-# import pandas as pd
-# import psutil
+import pandas as pd
+import psutil
 
-# cpu_data = []
-
-
-# def monitor_cpu(interval=0.5):
-#     """Monitor CPU usage per core"""
-#     print('Starting CPU monitor...')
-#     while not stop_event.is_set():
-#         timestamp = time.time()
-#         per_core = psutil.cpu_percent(percpu=True, interval=interval)
-#         cpu_data.append(
-#             {
-#                 'time': timestamp,
-#                 'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
-#                 'per_core': per_core,
-#             }
-#         )
-#     print('CPU monitoring stopped')
+cpu_data = []
 
 
-# stop_event = threading.Event()
-# monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
-# monitor_thread.start()
+def monitor_cpu(interval=0.5):
+    """Monitor CPU usage per core"""
+    print('Starting CPU monitor...')
+    while not stop_event.is_set():
+        timestamp = time.time()
+        per_core = psutil.cpu_percent(percpu=True, interval=interval)
+        cpu_data.append(
+            {
+                'time': timestamp,
+                'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
+                'per_core': per_core,
+            }
+        )
+    print('CPU monitoring stopped')
+
+
+stop_event = threading.Event()
+monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
+monitor_thread.start()
 
 
 def plot_cls():
@@ -1976,6 +1976,7 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
 # ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
+
 if cfg['OneCovariance']['compare_against_oc']:
     oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
     if 'OneCovariance' in cov_terms_and_codes.values():
@@ -2516,20 +2517,20 @@ print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
 # Stop monitoring
-# stop_event.set()
-# monitor_thread.join()
+stop_event.set()
+monitor_thread.join()
 
-# # Save and plot
-# df = pd.DataFrame(cpu_data)
+# Save and plot
+df = pd.DataFrame(cpu_data)
 
 
-# plt.figure()
-# df['time_elapsed'] = df['time'] - df['time'].min()
-# plt.plot(df['time_elapsed'], df['cores_used'])
-# plt.axhline(
-#     cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
-# )
-# plt.xlabel('Time (s)')
-# plt.ylabel('Number of Active Cores')
-# plt.title('CPU Core Usage Over Time')
-# plt.show()
+plt.figure()
+df['time_elapsed'] = df['time'] - df['time'].min()
+plt.plot(df['time_elapsed'], df['cores_used'])
+plt.axhline(
+    cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
+)
+plt.xlabel('Time (s)')
+plt.ylabel('Number of Active Cores')
+plt.title('CPU Core Usage Over Time')
+plt.show()

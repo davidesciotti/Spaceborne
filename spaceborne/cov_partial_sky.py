@@ -1402,7 +1402,7 @@ class NmtCov:
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
         # (mcm), which I store in self
-        if self.coupled_cov:
+        if self.coupled_cov or self.cfg['covariance']['save_mcms']:
             w20 = nmt.NmtWorkspace()
             w20.compute_coupling_matrix(f2_mask, f0_mask, nmt_bin_obj)
 
@@ -1417,6 +1417,22 @@ class NmtCov:
             self.mcm_et_binned = bin_mcm(mcm_et_unb, nmt_bin_obj)
             self.mcm_te_binned = bin_mcm(mcm_te_unb, nmt_bin_obj)
             self.mcm_ee_binned = bin_mcm(mcm_ee_unb, nmt_bin_obj)
+
+            if self.cfg['covariance']['save_mcms']:
+                np.savez(
+                    f'{self.output_path}/mode_coupling_matrices.npz',
+                    mcm_gg_unbinned=mcm_tt_unb,
+                    mcm_lg_unbinned=mcm_et_unb,
+                    mcm_gl_unbinned=mcm_te_unb,
+                    mcm_ll_unbinned=mcm_ee_unb,
+                    mcm_gg_binned=self.mcm_tt_binned,
+                    mcm_lg_binned=self.mcm_et_binned,
+                    mcm_gl_binned=self.mcm_te_binned,
+                    mcm_ll_binned=self.mcm_ee_binned,
+                )
+                
+                print(f'\Mode coupling matrices saved in {self.output_path}\n')
+                
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky

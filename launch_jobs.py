@@ -54,37 +54,44 @@ def run_spaceborne(yaml_files: list[str], sb_root_path: str) -> None:
 
 
 # ! SETTINGS START
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/sciotti/code'
+DATA_ROOT = '/data/sciotti/'
 sb_root_path = f'{ROOT}/Spaceborne'
 base_cfg_path = f'{sb_root_path}/config.yaml'
-create_output_folders = False
+create_output_folders = True
 # ! SETTINGS END
+
 
 with open(base_cfg_path) as f:
     base_cfg = yaml.safe_load(f)
 
+# current PID is 3900663
+
+# this runs sample variance and namaster, coupled and decoupled, for a total of 4 runs
 configs_to_run = []
-for nongauss in (False, True):
-    # this runs Knox decoupled, NaMaster decoupled, NaMaster coupled
-    for partial_sky_method, coupled_cov in zip(
-        ['Knox', 'NaMaster', 'NaMaster'], [False, False, True]
+for cov_type in ['decoupled', 'coupled']:
+    for partial_sky_method, sample_cov in zip(
+        ['NaMaster', 'Knox'], [False, True], strict=True
     ):
         out_path = (
-            f'{ROOT}/DATA/Spaceborne_jobs/TR1_cov/'
-            f'psky{partial_sky_method}_nongauss{nongauss}_coupled{coupled_cov}'
+            f'{DATA_ROOT}/DATA/Spaceborne_jobs/cov_validation_2026/'
+            f'psky{partial_sky_method}_sample{sample_cov}_{cov_type}'
         )
         configs_to_run.append(
             {
                 'covariance': {
                     'partial_sky_method': partial_sky_method,
-                    'coupled_cov': coupled_cov,
-                    'SSC': nongauss,
-                    'cNG': nongauss,
+                    'cov_type': cov_type,
                 },
                 'misc': {'output_path': out_path},
+                'sample_covariance': {
+                    'compute_sample_cov': sample_cov,
+                    'which_cls': 'healpy',
+                    'nreal': 20000,
+                    'fix_seed': True,
+                },
             }
         )
-
         if create_output_folders:
             os.makedirs(out_path, exist_ok=True)
 
@@ -94,7 +101,6 @@ yaml_filenames = [
     f'{sb_root_path}/{cfg["misc"]["output_path"].split("/")[-1]}.yaml'
     for cfg in configs_to_run
 ]
-
 
 # === Apply changes to base config ===
 configs = generate_zipped_configs(base_cfg, configs_to_run)

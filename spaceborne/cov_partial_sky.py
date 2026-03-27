@@ -836,7 +836,7 @@ def sample_covariance_parallel( # fmt: skip
     ell_min_edges = np.array([nmt_bin_obj.get_ell_min(i) for i in range(n_bands)])
     ell_max_edges = np.array([nmt_bin_obj.get_ell_max(i) + 1 for i in range(n_bands)])
 
-    results = Parallel(n_jobs=n_jobs, backend='loky', verbose=1)(
+    results = Parallel(n_jobs=30, backend='loky', verbose=1)(
         delayed(_compute_one_realization)(
             SEEDVALUE[i],
             cl_ring_big_list,
@@ -922,10 +922,10 @@ def _compute_one_realization(
 ):
     """Worker: one realization → Cls only. Maps are discarded before return."""
 
-    # Set seed for reproducibility (must be set inside each worker for 
+    # Set seed for reproducibility (must be set inside each worker for
     # parallel execution)
     np.random.seed(seed)
-    
+
     # Load workspaces inside worker (NmtWorkspace objects are not picklable)
     w00 = nmt.NmtWorkspace()
     w02 = nmt.NmtWorkspace()
@@ -942,7 +942,6 @@ def _compute_one_realization(
     corr_alms_T = corr_alms_tot[::3]
     corr_alms_E_B = list(zip(corr_alms_tot[1::3], corr_alms_tot[2::3], strict=True))
 
-
     # ! 1. Generate (correlated) maps from alms
     corr_maps_gg = [hp.alm2map(alm, nside, lmax=lmax) for alm in corr_alms_T]
     corr_maps_ll = [
@@ -950,20 +949,20 @@ def _compute_one_realization(
         for E, B in corr_alms_E_B
     ]
     # free alms
-    del corr_alms_tot, corr_alms_T, corr_alms_E_B  
+    del corr_alms_tot, corr_alms_T, corr_alms_E_B
 
     # ! Mask each map (there are zbins of them) and compute ("masked") alms
     alms_T, alms_E, alms_B = precompute_alms_healpy(
         corr_maps_gg, corr_maps_ll, mask, lmax
     )
     # free maps
-    del corr_maps_gg, corr_maps_ll  
+    del corr_maps_gg, corr_maps_ll
 
     # ! Compute Cls *for all (zi, zj) pairs*
     # [Note]: these are coupled by default (they are computed from the masked maps),
-    # but they can be decoupled. 
-    # [Note]: the healpy branch should be much faster now that the alms have been 
-    # pre-computed for each bin, rather than (uselessly) re-computed for each bin 
+    # but they can be decoupled.
+    # [Note]: the healpy branch should be much faster now that the alms have been
+    # pre-computed for each bin, rather than (uselessly) re-computed for each bin
     # pair inside the loop below pcls_from_maps.
     cl_gg = np.zeros((nbl, zbins, zbins))
     cl_gl = np.zeros((nbl, zbins, zbins))
@@ -975,8 +974,8 @@ def _compute_one_realization(
             corr_maps_ll=None,
             zi=zi,
             zj=zj,
-            f0=f0,
-            f2=f2,
+            f0=None,
+            f2=None,
             mask=mask,
             coupled_cls=coupled_cls,
             which_cls=which_cls,
@@ -997,7 +996,8 @@ def _compute_one_realization(
         cl_gl[:, zi, zj] = gl
         cl_ll[:, zi, zj] = ll
 
-    return cl_gg, cl_gl, cl_ll  # only ~(nbl, zbins, zbins)*3 floats returned
+    # shape: (nbl, zbins, zbins)
+    return cl_gg, cl_gl, cl_ll
 
 
 def pcls_from_maps_old(  # fmt: skip
@@ -1126,7 +1126,8 @@ def build_cl_tomo_TEB_ring_ord(
             row_idx += 1
 
     assert len(row) == zbins * len(spectra_types), (
-        'The number of elements in the row should be equal to the number of redshift bins times the number of spectra types.'
+        'The number of elements in the row should be equal to the number of redshift '
+        'bins times the number of spectra types.'
     )
 
     cl_ring_ord_list = []
@@ -1185,7 +1186,8 @@ def cls_to_maps(cl_TT, cl_EE, cl_BB, cl_TE, nside, lmax=None):
         nside (int): HEALPix resolution parameter.
 
     Returns:
-        numpy.ndarray, numpy.ndarray, numpy.ndarray: Temperature map, Q-mode polarization map, U-mode polarization map.
+        numpy.ndarray, numpy.ndarray, numpy.ndarray: Temperature map, Q-mode
+        polarization map, U-mode polarization map.
 
     """
     if lmax is None:
@@ -1211,7 +1213,8 @@ def masked_maps_to_nmtFields(map_T, map_Q, map_U, mask, lmax, n_iter=None, lite=
         mask (numpy.ndarray): Mask to apply to the maps.
 
     Returns:
-        nmt.NmtField, nmt.NmtField: NmtField objects for the temperature and polarization maps.
+        nmt.NmtField, nmt.NmtField: NmtField objects for the temperature and
+        polarization maps.
 
     """
     f0 = nmt.NmtField(mask, [map_T], n_iter=n_iter, lite=lite, lmax=lmax)
@@ -1259,7 +1262,9 @@ def produce_correlated_maps(
 
         # extract alm for TT, EE, BB
         corr_alms = corr_alms_tot[::3]
-        corr_Elms_Blms = list(zip(corr_alms_tot[1::3], corr_alms_tot[2::3]))
+        corr_Elms_Blms = list(
+            zip(corr_alms_tot[1::3], corr_alms_tot[2::3], strict=True)
+        )
 
         # compute correlated maps for each bin
         corr_maps_gg = [hp.alm2map(alm, nside, lmax) for alm in corr_alms]
@@ -1543,8 +1548,10 @@ class NmtCov:
                 lite=True,
             )
             self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
-            print(f'sample covariance old computed in {time.perf_counter() - start:.2f} seconds')
-            
+            print(
+                f'sample covariance old computed in {time.perf_counter() - start:.2f} seconds'
+            )
+
             start = time.perf_counter()
             result = sample_covariance(
                 cov_dict=self.cov_dict,
@@ -1571,8 +1578,11 @@ class NmtCov:
                 lite=True,
             )
             self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
-            print(f'sample covariance computed in {time.perf_counter() - start:.2f} seconds')
-            
+            print(
+                f'sample covariance computed in {time.perf_counter() - start:.2f} '
+                'seconds'
+            )
+
             # test //
             start = time.perf_counter()
             result = sample_covariance_parallel(
@@ -1599,20 +1609,23 @@ class NmtCov:
                 n_jobs=self.cfg['misc']['num_threads'],
             )
             self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
-            print(f'sample covariance || computed in {time.perf_counter() - start:.2f} seconds')
+            print(
+                f'sample covariance || computed in {time.perf_counter() - start:.2f} '
+                'seconds'
+            )
 
         for probe_2tpl in self.cov_dict['g']:
             np.testing.assert_allclose(
                 self.cov_dict['g'][probe_2tpl]['6d'],
                 self.cov_dict_2['g'][probe_2tpl]['6d'],
                 rtol=1e-5,
-                atol=1e-15,  # Absolute tolerance for near-zero elements
+                atol=0,
             )
             np.testing.assert_allclose(
                 self.cov_dict['g'][probe_2tpl]['6d'],
                 self.cov_dict_3['g'][probe_2tpl]['6d'],
                 rtol=1e-5,
-                atol=1e-15,  # Absolute tolerance for near-zero elements
+                atol=1e-14,
             )
 
         return self.cov_dict

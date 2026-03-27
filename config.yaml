@@ -69,7 +69,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: real # Type: str.
+  space: harmonic # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -243,7 +243,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: True # Type: bool
+  split_gaussian_cov: False # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -299,15 +299,18 @@ covariance:
   save_full_cov: True # Type: bool
 
   # Name of the output covariance file.
-  cov_filename: covmat # Type: str.
+  cov_filename: covmats # Type: str.
   save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
+
+  # When using NaMaster for the partial-sky Gaussian covariance, choose whether to 
+  # save the (binned and unbinned) mode coupling matrices (mcm) 
+  save_mcms: True # Type: bool. 
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
   # Options:
   # - 'qag_quad' (GSL's qag method backed up by quad when it fails)
   # - 'spline' (the integrand is splined and then integrated analytically).
-  
   # [Note] The former could give errors.
   cov_integration_method: spline # Type: str
 

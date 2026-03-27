@@ -425,6 +425,9 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg.get('n_probes'), int), (
             'covariance: n_probes must be an int'
         )
+        assert isinstance(cov_cfg.get('save_mcms'), bool), (
+            'covariance: save_mcms must be a boolean'
+        )
 
         # PyCCL
         assert isinstance(self.cfg.get('PyCCL'), dict), (

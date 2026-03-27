@@ -924,6 +924,9 @@ class NmtCov:
                     mcm_gl_binned=self.mcm_te_binned,
                     mcm_ll_binned=self.mcm_ee_binned,
                 )
+                
+                print(f'\Mode coupling matrices saved in {self.output_path}\n')
+                
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky

@@ -1,9 +1,4 @@
-import warnings
-
 import numpy as np
-
-
-from spaceborne import cosmo_lib
 
 RED = '\033[31m'
 RESET = '\033[0m'
@@ -69,10 +64,10 @@ class SpaceborneConfigChecker:
             assert isinstance(val, float), f'Parameter {par} must be a float'
 
         # camb extra params
-        assert isinstance(self.cfg.get('extra_parameters'), dict), (
+        assert isinstance(self.cfg['extra_parameters'], dict), (
             "Section 'extra_parameters' must be a dictionary"
         )
-        assert isinstance(self.cfg['extra_parameters'].get('camb'), dict), (
+        assert isinstance(self.cfg['extra_parameters']['camb'], dict), (
             'extra_parameters: camb must be a dictionary'
         )
         camb_params = self.cfg['extra_parameters']['camb']
@@ -88,19 +83,19 @@ class SpaceborneConfigChecker:
         for field in required_camb_fields:
             assert field in camb_params, f'extra_parameters: camb: {field} is required'
 
-        assert isinstance(camb_params.get('halofit_version'), str), (
+        assert isinstance(camb_params['halofit_version'], str), (
             'extra_parameters: camb: halofit_version must be a string'
         )
-        assert isinstance(camb_params.get('kmax'), (float, int)), (
+        assert isinstance(camb_params['kmax'], (float, int)), (
             'extra_parameters: camb: kmax must be a float or an int'
         )
-        assert isinstance(camb_params.get('HMCode_logT_AGN'), float), (
+        assert isinstance(camb_params['HMCode_logT_AGN'], float), (
             'extra_parameters: camb: HMCode_logT_AGN must be a float'
         )
-        assert isinstance(camb_params.get('num_massive_neutrinos'), int), (
+        assert isinstance(camb_params['num_massive_neutrinos'], int), (
             'extra_parameters: camb: num_massive_neutrinos must be an int'
         )
-        assert isinstance(camb_params.get('dark_energy_model'), str), (
+        assert isinstance(camb_params['dark_energy_model'], str), (
             'extra_parameters: camb: dark_energy_model must be a string'
         )
         # IA
@@ -124,117 +119,109 @@ class SpaceborneConfigChecker:
                 assert isinstance(val, str), f'Parameter {par} must be a str'
 
         # C_ell
-        assert isinstance(self.cfg.get('C_ell'), dict), (
+        assert isinstance(self.cfg['C_ell'], dict), (
             "Section 'C_ell' must be a dictionary"
         )
         c_ell_cfg = self.cfg['C_ell']
-        assert isinstance(c_ell_cfg.get('use_input_cls'), bool), (
+        assert isinstance(c_ell_cfg['use_input_cls'], bool), (
             'C_ell: use_input_cls must be a boolean'
         )
-        assert isinstance(c_ell_cfg.get('cl_LL_filename'), str), (
+        assert isinstance(c_ell_cfg['cl_LL_filename'], str), (
             'C_ell: cl_LL_filename must be a string'
         )
-        assert isinstance(c_ell_cfg.get('cl_GL_filename'), str), (
+        assert isinstance(c_ell_cfg['cl_GL_filename'], str), (
             'C_ell: cl_GL_filename must be a string'
         )
-        assert isinstance(c_ell_cfg.get('cl_GG_filename'), str), (
+        assert isinstance(c_ell_cfg['cl_GG_filename'], str), (
             'C_ell: cl_GG_filename must be a string'
         )
-        assert isinstance(c_ell_cfg.get('which_gal_bias'), str), (
+        assert isinstance(c_ell_cfg['which_gal_bias'], str), (
             'C_ell: which_gal_bias must be a string'
         )
-        assert isinstance(c_ell_cfg.get('which_mag_bias'), str), (
+        assert isinstance(c_ell_cfg['which_mag_bias'], str), (
             'C_ell: which_mag_bias must be a string'
         )
-        assert isinstance(c_ell_cfg.get('galaxy_bias_fit_coeff'), list), (
+        assert isinstance(c_ell_cfg['galaxy_bias_fit_coeff'], list), (
             'C_ell: galaxy_bias_fit_coeff must be a list'
         )
         assert all(isinstance(x, float) for x in c_ell_cfg['galaxy_bias_fit_coeff']), (
             'C_ell: All elements in galaxy_bias_fit_coeff must be floats'
         )
-        assert isinstance(c_ell_cfg.get('magnification_bias_fit_coeff'), list), (
+        assert isinstance(c_ell_cfg['magnification_bias_fit_coeff'], list), (
             'C_ell: magnification_bias_fit_coeff must be a list'
         )
         assert all(
             isinstance(x, float) for x in c_ell_cfg['magnification_bias_fit_coeff']
         ), 'C_ell: All elements in magnification_bias_fit_coeff must be floats'
 
-        assert isinstance(c_ell_cfg.get('gal_bias_table_filename'), str), (
+        assert isinstance(c_ell_cfg['gal_bias_table_filename'], str), (
             'C_ell: gal_bias_table_filename must be a string'
         )
-        assert isinstance(c_ell_cfg.get('mag_bias_table_filename'), str), (
+        assert isinstance(c_ell_cfg['mag_bias_table_filename'], str), (
             'C_ell: mag_bias_table_filename must be a string'
         )
 
-        assert isinstance(c_ell_cfg.get('mult_shear_bias'), list), (
+        assert isinstance(c_ell_cfg['mult_shear_bias'], list), (
             'C_ell: mult_shear_bias must be a list'
         )
         assert all(isinstance(x, float) for x in c_ell_cfg['mult_shear_bias']), (
             'C_ell: All elements in mult_shear_bias must be floats'
         )
 
-        assert isinstance(c_ell_cfg.get('has_rsd'), bool), (
+        assert isinstance(c_ell_cfg['has_rsd'], bool), (
             'C_ell: has_rsd must be a boolean'
         )
-        assert isinstance(c_ell_cfg.get('has_IA'), bool), (
-            'C_ell: has_IA must be a boolean'
-        )
-        assert isinstance(c_ell_cfg.get('has_magnification_bias'), bool), (
+        assert isinstance(c_ell_cfg['has_IA'], bool), 'C_ell: has_IA must be a boolean'
+        assert isinstance(c_ell_cfg['has_magnification_bias'], bool), (
             'C_ell: has_magnification_bias must be a boolean'
         )
 
-        assert isinstance(c_ell_cfg.get('cl_CCL_kwargs'), dict), (
+        assert isinstance(c_ell_cfg['cl_CCL_kwargs'], dict), (
             'C_ell: cl_CCL_kwargs must be a dictionary'
         )
         ccl_kwargs = c_ell_cfg['cl_CCL_kwargs']
-        assert isinstance(ccl_kwargs.get('l_limber'), int), (
+        assert isinstance(ccl_kwargs['l_limber'], int), (
             'C_ell: cl_CCL_kwargs: l_limber must be an int'
         )
-        assert isinstance(ccl_kwargs.get('limber_integration_method'), str), (
+        assert isinstance(ccl_kwargs['limber_integration_method'], str), (
             'C_ell: cl_CCL_kwargs: limber_integration_method must be a string'
         )
-        assert isinstance(ccl_kwargs.get('non_limber_integration_method'), str), (
+        assert isinstance(ccl_kwargs['non_limber_integration_method'], str), (
             'C_ell: cl_CCL_kwargs: non_limber_integration_method must be a string'
         )
 
         # nz
-        assert isinstance(self.cfg.get('nz'), dict), "Section 'nz' must be a dictionary"
+        assert isinstance(self.cfg['nz'], dict), "Section 'nz' must be a dictionary"
         nz_cfg = self.cfg['nz']
-        assert isinstance(nz_cfg.get('nz_sources_filename'), str), (
+        assert isinstance(nz_cfg['nz_sources_filename'], str), (
             'nz: nz_sources_filename must be a string'
         )
-        assert isinstance(nz_cfg.get('nz_lenses_filename'), str), (
+        assert isinstance(nz_cfg['nz_lenses_filename'], str), (
             'nz: nz_lenses_filename must be a string'
         )
 
-        assert isinstance(nz_cfg.get('ngal_sources'), list), (
+        assert isinstance(nz_cfg['ngal_sources'], list), (
             'nz: ngal_sources must be a list'
         )
-        assert isinstance(nz_cfg.get('ngal_lenses'), list), (
-            'nz: ngal_lenses must be a list'
-        )
+        assert isinstance(nz_cfg['ngal_lenses'], list), 'nz: ngal_lenses must be a list'
         assert all(isinstance(x, float) for x in nz_cfg['ngal_sources']), (
             'nz: All elements in ngal_sources must be floats'
         )
         assert all(isinstance(x, float) for x in nz_cfg['ngal_lenses']), (
             'nz: All elements in ngal_lenses must be floats'
         )
-        assert isinstance(nz_cfg.get('shift_nz'), bool), (
-            'nz: shift_nz must be a boolean'
-        )
-        assert isinstance(nz_cfg.get('normalize_nz'), bool), (
+        assert isinstance(nz_cfg['shift_nz'], bool), 'nz: shift_nz must be a boolean'
+        assert isinstance(nz_cfg['normalize_nz'], bool), (
             'nz: normalize_nz must be a boolean'
         )
-        assert isinstance(nz_cfg.get('smooth_nz'), bool), (
-            'nz: smooth_nz must be a boolean'
-        )
-        assert isinstance(nz_cfg.get('sigma_smoothing'), (int, float)), (
+        assert isinstance(nz_cfg['smooth_nz'], bool), 'nz: smooth_nz must be a boolean'
+        assert isinstance(nz_cfg['sigma_smoothing'], (int, float)), (
             'nz: sigma_smoothing must be a float or an int'
         )
 
         if nz_cfg['shift_nz']:
-            assert isinstance(nz_cfg.get('dzWL'), list), 'nz: dzWL must be a list'
-            assert isinstance(nz_cfg.get('dzGC'), list), 'nz: dzGC must be a list'
+            assert isinstance(nz_cfg['dzWL'], list), 'nz: dzWL must be a list'
+            assert isinstance(nz_cfg['dzGC'], list), 'nz: dzGC must be a list'
             assert all(isinstance(x, float) for x in nz_cfg['dzWL']), (
                 'nz: All elements in dzWL must be floats'
             )
@@ -243,115 +230,109 @@ class SpaceborneConfigChecker:
             )
 
         # Mask
-        assert isinstance(self.cfg.get('mask'), dict), (
-            "Section 'mask' must be a dictionary"
-        )
+        assert isinstance(self.cfg['mask'], dict), "Section 'mask' must be a dictionary"
         mask_cfg = self.cfg['mask']
-        assert isinstance(mask_cfg.get('load_mask'), bool), (
+        assert isinstance(mask_cfg['load_mask'], bool), (
             'mask: load_mask must be a boolean'
         )
-        assert isinstance(mask_cfg.get('mask_filename'), str), (
+        assert isinstance(mask_cfg['mask_filename'], str), (
             'mask: mask_filename must be a string'
         )
-        assert isinstance(mask_cfg.get('generate_polar_cap'), bool), (
+        assert isinstance(mask_cfg['generate_polar_cap'], bool), (
             'mask: generate_polar_cap must be a boolean'
         )
-        assert isinstance(mask_cfg.get('nside'), (int, type(None))), (
+        assert isinstance(mask_cfg['nside'], (int, type(None))), (
             'mask: nside must be an int or None'
         )
-        assert isinstance(mask_cfg.get('survey_area_deg2'), (int, float)), (
+        assert isinstance(mask_cfg['survey_area_deg2'], (int, float)), (
             'mask: survey_area_deg2 must be an int or float'
         )
-        assert isinstance(mask_cfg.get('apodize'), bool), (
-            'mask: apodize must be a boolean'
-        )
-        assert isinstance(mask_cfg.get('aposize'), float), (
-            'mask: aposize must be a float'
-        )
+        assert isinstance(mask_cfg['apodize'], bool), 'mask: apodize must be a boolean'
+        assert isinstance(mask_cfg['aposize'], float), 'mask: aposize must be a float'
 
         # Sample Covariance
-        assert isinstance(self.cfg.get('sample_covariance'), dict), (
+        assert isinstance(self.cfg['sample_covariance'], dict), (
             "Section 'sample_covariance' must be a dictionary"
         )
         sample_cov_cfg = self.cfg['sample_covariance']
-        assert isinstance(sample_cov_cfg.get('compute_sample_cov'), bool), (
+        assert isinstance(sample_cov_cfg['compute_sample_cov'], bool), (
             'sample_covariance: compute_sample_cov must be a boolean'
         )
-        assert isinstance(sample_cov_cfg.get('which_cls'), str), (
+        assert isinstance(sample_cov_cfg['which_cls'], str), (
             'sample_covariance: which_cls must be a string'
         )
-        assert isinstance(sample_cov_cfg.get('nreal'), int), (
+        assert isinstance(sample_cov_cfg['nreal'], int), (
             'sample_covariance: nreal must be an int'
         )
-        assert isinstance(sample_cov_cfg.get('fix_seed'), bool), (
+        assert isinstance(sample_cov_cfg['fix_seed'], bool), (
             'sample_covariance: fix_seed must be a boolean'
         )
 
         # OneCovariance
         if 'OneCovariance' in self.cfg:
-            assert isinstance(self.cfg.get('OneCovariance'), dict), (
+            assert isinstance(self.cfg['OneCovariance'], dict), (
                 "Section 'OneCovariance' must be a dictionary"
             )
             oc_cfg = self.cfg['OneCovariance']
-            assert isinstance(oc_cfg.get('path_to_oc_executable'), str), (
+            assert isinstance(oc_cfg['path_to_oc_executable'], str), (
                 'OneCovariance: path_to_oc_executable must be a string'
             )
-            assert isinstance(oc_cfg.get('consistency_checks'), bool), (
+            assert isinstance(oc_cfg['consistency_checks'], bool), (
                 'OneCovariance: consistency_checks must be a boolean'
             )
-            assert isinstance(oc_cfg.get('oc_output_filename'), str), (
+            assert isinstance(oc_cfg['oc_output_filename'], str), (
                 'OneCovariance: oc_output_filename must be a string, found '
-                f'{oc_cfg.get("oc_output_filename")} instead'
+                f'{oc_cfg["oc_output_filename"]} instead'
             )
 
         # Binning
-        assert isinstance(self.cfg.get('binning'), dict), (
+        assert isinstance(self.cfg['binning'], dict), (
             "Section 'binning' must be a dictionary"
         )
         binning_cfg = self.cfg['binning']
-        assert isinstance(binning_cfg.get('binning_type'), str), (
+        assert isinstance(binning_cfg['binning_type'], str), (
             'binning: binning_type must be a string'
         )
-        assert isinstance(binning_cfg.get('ell_min'), (float, int)), (
+        assert isinstance(binning_cfg['ell_min'], (float, int)), (
             'binning: ell_min must be a float or an int'
         )
-        assert isinstance(binning_cfg.get('ell_max'), (float, int)), (
+        assert isinstance(binning_cfg['ell_max'], (float, int)), (
             'binning: ell_max must be a float or an int'
         )
-        assert isinstance(binning_cfg.get('ell_bins'), int), (
+        assert isinstance(binning_cfg['ell_bins'], int), (
             'binning: ell_bins must be an int'
         )
-        assert isinstance(binning_cfg.get('theta_min_arcmin'), (float, int)), (
+        assert isinstance(binning_cfg['theta_min_arcmin'], (float, int)), (
             'binning: theta_min_arcmin must be a float or an int'
         )
-        assert isinstance(binning_cfg.get('theta_max_arcmin'), (float, int)), (
+        assert isinstance(binning_cfg['theta_max_arcmin'], (float, int)), (
             'binning: theta_max_arcmin must be a float or an int'
         )
-        assert isinstance(binning_cfg.get('theta_bins'), int), (
+        assert isinstance(binning_cfg['theta_bins'], int), (
             'binning: theta_bins must be an int'
         )
-        assert isinstance(binning_cfg.get('n_modes_cosebis'), int), (
+        assert isinstance(binning_cfg['n_modes_cosebis'], int), (
             'binning: n_modes_cosebis must be an int'
         )
 
         # Covariance
-        assert isinstance(self.cfg.get('covariance'), dict), (
+        assert isinstance(self.cfg['covariance'], dict), (
             "Section 'covariance' must be a dictionary"
         )
         cov_cfg = self.cfg['covariance']
-        assert isinstance(cov_cfg.get('BNT_transform'), bool), (
+        assert isinstance(cov_cfg['BNT_transform'], bool), (
             'covariance: BNT_transform must be a boolean'
         )
-        assert isinstance(cov_cfg.get('G'), bool), 'covariance: G must be a boolean'
-        assert isinstance(cov_cfg.get('SSC'), bool), 'covariance: SSC must be a boolean'
-        assert isinstance(cov_cfg.get('cNG'), bool), 'covariance: cNG must be a boolean'
-        assert isinstance(cov_cfg.get('partial_sky_method'), str), (
+        assert isinstance(cov_cfg['G'], bool), 'covariance: G must be a boolean'
+        assert isinstance(cov_cfg['SSC'], bool), 'covariance: SSC must be a boolean'
+        assert isinstance(cov_cfg['cNG'], bool), 'covariance: cNG must be a boolean'
+        assert isinstance(cov_cfg['partial_sky_method'], str), (
             'covariance: partial_sky_method must be a string'
         )
 
         for _term in ['G', 'SSC', 'cNG']:
             if cov_cfg.get(_term):  # Only validate code if term is enabled
-                assert cov_cfg.get(f'{_term}_code') in [
+                assert cov_cfg[f'{_term}_code'] in [
                     'Spaceborne',
                     'PyCCL',
                     'OneCovariance',
@@ -360,217 +341,218 @@ class SpaceborneConfigChecker:
                     "Allowed values are: 'Spaceborne', 'PyCCL', 'OneCovariance'."
                 )
 
-        assert cov_cfg.get('partial_sky_method') in ['Knox', 'NaMaster'], (
+        assert cov_cfg['partial_sky_method'] in ['Knox', 'NaMaster'], (
             'covariance: partial_sky_method must be either "Knox" or "NaMaster"'
         )
-        assert isinstance(cov_cfg.get('cov_type'), str), (
+        assert isinstance(cov_cfg['cov_type'], str), (
             'covariance: cov_type must be a string'
         )
-        assert cov_cfg.get('cov_type') in ['coupled', 'decoupled'], (
+        assert cov_cfg['cov_type'] in ['coupled', 'decoupled'], (
             'covariance: cov_type must be either "coupled" or "decoupled"'
         )
-        assert isinstance(cov_cfg.get('triu_tril'), str), (
+        assert isinstance(cov_cfg['triu_tril'], str), (
             'covariance: triu_tril must be a string'
         )
-        assert isinstance(cov_cfg.get('row_col_major'), str), (
+        assert isinstance(cov_cfg['row_col_major'], str), (
             'covariance: row_col_major must be a string'
         )
-        assert isinstance(cov_cfg.get('covariance_ordering_2D'), str), (
+        assert isinstance(cov_cfg['covariance_ordering_2D'], str), (
             'covariance: covariance_ordering_2D must be a string'
         )
-        assert isinstance(cov_cfg.get('save_full_cov'), bool), (
+        assert isinstance(cov_cfg['save_full_cov'], bool), (
             'covariance: save_full_cov must be a boolean'
         )
-        assert isinstance(cov_cfg.get('split_gaussian_cov'), bool), (
+        assert isinstance(cov_cfg['split_gaussian_cov'], bool), (
             'covariance: split_gaussian_cov must be a boolean'
         )
 
-        assert isinstance(cov_cfg.get('sigma_eps_i'), list), (
+        assert isinstance(cov_cfg['sigma_eps_i'], list), (
             'covariance: sigma_eps_i must be a list'
         )
         assert all(isinstance(x, float) for x in cov_cfg['sigma_eps_i']), (
             'covariance: All elements in sigma_eps_i must be floats'
         )
 
-        assert isinstance(cov_cfg.get('no_sampling_noise'), bool), (
+        assert isinstance(cov_cfg['no_sampling_noise'], bool), (
             'covariance: no_sampling_noise must be a boolean'
         )
-        assert isinstance(cov_cfg.get('which_pk_responses'), str), (
+        assert isinstance(cov_cfg['which_pk_responses'], str), (
             'covariance: which_pk_responses must be a string'
         )
-        assert isinstance(cov_cfg.get('which_b1g_in_resp'), str), (
+        assert isinstance(cov_cfg['which_b1g_in_resp'], str), (
             'covariance: which_b1g_in_resp must be a string'
         )
-        assert isinstance(cov_cfg.get('include_b2g'), bool), (
+        assert isinstance(cov_cfg['include_b2g'], bool), (
             'covariance: include_b2g must be a boolean'
         )
-        assert isinstance(cov_cfg.get('include_terasawa_terms'), bool), (
+        assert isinstance(cov_cfg['include_terasawa_terms'], bool), (
             'covariance: include_terasawa_terms must be a boolean'
         )
-        assert isinstance(cov_cfg.get('sigma2_b_int_method'), str), (
+        assert isinstance(cov_cfg['sigma2_b_int_method'], str), (
             'covariance: sigma2_b_int_method must be a string'
         )
-        assert isinstance(cov_cfg.get('cov_filename'), str), (
+        assert isinstance(cov_cfg['cov_filename'], str), (
             'covariance: cov_filename must be a string'
         )
-        assert isinstance(cov_cfg.get('G_code'), (str, type(None))), (
+        assert isinstance(cov_cfg['G_code'], (str, type(None))), (
             'covariance: G_code must be a string or None'
         )
-        assert isinstance(cov_cfg.get('SSC_code'), (str, type(None))), (
+        assert isinstance(cov_cfg['SSC_code'], (str, type(None))), (
             'covariance: SSC_code must be a string or None'
         )
-        assert isinstance(cov_cfg.get('which_sigma2_b'), (str, type(None))), (
+        assert isinstance(cov_cfg['which_sigma2_b'], (str, type(None))), (
             'covariance: which_sigma2_b must be a string or None'
         )
-        assert isinstance(cov_cfg.get('n_probes'), int), (
+        assert isinstance(cov_cfg['n_probes'], int), (
             'covariance: n_probes must be an int'
+        )
+        assert isinstance(cov_cfg['save_mcms'], bool), (
+            'covariance: save_mcms must be a boolean'
         )
 
         # PyCCL
-        assert isinstance(self.cfg.get('PyCCL'), dict), (
+        assert isinstance(self.cfg['PyCCL'], dict), (
             "Section 'PyCCL' must be a dictionary"
         )
         pyccl_cfg = self.cfg['PyCCL']
-        assert isinstance(pyccl_cfg.get('cov_integration_method'), str), (
+        assert isinstance(pyccl_cfg['cov_integration_method'], str), (
             'PyCCL: cov_integration_method must be a string'
         )
-        assert isinstance(pyccl_cfg.get('load_cached_tkka'), bool), (
+        assert isinstance(pyccl_cfg['load_cached_tkka'], bool), (
             'PyCCL: load_cached_tkka must be a boolean'
         )
-        assert isinstance(pyccl_cfg.get('use_default_k_a_grids'), bool), (
+        assert isinstance(pyccl_cfg['use_default_k_a_grids'], bool), (
             'PyCCL: use_default_k_a_grids must be a boolean'
         )
 
         # precision
-        assert isinstance(self.cfg.get('precision'), dict), (
+        assert isinstance(self.cfg['precision'], dict), (
             "Section 'precision' must be a dictionary"
         )
         precision_cfg = self.cfg['precision']
-        assert isinstance(precision_cfg.get('n_iter_nmt'), (int, type(None))), (
+        assert isinstance(precision_cfg['n_iter_nmt'], (int, type(None))), (
             'precision: n_iter_nmt must be an int or None'
         )
-        assert isinstance(precision_cfg.get('n_sub'), int), (
+        assert isinstance(precision_cfg['n_sub'], int), (
             'precision: n_sub must be an int'
         )
-        assert isinstance(precision_cfg.get('n_bisec_max'), int), (
+        assert isinstance(precision_cfg['n_bisec_max'], int), (
             'precision: n_bisec_max must be an int'
         )
-        assert isinstance(precision_cfg.get('rel_acc'), float), (
+        assert isinstance(precision_cfg['rel_acc'], float), (
             'precision: rel_acc must be a float'
         )
-        assert isinstance(precision_cfg.get('boost_bessel'), bool), (
+        assert isinstance(precision_cfg['boost_bessel'], bool), (
             'precision: boost_bessel must be a boolean'
         )
-        assert isinstance(precision_cfg.get('verbose'), bool), (
+        assert isinstance(precision_cfg['verbose'], bool), (
             'precision: verbose must be a boolean'
         )
-        assert isinstance(precision_cfg.get('ell_min_proj'), int), (
+        assert isinstance(precision_cfg['ell_min_proj'], int), (
             'precision: ell_min_proj must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_max_proj'), int), (
+        assert isinstance(precision_cfg['ell_max_proj'], int), (
             'precision: ell_max_proj must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_bins_proj_gauss'), int), (
+        assert isinstance(precision_cfg['ell_bins_proj_gauss'], int), (
             'precision: ell_bins_proj_gauss must be an int'
         )
-        assert isinstance(precision_cfg.get('theta_max_arcmin_cosebis'), int), (
+        assert isinstance(precision_cfg['theta_max_arcmin_cosebis'], int), (
             'precision: theta_max_arcmin_cosebis must be an int'
         )
-        assert isinstance(precision_cfg.get('theta_steps_cosebis'), int), (
+        assert isinstance(precision_cfg['theta_steps_cosebis'], int), (
             'precision: theta_steps_cosebis must be an int'
         )
-        assert isinstance(precision_cfg.get('ell_bins_proj_nongauss'), int), (
+        assert isinstance(precision_cfg['ell_bins_proj_nongauss'], int), (
             'precision: ell_bins_proj_nongauss must be an int'
         )
-        assert isinstance(precision_cfg.get('proj_gauss_integration_method'), str), (
+        assert isinstance(precision_cfg['proj_gauss_integration_method'], str), (
             'precision: proj_gauss_integration_method must be a string'
         )
-        assert isinstance(precision_cfg.get('proj_nongauss_integration_method'), str), (
+        assert isinstance(precision_cfg['proj_nongauss_integration_method'], str), (
             'precision: proj_nongauss_integration_method must be a string'
         )
-        assert isinstance(precision_cfg.get('jax_enable_x64'), bool), (
+        assert isinstance(precision_cfg['jax_enable_x64'], bool), (
             'precision: jax_enable_x64 must be a boolean'
         )
-        assert isinstance(precision_cfg.get('log10_k_min'), float), (
+        assert isinstance(precision_cfg['log10_k_min'], float), (
             'precision: log10_k_min must be a float'
         )
-        assert isinstance(precision_cfg.get('log10_k_max'), float), (
+        assert isinstance(precision_cfg['log10_k_max'], float), (
             'precision: log10_k_max must be a float'
         )
-        assert isinstance(precision_cfg.get('k_steps'), int), (
+        assert isinstance(precision_cfg['k_steps'], int), (
             'precision: k_steps must be an int'
         )
-        assert isinstance(precision_cfg.get('z_min'), float), (
+        assert isinstance(precision_cfg['z_min'], float), (
             'precision: z_min must be a float'
         )
-        assert isinstance(precision_cfg.get('z_max'), float), (
+        assert isinstance(precision_cfg['z_max'], float), (
             'precision: z_max must be a float'
         )
-        assert isinstance(precision_cfg.get('z_steps'), int), (
+        assert isinstance(precision_cfg['z_steps'], int), (
             'precision: z_steps must be an int'
         )
-        assert isinstance(precision_cfg.get('z_steps_trisp'), int), (
+        assert isinstance(precision_cfg['z_steps_trisp'], int), (
             'precision: z_steps_trisp must be an int'
         )
-        assert isinstance(precision_cfg.get('use_KE_approximation'), bool), (
+        assert isinstance(precision_cfg['use_KE_approximation'], bool), (
             'precision: use_KE_approximation must be a boolean'
         )
-        assert isinstance(precision_cfg.get('use_iNKA'), bool), (
+        assert isinstance(precision_cfg['use_iNKA'], bool), (
             'precision: use_iNKA must be a boolean'
         )
-        assert isinstance(precision_cfg.get('spin0'), bool), (
+        assert isinstance(precision_cfg['spin0'], bool), (
             'precision: spin0 must be a boolean'
         )
-        assert isinstance(precision_cfg.get('n_samples_wf'), int), (
+        assert isinstance(precision_cfg['n_samples_wf'], int), (
             'precision: n_samples_wf must be an int'
         )
-        assert isinstance(precision_cfg.get('spline_params'), (dict, type(None))), (
+        assert isinstance(precision_cfg['spline_params'], (dict, type(None))), (
             'precision: spline_params must be a dictionary or None'
         )
 
-        assert isinstance(precision_cfg.get('gsl_params'), (dict, type(None))), (
+        assert isinstance(precision_cfg['gsl_params'], (dict, type(None))), (
             'precision: gsl_params must be a dictionary or None'
         )
-        assert isinstance(precision_cfg.get('spline_params'), (dict, type(None))), (
+        assert isinstance(precision_cfg['spline_params'], (dict, type(None))), (
             'precision: spline_params must be a dictionary or None'
         )
 
         # misc
-        assert isinstance(self.cfg.get('misc'), dict), (
-            "Section 'misc' must be a dictionary"
-        )
+        assert isinstance(self.cfg['misc'], dict), "Section 'misc' must be a dictionary"
         misc_cfg = self.cfg['misc']
-        assert isinstance(misc_cfg.get('num_threads'), int), (
+        assert isinstance(misc_cfg['num_threads'], int), (
             'misc: num_threads must be an int'
         )
-        assert isinstance(misc_cfg.get('test_numpy_inversion'), bool), (
+        assert isinstance(misc_cfg['test_numpy_inversion'], bool), (
             'misc: test_numpy_inversion must be a boolean'
         )
-        assert isinstance(misc_cfg.get('test_condition_number'), bool), (
+        assert isinstance(misc_cfg['test_condition_number'], bool), (
             'misc: test_condition_number must be a boolean'
         )
-        assert isinstance(misc_cfg.get('test_cholesky_decomposition'), bool), (
+        assert isinstance(misc_cfg['test_cholesky_decomposition'], bool), (
             'misc: test_cholesky_decomposition must be a boolean'
         )
-        assert isinstance(misc_cfg.get('test_symmetry'), bool), (
+        assert isinstance(misc_cfg['test_symmetry'], bool), (
             'misc: test_symmetry must be a boolean'
         )
-        assert isinstance(misc_cfg.get('output_path'), str), (
+        assert isinstance(misc_cfg['output_path'], str), (
             'misc: output_path must be a string'
         )
-        assert isinstance(misc_cfg.get('save_figs'), bool), (
+        assert isinstance(misc_cfg['save_figs'], bool), (
             'misc: save_figs must be a boolean'
         )
-        assert isinstance(misc_cfg.get('jax_platform'), str), (
+        assert isinstance(misc_cfg['jax_platform'], str), (
             'misc: jax_platform must be a string'
         )
-        assert isinstance(misc_cfg.get('cl_triangle_plot'), bool), (
+        assert isinstance(misc_cfg['cl_triangle_plot'], bool), (
             'misc: cl_triangle_plot must be a boolean'
         )
-        assert isinstance(misc_cfg.get('plot_probe_names'), bool), (
+        assert isinstance(misc_cfg['plot_probe_names'], bool), (
             'misc: plot_probe_names must be a boolean'
         )
-        assert isinstance(misc_cfg.get('workspace_filename'), str), (
+        assert isinstance(misc_cfg['workspace_filename'], str), (
             'misc: workspace_filename must be a string'
         )
 
@@ -758,11 +740,10 @@ class SpaceborneConfigChecker:
         )
 
         if self.cfg['C_ell']['has_magnification_bias'] and uses_oc:
-            warnings.warn(
-                f'{RED}Magnification bias is enabled in the configuration, '
-                'but OneCovariance does not include it. Results for GGL and GG might '
-                f'be inconsistent.{RESET}',
-                stacklevel=2,
+            raise ValueError(
+                'Magnification bias is enabled in the configuration, '
+                'but OneCovariance does not include it. '
+                'Results for GGL and GG might be inconsistent.'
             )
 
         if (
@@ -774,7 +755,7 @@ class SpaceborneConfigChecker:
         ):
             raise ValueError(
                 'The KE approximation for the SSC term is disabled in the '
-                'configuration, but OneCovariance uses it.'
+                'configuration, but OneCovariance uses it. '
                 'Results for GGL and GG might be inconsistent.'
             )
 

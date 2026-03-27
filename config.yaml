@@ -267,6 +267,7 @@ covariance:
   # - scale_probe_zpair: Ordered by scale index (ell/theta/n), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
+
   # =================================== output =======================================
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
   # The output will be a npz file for each term, containing arrays of shape
@@ -278,17 +279,20 @@ covariance:
   cov_filename: covmats # Type: str.
   save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
 
+  # When using NaMaster for the partial-sky Gaussian covariance, choose whether to 
+  # save the (binned and unbinned) mode coupling matrices (mcm) 
+  save_mcms: True # Type: bool. 
+
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
   # Options:
   # - 'qag_quad' (GSL's qag method backed up by quad when it fails)
   # - 'spline' (the integrand is splined and then integrated analytically).
-  
   # [Note] The former could give errors.
   cov_integration_method: spline # Type: str
 
   # Whether or not to load the previously computed trispectrum.
-  load_cached_tkka: False # Type: bool.
+  load_cached_tkka: True # Type: bool.
 
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower
@@ -328,7 +332,7 @@ precision:
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc
   k_steps: 250 # Type: int. Around 250 should be enough
 
-  z_min: 0.02 # Type: float
+  z_min: 0.01 # Type: float
   z_max: 3.0 # Type: float
   # Number of z steps used for the NG covariance projection.
   # Should be quite high, e.g., to trace the rapid variation of the sigma2_b function.

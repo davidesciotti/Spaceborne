@@ -12,7 +12,11 @@ def load_nz_euclidlib(nz_filename):
     """basically, this function turns the nz dict into a np array"""
     import euclidlib as el
 
-    z, nz = el.photo.redshift_distributions(nz_filename)
+    try:
+        z, nz = el.photo.redshift_distributions(nz_filename)
+    except AttributeError:
+        z, nz = el.phz.redshift_distributions(nz_filename)
+
     nztab = np.zeros((len(z), len(nz)))
     for zi in nz:
         nztab[:, zi - 1] = nz[zi]  # array is 0-based, dict is 1-based

@@ -1092,10 +1092,24 @@ if cfg['C_ell']['use_input_cls']:
     ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in
     ells_GC_in, cl_gg_3d_in = io_obj.ells_GC_in, io_obj.cl_gg_3d_in
 
+
+    
     # interpolate input Cls on the desired ell grid
-    cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
-    cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
-    cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
+    if cfg['probe_selection']['LL']:
+        cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
+    else:
+        cl_ll_3d_spline =  sl.zero_spline_factory(ccl_obj.cl_ll_3d)
+
+    if cfg['probe_selection']['GL']:
+        cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
+    else:
+        cl_gl_3d_spline =  sl.zero_spline_factory(ccl_obj.cl_gl_3d)
+
+    if cfg['probe_selection']['GG']:
+        cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
+    else:
+        cl_gg_3d_spline =  sl.zero_spline_factory(ccl_obj.cl_gg_3d)
+
     cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_3x2pt)
     cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)
     cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_3x2pt)
@@ -1233,8 +1247,10 @@ if (
             [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
             strict=True,
         ):
-            io_handler.check_ells_for_spline(ells_in)
-            io_handler.check_ells_for_spline(ells_out)
+            if ells_in is not None:
+                io_handler.check_ells_for_spline(ells_in)
+            if ells_out is not None:
+                io_handler.check_ells_for_spline(ells_out)
 
     # initialize cov_nmt_obj and set a couple useful attributes
     cov_nmt_obj = cov_partial_sky.NmtCov(

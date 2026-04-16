@@ -1317,12 +1317,6 @@ class NmtCov:
         self.cov_dict = cd.create_cov_dict(
             self.req_terms, _req_probe_combs_2d, dims=dims
         )
-        self.cov_dict_2 = cd.create_cov_dict(
-            self.req_terms, _req_probe_combs_2d, dims=dims
-        )
-        self.cov_dict_3 = cd.create_cov_dict(
-            self.req_terms, _req_probe_combs_2d, dims=dims
-        )
 
         # check on lmax and NSIDE
         for probe in ('WL', 'GC'):
@@ -1430,9 +1424,7 @@ class NmtCov:
                     mcm_gl_binned=self.mcm_te_binned,
                     mcm_ll_binned=self.mcm_ee_binned,
                 )
-                
                 print(f'\Mode coupling matrices saved in {self.output_path}\n')
-                
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
@@ -1539,70 +1531,8 @@ class NmtCov:
 
             # ! note that self.cov_dict is mutated in-place, no need to return it
             start = time.perf_counter()
-            result = sample_covariance_old(
-                cov_dict=self.cov_dict_3,
-                cl_GG_unbinned=cl_tt_4covsim,
-                cl_LL_unbinned=cl_ee_4covsim,
-                cl_GL_unbinned=cl_te_4covsim,
-                cl_BB_unbinned=cl_bb_4covsim,
-                cl_EB_unbinned=cl_eb_4covsim,
-                cl_TB_unbinned=cl_tb_4covsim,
-                nbl=nbl_eff,
-                zbins=self.zbins,
-                mask=self.mask_obj.mask,
-                nside=self.mask_obj.nside,
-                nreal=self.cfg['sample_covariance']['nreal'],
-                coupled_cls=self.coupled_cov,
-                which_cls=self.cfg['sample_covariance']['which_cls'],
-                nmt_bin_obj=nmt_bin_obj,
-                lmax=ell_max_eff,
-                w00=w00,
-                w02=w02,
-                w22=w22,
-                fix_seed=self.cfg['sample_covariance']['fix_seed'],
-                n_iter=self.cfg['precision']['n_iter_nmt'],
-                lite=True,
-            )
-            self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
-            print(
-                f'sample covariance old computed in {time.perf_counter() - start:.2f} seconds'
-            )
-
-            start = time.perf_counter()
-            result = sample_covariance(
-                cov_dict=self.cov_dict,
-                cl_GG_unbinned=cl_tt_4covsim,
-                cl_LL_unbinned=cl_ee_4covsim,
-                cl_GL_unbinned=cl_te_4covsim,
-                cl_BB_unbinned=cl_bb_4covsim,
-                cl_EB_unbinned=cl_eb_4covsim,
-                cl_TB_unbinned=cl_tb_4covsim,
-                nbl=nbl_eff,
-                zbins=self.zbins,
-                mask=self.mask_obj.mask,
-                nside=self.mask_obj.nside,
-                nreal=self.cfg['sample_covariance']['nreal'],
-                coupled_cls=self.coupled_cov,
-                which_cls=self.cfg['sample_covariance']['which_cls'],
-                nmt_bin_obj=nmt_bin_obj,
-                lmax=ell_max_eff,
-                w00=w00,
-                w02=w02,
-                w22=w22,
-                fix_seed=self.cfg['sample_covariance']['fix_seed'],
-                n_iter=self.cfg['precision']['n_iter_nmt'],
-                lite=True,
-            )
-            self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
-            print(
-                f'sample covariance computed in {time.perf_counter() - start:.2f} '
-                'seconds'
-            )
-
-            # test //
-            start = time.perf_counter()
             result = sample_covariance_parallel(
-                cov_dict=self.cov_dict_2,
+                cov_dict=self.cov_dict,
                 cl_GG_unbinned=cl_tt_4covsim,
                 cl_LL_unbinned=cl_ee_4covsim,
                 cl_GL_unbinned=cl_te_4covsim,
@@ -1625,23 +1555,6 @@ class NmtCov:
                 n_jobs=self.cfg['misc']['num_threads'],
             )
             self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
-            print(
-                f'sample covariance || computed in {time.perf_counter() - start:.2f} '
-                'seconds'
-            )
-
-        for probe_2tpl in self.cov_dict['g']:
-            np.testing.assert_allclose(
-                self.cov_dict['g'][probe_2tpl]['6d'],
-                self.cov_dict_2['g'][probe_2tpl]['6d'],
-                rtol=1e-5,
-                atol=0,
-            )
-            np.testing.assert_allclose(
-                self.cov_dict['g'][probe_2tpl]['6d'],
-                self.cov_dict_3['g'][probe_2tpl]['6d'],
-                rtol=1e-5,
-                atol=1e-14,
-            )
+            print(f'sample covariance computed in {time.perf_counter() - start:.2f} s')
 
         return self.cov_dict

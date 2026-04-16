@@ -74,11 +74,9 @@ def load_cl_euclidlib(filename, key_a, key_b):
     is_auto_spectrum = key_a == key_b
 
     # import .fits using euclidlib
-    # TODO the bare `except` is horrible but I'm not yet sure what's the definitive
-    #      structure of the euclidlib import
     # try:
     #     cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
-    # except:
+    # except AttributeError:
     # cl_dict = el.photo.angular_power_spectra(filename)
     cl_dict = el.le3.pk_wl.angular_power_spectra(filename)
 
@@ -499,7 +497,16 @@ class IOHandler:
             'save covariance in .fits format'
         )
 
-        import heracles
+        try:
+            import heracles
+        except ImportError as e:
+            print(
+                '\nError occurred while importing heracles.\n'
+                'This is probably due to an incompatibility between heracles and '
+                'scipy. Try downgrading scipy to <1.15 and see if the '
+                'issue persists.\n\n'
+            )
+            raise e
 
         for term, cov in cov_dict.items():
             save_term(cov, term)

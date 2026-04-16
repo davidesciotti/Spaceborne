@@ -1238,8 +1238,10 @@ if (
             [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
             strict=True,
         ):
-            io_handler.check_ells_for_spline(ells_in)
-            io_handler.check_ells_for_spline(ells_out)
+            if ells_in is not None:
+                io_handler.check_ells_for_spline(ells_in)
+            if ells_out is not None:
+                io_handler.check_ells_for_spline(ells_out)
 
     # initialize cov_nmt_obj and set a couple useful attributes
     cov_nmt_obj = cov_partial_sky.NmtCov(

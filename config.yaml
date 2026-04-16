@@ -113,14 +113,14 @@ nz:
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
 
 binning:
-  binning_type: log # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
+  binning_type: lin # Type: str. Options: ['log', 'lin', 'unbinned', 'from_input']
 
   # ell binning for the harmonic-space covariance matrix (not used in the 'from_input' case)
   # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
   # so ell_bins is ignored and ell_max is included in the grid. 
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 1500 # Type: int | float. Maximum ell
-  ell_bins: 32 # Type: int. Number of ell bins.
+  ell_bins: 20 # Type: int. Number of ell bins.
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
   # The file should have the following columns:
@@ -206,9 +206,9 @@ mask:
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
   # If null (None), the nside of the input mask will be used, without up/downgrading.
-  nside: 512 # Type: int | None.
+  nside: 1024 # Type: int | None.
 
-  survey_area_deg2: 13245 # Type: int
+  survey_area_deg2: 500 # Type: int
   apodize: False # Type: bool
   aposize: 0.1 # Type: float. Apodization scale in deg
 
@@ -239,7 +239,7 @@ covariance:
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: decoupled # Type: str.
+  cov_type: coupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
@@ -333,7 +333,7 @@ sample_covariance:
   # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
   # Options: ['namaster', 'healpy'].
   which_cls: healpy # Type: str.
-  nreal: 20 # Type: int. Number of realizations for the sample covariance matrix
+  nreal: 20000 # Type: int. Number of realizations for the sample covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
 
 precision:

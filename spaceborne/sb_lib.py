@@ -91,7 +91,9 @@ Naming conventions (just to ease the notation):
 """
 
 
-def zero_spline_factory(template):
+def zero_spline_factory(template: np.ndarray) -> callable:
+    """Factory function to create a zero spline with the same shape and dtype
+    as the template array."""
     shape = template.shape[1:]
     dtype = template.dtype
 

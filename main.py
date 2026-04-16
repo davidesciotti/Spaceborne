@@ -1089,8 +1089,6 @@ if cfg['C_ell']['use_input_cls']:
     if cfg['probe_selection']['LL']:
         cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
     else:
-        def zero_spline(x, shape):
-            return np.zeros((len(x), *shape))
         cl_ll_3d_spline =  sl.zero_spline_factory(ccl_obj.cl_ll_3d)
 
     if cfg['probe_selection']['GL']:

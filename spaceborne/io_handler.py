@@ -92,8 +92,8 @@ def load_cl_euclidlib(filename, key_a, key_b):
     nbl = ells.size
 
     # extract zbins (check consistency of columns first)
-    zbins_i = max(i[2] for i in cl_dict)
-    zbins_j = max(i[3] for i in cl_dict)
+    zbins_i = max(i[2] for i in pair_keys)
+    zbins_j = max(i[3] for i in pair_keys)
     assert zbins_i == zbins_j, 'zbins are not the same for all columns'
     zbins = zbins_i
 
@@ -322,8 +322,6 @@ def cov_heracles_dict_to_sb_10d(
 
 def check_ells_for_spline(ells):
     """Make sure ells are sorted and unique for spline interpolation"""
-    if ells is None:
-        return
     assert np.all(np.diff(ells) > 0), 'ells are not sorted'
     assert len(np.unique(ells)) == len(ells), 'ells are not unique'
 

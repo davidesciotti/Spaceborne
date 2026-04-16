@@ -807,7 +807,8 @@ pvt_cfg['nbl_3x2pt'] = ell_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
 pvt_cfg['nbx'] = nbx
 
-# TODO rename ell_obj to bin_obj
+# TODO rename ell_obj to bin_obj   
+# TODO Parallel: Workers compute independently, results are stacked after
 # TODO add to it theta and cosebis binning
 # TODO use geometric mean for ell centers!
 # TODO arange(ell_max_3x2pt)? are we sure?

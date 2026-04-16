@@ -80,6 +80,11 @@ def load_cl_euclidlib(filename, key_a, key_b):
     # cl_dict = el.photo.angular_power_spectra(filename)
     cl_dict = el.le3.pk_wl.angular_power_spectra(filename)
 
+    # additional check: make sure the dict is not empty for the required key combination
+    pair_keys = [k for k in cl_dict if k[0] == key_a and k[1] == key_b]
+    if not pair_keys:
+        raise KeyError(f'No spectra found for ({key_a}, {key_b}) in {filename}')
+
     # extract ells
     ells = cl_dict[key_a, key_b, 1, 1].ell
 
@@ -338,13 +343,20 @@ class IOHandler:
         self.cl_cfg = cfg['C_ell']
         self.output_path = cfg['misc']['output_path']
         self.cov_filename = cfg['covariance']['cov_filename']
+        self.probe_selection = cfg['probe_selection']
+        self.ells_WL_in, self.cl_ll_3d_in = None, None
+        self.ells_XC_in, self.cl_gl_3d_in = None, None
+        self.ells_GC_in, self.cl_gg_3d_in = None, None
 
     def print_cl_path(self):
         """Print the path of the input Cl files"""
         if self.cfg['C_ell']['use_input_cls']:
-            print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
-            print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
-            print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
+            if self.probe_selection['LL']:
+                print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
+            if self.probe_selection['GL']:
+                print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
+            if self.probe_selection['GG']:
+                print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
         else:
             return
 
@@ -443,37 +455,49 @@ class IOHandler:
             self._load_cls_el()
 
         # check symmetry
-        check_cl_symm(self.cl_ll_3d_in)
-        check_cl_symm(self.cl_gg_3d_in)
+        for cl_auto in [self.cl_ll_3d_in, self.cl_gg_3d_in]:
+            if cl_auto is not None:
+                check_cl_symm(cl_auto)
 
     def _load_cls_sb(self):
-        cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_filename'])
-        cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_filename'])
-        cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_filename'])
 
-        self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
-        self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)
-        self.ells_GC_in, self.cl_gg_3d_in = import_cl_tab(cl_gg_tab)
+        if self.probe_selection['LL']:
+            cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_filename'])
+            self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
+        if self.probe_selection['GL']:
+            cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_filename'])
+            self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)
+        if self.probe_selection['GG']:
+            cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_filename'])
+            self.ells_GC_in, self.cl_gg_3d_in = import_cl_tab(cl_gg_tab)
 
     def _load_cls_el(self):
-        self.ells_WL_in, self.cl_ll_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_LL_filename'], 'SHE', 'SHE'
-        )
-        self.ells_XC_in, self.cl_gl_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_GL_filename'], 'POS', 'SHE'
-        )
-        self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_GG_filename'], 'POS', 'POS'
-        )
+
+        if self.probe_selection['LL']:
+            self.ells_WL_in, self.cl_ll_3d_in = load_cl_euclidlib(
+                self.cl_cfg['cl_LL_filename'], 'SHE', 'SHE'
+            )
+        if self.probe_selection['GL']:
+            self.ells_XC_in, self.cl_gl_3d_in = load_cl_euclidlib(
+                self.cl_cfg['cl_GL_filename'], 'POS', 'SHE'
+            )
+        if self.probe_selection['GG']:
+            self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
+                self.cl_cfg['cl_GG_filename'], 'POS', 'POS'
+            )
 
     def check_ells_in(self, ell_obj):
         """Make sure ells are sorted and unique for spline interpolation"""
         for _ells in [
-            self.ells_WL_in, ell_obj.ells_WL,
-            self.ells_XC_in, ell_obj.ells_XC,
-            self.ells_GC_in, ell_obj.ells_GC,
-        ]:  # fmt: skip
-            check_ells_for_spline(_ells)
+            self.ells_WL_in,
+            ell_obj.ells_WL,
+            self.ells_XC_in,
+            ell_obj.ells_XC,
+            self.ells_GC_in,
+            ell_obj.ells_GC,
+        ]:
+            if _ells is not None:
+                check_ells_for_spline(_ells)
 
     def save_cov_euclidlib(self, cov_dict: dict):
         """Helper function to save the covariance in the heracles/cloelikeeuclidlib

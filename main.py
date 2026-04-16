@@ -2225,7 +2225,7 @@ for key in ['OneCovariance', 'ell_cuts']:
     if key in run_cfg['covariance']:
         del run_cfg['covariance'][key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
-    yaml.dump(run_cfg, yaml_file, default_flow_style=False)
+    yaml.dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
 
 # save nz
 nz_header = (
@@ -2365,7 +2365,7 @@ if cfg['misc']['save_output_as_benchmark']:
         )
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
-        yaml.dump(cfg, yaml_file, default_flow_style=False)
+        yaml.dump(cfg, yaml_file, default_flow_style=False, sort_keys=False)
 
     # ! Save all the values in cov_*_obj.cov_dict
     covs_totest_dict = {}

@@ -91,6 +91,16 @@ Naming conventions (just to ease the notation):
 """
 
 
+def zero_spline_factory(template):
+    shape = template.shape[1:]
+    dtype = template.dtype
+
+    def _zero_spline(x):
+        return np.zeros((len(x), *shape), dtype=dtype)
+
+    return _zero_spline
+
+
 def get_probe_combs_wrapper(
     obs_space: str, probe_selection: dict, cross_cov: bool
 ) -> dict:
@@ -4318,11 +4328,11 @@ def cov_4D_to_6D_blocks(
     assert cov_4D.ndim == 4, 'cov_4D must be a 4D array'
     assert cov_4D.shape[0] == nbl, 'cov_4D.shape[0] != nbl'
     assert cov_4D.shape[1] == nbl, 'cov_4D.shape[1] != nbl'
-    
+
     ncols = ind_ab.shape[1]
     zpairs_ab = ind_ab.shape[0]
     zpairs_cd = ind_cd.shape[0]
-    
+
     assert cov_4D.shape[2] == zpairs_ab, 'cov_4D.shape[2] != zpairs_ab'
     assert cov_4D.shape[3] == zpairs_cd, 'cov_4D.shape[3] != zpairs_cd'
 

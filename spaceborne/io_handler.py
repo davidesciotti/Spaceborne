@@ -1,6 +1,7 @@
 """Class for reading in data in various formats"""
 
 import itertools
+from pathlib import Path
 
 import numpy as np
 
@@ -321,6 +322,8 @@ def cov_heracles_dict_to_sb_10d(
 
 def check_ells_for_spline(ells):
     """Make sure ells are sorted and unique for spline interpolation"""
+    if ells is None:
+        return
     assert np.all(np.diff(ells) > 0), 'ells are not sorted'
     assert len(np.unique(ells)) == len(ells), 'ells are not unique'
 
@@ -352,11 +355,17 @@ class IOHandler:
         """Print the path of the input Cl files"""
         if self.cfg['C_ell']['use_input_cls']:
             if self.probe_selection['LL']:
-                print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
+                print(
+                    f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}'
+                )
             if self.probe_selection['GL']:
-                print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
+                print(
+                    f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}'
+                )
             if self.probe_selection['GG']:
-                print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
+                print(
+                    f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}'
+                )
         else:
             return
 
@@ -386,23 +395,37 @@ class IOHandler:
 
     def get_cl_fmt(self):
         """Get the format of the input cl files"""
+
+        cl_filenames_to_check = []
+        if self.probe_selection['LL']:
+            cl_filenames_to_check.append(self.cl_cfg['cl_LL_filename'])
+        if self.probe_selection['GL']:
+            cl_filenames_to_check.append(self.cl_cfg['cl_GL_filename'])
+        if self.probe_selection['GG']:
+            cl_filenames_to_check.append(self.cl_cfg['cl_GG_filename'])
+
+
         if self.cl_cfg['use_input_cls']:
-            if (
-                self.cl_cfg['cl_LL_filename'].endswith('.txt')
-                and self.cl_cfg['cl_GL_filename'].endswith('.txt')
-                and self.cl_cfg['cl_GG_filename'].endswith('.txt')
-            ) or (
-                self.cl_cfg['cl_LL_filename'].endswith('.dat')
-                and self.cl_cfg['cl_GL_filename'].endswith('.dat')
-                and self.cl_cfg['cl_GG_filename'].endswith('.dat')
+            assert cl_filenames_to_check, (
+                'No Cl filenames provided for the selected probes'
+            )
+            extensions = [
+                Path(cl_filenames_to_check[i]).suffix.lower()
+                for i in range(len(cl_filenames_to_check))
+            ]
+            assert all(ext in ['.txt', '.dat', '.fits'] for ext in extensions), (
+                'Input Cl filenames must end with .txt, .dat, or .fits'
+            )
+            assert all(x == extensions[0] for x in extensions), (
+                'All input Cl files must have the same extension'
+            )
+
+            if all(ext == '.txt' for ext in extensions) or all(
+                ext == '.dat' for ext in extensions
             ):
                 self.cl_fmt = 'spaceborne'
 
-            elif (
-                self.cl_cfg['cl_LL_filename'].endswith('.fits')
-                and self.cl_cfg['cl_GL_filename'].endswith('.fits')
-                and self.cl_cfg['cl_GG_filename'].endswith('.fits')
-            ):
+            elif all(ext == '.fits' for ext in extensions):
                 self.cl_fmt = 'euclidlib'
 
             else:
@@ -523,14 +546,14 @@ class IOHandler:
 
         try:
             import heracles
-        except ImportError as e:
+        except ImportError:
             print(
                 '\nError occurred while importing heracles.\n'
                 'This is probably due to an incompatibility between heracles and '
                 'scipy. Try downgrading scipy to <1.15 and see if the '
                 'issue persists.\n\n'
             )
-            raise e
+            raise
 
         for term, cov in cov_dict.items():
             save_term(cov, term)

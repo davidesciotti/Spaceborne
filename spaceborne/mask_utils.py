@@ -3,8 +3,7 @@ import os
 import healpy as hp
 import numpy as np
 
-from spaceborne import cosmo_lib
-from spaceborne import constants
+from spaceborne import constants, cosmo_lib, io_handler
 
 
 def get_mask_cl(mask: np.ndarray) -> tuple:
@@ -86,6 +85,8 @@ class Mask:
         self.apodize = mask_cfg['apodize']
         self.aposize = float(mask_cfg['aposize'])
         self.generate_polar_cap = mask_cfg['generate_polar_cap']
+        self.load_weight_maps = mask_cfg['load_weight_maps']
+        self.weight_maps_filename = mask_cfg['weight_maps_filename']
 
     def load_mask_func(self):
         if not os.path.exists(self.mask_filename):
@@ -93,7 +94,9 @@ class Mask:
 
         print(f'\nLoading mask file from {self.mask_filename}\n')
 
-        if self.mask_filename.endswith('.fits') or self.mask_filename.endswith('.fits.gz'):
+        if self.mask_filename.endswith('.fits') or self.mask_filename.endswith(
+            '.fits.gz'
+        ):
             try:
                 # function provided by VMPZ team to read very high resolution map
                 # and downgrade it on the fly
@@ -130,6 +133,12 @@ class Mask:
             self.mask = generate_polar_cap_func(
                 self.desired_survey_area_deg2, self.nside
             )
+
+        if self.load_weight_maps:
+            self.weight_maps = io_handler.load_weight_map_fits(
+                self.weight_maps_filename
+            )
+            self.nside_weight_map = hp.get_nside(self.weight_maps[0])
 
         if self.load_mask and self.nside is not None and self.nside != self.nside_mask:
             print(

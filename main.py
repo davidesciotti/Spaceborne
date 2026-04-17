@@ -1092,23 +1092,21 @@ if cfg['C_ell']['use_input_cls']:
     ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in
     ells_GC_in, cl_gg_3d_in = io_obj.ells_GC_in, io_obj.cl_gg_3d_in
 
-
-    
     # interpolate input Cls on the desired ell grid
     if cfg['probe_selection']['LL']:
         cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
     else:
-        cl_ll_3d_spline =  sl.zero_spline_factory(ccl_obj.cl_ll_3d)
+        cl_ll_3d_spline = sl.zero_spline_factory(ccl_obj.cl_ll_3d)
 
     if cfg['probe_selection']['GL']:
         cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
     else:
-        cl_gl_3d_spline =  sl.zero_spline_factory(ccl_obj.cl_gl_3d)
+        cl_gl_3d_spline = sl.zero_spline_factory(ccl_obj.cl_gl_3d)
 
     if cfg['probe_selection']['GG']:
         cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
     else:
-        cl_gg_3d_spline =  sl.zero_spline_factory(ccl_obj.cl_gg_3d)
+        cl_gg_3d_spline = sl.zero_spline_factory(ccl_obj.cl_gg_3d)
 
     cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_3x2pt)
     cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)

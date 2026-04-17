@@ -3,10 +3,19 @@
 import itertools
 from pathlib import Path
 
+import healpy as hp
 import numpy as np
 
 from spaceborne import constants as const
-from spaceborne import sb_lib as sl
+
+
+def load_weight_map_fits(path):
+
+    extension = Path(path).suffix.lower()
+    assert extension == '.fits', 'Weight map file must be a .fits file'
+
+    weight_map_arr = hp.read_map(path, field=None)
+    return weight_map_arr
 
 
 def load_nz_euclidlib(nz_filename):
@@ -405,7 +414,6 @@ class IOHandler:
             cl_filenames_to_check.append(self.cl_cfg['cl_GL_filename'])
         if self.probe_selection['GG']:
             cl_filenames_to_check.append(self.cl_cfg['cl_GG_filename'])
-
 
         if self.cl_cfg['use_input_cls']:
             assert cl_filenames_to_check, (

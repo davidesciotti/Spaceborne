@@ -218,8 +218,8 @@ def nmt_gaussian_cov_opt(
                     cla2b1=cl_list_dict[f'{s2}{s3}'](zj, zk, spin0),
                     cla2b2=cl_list_dict[f'{s2}{s4}'](zj, zl, spin0),
                     coupled=coupled,
-                    wa=wsp_dict[f'{s1}{s2}'],
-                    wb=wsp_dict[f'{s3}{s4}'],
+                    wa=wsp_dict[f'{s1}{s2}'][zi, zj],
+                    wb=wsp_dict[f'{s3}{s4}'][zk, zl],
                 )
 
                 if not spin0:
@@ -886,7 +886,6 @@ class NmtCov:
         # TODO maks=None (as in the example) or maps=[mask]? I think None
         f0, f2 = {}, {}
         w00, w02, w22 = {}, {}, {}
-        print('\nComputing namaster workspaces and coupling matrices...')
 
         if self.use_footprint:
             f0_mask = nmt.NmtField(
@@ -905,7 +904,8 @@ class NmtCov:
                 w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
 
         elif self.use_weight_maps:
-            for zi in range(self.zbins):
+            print('\nComputing namaster fields...')
+            for zi in tqdm(range(self.zbins)):
                 f0[zi] = nmt.NmtField(
                     mask=self.pos_weight_maps[zi],
                     maps=None,
@@ -927,6 +927,7 @@ class NmtCov:
             #     w22[zi, zj] = nmt.NmtWorkspace()
             #     w00[zi, zj].compute_coupling_matrix(f0[zi], f0[zj], nmt_bin_obj)
             #     w22[zi, zj].compute_coupling_matrix(f2[zi], f2[zj], nmt_bin_obj)
+            print('\nComputing namaster workspaces and coupling matrices...')
             for zi, zj in tqdm(zij_cross_combs):
                 w00[zi, zj] = nmt.NmtWorkspace()
                 w02[zi, zj] = nmt.NmtWorkspace()
@@ -935,34 +936,44 @@ class NmtCov:
                 w02[zi, zj].compute_coupling_matrix(f0[zi], f2[zj], nmt_bin_obj)
                 w22[zi, zj].compute_coupling_matrix(f2[zi], f2[zj], nmt_bin_obj)
 
-        import ipdb
-
-        ipdb.set_trace()
-
         # store in cache for later reuse, if required (TODO)
         os.makedirs(f'{self.output_path}/cache/nmt', exist_ok=True)
-        w00.write_to(f'{self.output_path}/cache/nmt/w00_workspace.fits')
-        w02.write_to(f'{self.output_path}/cache/nmt/w02_workspace.fits')
-        w22.write_to(f'{self.output_path}/cache/nmt/w22_workspace.fits')
+        for zi, zj in tqdm(zij_cross_combs):
+            w00[zi, zj].write_to(f'{self.output_path}/cache/nmt/w00_{zi}_{zj}_wsp.fits')
+            w02[zi, zj].write_to(f'{self.output_path}/cache/nmt/w02_{zi}_{zj}_wsp.fits')
+            w22[zi, zj].write_to(f'{self.output_path}/cache/nmt/w22_{zi}_{zj}_wsp.fits')
 
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
         # (mcm), which I store in self
         if self.coupled_cov or self.cfg['covariance']['save_mcms']:
-            w20 = nmt.NmtWorkspace()
-            w20.compute_coupling_matrix(f2_mask, f0_mask, nmt_bin_obj)
+            w20 = {}
+            mcm_tt_unb, mcm_et_unb, mcm_te_unb, mcm_ee_unb = {}, {}, {}, {}
+            self.mcm_tt_binned, self.mcm_et_binned = {}, {}
+            self.mcm_te_binned, self.mcm_ee_binned = {}, {}
+            for zi, zj in tqdm(zij_cross_combs):
+                w20[zi, zj] = nmt.NmtWorkspace()
+                w20[zi, zj].compute_coupling_matrix(f2[zi], f0[zj], nmt_bin_obj)
 
-            # extract only the relevant blocks
-            mcm_tt_unb = w00.get_coupling_matrix()[:nbl_unb, :nbl_unb]
-            mcm_et_unb = w20.get_coupling_matrix()[:nbl_unb, :nbl_unb]
-            mcm_te_unb = w02.get_coupling_matrix()[:nbl_unb, :nbl_unb]
-            mcm_ee_unb = w22.get_coupling_matrix()[:nbl_unb, :nbl_unb]
+                # extract only the relevant blocks
+                mcm_tt_unb[zi, zj] = w00[zi, zj].get_coupling_matrix()[
+                    :nbl_unb, :nbl_unb
+                ]
+                mcm_et_unb[zi, zj] = w20[zi, zj].get_coupling_matrix()[
+                    :nbl_unb, :nbl_unb
+                ]
+                mcm_te_unb[zi, zj] = w02[zi, zj].get_coupling_matrix()[
+                    :nbl_unb, :nbl_unb
+                ]
+                mcm_ee_unb[zi, zj] = w22[zi, zj].get_coupling_matrix()[
+                    :nbl_unb, :nbl_unb
+                ]
 
-            # bin (and store in self)
-            self.mcm_tt_binned = bin_mcm(mcm_tt_unb, nmt_bin_obj)
-            self.mcm_et_binned = bin_mcm(mcm_et_unb, nmt_bin_obj)
-            self.mcm_te_binned = bin_mcm(mcm_te_unb, nmt_bin_obj)
-            self.mcm_ee_binned = bin_mcm(mcm_ee_unb, nmt_bin_obj)
+                # bin (and store in self)
+                self.mcm_tt_binned[zi, zj] = bin_mcm(mcm_tt_unb[zi, zj], nmt_bin_obj)
+                self.mcm_et_binned[zi, zj] = bin_mcm(mcm_et_unb[zi, zj], nmt_bin_obj)
+                self.mcm_te_binned[zi, zj] = bin_mcm(mcm_te_unb[zi, zj], nmt_bin_obj)
+                self.mcm_ee_binned[zi, zj] = bin_mcm(mcm_ee_unb[zi, zj], nmt_bin_obj)
 
             if self.cfg['covariance']['save_mcms']:
                 np.savez(
@@ -1008,6 +1019,7 @@ class NmtCov:
         cl_bb_4covnmt = np.zeros_like(cl_tt_4covnmt)
 
         # ! NAMASTER covariance
+        # TODO is there any way to reduce the number of bin combinations??
         print('\nComputing cov workspace coupling coefficients...')
         cw = {}
         for zi, zj, zk, zl in tqdm(zijkl_combs):

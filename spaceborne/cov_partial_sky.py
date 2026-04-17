@@ -2,6 +2,7 @@ import itertools
 import os
 import time
 import warnings
+from itertools import combinations_with_replacement
 from typing import TypedDict
 
 import healpy as hp
@@ -10,9 +11,8 @@ import pymaster as nmt
 from tqdm import tqdm
 
 from spaceborne import constants, ell_utils, mask_utils
-from spaceborne import sb_lib as sl
 from spaceborne import cov_dict as cd
-from spaceborne import constants as const
+from spaceborne import sb_lib as sl
 
 _UNSET = object()
 
@@ -73,10 +73,10 @@ def nmt_gaussian_cov_opt(
     nbl: int,
     zbins: int,
     ind_dict: dict,
-    cw,
-    w00,
-    w02,
-    w22,
+    cw: dict,
+    w00: dict,
+    w02: dict,
+    w22: dict,
     unique_probe_combs: list[str],
     nonreq_probe_combs: list[str],
     *,
@@ -208,7 +208,7 @@ def nmt_gaussian_cov_opt(
                 _, _, zk, zl = ind_dict[probe_cd][zkl]
 
                 cov_l1l2 = nmt.gaussian_covariance(
-                    cw=cw,
+                    cw=cw[zi, zj, zk, zl],
                     spin_a1=0 if spin0 else s1,
                     spin_a2=0 if spin0 else s2,
                     spin_b1=0 if spin0 else s3,
@@ -843,6 +843,10 @@ class NmtCov:
         fsky = self.mask_obj.fsky
         unique_probe_combs = self.pvt_cfg['unique_probe_combs_hs']
 
+        zij_auto_combs = list(combinations_with_replacement(range(self.zbins), 2))
+        zij_cross_combs = list(itertools.product(range(self.zbins), repeat=2))
+        zijkl_combs = list(itertools.product(range(self.zbins), repeat=4))
+
         ells_eff = self.ell_obj.ells_3x2pt
         nbl_eff = self.ell_obj.nbl_3x2pt
         ells_eff_edges = self.ell_obj.ell_edges_3x2pt
@@ -870,22 +874,70 @@ class NmtCov:
         cl_gl_4covnmt = self.cl_gl_unb_3d.copy()
         cl_ll_4covnmt = self.cl_ll_unb_3d.copy()
 
+        # TODO delete
+        self.use_footprint = False
+        self.use_weight_maps = True
+        self.she_weight_maps = self.mask_obj.weight_maps
+        self.pos_weight_maps = self.mask_obj.weight_maps
+
+        # TODO delete end
+
         # ! create nmt field from the mask (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
-        f0_mask = nmt.NmtField(
-            mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=ell_max_eff
-        )
-        f2_mask = nmt.NmtField(
-            mask=self.mask_obj.mask, maps=None, spin=2, lite=True, lmax=ell_max_eff
-        )
+        f0, f2 = {}, {}
+        w00, w02, w22 = {}, {}, {}
+        print('\nComputing namaster workspaces and coupling matrices...')
 
-        with sl.timer('\nComputing namaster workspaces and coupling matrices...'):
-            w00 = nmt.NmtWorkspace()
-            w02 = nmt.NmtWorkspace()
-            w22 = nmt.NmtWorkspace()
-            w00.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
-            w02.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
-            w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
+        if self.use_footprint:
+            f0_mask = nmt.NmtField(
+                mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=ell_max_eff
+            )
+            f2_mask = nmt.NmtField(
+                mask=self.mask_obj.mask, maps=None, spin=2, lite=True, lmax=ell_max_eff
+            )
+
+            with sl.timer('\nComputing namaster workspaces and coupling matrices...'):
+                w00 = nmt.NmtWorkspace()
+                w02 = nmt.NmtWorkspace()
+                w22 = nmt.NmtWorkspace()
+                w00.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
+                w02.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
+                w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
+
+        elif self.use_weight_maps:
+            for zi in range(self.zbins):
+                f0[zi] = nmt.NmtField(
+                    mask=self.pos_weight_maps[zi],
+                    maps=None,
+                    spin=0,
+                    lite=True,
+                    lmax=ell_max_eff,
+                )
+                f2[zi] = nmt.NmtField(
+                    mask=self.she_weight_maps[zi],
+                    maps=None,
+                    spin=2,
+                    lite=True,
+                    lmax=ell_max_eff,
+                )
+
+            # in principle I could do this for w00 and w22, but let's start easy
+            # for zi, zj in tqdm(zij_auto_combs):
+            #     w00[zi, zj] = nmt.NmtWorkspace()
+            #     w22[zi, zj] = nmt.NmtWorkspace()
+            #     w00[zi, zj].compute_coupling_matrix(f0[zi], f0[zj], nmt_bin_obj)
+            #     w22[zi, zj].compute_coupling_matrix(f2[zi], f2[zj], nmt_bin_obj)
+            for zi, zj in tqdm(zij_cross_combs):
+                w00[zi, zj] = nmt.NmtWorkspace()
+                w02[zi, zj] = nmt.NmtWorkspace()
+                w22[zi, zj] = nmt.NmtWorkspace()
+                w00[zi, zj].compute_coupling_matrix(f0[zi], f0[zj], nmt_bin_obj)
+                w02[zi, zj].compute_coupling_matrix(f0[zi], f2[zj], nmt_bin_obj)
+                w22[zi, zj].compute_coupling_matrix(f2[zi], f2[zj], nmt_bin_obj)
+
+        import ipdb
+
+        ipdb.set_trace()
 
         # store in cache for later reuse, if required (TODO)
         os.makedirs(f'{self.output_path}/cache/nmt', exist_ok=True)
@@ -924,15 +976,13 @@ class NmtCov:
                     mcm_gl_binned=self.mcm_te_binned,
                     mcm_ll_binned=self.mcm_ee_binned,
                 )
-                
+
                 print(f'\Mode coupling matrices saved in {self.output_path}\n')
-                
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
         if self.cfg['precision']['use_iNKA']:
-            z_combinations = list(itertools.product(range(self.zbins), repeat=2))
-            for zi, zj in z_combinations:
+            for zi, zj in zij_cross_combs:
                 list_gg = [self.cl_gg_unb_3d[:, zi, zj]]
                 list_gl = [
                     self.cl_gl_unb_3d[:, zi, zj],
@@ -945,9 +995,9 @@ class NmtCov:
                     np.zeros_like(self.cl_ll_unb_3d[:, zi, zj]),
                 ]
                 # TODO the denominator should be the product of the masks?
-                cl_gg_4covnmt[:, zi, zj] = w00.couple_cell(list_gg)[0] / fsky
-                cl_gl_4covnmt[:, zi, zj] = w02.couple_cell(list_gl)[0] / fsky
-                cl_ll_4covnmt[:, zi, zj] = w22.couple_cell(list_ll)[0] / fsky
+                cl_gg_4covnmt[:, zi, zj] = w00[zi, zj].couple_cell(list_gg)[0] / fsky
+                cl_gl_4covnmt[:, zi, zj] = w02[zi, zj].couple_cell(list_gl)[0] / fsky
+                cl_ll_4covnmt[:, zi, zj] = w22[zi, zj].couple_cell(list_ll)[0] / fsky
 
         # add noise to spectra to compute NMT cov
         cl_tt_4covnmt = cl_gg_4covnmt + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
@@ -958,9 +1008,13 @@ class NmtCov:
         cl_bb_4covnmt = np.zeros_like(cl_tt_4covnmt)
 
         # ! NAMASTER covariance
-        with sl.timer('\nComputing cov workspace coupling coefficients...'):
-            cw = nmt.NmtCovarianceWorkspace()
-            cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
+        print('\nComputing cov workspace coupling coefficients...')
+        cw = {}
+        for zi, zj, zk, zl in tqdm(zijkl_combs):
+            cw[zi, zj, zk, zl] = nmt.NmtCovarianceWorkspace()
+            cw[zi, zj, zk, zl].compute_coupling_coefficients(
+                f0[zi], f0[zj], f0[zk], f0[zl]
+            )
 
         if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
             coupled_str = self.cfg['covariance']['cov_type']

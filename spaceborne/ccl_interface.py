@@ -276,24 +276,27 @@ class CCLInterface:
     def set_mag_bias_tuple(
         self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values
     ):
+        """
+        Set the magnification bias values and store in a tuple. In this function,
+        we call "mag_bias" the usual s(z).
+        
+        Note: to implement the "no magnification bias" case, we set mag_bias to a
+        constant value (0.4, such as 5*s(z)-2 = 0, i.e. no magnification bias).
+        
+        Note: In the cases handled by this function (no magnification bias, 
+        polinomial fit), the magnification bias is the same for all redshift bins, 
+        thus the use of np.repeat to construct the 2d array. 
+        """
+
         if has_magnification_bias:
-            # this is only to ensure compatibility with wf_ccl function. In reality,
-            # the same array is given for each bin
             mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(
                 z_grid_lns, magcut_lens=magcut_lens, poly_fit_values=poly_fit_values
             )
-            self.mag_bias_2d = np.repeat(
-                mag_bias_1d.reshape(1, -1), self.zbins, axis=0
-            ).T
-            self.mag_bias_tuple = (z_grid_lns, self.mag_bias_2d)
         else:
-            # this is the correct way to set the magnification bias values so that the
-            # actual bias is 1, ant the corresponding
-            # wf_mu is zero (which is, in theory, the case mag_bias_tuple=None, which
-            # however causes pyccl to crash!)
-            # mag_bias_2d = (np.ones_like(gal_bias_2d) * + 2) / 5
-            # mag_bias_tuple = (zgrid_nz, mag_bias_2d)
-            self.mag_bias_tuple = None
+            mag_bias_1d = np.ones_like(z_grid_lns) * 0.4
+
+        self.mag_bias_2d = np.repeat(mag_bias_1d.reshape(1, -1), self.zbins, axis=0).T
+        self.mag_bias_tuple = (z_grid_lns, self.mag_bias_2d)
 
     def set_kernel_obj(self, has_rsd, n_samples_wf):
         self.wf_lensing_obj = [
@@ -307,30 +310,17 @@ class CCLInterface:
             for zbin_idx in range(self.zbins)
         ]
 
-        self.wf_galaxy_obj = []
-        for zbin_idx in range(self.zbins):
-            # this is needed to be eble to pass mag_bias = None for each zbin
-            if self.mag_bias_tuple is None:
-                mag_bias_arg = self.mag_bias_tuple
-            else:
-                mag_bias_arg = (
-                    self.mag_bias_tuple[0],
-                    self.mag_bias_tuple[1][:, zbin_idx],
-                )
-
-            self.wf_galaxy_obj.append(
-                ccl.tracers.NumberCountsTracer(
-                    cosmo=self.cosmo_ccl,
-                    has_rsd=has_rsd,
-                    dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zbin_idx]),
-                    bias=(self.gal_bias_tuple[0], self.gal_bias_tuple[1][:, zbin_idx]),
-                    mag_bias=mag_bias_arg,
-                    n_samples=n_samples_wf,
-                )
+        self.wf_galaxy_obj = [
+            ccl.tracers.NumberCountsTracer(
+                cosmo=self.cosmo_ccl,
+                has_rsd=has_rsd,
+                dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zbin_idx]),
+                bias=(self.gal_bias_tuple[0], self.gal_bias_tuple[1][:, zbin_idx]),
+                mag_bias=(self.mag_bias_tuple[0], self.mag_bias_tuple[1][:, zbin_idx]),
+                n_samples=n_samples_wf,
             )
-
-    def set_ell_grid(self, ell_grid):
-        self.ell_grid = ell_grid
+            for zbin_idx in range(self.zbins)
+        ]
 
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(

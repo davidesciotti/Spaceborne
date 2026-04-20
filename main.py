@@ -937,31 +937,29 @@ else:
 # two-dimensional", for shape consistency
 single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 
-
 # ! ============================ Magnification bias ====================================
-if cfg['C_ell']['has_magnification_bias']:
-    if cfg['C_ell']['which_mag_bias'] == 'from_input':
-        mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
-        # it's safer to use a linear interpolation, in case these functions are top-hats
-        # (e.g. when requiring constant bias in each bin, over its redshift support)
-        ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(
-            input_tab=mag_bias_input,
-            z_grid_out=z_grid,
-            zbins=zbins,
-            kind=cfg['C_ell']['mag_bias_table_interp_method'],
-        )
-        ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
-    elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':
-        ccl_obj.set_mag_bias_tuple(
-            z_grid_lns=z_grid,
-            has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
-            magcut_lens=None,
-            poly_fit_values=magnification_bias_fit_fiducials,
-        )
-    else:
-        raise ValueError('which_mag_bias should be "from_input" or "polynomial_fit"')
+if cfg['C_ell']['which_mag_bias'] == 'from_input':
+    mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
+    # it's safer to use a linear interpolation, in case these functions are top-hats
+    # (e.g. when requiring constant bias in each bin, over its redshift support)
+    ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(
+        input_tab=mag_bias_input,
+        z_grid_out=z_grid,
+        zbins=zbins,
+        kind=cfg['C_ell']['mag_bias_table_interp_method'],
+    )
+    ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
+
+elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':
+    ccl_obj.set_mag_bias_tuple(
+        z_grid_lns=z_grid,
+        has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
+        magcut_lens=None,
+        poly_fit_values=magnification_bias_fit_fiducials,
+    )
 else:
-    ccl_obj.mag_bias_tuple = None
+    raise ValueError('which_mag_bias should be "from_input" or "polynomial_fit"')
+
 
 plt.figure()
 for zi in range(zbins):

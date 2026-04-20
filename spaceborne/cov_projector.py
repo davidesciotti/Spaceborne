@@ -106,7 +106,7 @@ def proj_cov_2d(
     kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
     integration_method: str,
 ) -> np.ndarray:
-    """Projects a 2D array (a non-Gaussian covariance in harmonic space) using the
+    r"""Projects a 2D array (a non-Gaussian covariance in harmonic space) using the
     equation
         \int d\ell_1 d\ell_2 k_1(\ell_1) k_2(\ell_1) cov(\ell_1, \ell_2)
     The input array should be 4D, with shape

@@ -221,7 +221,8 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
 
 
 # variables to play with
-ROOT = '/u/dsciotti/code'
+# ROOT = '/u/dsciotti/code'  # pleiadi
+ROOT = '/home/sciotti/code' # mileva
 skip_existing = True  # Skip benchmarks that already exist
 
 # set some paths
@@ -385,7 +386,7 @@ base_cfg = {
         'boost_bessel': True,
         'verbose': True,
         'ell_min_proj': 2,
-        'ell_max_proj': 100000,
+        'ell_max_proj': 50000,
         'ell_bins_proj_gauss': 50,
         'ell_bins_proj_nongauss': 50,
         'theta_min_arcmin_cosebis': 2,

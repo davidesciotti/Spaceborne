@@ -333,8 +333,8 @@ base_cfg = {
         'mag_bias_table_interp_method': 'CubicSpline',
         'mult_shear_bias': [0.0, 0.0, 0.0],
         'has_rsd': False,
-        'has_IA': False,
-        'has_magnification_bias': False,
+        'has_IA': True,
+        'has_magnification_bias': True,
         'cl_CCL_kwargs': {
             'l_limber': -1,
             'limber_integration_method': 'spline',
@@ -451,94 +451,79 @@ for obs_space in ['harmonic', 'real', 'cosebis']:
     )
 
 # ! Ordering, probe selection, input Cls
-triu_tril = 'triu'
-row_col = 'row-major'
 for space in ['harmonic', 'real', 'cosebis']:
-    for split_gaussian_cov in [True, False]:
-        for cross_cov in [True, False]:
-            for use_input_cls in [True, False]:
-                for ordering in [
-                    'probe_scale_zpair',
-                    'probe_zpair_scale',
-                    'scale_probe_zpair',
-                ]:
-                    # for triu_tril in ['triu', 'tril']:
-                    # for row_col in ['row-major', 'col-major']:
-                    if space == 'harmonic':
-                        for cov_hs_g_ell_bin_average in [True, False]:
-                            for LL, GL, GG in product([True, False], repeat=3):
-                                if not any([LL, GL, GG]):
-                                    continue
-                                configs_to_test.append(
-                                    {
-                                        'probe_selection': {
-                                            'LL': LL,
-                                            'GL': GL,
-                                            'GG': GG,
-                                            'cross_cov': cross_cov,
-                                            'space': space,
-                                        },
-                                        'covariance': {
-                                            'SSC': False,
-                                            'split_gaussian_cov': split_gaussian_cov,
-                                            'covariance_ordering_2D': ordering,
-                                            'triu_tril': triu_tril,
-                                            'row_col_major': row_col,
-                                        },
-                                        'C_ell': {'use_input_cls': use_input_cls},
-                                        'precision': {
-                                            'cov_hs_g_ell_bin_average': cov_hs_g_ell_bin_average
-                                        },
-                                    }
-                                )
-                    elif space == 'real':
-                        for xip, xim, gt, w in product([True, False], repeat=4):
-                            if not any([xip, xim, gt, w]):
-                                continue
-                            configs_to_test.append(
-                                {
-                                    'probe_selection': {
-                                        'xip': xip,
-                                        'xim': xim,
-                                        'gt': gt,
-                                        'w': w,
-                                        'cross_cov': cross_cov,
-                                        'space': space,
-                                    },
-                                    'covariance': {
-                                        'SSC': False,
-                                        'split_gaussian_cov': split_gaussian_cov,
-                                        'covariance_ordering_2D': ordering,
-                                        'triu_tril': triu_tril,
-                                        'row_col_major': row_col,
-                                    },
-                                    'C_ell': {'use_input_cls': use_input_cls},
-                                }
-                            )
-                    elif space == 'cosebis':
-                        for En, Bn in product([True, False], repeat=2):
-                            if not any([En, Bn]):
-                                continue
-                            configs_to_test.append(
-                                {
-                                    'probe_selection': {
-                                        'En': En,
-                                        'Bn': Bn,
-                                        'cross_cov': cross_cov,
-                                        'space': space,
-                                    },
-                                    'covariance': {
-                                        'SSC': False,
-                                        'split_gaussian_cov': split_gaussian_cov,
-                                        'covariance_ordering_2D': ordering,
-                                        'triu_tril': triu_tril,
-                                        'row_col_major': row_col,
-                                    },
-                                    'C_ell': {'use_input_cls': use_input_cls},
-                                }
-                            )
+    for cross_cov in [True, False]:
+        for use_input_cls in [True, False]:
+            if space == 'harmonic':
+                for cov_hs_g_ell_bin_average in [True, False]:
+                    for LL, GL, GG in product([True, False], repeat=3):
+                        if not any([LL, GL, GG]):
+                            continue
+                        configs_to_test.append(
+                            {
+                                'probe_selection': {
+                                    'LL': LL,
+                                    'GL': GL,
+                                    'GG': GG,
+                                    'cross_cov': cross_cov,
+                                    'space': space,
+                                },
+                                'covariance': {'SSC': False},
+                                'C_ell': {'use_input_cls': use_input_cls},
+                                'precision': {
+                                    'cov_hs_g_ell_bin_average': cov_hs_g_ell_bin_average
+                                },
+                            }
+                        )
+            elif space == 'real':
+                for xip, xim, gt, w in product([True, False], repeat=4):
+                    if not any([xip, xim, gt, w]):
+                        continue
+                    configs_to_test.append(
+                        {
+                            'probe_selection': {
+                                'xip': xip,
+                                'xim': xim,
+                                'gt': gt,
+                                'w': w,
+                                'cross_cov': cross_cov,
+                                'space': space,
+                            },
+                            'covariance': {'SSC': False},
+                            'C_ell': {'use_input_cls': use_input_cls},
+                        }
+                    )
+            elif space == 'cosebis':
+                for En, Bn in product([True, False], repeat=2):
+                    if not any([En, Bn]):
+                        continue
+                    configs_to_test.append(
+                        {
+                            'probe_selection': {
+                                'En': En,
+                                'Bn': Bn,
+                                'cross_cov': cross_cov,
+                                'space': space,
+                            },
+                            'covariance': {'SSC': False},
+                            'C_ell': {'use_input_cls': use_input_cls},
+                        }
+                    )
 
-# ! COSEBIs, real space
+# ordering, with and without split Gaussian cov
+for ordering in ['probe_scale_zpair', 'probe_zpair_scale', 'scale_probe_zpair']:
+    for split_gaussian_cov in [True, False]:
+        configs_to_test.append(
+            {
+                'covariance': {
+                    'SSC': False,
+                    'covariance_ordering_2D': ordering,
+                    'split_gaussian_cov': split_gaussian_cov,
+                }
+            }
+        )
+
+# ! G and NG proj for real space, COSEBIs
 for obs_space in ['real', 'cosebis']:
     for proj_gauss_integration_method, proj_nongauss_integration_method in [
         ('simps', 'simps'),
@@ -600,9 +585,6 @@ for Aia in [0.16, 0.5, 1.0]:
 for mult_shear_bias in [[0.01, 0.02, 0.03], [-0.01, 0.09, -0.05]]:
     configs_to_test.append({'C_ell': {'mult_shear_bias': mult_shear_bias}})
 
-# ! Input Cls vs computed
-for use_input_cls in [True, False]:
-    configs_to_test.append({'C_ell': {'use_input_cls': use_input_cls}})
 
 # ! No sampling noise
 for no_sampling_noise in [True, False]:
@@ -651,6 +633,9 @@ for load_input_mask, generate_polar_cap in zip(
                 }
             }
         )
+
+# ! BNT transform
+configs_to_test.append({'covariance': {'BNT_transform': True}})
 
 # ! NAMASTER (test only G cov)
 for cov_type in ['coupled', 'decoupled']:

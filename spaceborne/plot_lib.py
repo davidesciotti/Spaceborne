@@ -59,6 +59,72 @@ ylabel_sigma_relative_fid = mpl_other_dict['ylabel_sigma_relative_fid']
 # markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 
 
+def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
+    plt.figure()
+    for zi in range(zbins):
+        plt.plot(
+            z_grid,
+            ccl_obj.wf_delta_arr[:, zi],
+            c=clr[zi],
+            alpha=0.6,
+            ls='-.',
+            label='density' if zi == 0 else None,
+        )
+        plt.plot(
+            z_grid,
+            ccl_obj.wf_mu_arr[:, zi],
+            c=clr[zi],
+            alpha=0.6,
+            ls='--',
+            label='magnification' if zi == 0 else None,
+        )
+        plt.plot(
+            z_grid,
+            ccl_obj.wf_galaxy_arr[:, zi],
+            c=clr[zi],
+            alpha=0.6,
+            label='total' if zi == 0 else None,
+        )
+    plt.xlabel('$z$')
+    plt.ylabel(r'$W_i^{POS}(z)$')
+    plt.suptitle('Galaxy kernels\n(w/o galaxy bias)')
+    plt.tight_layout()
+    plt.legend()
+    plt.show()
+
+    plt.figure()
+    for zi in range(zbins):
+        plt.plot(
+            z_grid,
+            ccl_obj.wf_gamma_arr[:, zi],
+            c=clr[zi],
+            alpha=0.6,
+            ls='-.',
+            label='shear' if zi == 0 else None,
+        )
+        plt.plot(
+            z_grid,
+            ccl_obj.wf_ia_arr[:, zi] * ccl_obj.ia_bias_tuple[1],
+            c=clr[zi],
+            alpha=0.6,
+            ls='--',
+            label='IA' if zi == 0 else None,
+        )
+        plt.plot(
+            z_grid,
+            ccl_obj.wf_lensing_arr[:, zi],
+            c=clr[zi],
+            alpha=0.6,
+            label='total' if zi == 0 else None,
+        )
+    plt.xlabel('$z$')
+    plt.legend()
+    plt.ylabel(r'$W_i^{SHE}(z)$')
+    plt.suptitle('Lensing kernels')
+    plt.tight_layout()
+    plt.show()
+
+
 def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None, cov_6d=None):
     fig, ax = plt.subplots(zbins, zbins, figsize=(7, 7), sharex=True, sharey=True)
 

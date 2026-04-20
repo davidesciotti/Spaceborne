@@ -380,6 +380,7 @@ base_cfg = {
         'save_full_cov': True,
         'cov_filename': 'covmats',
         'save_cov_fits': False,
+        'save_mcms': False,
     },
     'PyCCL': {
         'cov_integration_method': 'spline',
@@ -538,7 +539,7 @@ for space in ['harmonic', 'real', 'cosebis']:
                                 }
                             )
 
-# ! COSEBIs, real space
+# ! real space, COSEBIs
 for obs_space in ['real', 'cosebis']:
     for proj_gauss_integration_method, proj_nongauss_integration_method in [
         ('simps', 'simps'),

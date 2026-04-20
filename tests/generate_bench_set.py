@@ -403,7 +403,7 @@ base_cfg = {
         'z_steps_trisp': 10,
         'use_KE_approximation': False,
         'ell_min_proj': 2,
-        'ell_max_proj': 500000,
+        'ell_max_proj': 50000,
         'ell_bins_proj_gauss': 100,
         'ell_bins_proj_nongauss': 50,
         'proj_gauss_integration_method': 'simps',

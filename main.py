@@ -938,7 +938,10 @@ else:
 single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 
 # ! ============================ Magnification bias ====================================
-if cfg['C_ell']['which_mag_bias'] == 'from_input':
+if (
+    cfg['C_ell']['has_magnification_bias']
+    and cfg['C_ell']['which_mag_bias'] == 'from_input'
+):
     mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
     # it's safer to use a linear interpolation, in case these functions are top-hats
     # (e.g. when requiring constant bias in each bin, over its redshift support)
@@ -949,16 +952,14 @@ if cfg['C_ell']['which_mag_bias'] == 'from_input':
         kind=cfg['C_ell']['mag_bias_table_interp_method'],
     )
     ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
-
-elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':
+else:
+    # handles both the poly fit case and the case with no magnification bias
     ccl_obj.set_mag_bias_tuple(
         z_grid_lns=z_grid,
         has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
         magcut_lens=None,
         poly_fit_values=magnification_bias_fit_fiducials,
     )
-else:
-    raise ValueError('which_mag_bias should be "from_input" or "polynomial_fit"')
 
 
 plt.figure()
@@ -975,7 +976,6 @@ ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
 )
 
-gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 
@@ -1026,34 +1026,7 @@ wf_ia = ccl_obj.wf_ia_arr
 wf_mu = ccl_obj.wf_mu_arr
 wf_lensing = ccl_obj.wf_lensing_arr
 
-# plot
-wf_names_list = [
-    'delta',
-    'gamma',
-    'IA',
-    'magnification',
-    'lensing',
-    gal_kernel_plt_title,
-]
-wf_ccl_list = [
-    ccl_obj.wf_delta_arr,
-    ccl_obj.wf_gamma_arr,
-    ccl_obj.wf_ia_arr,
-    ccl_obj.wf_mu_arr,
-    ccl_obj.wf_lensing_arr,
-    ccl_obj.wf_galaxy_arr,
-]
-
-for wf_idx in range(len(wf_ccl_list)):
-    plt.figure()
-    for zi in range(zbins):
-        plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
-    plt.xlabel('$z$')
-    plt.ylabel(r'$W_i^X(z)$')
-    plt.suptitle(f'{wf_names_list[wf_idx]}')
-    plt.tight_layout()
-    plt.show()
-
+sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 
 # ! ======================================== Cls =======================================
 # ! note that the function below includes the multiplicative shear bias

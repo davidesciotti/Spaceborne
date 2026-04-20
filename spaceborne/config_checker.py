@@ -759,9 +759,18 @@ class SpaceborneConfigChecker:
                 'Results for GGL and GG might be inconsistent.'
             )
 
+    def check_options(self) -> None:
+        if self.cfg['C_ell']['has_magnification_bias']:
+            assert self.cfg['C_ell']['which_mag_bias'] in [
+                'from_input',
+                'polynomial_fit',
+            ], 'which_mag_bias should be "from_input" or "polynomial_fit"'
+
+
     def run_all_checks(self) -> None:
         self.check_ell_cuts()
         self.check_nmt()
+        self.check_options()
         self.check_BNT_transform()
         self.check_onecov()
         self.check_KE_approximation()

@@ -402,7 +402,7 @@ base_cfg = {
         'log10_k_min': -5.0,
         'log10_k_max': 2.0,
         'k_steps': 20,
-        'z_min': 0.02,
+        'z_min': 0.01,
         'z_max': 3.0,
         'z_steps': 500,
         'z_steps_trisp': 10,

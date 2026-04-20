@@ -838,20 +838,20 @@ def sample_covariance_parallel( # fmt: skip
 
     results = Parallel(n_jobs=30, backend='loky', verbose=1)(
         delayed(_compute_one_realization)(
-            SEEDVALUE[i],
-            cl_ring_big_list,
-            lmax,
-            nside,
-            zbins,
-            mask,
-            coupled_cls,
-            which_cls,
-            w00_path,
-            w02_path,
-            w22_path,
-            nbl,
-            ell_min_edges,
-            ell_max_edges,
+            seed=SEEDVALUE[i],
+            cl_ring_big_list=cl_ring_big_list,
+            lmax=lmax,
+            nside=nside,
+            zbins=zbins,
+            mask=mask,
+            coupled_cls=coupled_cls,
+            which_cls=which_cls,
+            w00_path=w00_path,
+            w02_path=w02_path,
+            w22_path=w22_path,
+            nbl=nbl,
+            ell_min_edges=ell_min_edges,
+            ell_max_edges=ell_max_edges,
         )
         for i in range(nreal)
     )

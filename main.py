@@ -1328,7 +1328,7 @@ if obs_space == 'harmonic':
 else:
     cov_hs_obj = None
 
-# ! =================================== OneCovariance ================================
+# ! =================================== OneCovariance ==================================
 # initialize object
 cov_oc_obj = None
 if (
@@ -1807,9 +1807,10 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
+    print('')
     for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
-        print(f'\n2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
+        print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
             print(f'Computing term {_term}...')
             cov_rs_obj.compute_rs_cov_term_probe_6d(
@@ -1866,9 +1867,10 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
+    print('')
     for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
-        print(f'\nCOSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
+        print(f'COSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_cs_obj.terms_toloop:
             cov_cs_obj.compute_cs_cov_term_probe_6d(
                 cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term

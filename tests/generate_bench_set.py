@@ -1,5 +1,6 @@
 """
-LAST UPDATE: 2025-09-16
+LAST UPDATE: 2026-04-20
+PREV UPDATE: 2025-09-16
 
 Script to produce a set of benchmarks to test the Spaceborne code. More in detail, it
 performs the following operations:
@@ -27,6 +28,9 @@ NOTES
    is in
    {DATA_ROOT}/Spaceborne_bench/bench_set_output/_sb_output,
    but you don't need to care about this.
+
+-  Don't worry about the .yaml files in bench_set_output, the "main" ones are in
+   bench_set_cfg
 
 -  This script should be run from the main branch.
 """
@@ -380,6 +384,7 @@ base_cfg = {
         'save_full_cov': True,
         'cov_filename': 'covmats',
         'save_cov_fits': False,
+        'save_mcms': False,
     },
     'PyCCL': {
         'cov_integration_method': 'spline',
@@ -440,15 +445,6 @@ base_cfg = {
 # Each dictionary represents one configuration to test
 configs_to_test = []
 
-# ! OneCovariance - Gauss only, 3 spaces
-for obs_space in ['harmonic', 'real', 'cosebis']:
-    configs_to_test.append(
-        {
-            'covariance': {'G_code': 'OneCovariance', 'SSC': False, 'cNG': False},
-            'probe_selection': {'space': obs_space},
-            'binning': {'binning_type': 'log'},
-        }
-    )
 
 # ! Ordering, probe selection, input Cls
 for space in ['harmonic', 'real', 'cosebis']:
@@ -658,6 +654,17 @@ for cov_type in ['coupled', 'decoupled']:
                         },
                     }
                 )
+                
+# ! OneCovariance - Gauss only, 3 spaces
+for obs_space in ['harmonic', 'real', 'cosebis']:
+    configs_to_test.append(
+        {
+            'covariance': {'G_code': 'OneCovariance', 'SSC': False, 'cNG': False},
+            'probe_selection': {'space': obs_space},
+            'C_ell': {'has_magnification_bias': False},
+            'binning': {'binning_type': 'log'},
+        }
+    )
 
 
 # make sure we don't have duplicated configurations

@@ -325,11 +325,12 @@ class CovCOSEBIs(CovarianceProjector):
 
                     # Integrate over (ell_1, ell_2) for all tomographic
                     # bin combinations at once
-                    cov_cs_ng_4d[s1, s2, :, :] = self.proj_cov_2d_simps(
+                    cov_cs_ng_4d[s1, s2, :, :] = cp.proj_cov_2d(
                         ells_proj=self.ells_proj_ng,
                         cov_hs_ng_4d=cov_hs_ng_4d,
                         kernel_1_func_of_ell=kernel_n,
                         kernel_2_func_of_ell=kernel_m,
+                        integration_method='simps'
                     )
 
             # reshape to 6d and symmetrize if needed

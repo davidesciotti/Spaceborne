@@ -2372,7 +2372,7 @@ if cfg['misc']['save_output_as_benchmark']:
     if os.path.exists(f'{bench_filename}.npz'):
         raise ValueError(
             'You are trying to overwrite the benchmark file at'
-            f' {bench_filename}.npz.'
+            f' {bench_filename}.npz. '
             'Please rename the new benchmark or delete the existing one.'
         )
 

@@ -570,4 +570,4 @@ class SpaceborneResponses:
         self.r1_gm_hm = self.dPgm_ddeltab_hm / self.pknlhm_gm
         self.r1_gg_hm = self.dPgg_ddeltab_hm / self.pknlhm_gg
 
-        print(f'... done in {time.perf_counter() - start_time:.2f} s.')
+        print(f'...done in {time.perf_counter() - start_time:.2f}s')

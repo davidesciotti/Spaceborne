@@ -244,7 +244,7 @@ sb_root_path = f'{ROOT}/Spaceborne'
 
 
 # ! OPTIONS
-skip_existing = False  # Skip benchmarks that already exist
+skip_existing = True  # Skip benchmarks that already exist
 
 # ! DEFINE A BASIC CFG FILE TO START FROM
 base_cfg = {
@@ -696,5 +696,5 @@ run_benchmarks(
 # To run a specific config:
 #   python main.py --config {yaml_file}
 
-print(f'\n⏱️⏱️ All Benchmarks generated in {(time.perf_counter() - start):.2f} s ⏱️⏱️')
+print(f'\n⏱️⏱️ All benchmarks generated in {(time.perf_counter() - start)/60:.2f}m ⏱️⏱️')
 print('\nAll benchmarks saved! 🎉')

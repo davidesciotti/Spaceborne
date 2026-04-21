@@ -4,6 +4,7 @@
 # [Note] When not on the same line, comments always refer to the option/section immediately below.
 # [Note] `None` is `null` in YAML
 # [Note] Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
+# [Note] Do *not* delete any option from the cfg file, even if you don't use it.
 
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0

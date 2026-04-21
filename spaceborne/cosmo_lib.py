@@ -417,7 +417,7 @@ def project_pk(
     # Integrate over z with Simpson's rule
     cl = simps(cl_integrand, z_grid, axis=-1)
 
-    print(f'cl integral done in {(time.time() - start_time):.2f} s.')
+    print(f'cl integral done in {(time.time() - start_time):.2f}s')
     return cl
 
 

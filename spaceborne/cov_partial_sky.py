@@ -358,7 +358,7 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
         )
         w.compute_coupling_matrix(fmask, fmask, bin_scheme)
         w.write_to(wkspce_name)
-    print('Done computing the mixing matrix. It took ', time.time() - start, 's.')
+    print('Done computing the mixing matrix. It took ', time.time() - start, 's')
     return w
 
 

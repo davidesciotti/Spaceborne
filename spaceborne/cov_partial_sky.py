@@ -530,7 +530,7 @@ def sample_covariance_old( # fmt: skip
 
     # 1. produce correlated maps
     print(
-        f'Generating {nreal} maps for nside {nside} '
+        f'\nGenerating {nreal} maps for nside {nside} '
         f'and computing pseudo-cls with {which_cls}...'
     )
 
@@ -1424,7 +1424,7 @@ class NmtCov:
                     mcm_gl_binned=self.mcm_te_binned,
                     mcm_ll_binned=self.mcm_ee_binned,
                 )
-                print(f'\Mode coupling matrices saved in {self.output_path}\n')
+                print(f'\nMode coupling matrices saved in {self.output_path}\n')
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
@@ -1555,6 +1555,14 @@ class NmtCov:
                 n_jobs=self.cfg['misc']['num_threads'],
             )
             self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
-            print(f'sample covariance computed in {time.perf_counter() - start:.2f} s')
+            print(f'sample covariance computed in {time.perf_counter() - start:.2f} s.')
+
+            if self.cfg['sample_covariance']['save_sim_cls']:
+                np.savez_compressed(
+                    self.cfg['misc']['output_path'] + '/sample_cov_sim_cls.npz',
+                    sim_cl_LL=self.sim_cl_LL,
+                    sim_cl_GL=self.sim_cl_GL,
+                    sim_cl_GG=self.sim_cl_GG,
+                )
 
         return self.cov_dict

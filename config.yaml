@@ -335,6 +335,7 @@ sample_covariance:
   which_cls: healpy # Type: str.
   nreal: 20000 # Type: int. Number of realizations for the sample covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
+  save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
 
 precision:
   # =============================== harmonic-space cov =================================

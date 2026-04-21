@@ -119,15 +119,15 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
-# ROOT = '/data/sciotti/DATA'  # mileva
-# ROOT = '/u/dsciotti/code'  # orlanth
-# ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
+# DATA_ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
+DATA_ROOT = '/data/sciotti/DATA'  # mileva
+# DATA_ROOT = '/u/dsciotti/code'  # orlanth
+# DATA_ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
 
-# CODE_ROOT = '/home/sciotti/code'  # mileva
-CODE_ROOT = ROOT  # all the others
+CODE_ROOT = '/home/sciotti/code'  # mileva
+# CODE_ROOT = DATA_ROOT  # all the others
 
-bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
+bench_path = f'{DATA_ROOT}/Spaceborne_bench/bench_set_output'
 
 # run this to also save output of this script to a file
 # python test_outputs.py 2>&1 | tee test_outputs_log.txt
@@ -170,7 +170,7 @@ bench_yaml_names.sort()
 start_time = time.perf_counter()
 
 main_script_path = f'{CODE_ROOT}/Spaceborne/main.py'
-temp_output_filename = f'{ROOT}/Spaceborne_bench/tmp/test_file'
+temp_output_filename = f'{DATA_ROOT}/Spaceborne_bench/tmp/test_file'
 temp_output_folder = os.path.dirname(temp_output_filename)
 excluded_keys = ['backup_cfg', 'metadata']
 

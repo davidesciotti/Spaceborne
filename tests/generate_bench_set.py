@@ -172,9 +172,9 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
                 continue
 
             print('\n')
-            print('*********************************************************')
-            print(f'🧪🧪🧪 Running benchmark with config: {yaml_file} 🧪🧪🧪')
-            print('*********************************************************')
+            print('🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪')
+            print(f'Running benchmark with config:\n{yaml_file}')
+            print('🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪')
             print('\n')
 
             # Run the main script with the current configuration
@@ -226,7 +226,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
     return results
 
 
-# variables to play with
+# ! PATHS
 # ROOT = '/u/dsciotti/code'  # pleiadi
 # ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
 ROOT = '/home/sciotti/code'  # mileva
@@ -236,15 +236,15 @@ DATA_ROOT = '/data/sciotti/DATA'  # mileva
 
 CONDA_ENV_ROOT = '/home/sciotti/.conda/envs'  # mileva
 
-skip_existing = False  # Skip benchmarks that already exist
-
-# set some paths
 bench_set_path = f'{DATA_ROOT}/Spaceborne_bench'
 bench_set_cfg_path = f'{bench_set_path}/bench_set_cfg'
 bench_set_output_path = f'{bench_set_path}/bench_set_output'
 output_path = f'{bench_set_output_path}/_sb_output'
 sb_root_path = f'{ROOT}/Spaceborne'
 
+
+# ! OPTIONS
+skip_existing = False  # Skip benchmarks that already exist
 
 # ! DEFINE A BASIC CFG FILE TO START FROM
 base_cfg = {
@@ -332,7 +332,7 @@ base_cfg = {
         'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
         'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
         'gal_bias_table_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/gal_bias_table.txt',
-        'mag_bias_table_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/mag_bias_table.txt',
+        'mag_bias_table_filename': '...',
         'gal_bias_table_interp_method': 'CubicSpline',
         'mag_bias_table_interp_method': 'CubicSpline',
         'mult_shear_bias': [0.0, 0.0, 0.0],
@@ -557,17 +557,17 @@ for which_gal_bias in ['from_input', 'polynomial_fit']:
 
 # ! RSD and magnification bias
 for has_IA in [True, False]:
-    for has_rsd in [True, False]:
-        for has_magnification_bias in [True, False]:
-            configs_to_test.append(
-                {
-                    'C_ell': {
-                        'has_IA': has_IA,
-                        'has_rsd': has_rsd,
-                        'has_magnification_bias': has_magnification_bias,
-                    }
+    # for has_rsd in [True, False]:
+    for has_magnification_bias in [True, False]:
+        configs_to_test.append(
+            {
+                'C_ell': {
+                    'has_IA': has_IA,
+                    # 'has_rsd': has_rsd,
+                    'has_magnification_bias': has_magnification_bias,
                 }
-            )
+            }
+        )
 
 
 # ! Intrinsic Alignment parameters (only when IA is enabled)
@@ -654,7 +654,7 @@ for cov_type in ['coupled', 'decoupled']:
                         },
                     }
                 )
-                
+
 # ! OneCovariance - Gauss only, 3 spaces
 for obs_space in ['harmonic', 'real', 'cosebis']:
     configs_to_test.append(

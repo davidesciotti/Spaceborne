@@ -13,10 +13,15 @@ def load_nz_euclidlib(nz_filename):
     """basically, this function turns the nz dict into a np array"""
     import euclidlib as el
 
-    try:
+    if hasattr(el, 'photo') and hasattr(el.photo, 'redshift_distributions'):
         z, nz = el.photo.redshift_distributions(nz_filename)
-    except AttributeError:
+    elif hasattr(el, 'phz') and hasattr(el.phz, 'redshift_distributions'):
         z, nz = el.phz.redshift_distributions(nz_filename)
+    else:
+        raise AttributeError(
+            'euclidlib does not have photo.redshift_distributions or '
+            'phz.redshift_distributions'
+        )
 
     nztab = np.zeros((len(z), len(nz)))
     for zi in nz:
@@ -368,8 +373,6 @@ class IOHandler:
                 print(
                     f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}'
                 )
-        else:
-            return
 
     def get_nz_fmt(self):
         """Get the format of the input nz files"""
@@ -405,7 +408,6 @@ class IOHandler:
             cl_filenames_to_check.append(self.cl_cfg['cl_GL_filename'])
         if self.probe_selection['GG']:
             cl_filenames_to_check.append(self.cl_cfg['cl_GG_filename'])
-
 
         if self.cl_cfg['use_input_cls']:
             assert cl_filenames_to_check, (

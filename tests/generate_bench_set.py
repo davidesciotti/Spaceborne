@@ -244,7 +244,7 @@ sb_root_path = f'{ROOT}/Spaceborne'
 
 
 # ! OPTIONS
-skip_existing = True  # Skip benchmarks that already exist
+skip_existing = False  # Skip benchmarks that already exist
 
 # ! DEFINE A BASIC CFG FILE TO START FROM
 base_cfg = {
@@ -665,6 +665,20 @@ for obs_space in ['harmonic', 'real', 'cosebis']:
             'binning': {'binning_type': 'log'},
         }
     )
+    
+# ! Sample covariance
+for cov_type in ['coupled', 'decoupled']:
+    configs_to_test.append(
+        {
+            'covariance': {'cov_type': cov_type, 'partial_sky_method': 'Knox'},
+            'sample_covariance': {
+                'compute_sample_cov': True,
+                'which_cls': 'healpy',
+                'nreal': 5,
+                'fix_seed': True,
+            },
+        }
+    )
 
 
 # make sure we don't have duplicated configurations
@@ -696,5 +710,5 @@ run_benchmarks(
 # To run a specific config:
 #   python main.py --config {yaml_file}
 
-print(f'\n⏱️⏱️ All benchmarks generated in {(time.perf_counter() - start)/60:.2f}m ⏱️⏱️')
+print(f'\n⏱️⏱️ All benchmarks generated in {(time.perf_counter() - start) / 60:.2f}m ⏱️⏱️')
 print('\nAll benchmarks saved! 🎉')

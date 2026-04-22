@@ -680,7 +680,7 @@ if kmax_limber > k_max_cfg:
         f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
         stacklevel=2,
     )
-    cfg['precision']['log10_k_max'] = np.log10(kmax_limber)
+    cfg['precision']['log10_k_max'] = float(np.log10(kmax_limber))
 
 # now define k_grids
 k_grid = np.logspace(
@@ -807,7 +807,7 @@ pvt_cfg['nbl_3x2pt'] = ell_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
 pvt_cfg['nbx'] = nbx
 
-# TODO rename ell_obj to bin_obj   
+# TODO rename ell_obj to bin_obj
 # TODO Parallel: Workers compute independently, results are stacked after
 # TODO add to it theta and cosebis binning
 # TODO use geometric mean for ell centers!
@@ -2225,7 +2225,7 @@ for key in ['OneCovariance', 'ell_cuts']:
     if key in run_cfg['covariance']:
         del run_cfg['covariance'][key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
-    yaml.dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
+    yaml.safe_dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
 
 # save nz
 nz_header = (
@@ -2365,7 +2365,7 @@ if cfg['misc']['save_output_as_benchmark']:
         )
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
-        yaml.dump(cfg, yaml_file, default_flow_style=False, sort_keys=False)
+        yaml.safe_dump(cfg, yaml_file, default_flow_style=False, sort_keys=False)
 
     # ! Save all the values in cov_*_obj.cov_dict
     covs_totest_dict = {}

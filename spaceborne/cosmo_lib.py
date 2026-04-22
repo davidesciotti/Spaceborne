@@ -145,7 +145,7 @@ def get_kmax_limber(ell_grid, z_grid, use_h_units, cosmo_ccl):
     z_grid = np.atleast_1d(z_grid)
     for z in z_grid:
         k_limber_list.append(k_limber(ell_grid, z, use_h_units, cosmo_ccl))
-    return np.max(k_limber_list)
+    return float(np.max(k_limber_list))
 
 
 def pk_from_ccl(k_array, z_array, use_h_units, cosmo_ccl, pk_kind='nonlinear'):

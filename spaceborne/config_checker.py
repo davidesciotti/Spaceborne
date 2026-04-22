@@ -15,12 +15,6 @@ class SpaceborneConfigChecker:
         else:
             return '1overMpc', 'Mpc3'
 
-    def check_ell_cuts(self) -> None:
-        if self.cfg['ell_cuts']['apply_ell_cuts']:
-            assert self.cfg['ell_cuts']['which_cuts'] == 'standard', (
-                'Other types of cuts not finished to implement'
-            )
-
     def check_BNT_transform(self) -> None:
         if self.cfg['covariance']['BNT_transform']:
             assert self.cfg['probe_selection']['space'] == 'harmonic', (
@@ -766,7 +760,6 @@ class SpaceborneConfigChecker:
             )
 
     def run_all_checks(self) -> None:
-        self.check_ell_cuts()
         self.check_nmt()
         self.check_BNT_transform()
         self.check_onecov()

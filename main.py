@@ -671,7 +671,7 @@ if kmax_limber > k_max_cfg:
         f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
         stacklevel=2,
     )
-    cfg['precision']['log10_k_max'] = np.log10(kmax_limber)
+    cfg['precision']['log10_k_max'] = float(np.log10(kmax_limber))
 
 # now define k_grids
 k_grid = np.logspace(
@@ -2422,6 +2422,8 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
         **covs_totest_dict,
+        **covs_3x2pt_2d_tosave_dict,
+        **covs_6d_tosave_dict,
         **misc_dict,
         metadata=metadata,
     )

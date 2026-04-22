@@ -204,15 +204,9 @@ def plot_cls():
     for zi in range(zbins):
         zj = zi
         sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-        ax[0].loglog(
-            ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw
-        )
-        ax[1].loglog(
-            ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw
-        )
-        ax[2].loglog(
-            ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw
-        )
+        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
+        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
+        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[

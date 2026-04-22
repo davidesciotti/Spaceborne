@@ -326,20 +326,6 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
     )
 
 
-cfg['ell_cuts'] = {}
-cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
-# Type: str. Cut if the bin *center* or the bin *lower edge* is
-# larger than ell_max[zi, zj]
-cfg['ell_cuts']['center_or_min'] = 'center'
-cfg['ell_cuts']['cl_ell_cuts'] = False  # Type: bool
-cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
-# Type: float. This is used when ell_cuts is False, also...?
-cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
-cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
-    0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967,
-    2.15443469, 3.59381366, 5.9948425, 10.0,
-]  # fmt: skip
-
 # Psi-statistics not implemented yet
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
@@ -584,9 +570,6 @@ if use_h_units:
 else:
     k_txt_label = '1overMpc'
     pk_txt_label = 'Mpc3'
-
-if not cfg['ell_cuts']['apply_ell_cuts']:
-    kmax_h_over_Mpc = cfg['ell_cuts']['kmax_h_over_Mpc_ref']
 
 
 # ! sanity checks on the configs
@@ -996,32 +979,6 @@ else:
 z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 
 
-# ! ===================================== \ell cuts ====================================
-# TODO need to adapt this to the class structure
-# ell_cuts_dict = {}
-# ellcuts_kw = {
-#     'kmax_h_over_Mpc': kmax_h_over_Mpc,
-#     'cosmo_ccl': ccl_obj.cosmo_ccl,
-#     'zbins': zbins,
-#     'h': h,
-#     'kmax_h_over_Mpc_ref': cfg['ell_cuts']['kmax_h_over_Mpc_ref'],
-# }
-# ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(
-#     z_values_a=z_means_ll, z_values_b=z_means_ll, **ellcuts_kw
-# )
-# ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(
-#     z_values_a=z_means_gg, z_values_b=z_means_gg, **ellcuts_kw
-# )
-# ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(
-#     z_values_a=z_means_gg, z_values_b=z_means_ll, **ellcuts_kw
-# )
-# ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
-#     z_values_a=z_means_ll, z_values_b=z_means_gg, **ellcuts_kw
-# )
-# ell_dict['ell_cuts_dict'] = (
-#     ell_cuts_dict  # this is to pass the ell cuts to the covariance module
-# )
-
 # convenience variables
 wf_delta = ccl_obj.wf_delta_arr  # no bias here either, of course!
 wf_gamma = ccl_obj.wf_gamma_arr
@@ -1161,54 +1118,6 @@ if cfg['misc']['cl_triangle_plot']:
         _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
     )
 
-
-# ell_dict['idxs_to_delete_dict'] = {
-#     'LL': ell_utils.get_idxs_to_delete(
-#         ell_dict[f'{ell_prefix}_WL'],
-#         ell_cuts_dict['LL'],
-#         is_auto_spectrum=True,
-#         zbins=zbins,
-#     ),
-#     'GG': ell_utils.get_idxs_to_delete(
-#         ell_dict[f'{ell_prefix}_GC'],
-#         ell_cuts_dict['GG'],
-#         is_auto_spectrum=True,
-#         zbins=zbins,
-#     ),
-#     'GL': ell_utils.get_idxs_to_delete(
-#         ell_dict[f'{ell_prefix}_XC'],
-#         ell_cuts_dict['GL'],
-#         is_auto_spectrum=False,
-#         zbins=zbins,
-#     ),
-#     'LG': ell_utils.get_idxs_to_delete(
-#         ell_dict[f'{ell_prefix}_XC'],
-#         ell_cuts_dict['LG'],
-#         is_auto_spectrum=False,
-#         zbins=zbins,
-#     ),
-#     '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(
-#         ell_dict[f'{ell_prefix}_3x2pt'], ell_cuts_dict, zbins, cfg['covariance']
-#     ),
-# }
-
-
-# ! 3d cl ell cuts (*after* BNT!!)
-# TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance
-# TODO and derivatives level)
-# if cfg['ell_cuts']['cl_ell_cuts']:
-#     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_obj.ells_WL, ell_cuts_dict['LL'])
-#     cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_obj.ells_GC, ell_cuts_dict['GG'])
-#     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(
-#         cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt']
-#     )
-#     if 'OneCovariance' in cov_terms_and_codes.values():
-#         raise NotImplementedError('You should cut also the OC Cls')
-
-# re-set cls in the ccl_obj after BNT transform and/or ell cuts
-# ccl_obj.cl_ll_3d = cl_ll_3d
-# ccl_obj.cl_gg_3d = cl_gg_3d
-# ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
 
 # ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
 if (
@@ -1365,11 +1274,6 @@ if (
     'OneCovariance' in cov_terms_and_codes.values()
     or cfg['OneCovariance']['compare_against_oc']
 ):
-    if cfg['ell_cuts']['cl_ell_cuts']:
-        raise NotImplementedError(
-            'TODO double check inputs in this case. This case is untested'
-        )
-
     start_time = time.perf_counter()
 
     # * 1. save ingredients in ascii format
@@ -2235,7 +2139,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
 # save cfg file
 run_cfg = deepcopy(cfg)
-for key in ['OneCovariance', 'ell_cuts']:
+for key in ['OneCovariance']:
     if key in run_cfg['covariance']:
         del run_cfg['covariance'][key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:

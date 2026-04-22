@@ -155,33 +155,33 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
-# import threading
+import threading
 
-# import pandas as pd
-# import psutil
+import pandas as pd
+import psutil
 
-# cpu_data = []
-
-
-# def monitor_cpu(interval=0.5):
-#     """Monitor CPU usage per core"""
-#     print('Starting CPU monitor...')
-#     while not stop_event.is_set():
-#         timestamp = time.time()
-#         per_core = psutil.cpu_percent(percpu=True, interval=interval)
-#         cpu_data.append(
-#             {
-#                 'time': timestamp,
-#                 'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
-#                 'per_core': per_core,
-#             }
-#         )
-#     print('CPU monitoring stopped')
+cpu_data = []
 
 
-# stop_event = threading.Event()
-# monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
-# monitor_thread.start()
+def monitor_cpu(interval=0.5):
+    """Monitor CPU usage per core"""
+    print('Starting CPU monitor...')
+    while not stop_event.is_set():
+        timestamp = time.time()
+        per_core = psutil.cpu_percent(percpu=True, interval=interval)
+        cpu_data.append(
+            {
+                'time': timestamp,
+                'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
+                'per_core': per_core,
+            }
+        )
+    print('CPU monitoring stopped')
+
+
+stop_event = threading.Event()
+monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
+monitor_thread.start()
 
 
 def plot_cls():
@@ -680,7 +680,7 @@ if kmax_limber > k_max_cfg:
         f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
         stacklevel=2,
     )
-    cfg['precision']['log10_k_max'] = np.log10(kmax_limber)
+    cfg['precision']['log10_k_max'] = float(np.log10(kmax_limber))
 
 # now define k_grids
 k_grid = np.logspace(
@@ -808,6 +808,7 @@ pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
 pvt_cfg['nbx'] = nbx
 
 # TODO rename ell_obj to bin_obj
+# TODO Parallel: Workers compute independently, results are stacked after
 # TODO add to it theta and cosebis binning
 # TODO use geometric mean for ell centers!
 # TODO arange(ell_max_3x2pt)? are we sure?
@@ -1990,6 +1991,7 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
 # ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
+
 if cfg['OneCovariance']['compare_against_oc']:
     oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
     if 'OneCovariance' in cov_terms_and_codes.values():
@@ -2237,7 +2239,7 @@ for key in ['OneCovariance', 'ell_cuts']:
     if key in run_cfg['covariance']:
         del run_cfg['covariance'][key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
-    yaml.dump(run_cfg, yaml_file, default_flow_style=False)
+    yaml.safe_dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
 
 # save nz
 nz_header = (
@@ -2377,7 +2379,7 @@ if cfg['misc']['save_output_as_benchmark']:
         )
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
-        yaml.dump(cfg, yaml_file, default_flow_style=False)
+        yaml.safe_dump(cfg, yaml_file, default_flow_style=False, sort_keys=False)
 
     # ! Save all the values in cov_*_obj.cov_dict
     covs_totest_dict = {}
@@ -2530,20 +2532,20 @@ print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
 # Stop monitoring
-# stop_event.set()
-# monitor_thread.join()
+stop_event.set()
+monitor_thread.join()
 
-# # Save and plot
-# df = pd.DataFrame(cpu_data)
+# Save and plot
+df = pd.DataFrame(cpu_data)
 
 
-# plt.figure()
-# df['time_elapsed'] = df['time'] - df['time'].min()
-# plt.plot(df['time_elapsed'], df['cores_used'])
-# plt.axhline(
-#     cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
-# )
-# plt.xlabel('Time (s)')
-# plt.ylabel('Number of Active Cores')
-# plt.title('CPU Core Usage Over Time')
-# plt.show()
+plt.figure()
+df['time_elapsed'] = df['time'] - df['time'].min()
+plt.plot(df['time_elapsed'], df['cores_used'])
+plt.axhline(
+    cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
+)
+plt.xlabel('Time (s)')
+plt.ylabel('Number of Active Cores')
+plt.title('CPU Core Usage Over Time')
+plt.show()

@@ -627,6 +627,12 @@ class SpaceborneConfigChecker:
             'row_col_major must be either "row-major" or "col-major"'
         )
 
+        if self.cfg['sample_covariance']['compute_sample_cov']:
+            assert self.cfg['probe_selection']['space'] == 'harmonic', (
+                'Sample covariance can only be computed for harmonic space for '
+                'the moment'
+            )
+
         if self.cfg['covariance']['split_gaussian_cov'] and (
             self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
             or self.cfg['sample_covariance']['compute_sample_cov']

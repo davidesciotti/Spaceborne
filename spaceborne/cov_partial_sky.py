@@ -1329,9 +1329,7 @@ class NmtCov:
                     stacklevel=2,
                 )
 
-        self.cl_ll_unb_3d = _UNSET
-        self.cl_gl_unb_3d = _UNSET
-        self.cl_gg_unb_3d = _UNSET
+        self.cl_3x2pt_unb_5d = _UNSET
         self.ells_3x2pt_unb = _UNSET
         self.nbl_3x2pt_unb = _UNSET
 
@@ -1366,9 +1364,9 @@ class NmtCov:
         # )
         # assert np.all(delta_ells_bpw == ells_per_band), 'delta_ell from bpw does not match ells_per_band'
 
-        cl_gg_4covnmt = self.cl_gg_unb_3d.copy()
-        cl_gl_4covnmt = self.cl_gl_unb_3d.copy()
-        cl_ll_4covnmt = self.cl_ll_unb_3d.copy()
+        cl_gg_4covnmt = self.cl_3x2pt_unb_5d[1, 1, :, :, :].copy()
+        cl_gl_4covnmt = self.cl_3x2pt_unb_5d[1, 0, :, :, :].copy()
+        cl_ll_4covnmt = self.cl_3x2pt_unb_5d[0, 0, :, :, :].copy()
 
         # ! create nmt field from the mask (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
@@ -1431,16 +1429,16 @@ class NmtCov:
         if self.cfg['precision']['use_iNKA']:
             z_combinations = list(itertools.product(range(self.zbins), repeat=2))
             for zi, zj in z_combinations:
-                list_gg = [self.cl_gg_unb_3d[:, zi, zj]]
+                list_gg = [self.cl_3x2pt_unb_5d[1, 1, :, zi, zj]]
                 list_gl = [
-                    self.cl_gl_unb_3d[:, zi, zj],
-                    np.zeros_like(self.cl_gl_unb_3d[:, zi, zj]),
+                    self.cl_3x2pt_unb_5d[1, 0, :, zi, zj],
+                    np.zeros_like(self.cl_3x2pt_unb_5d[1, 0, :, zi, zj]),
                 ]
                 list_ll = [
-                    self.cl_ll_unb_3d[:, zi, zj],
-                    np.zeros_like(self.cl_ll_unb_3d[:, zi, zj]),
-                    np.zeros_like(self.cl_ll_unb_3d[:, zi, zj]),
-                    np.zeros_like(self.cl_ll_unb_3d[:, zi, zj]),
+                    self.cl_3x2pt_unb_5d[0, 0, :, zi, zj],
+                    np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
+                    np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
+                    np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
                 ]
                 # TODO the denominator should be the product of the masks?
                 cl_gg_4covnmt[:, zi, zj] = w00.couple_cell(list_gg)[0] / fsky
@@ -1522,9 +1520,18 @@ class NmtCov:
                 self.cov_dict['g'][probe_2tpl]['4d'] = None
 
         elif self.cfg['sample_covariance']['compute_sample_cov']:
-            cl_tt_4covsim = self.cl_gg_unb_3d + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
-            cl_te_4covsim = self.cl_gl_unb_3d + self.noise_3x2pt_unb_5d[1, 0, :, :, :]
-            cl_ee_4covsim = self.cl_ll_unb_3d + self.noise_3x2pt_unb_5d[0, 0, :, :, :]
+            cl_tt_4covsim = (
+                self.cl_3x2pt_unb_5d[1, 1, :, :, :]
+                + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
+            )
+            cl_te_4covsim = (
+                self.cl_3x2pt_unb_5d[1, 0, :, :, :]
+                + self.noise_3x2pt_unb_5d[1, 0, :, :, :]
+            )
+            cl_ee_4covsim = (
+                self.cl_3x2pt_unb_5d[0, 0, :, :, :]
+                + self.noise_3x2pt_unb_5d[0, 0, :, :, :]
+            )
             cl_tb_4covsim = np.zeros_like(cl_tt_4covsim)
             cl_eb_4covsim = np.zeros_like(cl_tt_4covsim)
             cl_bb_4covsim = np.zeros_like(cl_tt_4covsim)

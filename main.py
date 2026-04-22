@@ -1106,10 +1106,7 @@ if (
     # set unbinned ells in cov_nmt_obj
     cov_nmt_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     cov_nmt_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
-
-    cov_nmt_obj.cl_ll_unb_3d = cl_3x2pt_unb_5d[0, 0]
-    cov_nmt_obj.cl_gl_unb_3d = cl_3x2pt_unb_5d[1, 0]
-    cov_nmt_obj.cl_gg_unb_3d = cl_3x2pt_unb_5d[1, 1]
+    cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
 
 else:
     cov_nmt_obj = None

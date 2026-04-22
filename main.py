@@ -193,18 +193,26 @@ def plot_cls():
     for zi in range(zbins):
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
-        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], **kw)
-        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
-        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
+        if io_obj.need_input_cl_ll:
+            ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+        if io_obj.need_input_cl_gl:
+            ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+        if io_obj.need_input_cl_gg:
+            ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
-    if cfg['C_ell']['use_input_cls']:
-        for zi in range(zbins):
-            zj = zi
-            sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **sb_kw)
-            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **sb_kw)
-            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **sb_kw)
+    for zi in range(zbins):
+        zj = zi
+        sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
+        ax[0].loglog(
+            ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw
+        )
+        ax[1].loglog(
+            ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw
+        )
+        ax[2].loglog(
+            ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw
+        )
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[
@@ -1027,10 +1035,11 @@ with sl.timer('\nComputing Cls...'):
         n_probes_hs=cfg['covariance']['n_probes'],
     )
 
-ccl_obj.cl_ll_3d = _cl_3x2pt_5d[0, 0]
-ccl_obj.cl_gl_3d = _cl_3x2pt_5d[1, 0]
-ccl_obj.cl_gg_3d = _cl_3x2pt_5d[1, 1]
-
+ccl_obj.cl_3x2pt_5d_sb = sl.build_cl_3x2pt_5d(
+    cl_ll_3d=_cl_3x2pt_5d[0, 0],
+    cl_gl_3d=_cl_3x2pt_5d[1, 0],
+    cl_gg_3d=_cl_3x2pt_5d[1, 1],
+)
 
 if cfg['C_ell']['use_input_cls']:
     # load input cls
@@ -1040,43 +1049,8 @@ if cfg['C_ell']['use_input_cls']:
     # check ells before spline interpolation
     io_obj.check_ells_in(ell_obj)
 
-    print(f'Using input Cls for LL from file\n{cfg["C_ell"]["cl_LL_filename"]}')
-    print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_filename"]}')
-    print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_filename"]}')
-
-    ells_WL_in, cl_ll_3d_in = io_obj.ells_WL_in, io_obj.cl_ll_3d_in
-    ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in
-    ells_GC_in, cl_gg_3d_in = io_obj.ells_GC_in, io_obj.cl_gg_3d_in
-
-    # set aside the sb cls for the plot comparing sb and input cls
-    cl_ll_3d_sb = ccl_obj.cl_ll_3d
-    cl_gl_3d_sb = ccl_obj.cl_gl_3d
-    cl_gg_3d_sb = ccl_obj.cl_gg_3d
-
-    # interpolate input Cls over the desired ell grid and assign them to ccl_obj.
-    # IF NO INPUT Cls ARE REQUIRED (based on the requested probes), THE
-    # INTERNALLY-GENERATE Cls WILL BE USED INSTEAD.
-    # For this, it's enough not to overwrite ccl_obj.cl_*_3d.
-    if io_obj.need_input_cl_ll:
-        cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
-        cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_3x2pt)
-        ccl_obj.cl_ll_3d = cl_ll_3d_in
-
-    if io_obj.need_input_cl_gl:
-        cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
-        cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)
-        ccl_obj.cl_gl_3d = cl_gl_3d_in
-
-    if io_obj.need_input_cl_gg:
-        cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
-        cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_3x2pt)
-        ccl_obj.cl_gg_3d = cl_gg_3d_in
-
-
-# I am creating copies here, not just a view (so modifying ccl_obj.cl_3x2pt_5d will
-# not affect ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d and vice versa)
-ccl_obj.cl_3x2pt_5d = sl.build_cl_3x2pt_5d(
-    cl_ll_3d=ccl_obj.cl_ll_3d, cl_gl_3d=ccl_obj.cl_gl_3d, cl_gg_3d=ccl_obj.cl_gg_3d
+ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+    ell_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
 )
 
 # cls plots
@@ -1096,9 +1070,9 @@ if cfg['C_ell']['use_input_cls']:
     _ell_dict_wl['SB'] = ell_obj.ells_3x2pt
     _ell_dict_xc['SB'] = ell_obj.ells_3x2pt
     _ell_dict_gc['SB'] = ell_obj.ells_3x2pt
-    _cl_dict_wl['SB'] = cl_ll_3d_sb
-    _cl_dict_xc['SB'] = cl_gl_3d_sb
-    _cl_dict_gc['SB'] = cl_gg_3d_sb
+    _cl_dict_wl['SB'] = ccl_obj.cl_3x2pt_5d_sb[0, 0]
+    _cl_dict_xc['SB'] = ccl_obj.cl_3x2pt_5d_sb[1, 0]
+    _cl_dict_gc['SB'] = ccl_obj.cl_3x2pt_5d_sb[1, 1]
 
 if cfg['misc']['cl_triangle_plot']:
     sb_plt.cls_triangle_plot(
@@ -1118,40 +1092,17 @@ if (
     or cfg['sample_covariance']['compute_sample_cov']
     or cfg['precision']['cov_hs_g_ell_bin_average']
 ):
-    if cfg['C_ell']['use_input_cls']:
-        cl_3x2pt_unb_5d = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(ell_obj.ells_3x2pt_unb),
-            cl_gl_3d=cl_gl_3d_spline(ell_obj.ells_3x2pt_unb),
-            cl_gg_3d=cl_gg_3d_spline(ell_obj.ells_3x2pt_unb),
-        )
+    # in these cases I need an unbinned ell grid
+    cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        ell_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    )
 
-    else:
-        cl_3x2pt_unb_5d = ccl_interface.compute_cl_3x2pt_5d(
-            ccl_obj,
-            ells=ell_obj.ells_3x2pt_unb,
-            zbins=zbins,
-            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-            cl_ccl_kwargs=cl_ccl_kwargs,
-            n_probes_hs=cfg['covariance']['n_probes'],
-        )
 
 if (
     cfg['covariance']['partial_sky_method'] == 'NaMaster'
     or cfg['sample_covariance']['compute_sample_cov']
 ):
     from spaceborne import cov_partial_sky
-
-    # check that the input cls are computed over a fine enough grid
-    if cfg['C_ell']['use_input_cls']:
-        for ells_in, ells_out in zip(
-            [ells_WL_in, ells_XC_in, ells_GC_in],
-            [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
-            strict=True,
-        ):
-            if ells_in is not None:
-                io_handler.check_ells_for_spline(ells_in)
-            if ells_out is not None:
-                io_handler.check_ells_for_spline(ells_out)
 
     # initialize cov_nmt_obj and set a couple useful attributes
     cov_nmt_obj = cov_partial_sky.NmtCov(
@@ -1185,25 +1136,12 @@ if obs_space == 'real':
     cov_rs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
     cov_rs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
 
-    # set 3x2pt cls: recompute cls on the finer ell grid...
-    if cfg['C_ell']['use_input_cls']:
-        cl_3x2pt_5d_for_rs = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(cov_rs_obj.ells_proj_g),
-            cl_gl_3d=cl_gl_3d_spline(cov_rs_obj.ells_proj_g),
-            cl_gg_3d=cl_gg_3d_spline(cov_rs_obj.ells_proj_g),
-        )
+    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
+    # and store in the cov_rs_obj
+    cov_rs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        cov_rs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    )
 
-    else:
-        cl_3x2pt_5d_for_rs = ccl_interface.compute_cl_3x2pt_5d(
-            ccl_obj,
-            ells=cov_rs_obj.ells_proj_g,
-            zbins=zbins,
-            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-            cl_ccl_kwargs=cl_ccl_kwargs,
-            n_probes_hs=cfg['covariance']['n_probes'],
-        )
-    # ...and store them in the cov_rs object
-    cov_rs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_rs
 
 # TODO this could probably be done with super.__init__() where super is the
 # cov projector class
@@ -1224,24 +1162,12 @@ if obs_space == 'cosebis':
     if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
         cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
 
-    # set 3x2pt cls: recompute cls on the finer ells_proj_g grid...
-    if cfg['C_ell']['use_input_cls']:
-        cl_3x2pt_5d_for_cs = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(cov_cs_obj.ells_proj_g),
-            cl_gl_3d=cl_gl_3d_spline(cov_cs_obj.ells_proj_g),
-            cl_gg_3d=cl_gg_3d_spline(cov_cs_obj.ells_proj_g),
-        )
-    else:
-        cl_3x2pt_5d_for_cs = ccl_interface.compute_cl_3x2pt_5d(
-            ccl_obj,
-            ells=cov_cs_obj.ells_proj_g,
-            zbins=zbins,
-            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-            cl_ccl_kwargs=cl_ccl_kwargs,
-            n_probes_hs=cfg['covariance']['n_probes'],
-        )
-    # ...and store them in the cov_cs object
-    cov_cs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_cs
+    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
+    # and store in the cov_cs_obj
+    cov_cs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        cov_cs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    )
+
 
 # !  =============================== Build Gaussian covs ===============================
 if obs_space == 'harmonic':
@@ -2168,9 +2094,9 @@ np.savetxt(
 )
 
 # save cls
-sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
-sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
-sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_3x2pt_5d[0, 0], ell_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], ell_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], ell_obj.ells_GC, zbins)
 
 # save ell values
 # TODO do this for theta values in the real space case
@@ -2331,9 +2257,6 @@ if cfg['misc']['save_output_as_benchmark']:
         wf_ia=ccl_obj.wf_ia_arr,
         wf_mu=ccl_obj.wf_mu_arr,
         wf_lensing_arr=ccl_obj.wf_lensing_arr,
-        cl_ll_3d=ccl_obj.cl_ll_3d,
-        cl_gl_3d=ccl_obj.cl_gl_3d,
-        cl_gg_3d=ccl_obj.cl_gg_3d,
         cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
         sigma2_b=sigma2_b,
         dPmm_ddeltab=dPmm_ddeltab,

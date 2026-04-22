@@ -514,26 +514,32 @@ class IOHandler:
     def _load_cls_sb(self):
 
         if self.need_input_cl_ll:
+            print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
             cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_filename'])
             self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
         if self.need_input_cl_gl:
+            print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
             cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_filename'])
             self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)
         if self.need_input_cl_gg:
+            print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
             cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_filename'])
             self.ells_GC_in, self.cl_gg_3d_in = import_cl_tab(cl_gg_tab)
 
     def _load_cls_el(self):
 
         if self.need_input_cl_ll:
+            print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
             self.ells_WL_in, self.cl_ll_3d_in = load_cl_euclidlib(
                 self.cl_cfg['cl_LL_filename'], 'SHE', 'SHE'
             )
         if self.need_input_cl_gl:
+            print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
             self.ells_XC_in, self.cl_gl_3d_in = load_cl_euclidlib(
                 self.cl_cfg['cl_GL_filename'], 'POS', 'SHE'
             )
         if self.need_input_cl_gg:
+            print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
             self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
                 self.cl_cfg['cl_GG_filename'], 'POS', 'POS'
             )

@@ -1033,8 +1033,6 @@ ccl_obj.cl_gg_3d = _cl_3x2pt_5d[1, 1]
 
 
 if cfg['C_ell']['use_input_cls']:
-    # TODO NMT here you should ask the user for unbinned cls
-
     # load input cls
     io_obj.get_cl_fmt()
     io_obj.load_cls()
@@ -1050,35 +1048,30 @@ if cfg['C_ell']['use_input_cls']:
     ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in
     ells_GC_in, cl_gg_3d_in = io_obj.ells_GC_in, io_obj.cl_gg_3d_in
 
-    # interpolate input Cls on the desired ell grid
-    if cfg['probe_selection']['LL']:
-        cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
-    else:
-        cl_ll_3d_spline = sl.zero_spline_factory(ccl_obj.cl_ll_3d)
-
-    if cfg['probe_selection']['GL']:
-        cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
-    else:
-        cl_gl_3d_spline = sl.zero_spline_factory(ccl_obj.cl_gl_3d)
-
-    if cfg['probe_selection']['GG']:
-        cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
-    else:
-        cl_gg_3d_spline = sl.zero_spline_factory(ccl_obj.cl_gg_3d)
-
-    cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_3x2pt)
-    cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)
-    cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_3x2pt)
-
-    # save the sb cls for the plot comparing sb and input cls
+    # set aside the sb cls for the plot comparing sb and input cls
     cl_ll_3d_sb = ccl_obj.cl_ll_3d
     cl_gl_3d_sb = ccl_obj.cl_gl_3d
     cl_gg_3d_sb = ccl_obj.cl_gg_3d
 
-    # assign them to ccl_obj; m-bias is applied right below
-    ccl_obj.cl_ll_3d = cl_ll_3d_in
-    ccl_obj.cl_gl_3d = cl_gl_3d_in
-    ccl_obj.cl_gg_3d = cl_gg_3d_in
+    # interpolate input Cls over the desired ell grid and assign them to ccl_obj.
+    # IF NO INPUT Cls ARE REQUIRED (based on the requested probes), THE
+    # INTERNALLY-GENERATE Cls WILL BE USED INSTEAD.
+    # For this, it's enough not to overwrite ccl_obj.cl_*_3d.
+    if io_obj.need_input_cl_ll:
+        cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
+        cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_3x2pt)
+        ccl_obj.cl_ll_3d = cl_ll_3d_in
+
+    if io_obj.need_input_cl_gl:
+        cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
+        cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)
+        ccl_obj.cl_gl_3d = cl_gl_3d_in
+
+    if io_obj.need_input_cl_gg:
+        cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
+        cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_3x2pt)
+        ccl_obj.cl_gg_3d = cl_gg_3d_in
+
 
 # I am creating copies here, not just a view (so modifying ccl_obj.cl_3x2pt_5d will
 # not affect ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d and vice versa)

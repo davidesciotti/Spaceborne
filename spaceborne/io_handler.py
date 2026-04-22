@@ -357,22 +357,47 @@ class IOHandler:
         self.ells_WL_in, self.cl_ll_3d_in = None, None
         self.ells_XC_in, self.cl_gl_3d_in = None, None
         self.ells_GC_in, self.cl_gg_3d_in = None, None
+        self.set_needed_input_cls()
+
+    def set_needed_input_cls(self):
+        """Sets flags on the required Cl input files based on the requested probes"""
+
+        if not self.cfg['C_ell']['use_input_cls']:
+            self.need_input_cl_ll = False
+            self.need_input_cl_gl = False
+            self.need_input_cl_gg = False
+            return
+
+        # else, if use_input_cls, decide which files are needed based on the
+        # probe selection (careful about the cross-covariance case!)
+        ps = self.cfg['probe_selection']
+        if self.cfg['probe_selection']['space'] == 'harmonic':
+            self.need_input_cl_ll = ps['LL'] or ps['GL']
+            self.need_input_cl_gl = ps['GL'] or (
+                ps['cross_cov'] and ps['LL'] and ps['GG']
+            )
+            self.need_input_cl_gg = ps['GG'] or ps['GL']
+
+        elif self.cfg['probe_selection']['space'] == 'real':
+            self.need_input_cl_ll = ps['xip'] or ps['xim'] or ps['gt']
+            self.need_input_cl_gl = ps['gt'] or (
+                ps['cross_cov'] and (ps['xip'] or ps['xim']) and ps['w']
+            )
+            self.need_input_cl_gg = ps['w'] or ps['gt']
+
+        elif self.cfg['probe_selection']['space'] == 'cosebis':
+            self.need_input_cl_ll = ps['En'] or ps['Bn']
+            self.need_input_cl_gl = False
+            self.need_input_cl_gg = False
 
     def print_cl_path(self):
         """Print the path of the input Cl files"""
-        if self.cfg['C_ell']['use_input_cls']:
-            if self.probe_selection['LL']:
-                print(
-                    f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}'
-                )
-            if self.probe_selection['GL']:
-                print(
-                    f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}'
-                )
-            if self.probe_selection['GG']:
-                print(
-                    f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}'
-                )
+        if self.need_input_cl_ll:
+            print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
+        if self.need_input_cl_gl:
+            print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
+        if self.need_input_cl_gg:
+            print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
 
     def get_nz_fmt(self):
         """Get the format of the input nz files"""
@@ -402,11 +427,11 @@ class IOHandler:
         """Get the format of the input cl files"""
 
         cl_filenames_to_check = []
-        if self.probe_selection['LL']:
+        if self.need_input_cl_ll:
             cl_filenames_to_check.append(self.cl_cfg['cl_LL_filename'])
-        if self.probe_selection['GL']:
+        if self.need_input_cl_gl:
             cl_filenames_to_check.append(self.cl_cfg['cl_GL_filename'])
-        if self.probe_selection['GG']:
+        if self.need_input_cl_gg:
             cl_filenames_to_check.append(self.cl_cfg['cl_GG_filename'])
 
         if self.cl_cfg['use_input_cls']:
@@ -488,27 +513,27 @@ class IOHandler:
 
     def _load_cls_sb(self):
 
-        if self.probe_selection['LL']:
+        if self.need_input_cl_ll:
             cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_filename'])
             self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
-        if self.probe_selection['GL']:
+        if self.need_input_cl_gl:
             cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_filename'])
             self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)
-        if self.probe_selection['GG']:
+        if self.need_input_cl_gg:
             cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_filename'])
             self.ells_GC_in, self.cl_gg_3d_in = import_cl_tab(cl_gg_tab)
 
     def _load_cls_el(self):
 
-        if self.probe_selection['LL']:
+        if self.need_input_cl_ll:
             self.ells_WL_in, self.cl_ll_3d_in = load_cl_euclidlib(
                 self.cl_cfg['cl_LL_filename'], 'SHE', 'SHE'
             )
-        if self.probe_selection['GL']:
+        if self.need_input_cl_gl:
             self.ells_XC_in, self.cl_gl_3d_in = load_cl_euclidlib(
                 self.cl_cfg['cl_GL_filename'], 'POS', 'SHE'
             )
-        if self.probe_selection['GG']:
+        if self.need_input_cl_gg:
             self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
                 self.cl_cfg['cl_GG_filename'], 'POS', 'POS'
             )

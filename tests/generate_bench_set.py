@@ -393,9 +393,10 @@ base_cfg = {
     },
     'sample_covariance': {
         'compute_sample_cov': False,
-        'which_cls': 'namaster',
+        'which_cls': 'healpy',
         'nreal': 5000,
         'fix_seed': True,
+        'save_sim_cls': False,
     },
     'precision': {
         'cov_hs_g_ell_bin_average': True,
@@ -633,42 +634,42 @@ for load_input_mask, generate_polar_cap in zip(
 # ! BNT transform
 configs_to_test.append({'covariance': {'BNT_transform': True}})
 
-# TODO reduce number of ell bins
-# TODO do not test all binning schemes for all the cases!!
-# TODO sample cov is not tested ad the moment, update
 # ! NAMASTER (test only G cov)
 for cov_type in ['coupled', 'decoupled']:
     for spin0 in [True, False]:
         for use_iNKA in [True, False]:
-            for binning_type in ['log', 'lin', 'from_input', 'unbinned']:
-                configs_to_test.append(
-                    {
-                        'covariance': {
-                            'SSC': False,
-                            'cov_type': cov_type,
-                            'partial_sky_method': 'NaMaster',
-                        },
-                        'precision': {'spin0': spin0, 'use_iNKA': use_iNKA},
-                        'binning': {
-                            # to speed up significantly Nmt
-                            'ell_max': 300 if binning_type == 'unbinned' else 1000,
-                            'ell_bins': 5,
-                            'binning_type': binning_type,
-                        },
-                    }
-                )
-
-# ! OneCovariance - Gauss only, 3 spaces
-for obs_space in ['harmonic', 'real', 'cosebis']:
+            configs_to_test.append(
+                {
+                    'covariance': {
+                        'SSC': False,
+                        'cov_type': cov_type,
+                        'partial_sky_method': 'NaMaster',
+                    },
+                    'precision': {'spin0': spin0, 'use_iNKA': use_iNKA},
+                    'binning': {
+                        # to speed up significantly Nmt
+                        'ell_max': 800,
+                        'binning_type': 'lin',
+                    },
+                }
+            )
+for binning_type in ['log', 'lin', 'from_input', 'unbinned']:
     configs_to_test.append(
         {
-            'covariance': {'G_code': 'OneCovariance', 'SSC': False, 'cNG': False},
-            'probe_selection': {'space': obs_space},
-            'C_ell': {'has_magnification_bias': False},
-            'binning': {'binning_type': 'log'},
+            'covariance': {
+                'SSC': False,
+                'cov_type': 'decoupled',
+                'partial_sky_method': 'NaMaster',
+            },
+            'precision': {'spin0': True, 'use_iNKA': True},
+            'binning': {
+                # to speed up significantly Nmt
+                'ell_max': 300 if binning_type == 'unbinned' else 800,
+                'binning_type': binning_type,
+            },
         }
     )
-    
+
 # ! Sample covariance
 for cov_type in ['coupled', 'decoupled']:
     configs_to_test.append(
@@ -680,6 +681,17 @@ for cov_type in ['coupled', 'decoupled']:
                 'nreal': 5,
                 'fix_seed': True,
             },
+        }
+    )
+
+# ! OneCovariance - Gauss only, 3 spaces
+for obs_space in ['harmonic', 'real', 'cosebis']:
+    configs_to_test.append(
+        {
+            'covariance': {'G_code': 'OneCovariance', 'SSC': False, 'cNG': False},
+            'probe_selection': {'space': obs_space},
+            'C_ell': {'has_magnification_bias': False},
+            'binning': {'binning_type': 'log'},
         }
     )
 

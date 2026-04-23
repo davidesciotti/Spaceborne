@@ -1,5 +1,6 @@
 """
-LAST UPDATE: 2025-09-16
+LAST UPDATE: 2026-04-20
+PREV UPDATE: 2025-09-16
 
 Script to produce a set of benchmarks to test the Spaceborne code. More in detail, it
 performs the following operations:
@@ -27,6 +28,9 @@ NOTES
    is in
    {DATA_ROOT}/Spaceborne_bench/bench_set_output/_sb_output,
    but you don't need to care about this.
+
+-  Don't worry about the .yaml files in bench_set_output, the "main" ones are in
+   bench_set_cfg
 
 -  This script should be run from the main branch.
 """
@@ -168,9 +172,9 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
                 continue
 
             print('\n')
-            print('*********************************************************')
-            print(f'🧪🧪🧪 Running benchmark with config: {yaml_file} 🧪🧪🧪')
-            print('*********************************************************')
+            print('🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪')
+            print(f'Running benchmark with config:\n{yaml_file}')
+            print('🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪🧪')
             print('\n')
 
             # Run the main script with the current configuration
@@ -222,7 +226,7 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
     return results
 
 
-# variables to play with
+# ! PATHS
 # ROOT = '/u/dsciotti/code'  # pleiadi
 # ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
 ROOT = '/home/sciotti/code'  # mileva
@@ -232,15 +236,15 @@ DATA_ROOT = '/data/sciotti/DATA'  # mileva
 
 CONDA_ENV_ROOT = '/home/sciotti/.conda/envs'  # mileva
 
-skip_existing = False  # Skip benchmarks that already exist
-
-# set some paths
 bench_set_path = f'{DATA_ROOT}/Spaceborne_bench'
 bench_set_cfg_path = f'{bench_set_path}/bench_set_cfg'
 bench_set_output_path = f'{bench_set_path}/bench_set_output'
 output_path = f'{bench_set_output_path}/_sb_output'
 sb_root_path = f'{ROOT}/Spaceborne'
 
+
+# ! OPTIONS
+skip_existing = False  # Skip benchmarks that already exist
 
 # ! DEFINE A BASIC CFG FILE TO START FROM
 base_cfg = {
@@ -328,13 +332,13 @@ base_cfg = {
         'galaxy_bias_fit_coeff': [1.33291, -0.72414, 1.0183, -0.14913],
         'magnification_bias_fit_coeff': [-1.50685, 1.35034, 0.08321, 0.04279],
         'gal_bias_table_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/gal_bias_table.txt',
-        'mag_bias_table_filename': f'{DATA_ROOT}/Spaceborne_jobs/develop/input/mag_bias_table.txt',
+        'mag_bias_table_filename': '...',
         'gal_bias_table_interp_method': 'CubicSpline',
         'mag_bias_table_interp_method': 'CubicSpline',
         'mult_shear_bias': [0.0, 0.0, 0.0],
         'has_rsd': False,
-        'has_IA': False,
-        'has_magnification_bias': False,
+        'has_IA': True,
+        'has_magnification_bias': True,
         'cl_CCL_kwargs': {
             'l_limber': -1,
             'limber_integration_method': 'spline',
@@ -380,6 +384,7 @@ base_cfg = {
         'save_full_cov': True,
         'cov_filename': 'covmats',
         'save_cov_fits': False,
+        'save_mcms': False,
     },
     'PyCCL': {
         'cov_integration_method': 'spline',
@@ -397,13 +402,13 @@ base_cfg = {
         'log10_k_min': -5.0,
         'log10_k_max': 2.0,
         'k_steps': 20,
-        'z_min': 0.02,
+        'z_min': 0.01,
         'z_max': 3.0,
         'z_steps': 500,
         'z_steps_trisp': 10,
         'use_KE_approximation': False,
         'ell_min_proj': 2,
-        'ell_max_proj': 500000,
+        'ell_max_proj': 50_000,
         'ell_bins_proj_gauss': 100,
         'ell_bins_proj_nongauss': 50,
         'proj_gauss_integration_method': 'simps',
@@ -440,105 +445,81 @@ base_cfg = {
 # Each dictionary represents one configuration to test
 configs_to_test = []
 
-# ! OneCovariance - Gauss only, 3 spaces
-for obs_space in ['harmonic', 'real', 'cosebis']:
-    configs_to_test.append(
-        {
-            'covariance': {'G_code': 'OneCovariance', 'SSC': False, 'cNG': False},
-            'probe_selection': {'space': obs_space},
-            'binning': {'binning_type': 'log'},
-        }
-    )
 
 # ! Ordering, probe selection, input Cls
-triu_tril = 'triu'
-row_col = 'row-major'
 for space in ['harmonic', 'real', 'cosebis']:
-    for split_gaussian_cov in [True, False]:
-        for cross_cov in [True, False]:
-            for use_input_cls in [True, False]:
-                for ordering in [
-                    'probe_scale_zpair',
-                    'probe_zpair_scale',
-                    'scale_probe_zpair',
-                ]:
-                    # for triu_tril in ['triu', 'tril']:
-                    # for row_col in ['row-major', 'col-major']:
-                    if space == 'harmonic':
-                        for cov_hs_g_ell_bin_average in [True, False]:
-                            for LL, GL, GG in product([True, False], repeat=3):
-                                if not any([LL, GL, GG]):
-                                    continue
-                                configs_to_test.append(
-                                    {
-                                        'probe_selection': {
-                                            'LL': LL,
-                                            'GL': GL,
-                                            'GG': GG,
-                                            'cross_cov': cross_cov,
-                                            'space': space,
-                                        },
-                                        'covariance': {
-                                            'SSC': False,
-                                            'split_gaussian_cov': split_gaussian_cov,
-                                            'covariance_ordering_2D': ordering,
-                                            'triu_tril': triu_tril,
-                                            'row_col_major': row_col,
-                                        },
-                                        'C_ell': {'use_input_cls': use_input_cls},
-                                        'precision': {
-                                            'cov_hs_g_ell_bin_average': cov_hs_g_ell_bin_average
-                                        },
-                                    }
-                                )
-                    elif space == 'real':
-                        for xip, xim, gt, w in product([True, False], repeat=4):
-                            if not any([xip, xim, gt, w]):
-                                continue
-                            configs_to_test.append(
-                                {
-                                    'probe_selection': {
-                                        'xip': xip,
-                                        'xim': xim,
-                                        'gt': gt,
-                                        'w': w,
-                                        'cross_cov': cross_cov,
-                                        'space': space,
-                                    },
-                                    'covariance': {
-                                        'SSC': False,
-                                        'split_gaussian_cov': split_gaussian_cov,
-                                        'covariance_ordering_2D': ordering,
-                                        'triu_tril': triu_tril,
-                                        'row_col_major': row_col,
-                                    },
-                                    'C_ell': {'use_input_cls': use_input_cls},
-                                }
-                            )
-                    elif space == 'cosebis':
-                        for En, Bn in product([True, False], repeat=2):
-                            if not any([En, Bn]):
-                                continue
-                            configs_to_test.append(
-                                {
-                                    'probe_selection': {
-                                        'En': En,
-                                        'Bn': Bn,
-                                        'cross_cov': cross_cov,
-                                        'space': space,
-                                    },
-                                    'covariance': {
-                                        'SSC': False,
-                                        'split_gaussian_cov': split_gaussian_cov,
-                                        'covariance_ordering_2D': ordering,
-                                        'triu_tril': triu_tril,
-                                        'row_col_major': row_col,
-                                    },
-                                    'C_ell': {'use_input_cls': use_input_cls},
-                                }
-                            )
+    for cross_cov in [True, False]:
+        for use_input_cls in [True, False]:
+            if space == 'harmonic':
+                for cov_hs_g_ell_bin_average in [True, False]:
+                    for LL, GL, GG in product([True, False], repeat=3):
+                        if not any([LL, GL, GG]):
+                            continue
+                        configs_to_test.append(
+                            {
+                                'probe_selection': {
+                                    'LL': LL,
+                                    'GL': GL,
+                                    'GG': GG,
+                                    'cross_cov': cross_cov,
+                                    'space': space,
+                                },
+                                'covariance': {'SSC': False},
+                                'C_ell': {'use_input_cls': use_input_cls},
+                                'precision': {
+                                    'cov_hs_g_ell_bin_average': cov_hs_g_ell_bin_average
+                                },
+                            }
+                        )
+            elif space == 'real':
+                for xip, xim, gt, w in product([True, False], repeat=4):
+                    if not any([xip, xim, gt, w]):
+                        continue
+                    configs_to_test.append(
+                        {
+                            'probe_selection': {
+                                'xip': xip,
+                                'xim': xim,
+                                'gt': gt,
+                                'w': w,
+                                'cross_cov': cross_cov,
+                                'space': space,
+                            },
+                            'covariance': {'SSC': False},
+                            'C_ell': {'use_input_cls': use_input_cls},
+                        }
+                    )
+            elif space == 'cosebis':
+                for En, Bn in product([True, False], repeat=2):
+                    if not any([En, Bn]):
+                        continue
+                    configs_to_test.append(
+                        {
+                            'probe_selection': {
+                                'En': En,
+                                'Bn': Bn,
+                                'cross_cov': cross_cov,
+                                'space': space,
+                            },
+                            'covariance': {'SSC': False},
+                            'C_ell': {'use_input_cls': use_input_cls},
+                        }
+                    )
 
-# ! COSEBIs, real space
+# ordering, with and without split Gaussian cov
+for ordering in ['probe_scale_zpair', 'probe_zpair_scale', 'scale_probe_zpair']:
+    for split_gaussian_cov in [True, False]:
+        configs_to_test.append(
+            {
+                'covariance': {
+                    'SSC': False,
+                    'covariance_ordering_2D': ordering,
+                    'split_gaussian_cov': split_gaussian_cov,
+                }
+            }
+        )
+
+# ! G and NG proj for real space, COSEBIs
 for obs_space in ['real', 'cosebis']:
     for proj_gauss_integration_method, proj_nongauss_integration_method in [
         ('simps', 'simps'),
@@ -576,17 +557,17 @@ for which_gal_bias in ['from_input', 'polynomial_fit']:
 
 # ! RSD and magnification bias
 for has_IA in [True, False]:
-    for has_rsd in [True, False]:
-        for has_magnification_bias in [True, False]:
-            configs_to_test.append(
-                {
-                    'C_ell': {
-                        'has_IA': has_IA,
-                        'has_rsd': has_rsd,
-                        'has_magnification_bias': has_magnification_bias,
-                    }
+    # for has_rsd in [True, False]:
+    for has_magnification_bias in [True, False]:
+        configs_to_test.append(
+            {
+                'C_ell': {
+                    'has_IA': has_IA,
+                    # 'has_rsd': has_rsd,
+                    'has_magnification_bias': has_magnification_bias,
                 }
-            )
+            }
+        )
 
 
 # ! Intrinsic Alignment parameters (only when IA is enabled)
@@ -600,9 +581,6 @@ for Aia in [0.16, 0.5, 1.0]:
 for mult_shear_bias in [[0.01, 0.02, 0.03], [-0.01, 0.09, -0.05]]:
     configs_to_test.append({'C_ell': {'mult_shear_bias': mult_shear_bias}})
 
-# ! Input Cls vs computed
-for use_input_cls in [True, False]:
-    configs_to_test.append({'C_ell': {'use_input_cls': use_input_cls}})
 
 # ! No sampling noise
 for no_sampling_noise in [True, False]:
@@ -652,6 +630,12 @@ for load_input_mask, generate_polar_cap in zip(
             }
         )
 
+# ! BNT transform
+configs_to_test.append({'covariance': {'BNT_transform': True}})
+
+# TODO reduce number of ell bins
+# TODO do not test all binning schemes for all the cases!!
+# TODO sample cov is not tested ad the moment, update
 # ! NAMASTER (test only G cov)
 for cov_type in ['coupled', 'decoupled']:
     for spin0 in [True, False]:
@@ -673,6 +657,17 @@ for cov_type in ['coupled', 'decoupled']:
                         },
                     }
                 )
+
+# ! OneCovariance - Gauss only, 3 spaces
+for obs_space in ['harmonic', 'real', 'cosebis']:
+    configs_to_test.append(
+        {
+            'covariance': {'G_code': 'OneCovariance', 'SSC': False, 'cNG': False},
+            'probe_selection': {'space': obs_space},
+            'C_ell': {'has_magnification_bias': False},
+            'binning': {'binning_type': 'log'},
+        }
+    )
 
 
 # make sure we don't have duplicated configurations

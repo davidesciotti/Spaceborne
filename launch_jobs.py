@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 from copy import deepcopy
 
 import yaml
@@ -35,7 +36,7 @@ def save_configs_to_yaml(configs: list, filenames: list) -> None:
         'Number of configs must match number of filenames'
     )
 
-    for config, path in zip(configs, filenames):
+    for config, path in zip(configs, filenames, strict=True):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as f:
             yaml.dump(config, f, default_flow_style=False)
@@ -54,39 +55,48 @@ def run_spaceborne(yaml_files: list[str], sb_root_path: str) -> None:
 
 
 # ! SETTINGS START
-ROOT = '/home/cosmo/davide.sciotti/data'
+ROOT = '/home/sciotti/code'
+DATA_ROOT = '/data/sciotti'
 sb_root_path = f'{ROOT}/Spaceborne'
 base_cfg_path = f'{sb_root_path}/config.yaml'
-create_output_folders = False
+create_output_folders = True
 # ! SETTINGS END
+
+start_time = time.time()
 
 with open(base_cfg_path) as f:
     base_cfg = yaml.safe_load(f)
 
-configs_to_run = []
-for nongauss in (False, True):
-    # this runs Knox decoupled, NaMaster decoupled, NaMaster coupled
-    for partial_sky_method, coupled_cov in zip(
-        ['Knox', 'NaMaster', 'NaMaster'], [False, False, True]
-    ):
-        out_path = (
-            f'{ROOT}/DATA/Spaceborne_jobs/TR1_cov/'
-            f'psky{partial_sky_method}_nongauss{nongauss}_coupled{coupled_cov}'
-        )
-        configs_to_run.append(
-            {
-                'covariance': {
-                    'partial_sky_method': partial_sky_method,
-                    'coupled_cov': coupled_cov,
-                    'SSC': nongauss,
-                    'cNG': nongauss,
-                },
-                'misc': {'output_path': out_path},
-            }
-        )
+# current PID is 3900663
 
-        if create_output_folders:
-            os.makedirs(out_path, exist_ok=True)
+configs_to_run = []
+for ell_min in [10, 20, 40, 100]:
+    for cov_type in ['decoupled', 'coupled']:
+        for partial_sky_method, sample_cov in zip(
+            ['NaMaster', 'Knox'], [False, True], strict=True
+        ):
+            out_path = (
+                f'{DATA_ROOT}/DATA/Spaceborne_jobs/cov_validation_2026/'
+                f'v2_psky{partial_sky_method}_sample{sample_cov}_{cov_type}_ellmin{ell_min}'
+            )
+            configs_to_run.append(
+                {
+                    'binning': {'ell_min': ell_min},
+                    'covariance': {
+                        'partial_sky_method': partial_sky_method,
+                        'cov_type': cov_type,
+                    },
+                    'misc': {'output_path': out_path},
+                    'sample_covariance': {
+                        'compute_sample_cov': sample_cov,
+                        'which_cls': 'healpy',
+                        'nreal': 20000,
+                        'fix_seed': True,
+                    },
+                }
+            )
+            if create_output_folders:
+                os.makedirs(out_path, exist_ok=True)
 
 
 # assign yaml filenames based on output path
@@ -94,7 +104,6 @@ yaml_filenames = [
     f'{sb_root_path}/{cfg["misc"]["output_path"].split("/")[-1]}.yaml'
     for cfg in configs_to_run
 ]
-
 
 # === Apply changes to base config ===
 configs = generate_zipped_configs(base_cfg, configs_to_run)
@@ -105,4 +114,5 @@ save_configs_to_yaml(configs, yaml_filenames)
 # === Run all ===
 run_spaceborne(yaml_filenames, sb_root_path)
 
-print('\n✅ All Spaceborne runs finished!')
+time_hours = (time.time() - start_time) / 3600
+print(f'\n✅ All Spaceborne runs finished in {time_hours:.2f} hours!')

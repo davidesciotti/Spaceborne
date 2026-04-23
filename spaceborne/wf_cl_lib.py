@@ -7,9 +7,9 @@ import pyccl as ccl
 import scipy
 from matplotlib import cm
 from scipy.integrate import simpson as simps
-from scipy.interpolate import interp1d
+from scipy.interpolate import CubicSpline, interp1d
 
-from spaceborne import constants
+from spaceborne import ccl_interface, constants, io_handler
 from spaceborne import sb_lib as sl
 
 c = constants.SPEED_OF_LIGHT
@@ -23,6 +23,85 @@ dav_to_vinc_par_names = {
     's8': 'sigma8',
     'wz': 'w0',
 }
+
+
+def compute_cls_or_interpolate_input_cls(
+    ells_out, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+):
+    # First off, make sure ells are sorted and unique for spline interpolation
+    # (if some input cls are not requested the corresponding ells_in will be None,
+    # and the check will be skipped for that probe)
+    io_handler.check_ells_for_spline(ells_out)
+
+    # Now pre-compute the CCL Cls, I may need them later (this is not very
+    # efficient since I may not need all of them, or none altogether,
+    # but this function is quite convenient)
+    _cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
+        ccl_obj,
+        ells=ells_out,
+        zbins=zbins,
+        mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+        cl_ccl_kwargs=cl_ccl_kwargs,
+        n_probes_hs=cfg['covariance']['n_probes'],
+    )
+
+    if io_obj.need_input_cl_ll and (
+        ells_out.min() < io_obj.ells_WL_in.min()
+        or ells_out.max() > io_obj.ells_WL_in.max()
+    ):
+        warnings.warn(
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input LL ell range '
+            f'[{io_obj.ells_WL_in.min()}, {io_obj.ells_WL_in.max()}]. '
+            'The input Cls will be extrapolated outside their original range.',
+            stacklevel=2,
+        )
+    if io_obj.need_input_cl_gl and (
+        ells_out.min() < io_obj.ells_XC_in.min()
+        or ells_out.max() > io_obj.ells_XC_in.max()
+    ):
+        warnings.warn(
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GL ell range '
+            f'[{io_obj.ells_XC_in.min()}, {io_obj.ells_XC_in.max()}]. '
+            'The input Cls will be extrapolated outside their original range.',
+            stacklevel=2,
+        )
+    if io_obj.need_input_cl_gg and (
+        ells_out.min() < io_obj.ells_GC_in.min()
+        or ells_out.max() > io_obj.ells_GC_in.max()
+    ):
+        warnings.warn(
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GG ell range '
+            f'[{io_obj.ells_GC_in.min()}, {io_obj.ells_GC_in.max()}]. '
+            'The input Cls will be extrapolated outside their original range.',
+            stacklevel=2,
+        )
+
+    # now, either take the input Cl splines and re-interpolate on the desired grid,
+    # or use the newly-generated ones
+    if io_obj.need_input_cl_ll:
+        cl_ll_3d_in_spline = CubicSpline(io_obj.ells_WL_in, io_obj.cl_ll_3d_in, axis=0)
+        _cl_ll_3d = cl_ll_3d_in_spline(ells_out)
+    else:
+        _cl_ll_3d = _cl_3x2pt_5d[0, 0]
+
+    if io_obj.need_input_cl_gl:
+        cl_gl_3d_in_spline = CubicSpline(io_obj.ells_XC_in, io_obj.cl_gl_3d_in, axis=0)
+        _cl_gl_3d = cl_gl_3d_in_spline(ells_out)
+    else:
+        _cl_gl_3d = _cl_3x2pt_5d[1, 0]
+
+    if io_obj.need_input_cl_gg:
+        cl_gg_3d_in_spline = CubicSpline(io_obj.ells_GC_in, io_obj.cl_gg_3d_in, axis=0)
+        _cl_gg_3d = cl_gg_3d_in_spline(ells_out)
+    else:
+        _cl_gg_3d = _cl_3x2pt_5d[1, 1]
+
+    # construct the usual 5d 3x2pt datavector
+    cl_3x2pt_5d = sl.build_cl_3x2pt_5d(
+        cl_ll_3d=_cl_ll_3d, cl_gl_3d=_cl_gl_3d, cl_gg_3d=_cl_gg_3d
+    )
+
+    return cl_3x2pt_5d
 
 
 def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):

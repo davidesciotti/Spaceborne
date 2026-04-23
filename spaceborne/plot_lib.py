@@ -139,60 +139,6 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None, cov_6d
     return fig, ax
 
 
-def plot_ell_cuts(
-    ell_cuts_a,
-    ell_cuts_b,
-    ell_cuts_c,
-    label_a,
-    label_b,
-    label_c,
-    kmax_h_over_Mpc,
-    zbins,
-):
-    # Get the global min and max values for the color scale
-    vmin = min(ell_cuts_a.min(), ell_cuts_b.min(), ell_cuts_c.min())
-    vmax = max(ell_cuts_a.max(), ell_cuts_b.max(), ell_cuts_c.min())
-
-    # Create a gridspec layout
-    fig = plt.figure(figsize=(10, 5))
-    gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.12])
-
-    # Create axes based on the gridspec layout
-    ax0 = plt.subplot(gs[0])
-    ax1 = plt.subplot(gs[1])
-    ax2 = plt.subplot(gs[2])
-    cbar_ax = plt.subplot(gs[3])
-
-    ticks = np.arange(1, zbins + 1)
-    # Set x and y ticks for both subplots
-    for ax in [ax0, ax1, ax2]:
-        ax.set_xticks(np.arange(zbins))
-        ax.set_yticks(np.arange(zbins))
-        ax.set_xticklabels(ticks, fontsize=15)
-        ax.set_yticklabels(ticks, fontsize=15)
-        ax.set_xlabel('$z_{\\rm bin}$', fontsize=15)
-        ax.set_ylabel('$z_{\\rm bin}$', fontsize=15)
-
-    # Display the matrices with the shared color scale
-    cax0 = ax0.matshow(ell_cuts_a, vmin=vmin, vmax=vmax)
-    _cax1 = ax1.matshow(ell_cuts_b, vmin=vmin, vmax=vmax)
-    _cax2 = ax2.matshow(ell_cuts_c, vmin=vmin, vmax=vmax)
-
-    # Add titles to the plots
-    ax0.set_title(label_a, fontsize=18)
-    ax1.set_title(label_b, fontsize=18)
-    ax2.set_title(label_c, fontsize=18)
-    fig.suptitle(f'kmax = {kmax_h_over_Mpc:.2f} h_over_mpc_tex', fontsize=18, y=0.85)
-
-    # Add a shared colorbar on the right
-    cbar = fig.colorbar(cax0, cax=cbar_ax)
-    cbar.set_label('$\\ell^{\\rm max}_{ij}$', fontsize=15, loc='center')
-    cbar.ax.tick_params(labelsize=15)
-
-    plt.tight_layout()
-    plt.show()
-
-
 def bar_plot(
     data,
     title,

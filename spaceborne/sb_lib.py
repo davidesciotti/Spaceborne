@@ -103,6 +103,42 @@ def zero_spline_factory(template: np.ndarray) -> callable:
     return _zero_spline
 
 
+def hartlap_factor(n_sim: int, n_data: int) -> float:
+    """hartlap correction factor for the precision matrix:
+    Cov^{-1}_{corrected} = hartlap_factor * Cov^{-1}_{measured}
+    where hartlap_factor is the value returned by this function.
+
+    Note: Requires n_sim > n_data + 2 for a positive correction factor.
+    """
+    if n_sim <= 1:
+        raise ValueError('n_sim must be > 1 to avoid division by zero')
+
+    if n_sim <= n_data + 2:
+        import warnings
+
+        warnings.warn(
+            f'Hartlap factor is non-positive for n_sim={n_sim}, n_data={n_data}. '
+            'Requires n_sim > n_data + 2 for a valid correction.',
+            stacklevel=2,
+        )
+
+    return (n_sim - n_data - 2) / (n_sim - 1)
+
+
+def percival_factor(n_sim, n_data, n_param):
+    """
+    Percival et al. 2014 correction factor for the inverse covariance matrix.
+    Combined Hartlap + Percival factors.
+    """
+    A = 2 / (n_sim - n_data - 1) / (n_sim - n_data - 4)
+    B = (n_sim - n_data - 2) / (n_sim - n_data - 1) / (n_sim - n_data - 4)
+    m1 = 1 + B * (n_data - n_param)
+    m2 = 1 + A + B * (n_data - n_param)
+    beta = m1 / m2
+
+    return beta
+
+
 def get_probe_combs_wrapper(
     obs_space: str, probe_selection: dict, cross_cov: bool
 ) -> dict:

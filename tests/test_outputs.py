@@ -119,13 +119,13 @@ def test_main_script(test_cfg_path):
 
 
 # Path
-ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
-# ROOT = '/data/sciotti/DATA'  # mileva
+# ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
+ROOT = '/data/sciotti/DATA'  # mileva
 # ROOT = '/u/dsciotti/code'  # orlanth
 # ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
 
-# CODE_ROOT = '/home/sciotti/code'  # mileva
-CODE_ROOT = ROOT  # all the others
+CODE_ROOT = '/home/sciotti/code'  # mileva
+# CODE_ROOT = ROOT  # all the others
 
 bench_path = f'{ROOT}/Spaceborne_bench/bench_set_output'
 
@@ -206,7 +206,7 @@ for bench_name in bench_yaml_names:
     # Save the updated test config
     test_cfg_path = f'{bench_path}/_tmp/test_config.yaml'
     with open(test_cfg_path, 'w') as f:
-        yaml.dump(cfg, f)
+        yaml.safe_dump(cfg, f, default_flow_style=False, sort_keys=False)
 
     # ! run the actual test
     test_main_script(test_cfg_path)

@@ -2261,8 +2261,6 @@ if cfg['misc']['save_output_as_benchmark']:
         **covs_3x2pt_2d_tosave_dict,
         **covs_6d_tosave_dict,
         **misc_dict,
-        **covs_3x2pt_2d_tosave_dict,
-        **covs_6d_tosave_dict,
         metadata=metadata,
     )
 

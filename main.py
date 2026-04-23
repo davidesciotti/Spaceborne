@@ -194,19 +194,19 @@ def plot_cls():
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
         if io_obj.need_input_cl_ll:
-            ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+            ax[0].plot(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gl:
-            ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+            ax[1].plot(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gg:
-            ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
+            ax[2].plot(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
     for zi in range(zbins):
         zj = zi
         sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
-        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
-        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
+        ax[0].plot(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
+        ax[1].plot(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
+        ax[2].plot(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[
@@ -218,6 +218,14 @@ def plot_cls():
             frameon=False,
         )
         ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
+
+    ax[0].set_yscale('log')
+    ax[1].set_yscale('log')
+    ax[2].set_yscale('log')
+    if cfg['binning']['binning_type'] in ['log', 'from_input']:
+        ax[0].set_xscale('log')
+        ax[1].set_xscale('log')
+        ax[2].set_xscale('log')
 
     ax[2].legend(
         [f'$z_{{{zi}}}$' for zi in range(zbins)],

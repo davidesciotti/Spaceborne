@@ -665,8 +665,8 @@ def sample_covariance_parallel( # fmt: skip
     cov_dict,
     cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned,
     cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned,
-    nbl, zbins, mask, nside, nreal, coupled_cls, which_cls, nmt_bin_obj,
-    w00_path, w02_path, w22_path, lmax, fix_seed=True, n_jobs=None,
+    nbl, zbins, weight_maps_gg, weight_maps_ll, nside, nreal, coupled_cls, which_cls, nmt_bin_obj,
+    w00_path_template, w02_path_template, w22_path_template, lmax, fix_seed=True, n_jobs=None,
 ):  # fmt: skip
 
     SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
@@ -707,19 +707,22 @@ def sample_covariance_parallel( # fmt: skip
     ell_min_edges = np.array([nmt_bin_obj.get_ell_min(i) for i in range(n_bands)])
     ell_max_edges = np.array([nmt_bin_obj.get_ell_max(i) + 1 for i in range(n_bands)])
 
-    results = Parallel(n_jobs=30, backend='loky', verbose=1)(
+    effective_n_jobs = n_jobs if n_jobs is not None else 30
+
+    results = Parallel(n_jobs=effective_n_jobs, backend='loky', verbose=1)(
         delayed(_compute_one_realization)(
             seed=SEEDVALUE[i],
             cl_ring_big_list=cl_ring_big_list,
             lmax=lmax,
             nside=nside,
             zbins=zbins,
-            mask=mask,
+            weight_maps_gg=weight_maps_gg,
+            weight_maps_ll=weight_maps_ll,
             coupled_cls=coupled_cls,
             which_cls=which_cls,
-            w00_path=w00_path,
-            w02_path=w02_path,
-            w22_path=w22_path,
+            w00_path_template=w00_path_template,
+            w02_path_template=w02_path_template,
+            w22_path_template=w22_path_template,
             nbl=nbl,
             ell_min_edges=ell_min_edges,
             ell_max_edges=ell_max_edges,
@@ -781,12 +784,13 @@ def _compute_one_realization(
     lmax,
     nside,
     zbins,
-    mask,
+    weight_maps_gg,
+    weight_maps_ll,
     coupled_cls,
     which_cls,
-    w00_path,
-    w02_path,
-    w22_path,
+    w00_path_template,
+    w02_path_template,
+    w22_path_template,
     nbl,
     ell_min_edges,
     ell_max_edges,
@@ -798,12 +802,14 @@ def _compute_one_realization(
     np.random.seed(seed)
 
     # Load workspaces inside worker (NmtWorkspace objects are not picklable)
-    w00 = nmt.NmtWorkspace()
-    w02 = nmt.NmtWorkspace()
-    w22 = nmt.NmtWorkspace()
-    w00.read_from(w00_path)
-    w02.read_from(w02_path)
-    w22.read_from(w22_path)
+    w00, w02, w22 = {}, {}, {}
+    for zi, zj in itertools.product(range(zbins), repeat=2):
+        w00[zi, zj] = nmt.NmtWorkspace()
+        w02[zi, zj] = nmt.NmtWorkspace()
+        w22[zi, zj] = nmt.NmtWorkspace()
+        w00[zi, zj].read_from(w00_path_template.format(zi=zi, zj=zj))
+        w02[zi, zj].read_from(w02_path_template.format(zi=zi, zj=zj))
+        w22[zi, zj].read_from(w22_path_template.format(zi=zi, zj=zj))
 
     # Reconstruct NmtBin object from edges (nmt_bin_obj objects are not picklable)
     nmt_bin_obj = nmt.NmtBin.from_edges(ell_min_edges, ell_max_edges)
@@ -824,8 +830,30 @@ def _compute_one_realization(
 
     # ! Mask each map (there are zbins of them) and compute ("masked") alms
     alms_T, alms_E, alms_B = precompute_alms_healpy(
-        corr_maps_gg, corr_maps_ll, mask, lmax
+        corr_maps_gg=corr_maps_gg,
+        corr_maps_ll=corr_maps_ll,
+        weight_maps_gg=weight_maps_gg,
+        weight_maps_ll=weight_maps_ll,
+        lmax=lmax,
     )
+
+    if which_cls == 'namaster':
+        nmt_field_kw = {'n_iter': None, 'lite': True, 'lmax': lmax}
+        f0 = np.array(
+            [
+                nmt.NmtField(_weight_per_bin(weight_maps_gg, zi), [m], **nmt_field_kw)
+                for zi, m in enumerate(corr_maps_gg)
+            ]
+        )
+        f2 = np.array(
+            [
+                nmt.NmtField(_weight_per_bin(weight_maps_ll, zi), [q, u], **nmt_field_kw)
+                for zi, (q, u) in enumerate(corr_maps_ll)
+            ]
+        )
+    else:
+        f0, f2 = None, None
+
     # free maps
     del corr_maps_gg, corr_maps_ll
 
@@ -843,8 +871,8 @@ def _compute_one_realization(
         gg, gl, ll = pcls_from_maps(
             zi=zi,
             zj=zj,
-            f0=None,
-            f2=None,
+            f0=f0,
+            f2=f2,
             coupled_cls=coupled_cls,
             which_cls=which_cls,
             w00_dict=w00,
@@ -1388,16 +1416,17 @@ class NmtCov:
                 cl_TB_unbinned=cl_tb_4covsim,
                 nbl=nbl_eff,
                 zbins=self.zbins,
-                mask=self.mask_obj.mask,
+                weight_maps_gg=self.weight_maps_gg,
+                weight_maps_ll=self.weight_maps_ll,
                 nside=self.mask_obj.nside,
                 nreal=self.cfg['sample_covariance']['nreal'],
                 coupled_cls=self.coupled_cov,
                 which_cls=self.cfg['sample_covariance']['which_cls'],
                 nmt_bin_obj=nmt_bin_obj,
                 lmax=ell_max_eff,
-                w00_path=f'{self.output_path}/cache/nmt/w00_workspace.fits',
-                w02_path=f'{self.output_path}/cache/nmt/w02_workspace.fits',
-                w22_path=f'{self.output_path}/cache/nmt/w22_workspace.fits',
+                w00_path_template=f'{self.output_path}/cache/nmt/w00_{{zi}}_{{zj}}_wsp.fits',
+                w02_path_template=f'{self.output_path}/cache/nmt/w02_{{zi}}_{{zj}}_wsp.fits',
+                w22_path_template=f'{self.output_path}/cache/nmt/w22_{{zi}}_{{zj}}_wsp.fits',
                 fix_seed=self.cfg['sample_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],
             )

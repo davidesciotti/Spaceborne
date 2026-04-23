@@ -45,6 +45,37 @@ def compute_cls_or_interpolate_input_cls(
         n_probes_hs=cfg['covariance']['n_probes'],
     )
 
+    if io_obj.need_input_cl_ll and (
+        ells_out.min() < io_obj.ells_WL_in.min()
+        or ells_out.max() > io_obj.ells_WL_in.max()
+    ):
+        warnings.warn(
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input WL ell range '
+            f'[{io_obj.ells_WL_in.min()}, {io_obj.ells_WL_in.max()}]. '
+            'The input Cls will be extrapolated outside their original range.',
+            stacklevel=2,
+        )
+    if io_obj.need_input_cl_gl and (
+        ells_out.min() < io_obj.ells_XC_in.min()
+        or ells_out.max() > io_obj.ells_XC_in.max()
+    ):
+        warnings.warn(
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input XC ell range '
+            f'[{io_obj.ells_XC_in.min()}, {io_obj.ells_XC_in.max()}]. '
+            'The input Cls will be extrapolated outside their original range.',
+            stacklevel=2,
+        )
+    if io_obj.need_input_cl_gg and (
+        ells_out.min() < io_obj.ells_GC_in.min()
+        or ells_out.max() > io_obj.ells_GC_in.max()
+    ):
+        warnings.warn(
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GC ell range '
+            f'[{io_obj.ells_GC_in.min()}, {io_obj.ells_GC_in.max()}]. '
+            'The input Cls will be extrapolated outside their original range.',
+            stacklevel=2,
+        )
+
     # now, either take the input Cl splines and re-interpolate on the desired grid,
     # or use the newly-generated ones
     if io_obj.need_input_cl_ll:

@@ -390,6 +390,12 @@ class IOHandler:
             self.need_input_cl_gl = False
             self.need_input_cl_gg = False
 
+        else:
+            raise ValueError(
+                'Unsupported space for probe selection: '
+                f'{self.cfg["probe_selection"]["space"]}'
+            )
+
     def print_cl_path(self):
         """Print the path of the input Cl files"""
         if self.need_input_cl_ll:

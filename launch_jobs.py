@@ -69,7 +69,6 @@ with open(base_cfg_path) as f:
 
 # current PID is 3900663
 
-# this runs sample variance and namaster, coupled and decoupled, for a total of 4 runs
 configs_to_run = []
 for ell_min in [10, 20, 40, 100]:
     for cov_type in ['decoupled', 'coupled']:

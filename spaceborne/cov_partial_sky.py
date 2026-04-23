@@ -511,8 +511,8 @@ def sample_covariance_old( # fmt: skip
     if lmax is None:
         lmax = 3 * nside - 1
 
-    if fix_seed:
-        SEEDVALUE = np.arange(nreal)
+    SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
+
 
     # instantiate arrays
     for probe_2tpl in cov_dict['g']:
@@ -797,8 +797,7 @@ def sample_covariance_parallel( # fmt: skip
     w00_path, w02_path, w22_path, lmax, fix_seed=True, n_jobs=None,
 ):  # fmt: skip
 
-    if fix_seed:
-        SEEDVALUE = np.arange(nreal)
+    SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
 
     # instantiate arrays in cov_dict
     for probe_2tpl in cov_dict['g']:

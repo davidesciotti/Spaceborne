@@ -50,7 +50,7 @@ def compute_cls_or_interpolate_input_cls(
         or ells_out.max() > io_obj.ells_WL_in.max()
     ):
         warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input WL ell range '
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input LL ell range '
             f'[{io_obj.ells_WL_in.min()}, {io_obj.ells_WL_in.max()}]. '
             'The input Cls will be extrapolated outside their original range.',
             stacklevel=2,
@@ -60,7 +60,7 @@ def compute_cls_or_interpolate_input_cls(
         or ells_out.max() > io_obj.ells_XC_in.max()
     ):
         warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input XC ell range '
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GL ell range '
             f'[{io_obj.ells_XC_in.min()}, {io_obj.ells_XC_in.max()}]. '
             'The input Cls will be extrapolated outside their original range.',
             stacklevel=2,
@@ -70,7 +70,7 @@ def compute_cls_or_interpolate_input_cls(
         or ells_out.max() > io_obj.ells_GC_in.max()
     ):
         warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GC ell range '
+            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GG ell range '
             f'[{io_obj.ells_GC_in.min()}, {io_obj.ells_GC_in.max()}]. '
             'The input Cls will be extrapolated outside their original range.',
             stacklevel=2,

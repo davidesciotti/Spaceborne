@@ -360,54 +360,6 @@ class SpaceborneCovariance:
             else:
                 raise ValueError(f'Unknown code: {_cov_ng_code}')
 
-    def _cov_2d_ell_cuts(self, split_gaussian_cov):
-        # TODO reimplement this (I think it still works, but needs to be tested)
-        # TODO use split_gaussian_cov
-        if not self.cfg['ell_cuts']['cov_ell_cuts']:
-            return
-        else:
-            raise NotImplementedError('Ell cuts not implemented for the moment')
-
-            print('Performing ell cuts on the 2d covariance matrix...')
-            self.cov_WL_g_2d = sl.remove_rows_cols_array2D(
-                self.cov_WL_g_2d, self.ell_dict['idxs_to_delete_dict']['LL']
-            )
-            self.cov_GC_g_2d = sl.remove_rows_cols_array2D(
-                self.cov_GC_g_2d, self.ell_dict['idxs_to_delete_dict']['GG']
-            )
-            self.cov_XC_g_2d = sl.remove_rows_cols_array2D(
-                self.cov_XC_g_2d, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
-            )
-            self.cov_3x2pt_g_2d = sl.remove_rows_cols_array2D(
-                self.cov_3x2pt_g_2d, self.ell_dict['idxs_to_delete_dict']['3x2pt']
-            )
-
-            self.cov_WL_ssc_2d = sl.remove_rows_cols_array2D(
-                self.cov_WL_ssc_2d, self.ell_dict['idxs_to_delete_dict']['LL']
-            )
-            self.cov_GC_ssc_2d = sl.remove_rows_cols_array2D(
-                self.cov_GC_ssc_2d, self.ell_dict['idxs_to_delete_dict']['GG']
-            )
-            self.cov_XC_ssc_2d = sl.remove_rows_cols_array2D(
-                self.cov_XC_ssc_2d, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
-            )
-            self.cov_3x2pt_ssc_2d = sl.remove_rows_cols_array2D(
-                self.cov_3x2pt_ssc_2d, self.ell_dict['idxs_to_delete_dict']['3x2pt']
-            )
-
-            self.cov_WL_cng_2d = sl.remove_rows_cols_array2D(
-                self.cov_WL_cng_2d, self.ell_dict['idxs_to_delete_dict']['LL']
-            )
-            self.cov_GC_cng_2d = sl.remove_rows_cols_array2D(
-                self.cov_GC_cng_2d, self.ell_dict['idxs_to_delete_dict']['GG']
-            )
-            self.cov_XC_cng_2d = sl.remove_rows_cols_array2D(
-                self.cov_XC_cng_2d, self.ell_dict['idxs_to_delete_dict'][self.GL_OR_LG]
-            )
-            self.cov_3x2pt_cng_2d = sl.remove_rows_cols_array2D(
-                self.cov_3x2pt_cng_2d, self.ell_dict['idxs_to_delete_dict']['3x2pt']
-            )
-
     def combine_and_reshape_covs(
         self,
         ccl_obj: CCLInterface,
@@ -499,9 +451,6 @@ class SpaceborneCovariance:
             req_probe_combs_2d=self.req_probe_combs_2d,
             space='harmonic',
         )
-
-        # ! perform ell cuts on the 2D covs
-        self._cov_2d_ell_cuts(split_gaussian_cov)
 
     def _couple_cov_ng(self):
         if (

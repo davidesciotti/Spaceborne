@@ -8,6 +8,15 @@ from copy import deepcopy
 
 import yaml
 
+# TODOS BRANCH
+# - ssc computation should not be in the main, btw, I don't think it'll be difficult to port it to the SSC class
+# - try feeding OC NG covs to the simps projection
+# - port to Melodie for speed?
+# - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
+# - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
+# - put markers in CPU vs time to understand portion of the code which could be parallelised
+# - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
+
 
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
@@ -184,18 +193,20 @@ def plot_cls():
     for zi in range(zbins):
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
-        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_ll_3d[:, zi, zj], **kw)
-        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_gl_3d[:, zi, zj], **kw)
-        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_gg_3d[:, zi, zj], **kw)
+        if io_obj.need_input_cl_ll:
+            ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+        if io_obj.need_input_cl_gl:
+            ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+        if io_obj.need_input_cl_gg:
+            ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
-    if cfg['C_ell']['use_input_cls']:
-        for zi in range(zbins):
-            zj = zi
-            sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-            ax[0].loglog(ell_obj.ells_WL, cl_ll_3d_sb[:, zi, zj], **sb_kw)
-            ax[1].loglog(ell_obj.ells_XC, cl_gl_3d_sb[:, zi, zj], **sb_kw)
-            ax[2].loglog(ell_obj.ells_GC, cl_gg_3d_sb[:, zi, zj], **sb_kw)
+    for zi in range(zbins):
+        zj = zi
+        sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
+        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
+        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
+        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[
@@ -316,20 +327,6 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
         '_devmerge3_nmt'
     )
 
-
-cfg['ell_cuts'] = {}
-cfg['ell_cuts']['apply_ell_cuts'] = False  # Type: bool
-# Type: str. Cut if the bin *center* or the bin *lower edge* is
-# larger than ell_max[zi, zj]
-cfg['ell_cuts']['center_or_min'] = 'center'
-cfg['ell_cuts']['cl_ell_cuts'] = False  # Type: bool
-cfg['ell_cuts']['cov_ell_cuts'] = False  # Type: bool
-# Type: float. This is used when ell_cuts is False, also...?
-cfg['ell_cuts']['kmax_h_over_Mpc_ref'] = 1.0
-cfg['ell_cuts']['kmax_h_over_Mpc_list'] = [
-    0.1, 0.16681005, 0.27825594, 0.46415888, 0.77426368, 1.29154967,
-    2.15443469, 3.59381366, 5.9948425, 10.0,
-]  # fmt: skip
 
 # Psi-statistics not implemented yet
 cfg['probe_selection']['Psigl'] = False
@@ -576,9 +573,6 @@ else:
     k_txt_label = '1overMpc'
     pk_txt_label = 'Mpc3'
 
-if not cfg['ell_cuts']['apply_ell_cuts']:
-    kmax_h_over_Mpc = cfg['ell_cuts']['kmax_h_over_Mpc_ref']
-
 
 # ! sanity checks on the configs
 # TODO update this periodically
@@ -799,6 +793,7 @@ pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
 pvt_cfg['nbx'] = nbx
 
 # TODO rename ell_obj to bin_obj
+# TODO Parallel: Workers compute independently, results are stacked after
 # TODO add to it theta and cosebis binning
 # TODO use geometric mean for ell centers!
 # TODO arange(ell_max_3x2pt)? are we sure?
@@ -986,32 +981,6 @@ else:
 z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 
 
-# ! ===================================== \ell cuts ====================================
-# TODO need to adapt this to the class structure
-# ell_cuts_dict = {}
-# ellcuts_kw = {
-#     'kmax_h_over_Mpc': kmax_h_over_Mpc,
-#     'cosmo_ccl': ccl_obj.cosmo_ccl,
-#     'zbins': zbins,
-#     'h': h,
-#     'kmax_h_over_Mpc_ref': cfg['ell_cuts']['kmax_h_over_Mpc_ref'],
-# }
-# ell_cuts_dict['LL'] = ell_utils.load_ell_cuts(
-#     z_values_a=z_means_ll, z_values_b=z_means_ll, **ellcuts_kw
-# )
-# ell_cuts_dict['GG'] = ell_utils.load_ell_cuts(
-#     z_values_a=z_means_gg, z_values_b=z_means_gg, **ellcuts_kw
-# )
-# ell_cuts_dict['GL'] = ell_utils.load_ell_cuts(
-#     z_values_a=z_means_gg, z_values_b=z_means_ll, **ellcuts_kw
-# )
-# ell_cuts_dict['LG'] = ell_utils.load_ell_cuts(
-#     z_values_a=z_means_ll, z_values_b=z_means_gg, **ellcuts_kw
-# )
-# ell_dict['ell_cuts_dict'] = (
-#     ell_cuts_dict  # this is to pass the ell cuts to the covariance module
-# )
-
 # convenience variables
 wf_delta = ccl_obj.wf_delta_arr  # no bias here either, of course!
 wf_gamma = ccl_obj.wf_gamma_arr
@@ -1060,14 +1029,13 @@ with sl.timer('\nComputing Cls...'):
         n_probes_hs=cfg['covariance']['n_probes'],
     )
 
-ccl_obj.cl_ll_3d = _cl_3x2pt_5d[0, 0]
-ccl_obj.cl_gl_3d = _cl_3x2pt_5d[1, 0]
-ccl_obj.cl_gg_3d = _cl_3x2pt_5d[1, 1]
-
+ccl_obj.cl_3x2pt_5d_sb = sl.build_cl_3x2pt_5d(
+    cl_ll_3d=_cl_3x2pt_5d[0, 0],
+    cl_gl_3d=_cl_3x2pt_5d[1, 0],
+    cl_gg_3d=_cl_3x2pt_5d[1, 1],
+)
 
 if cfg['C_ell']['use_input_cls']:
-    # TODO NMT here you should ask the user for unbinned cls
-
     # load input cls
     io_obj.get_cl_fmt()
     io_obj.load_cls()
@@ -1075,36 +1043,8 @@ if cfg['C_ell']['use_input_cls']:
     # check ells before spline interpolation
     io_obj.check_ells_in(ell_obj)
 
-    print(f'Using input Cls for LL from file\n{cfg["C_ell"]["cl_LL_filename"]}')
-    print(f'Using input Cls for GGL from file\n{cfg["C_ell"]["cl_GL_filename"]}')
-    print(f'Using input Cls for GG from file\n{cfg["C_ell"]["cl_GG_filename"]}')
-
-    ells_WL_in, cl_ll_3d_in = io_obj.ells_WL_in, io_obj.cl_ll_3d_in
-    ells_XC_in, cl_gl_3d_in = io_obj.ells_XC_in, io_obj.cl_gl_3d_in
-    ells_GC_in, cl_gg_3d_in = io_obj.ells_GC_in, io_obj.cl_gg_3d_in
-
-    # interpolate input Cls on the desired ell grid
-    cl_ll_3d_spline = CubicSpline(ells_WL_in, cl_ll_3d_in, axis=0)
-    cl_gl_3d_spline = CubicSpline(ells_XC_in, cl_gl_3d_in, axis=0)
-    cl_gg_3d_spline = CubicSpline(ells_GC_in, cl_gg_3d_in, axis=0)
-    cl_ll_3d_in = cl_ll_3d_spline(ell_obj.ells_3x2pt)
-    cl_gl_3d_in = cl_gl_3d_spline(ell_obj.ells_3x2pt)
-    cl_gg_3d_in = cl_gg_3d_spline(ell_obj.ells_3x2pt)
-
-    # save the sb cls for the plot comparing sb and input cls
-    cl_ll_3d_sb = ccl_obj.cl_ll_3d
-    cl_gl_3d_sb = ccl_obj.cl_gl_3d
-    cl_gg_3d_sb = ccl_obj.cl_gg_3d
-
-    # assign them to ccl_obj; m-bias is applied right below
-    ccl_obj.cl_ll_3d = cl_ll_3d_in
-    ccl_obj.cl_gl_3d = cl_gl_3d_in
-    ccl_obj.cl_gg_3d = cl_gg_3d_in
-
-# I am creating copies here, not just a view (so modifying ccl_obj.cl_3x2pt_5d will
-# not affect ccl_obj.cl_ll_3d, ccl_obj.cl_gl_3d, ccl_obj.cl_gg_3d and vice versa)
-ccl_obj.cl_3x2pt_5d = sl.build_cl_3x2pt_5d(
-    cl_ll_3d=ccl_obj.cl_ll_3d, cl_gl_3d=ccl_obj.cl_gl_3d, cl_gg_3d=ccl_obj.cl_gg_3d
+ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+    ell_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
 )
 
 # cls plots
@@ -1124,9 +1064,9 @@ if cfg['C_ell']['use_input_cls']:
     _ell_dict_wl['SB'] = ell_obj.ells_3x2pt
     _ell_dict_xc['SB'] = ell_obj.ells_3x2pt
     _ell_dict_gc['SB'] = ell_obj.ells_3x2pt
-    _cl_dict_wl['SB'] = cl_ll_3d_sb
-    _cl_dict_xc['SB'] = cl_gl_3d_sb
-    _cl_dict_gc['SB'] = cl_gg_3d_sb
+    _cl_dict_wl['SB'] = ccl_obj.cl_3x2pt_5d_sb[0, 0]
+    _cl_dict_xc['SB'] = ccl_obj.cl_3x2pt_5d_sb[1, 0]
+    _cl_dict_gc['SB'] = ccl_obj.cl_3x2pt_5d_sb[1, 1]
 
 if cfg['misc']['cl_triangle_plot']:
     sb_plt.cls_triangle_plot(
@@ -1140,92 +1080,23 @@ if cfg['misc']['cl_triangle_plot']:
     )
 
 
-# ell_dict['idxs_to_delete_dict'] = {
-#     'LL': ell_utils.get_idxs_to_delete(
-#         ell_dict[f'{ell_prefix}_WL'],
-#         ell_cuts_dict['LL'],
-#         is_auto_spectrum=True,
-#         zbins=zbins,
-#     ),
-#     'GG': ell_utils.get_idxs_to_delete(
-#         ell_dict[f'{ell_prefix}_GC'],
-#         ell_cuts_dict['GG'],
-#         is_auto_spectrum=True,
-#         zbins=zbins,
-#     ),
-#     'GL': ell_utils.get_idxs_to_delete(
-#         ell_dict[f'{ell_prefix}_XC'],
-#         ell_cuts_dict['GL'],
-#         is_auto_spectrum=False,
-#         zbins=zbins,
-#     ),
-#     'LG': ell_utils.get_idxs_to_delete(
-#         ell_dict[f'{ell_prefix}_XC'],
-#         ell_cuts_dict['LG'],
-#         is_auto_spectrum=False,
-#         zbins=zbins,
-#     ),
-#     '3x2pt': ell_utils.get_idxs_to_delete_3x2pt(
-#         ell_dict[f'{ell_prefix}_3x2pt'], ell_cuts_dict, zbins, cfg['covariance']
-#     ),
-# }
-
-
-# ! 3d cl ell cuts (*after* BNT!!)
-# TODO here you could implement 1d cl ell cuts (but we are cutting at the covariance
-# TODO and derivatives level)
-# if cfg['ell_cuts']['cl_ell_cuts']:
-#     cl_ll_3d = cl_utils.cl_ell_cut(cl_ll_3d, ell_obj.ells_WL, ell_cuts_dict['LL'])
-#     cl_gg_3d = cl_utils.cl_ell_cut(cl_gg_3d, ell_obj.ells_GC, ell_cuts_dict['GG'])
-#     cl_3x2pt_5d = cl_utils.cl_ell_cut_3x2pt(
-#         cl_3x2pt_5d, ell_cuts_dict, ell_dict['ell_3x2pt']
-#     )
-#     if 'OneCovariance' in cov_terms_and_codes.values():
-#         raise NotImplementedError('You should cut also the OC Cls')
-
-# re-set cls in the ccl_obj after BNT transform and/or ell cuts
-# ccl_obj.cl_ll_3d = cl_ll_3d
-# ccl_obj.cl_gg_3d = cl_gg_3d
-# ccl_obj.cl_3x2pt_5d = cl_3x2pt_5d
-
 # ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
 if (
     cfg['covariance']['partial_sky_method'] == 'NaMaster'
     or cfg['sample_covariance']['compute_sample_cov']
     or cfg['precision']['cov_hs_g_ell_bin_average']
 ):
-    if cfg['C_ell']['use_input_cls']:
-        cl_3x2pt_unb_5d = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(ell_obj.ells_3x2pt_unb),
-            cl_gl_3d=cl_gl_3d_spline(ell_obj.ells_3x2pt_unb),
-            cl_gg_3d=cl_gg_3d_spline(ell_obj.ells_3x2pt_unb),
-        )
+    # in these cases I need an unbinned ell grid
+    cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        ell_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    )
 
-    else:
-        cl_3x2pt_unb_5d = ccl_interface.compute_cl_3x2pt_5d(
-            ccl_obj,
-            ells=ell_obj.ells_3x2pt_unb,
-            zbins=zbins,
-            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-            cl_ccl_kwargs=cl_ccl_kwargs,
-            n_probes_hs=cfg['covariance']['n_probes'],
-        )
 
 if (
     cfg['covariance']['partial_sky_method'] == 'NaMaster'
     or cfg['sample_covariance']['compute_sample_cov']
 ):
     from spaceborne import cov_partial_sky
-
-    # check that the input cls are computed over a fine enough grid
-    if cfg['C_ell']['use_input_cls']:
-        for ells_in, ells_out in zip(
-            [ells_WL_in, ells_XC_in, ells_GC_in],
-            [ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb, ell_obj.ells_3x2pt_unb],
-            strict=True,
-        ):
-            io_handler.check_ells_for_spline(ells_in)
-            io_handler.check_ells_for_spline(ells_out)
 
     # initialize cov_nmt_obj and set a couple useful attributes
     cov_nmt_obj = cov_partial_sky.NmtCov(
@@ -1235,10 +1106,7 @@ if (
     # set unbinned ells in cov_nmt_obj
     cov_nmt_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     cov_nmt_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
-
-    cov_nmt_obj.cl_ll_unb_3d = cl_3x2pt_unb_5d[0, 0]
-    cov_nmt_obj.cl_gl_unb_3d = cl_3x2pt_unb_5d[1, 0]
-    cov_nmt_obj.cl_gg_unb_3d = cl_3x2pt_unb_5d[1, 1]
+    cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
 
 else:
     cov_nmt_obj = None
@@ -1259,25 +1127,12 @@ if obs_space == 'real':
     cov_rs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
     cov_rs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
 
-    # set 3x2pt cls: recompute cls on the finer ell grid...
-    if cfg['C_ell']['use_input_cls']:
-        cl_3x2pt_5d_for_rs = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(cov_rs_obj.ells_proj_g),
-            cl_gl_3d=cl_gl_3d_spline(cov_rs_obj.ells_proj_g),
-            cl_gg_3d=cl_gg_3d_spline(cov_rs_obj.ells_proj_g),
-        )
+    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
+    # and store in the cov_rs_obj
+    cov_rs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        cov_rs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    )
 
-    else:
-        cl_3x2pt_5d_for_rs = ccl_interface.compute_cl_3x2pt_5d(
-            ccl_obj,
-            ells=cov_rs_obj.ells_proj_g,
-            zbins=zbins,
-            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-            cl_ccl_kwargs=cl_ccl_kwargs,
-            n_probes_hs=cfg['covariance']['n_probes'],
-        )
-    # ...and store them in the cov_rs object
-    cov_rs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_rs
 
 # TODO this could probably be done with super.__init__() where super is the
 # cov projector class
@@ -1298,24 +1153,12 @@ if obs_space == 'cosebis':
     if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
         cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
 
-    # set 3x2pt cls: recompute cls on the finer ells_proj_g grid...
-    if cfg['C_ell']['use_input_cls']:
-        cl_3x2pt_5d_for_cs = sl.build_cl_3x2pt_5d(
-            cl_ll_3d=cl_ll_3d_spline(cov_cs_obj.ells_proj_g),
-            cl_gl_3d=cl_gl_3d_spline(cov_cs_obj.ells_proj_g),
-            cl_gg_3d=cl_gg_3d_spline(cov_cs_obj.ells_proj_g),
-        )
-    else:
-        cl_3x2pt_5d_for_cs = ccl_interface.compute_cl_3x2pt_5d(
-            ccl_obj,
-            ells=cov_cs_obj.ells_proj_g,
-            zbins=zbins,
-            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-            cl_ccl_kwargs=cl_ccl_kwargs,
-            n_probes_hs=cfg['covariance']['n_probes'],
-        )
-    # ...and store them in the cov_cs object
-    cov_cs_obj.cl_3x2pt_5d = cl_3x2pt_5d_for_cs
+    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
+    # and store in the cov_cs_obj
+    cov_cs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        cov_cs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    )
+
 
 # !  =============================== Build Gaussian covs ===============================
 if obs_space == 'harmonic':
@@ -1341,11 +1184,6 @@ if (
     'OneCovariance' in cov_terms_and_codes.values()
     or cfg['OneCovariance']['compare_against_oc']
 ):
-    if cfg['ell_cuts']['cl_ell_cuts']:
-        raise NotImplementedError(
-            'TODO double check inputs in this case. This case is untested'
-        )
-
     start_time = time.perf_counter()
 
     # * 1. save ingredients in ascii format
@@ -1967,6 +1805,7 @@ if obs_space != 'harmonic':
 # ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
 # ! to HS, solve it)
 # ! moreover, some of the sub-blocks are transposed.
+
 if cfg['OneCovariance']['compare_against_oc']:
     oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
     if 'OneCovariance' in cov_terms_and_codes.values():
@@ -2210,11 +2049,11 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
 # save cfg file
 run_cfg = deepcopy(cfg)
-for key in ['OneCovariance', 'ell_cuts']:
+for key in ['OneCovariance']:
     if key in run_cfg['covariance']:
         del run_cfg['covariance'][key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
-    yaml.dump(run_cfg, yaml_file, default_flow_style=False)
+    yaml.safe_dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
 
 # save nz
 nz_header = (
@@ -2246,9 +2085,9 @@ np.savetxt(
 )
 
 # save cls
-sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_ll_3d, ell_obj.ells_WL, zbins)
-sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_gl_3d, ell_obj.ells_XC, zbins)
-sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_gg_3d, ell_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_3x2pt_5d[0, 0], ell_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], ell_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], ell_obj.ells_GC, zbins)
 
 # save ell values
 # TODO do this for theta values in the real space case
@@ -2354,7 +2193,7 @@ if cfg['misc']['save_output_as_benchmark']:
         )
 
     with open(f'{bench_filename}.yaml', 'w') as yaml_file:
-        yaml.dump(cfg, yaml_file, default_flow_style=False)
+        yaml.safe_dump(cfg, yaml_file, default_flow_style=False, sort_keys=False)
 
     # ! Save all the values in cov_*_obj.cov_dict
     covs_totest_dict = {}
@@ -2409,9 +2248,6 @@ if cfg['misc']['save_output_as_benchmark']:
         wf_ia=ccl_obj.wf_ia_arr,
         wf_mu=ccl_obj.wf_mu_arr,
         wf_lensing_arr=ccl_obj.wf_lensing_arr,
-        cl_ll_3d=ccl_obj.cl_ll_3d,
-        cl_gl_3d=ccl_obj.cl_gl_3d,
-        cl_gg_3d=ccl_obj.cl_gg_3d,
         cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
         sigma2_b=sigma2_b,
         dPmm_ddeltab=dPmm_ddeltab,
@@ -2425,6 +2261,8 @@ if cfg['misc']['save_output_as_benchmark']:
         **covs_3x2pt_2d_tosave_dict,
         **covs_6d_tosave_dict,
         **misc_dict,
+        **covs_3x2pt_2d_tosave_dict,
+        **covs_6d_tosave_dict,
         metadata=metadata,
     )
 

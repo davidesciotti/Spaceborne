@@ -633,6 +633,9 @@ for load_input_mask, generate_polar_cap in zip(
 # ! BNT transform
 configs_to_test.append({'covariance': {'BNT_transform': True}})
 
+# TODO reduce number of ell bins
+# TODO do not test all binning schemes for all the cases!!
+# TODO sample cov is not tested ad the moment, update
 # ! NAMASTER (test only G cov)
 for cov_type in ['coupled', 'decoupled']:
     for spin0 in [True, False]:

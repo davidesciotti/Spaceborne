@@ -1,6 +1,7 @@
 """Class for reading in data in various formats"""
 
 import itertools
+from pathlib import Path
 
 import numpy as np
 
@@ -12,10 +13,15 @@ def load_nz_euclidlib(nz_filename):
     """basically, this function turns the nz dict into a np array"""
     import euclidlib as el
 
-    try:
+    if hasattr(el, 'photo') and hasattr(el.photo, 'redshift_distributions'):
         z, nz = el.photo.redshift_distributions(nz_filename)
-    except AttributeError:
+    elif hasattr(el, 'phz') and hasattr(el.phz, 'redshift_distributions'):
         z, nz = el.phz.redshift_distributions(nz_filename)
+    else:
+        raise AttributeError(
+            'euclidlib does not have photo.redshift_distributions or '
+            'phz.redshift_distributions'
+        )
 
     nztab = np.zeros((len(z), len(nz)))
     for zi in nz:
@@ -78,13 +84,16 @@ def load_cl_euclidlib(filename, key_a, key_b):
     is_auto_spectrum = key_a == key_b
 
     # import .fits using euclidlib
-    # TODO the bare `except` is horrible but I'm not yet sure what's the definitive
-    #      structure of the euclidlib import
     # try:
     #     cl_dict = el.photo.harmonic_space.angular_power_spectra(filename)
-    # except:
+    # except AttributeError:
     # cl_dict = el.photo.angular_power_spectra(filename)
     cl_dict = el.le3.pk_wl.angular_power_spectra(filename)
+
+    # additional check: make sure the dict is not empty for the required key combination
+    pair_keys = [k for k in cl_dict if k[0] == key_a and k[1] == key_b]
+    if not pair_keys:
+        raise KeyError(f'No spectra found for ({key_a}, {key_b}) in {filename}')
 
     # extract ells
     ells = cl_dict[key_a, key_b, 1, 1].ell
@@ -92,8 +101,8 @@ def load_cl_euclidlib(filename, key_a, key_b):
     nbl = ells.size
 
     # extract zbins (check consistency of columns first)
-    zbins_i = max(i[2] for i in cl_dict)
-    zbins_j = max(i[3] for i in cl_dict)
+    zbins_i = max(i[2] for i in pair_keys)
+    zbins_j = max(i[3] for i in pair_keys)
     assert zbins_i == zbins_j, 'zbins are not the same for all columns'
     zbins = zbins_i
 
@@ -344,15 +353,57 @@ class IOHandler:
         self.cl_cfg = cfg['C_ell']
         self.output_path = cfg['misc']['output_path']
         self.cov_filename = cfg['covariance']['cov_filename']
+        self.probe_selection = cfg['probe_selection']
+        self.ells_WL_in, self.cl_ll_3d_in = None, None
+        self.ells_XC_in, self.cl_gl_3d_in = None, None
+        self.ells_GC_in, self.cl_gg_3d_in = None, None
+        self.set_needed_input_cls()
+
+    def set_needed_input_cls(self):
+        """Sets flags on the required Cl input files based on the requested probes"""
+
+        if not self.cfg['C_ell']['use_input_cls']:
+            self.need_input_cl_ll = False
+            self.need_input_cl_gl = False
+            self.need_input_cl_gg = False
+            return
+
+        # else, if use_input_cls, decide which files are needed based on the
+        # probe selection (careful about the cross-covariance case!)
+        ps = self.cfg['probe_selection']
+        if self.cfg['probe_selection']['space'] == 'harmonic':
+            self.need_input_cl_ll = ps['LL'] or ps['GL']
+            self.need_input_cl_gl = ps['GL'] or (
+                ps['cross_cov'] and ps['LL'] and ps['GG']
+            )
+            self.need_input_cl_gg = ps['GG'] or ps['GL']
+
+        elif self.cfg['probe_selection']['space'] == 'real':
+            self.need_input_cl_ll = ps['xip'] or ps['xim'] or ps['gt']
+            self.need_input_cl_gl = ps['gt'] or (
+                ps['cross_cov'] and (ps['xip'] or ps['xim']) and ps['w']
+            )
+            self.need_input_cl_gg = ps['w'] or ps['gt']
+
+        elif self.cfg['probe_selection']['space'] == 'cosebis':
+            self.need_input_cl_ll = ps['En'] or ps['Bn']
+            self.need_input_cl_gl = False
+            self.need_input_cl_gg = False
+
+        else:
+            raise ValueError(
+                'Unsupported space for probe selection: '
+                f'{self.cfg["probe_selection"]["space"]}'
+            )
 
     def print_cl_path(self):
         """Print the path of the input Cl files"""
-        if self.cfg['C_ell']['use_input_cls']:
+        if self.need_input_cl_ll:
             print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
+        if self.need_input_cl_gl:
             print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
+        if self.need_input_cl_gg:
             print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
-        else:
-            return
 
     def get_nz_fmt(self):
         """Get the format of the input nz files"""
@@ -380,23 +431,36 @@ class IOHandler:
 
     def get_cl_fmt(self):
         """Get the format of the input cl files"""
+
+        cl_filenames_to_check = []
+        if self.need_input_cl_ll:
+            cl_filenames_to_check.append(self.cl_cfg['cl_LL_filename'])
+        if self.need_input_cl_gl:
+            cl_filenames_to_check.append(self.cl_cfg['cl_GL_filename'])
+        if self.need_input_cl_gg:
+            cl_filenames_to_check.append(self.cl_cfg['cl_GG_filename'])
+
         if self.cl_cfg['use_input_cls']:
-            if (
-                self.cl_cfg['cl_LL_filename'].endswith('.txt')
-                and self.cl_cfg['cl_GL_filename'].endswith('.txt')
-                and self.cl_cfg['cl_GG_filename'].endswith('.txt')
-            ) or (
-                self.cl_cfg['cl_LL_filename'].endswith('.dat')
-                and self.cl_cfg['cl_GL_filename'].endswith('.dat')
-                and self.cl_cfg['cl_GG_filename'].endswith('.dat')
+            assert cl_filenames_to_check, (
+                'No Cl filenames provided for the selected probes'
+            )
+            extensions = [
+                Path(cl_filenames_to_check[i]).suffix.lower()
+                for i in range(len(cl_filenames_to_check))
+            ]
+            assert all(ext in ['.txt', '.dat', '.fits'] for ext in extensions), (
+                'Input Cl filenames must end with .txt, .dat, or .fits'
+            )
+            assert all(x == extensions[0] for x in extensions), (
+                'All input Cl files must have the same extension'
+            )
+
+            if all(ext == '.txt' for ext in extensions) or all(
+                ext == '.dat' for ext in extensions
             ):
                 self.cl_fmt = 'spaceborne'
 
-            elif (
-                self.cl_cfg['cl_LL_filename'].endswith('.fits')
-                and self.cl_cfg['cl_GL_filename'].endswith('.fits')
-                and self.cl_cfg['cl_GG_filename'].endswith('.fits')
-            ):
+            elif all(ext == '.fits' for ext in extensions):
                 self.cl_fmt = 'euclidlib'
 
             else:
@@ -449,37 +513,55 @@ class IOHandler:
             self._load_cls_el()
 
         # check symmetry
-        check_cl_symm(self.cl_ll_3d_in)
-        check_cl_symm(self.cl_gg_3d_in)
+        for cl_auto in [self.cl_ll_3d_in, self.cl_gg_3d_in]:
+            if cl_auto is not None:
+                check_cl_symm(cl_auto)
 
     def _load_cls_sb(self):
-        cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_filename'])
-        cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_filename'])
-        cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_filename'])
 
-        self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
-        self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)
-        self.ells_GC_in, self.cl_gg_3d_in = import_cl_tab(cl_gg_tab)
+        if self.need_input_cl_ll:
+            print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
+            cl_ll_tab = np.genfromtxt(self.cl_cfg['cl_LL_filename'])
+            self.ells_WL_in, self.cl_ll_3d_in = import_cl_tab(cl_ll_tab)
+        if self.need_input_cl_gl:
+            print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
+            cl_gl_tab = np.genfromtxt(self.cl_cfg['cl_GL_filename'])
+            self.ells_XC_in, self.cl_gl_3d_in = import_cl_tab(cl_gl_tab)
+        if self.need_input_cl_gg:
+            print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
+            cl_gg_tab = np.genfromtxt(self.cl_cfg['cl_GG_filename'])
+            self.ells_GC_in, self.cl_gg_3d_in = import_cl_tab(cl_gg_tab)
 
     def _load_cls_el(self):
-        self.ells_WL_in, self.cl_ll_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_LL_filename'], 'SHE', 'SHE'
-        )
-        self.ells_XC_in, self.cl_gl_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_GL_filename'], 'POS', 'SHE'
-        )
-        self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
-            self.cl_cfg['cl_GG_filename'], 'POS', 'POS'
-        )
+
+        if self.need_input_cl_ll:
+            print(f'Using input Cls for LL from file\n{self.cl_cfg["cl_LL_filename"]}')
+            self.ells_WL_in, self.cl_ll_3d_in = load_cl_euclidlib(
+                self.cl_cfg['cl_LL_filename'], 'SHE', 'SHE'
+            )
+        if self.need_input_cl_gl:
+            print(f'Using input Cls for GGL from file\n{self.cl_cfg["cl_GL_filename"]}')
+            self.ells_XC_in, self.cl_gl_3d_in = load_cl_euclidlib(
+                self.cl_cfg['cl_GL_filename'], 'POS', 'SHE'
+            )
+        if self.need_input_cl_gg:
+            print(f'Using input Cls for GG from file\n{self.cl_cfg["cl_GG_filename"]}')
+            self.ells_GC_in, self.cl_gg_3d_in = load_cl_euclidlib(
+                self.cl_cfg['cl_GG_filename'], 'POS', 'POS'
+            )
 
     def check_ells_in(self, ell_obj):
         """Make sure ells are sorted and unique for spline interpolation"""
         for _ells in [
-            self.ells_WL_in, ell_obj.ells_WL,
-            self.ells_XC_in, ell_obj.ells_XC,
-            self.ells_GC_in, ell_obj.ells_GC,
-        ]:  # fmt: skip
-            check_ells_for_spline(_ells)
+            self.ells_WL_in,
+            ell_obj.ells_WL,
+            self.ells_XC_in,
+            ell_obj.ells_XC,
+            self.ells_GC_in,
+            ell_obj.ells_GC,
+        ]:
+            if _ells is not None:
+                check_ells_for_spline(_ells)
 
     def save_cov_euclidlib(self, cov_dict: dict):
         """Helper function to save the covariance in the heracles/cloelikeeuclidlib
@@ -503,7 +585,16 @@ class IOHandler:
             'save covariance in .fits format'
         )
 
-        import heracles
+        try:
+            import heracles
+        except ImportError:
+            print(
+                '\nError occurred while importing heracles.\n'
+                'This is probably due to an incompatibility between heracles and '
+                'scipy. Try downgrading scipy to <1.15 and see if the '
+                'issue persists.\n\n'
+            )
+            raise
 
         for term, cov in cov_dict.items():
             save_term(cov, term)

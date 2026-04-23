@@ -310,9 +310,10 @@ sample_covariance:
   # Documentation:
   # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
   # Options: ['namaster', 'healpy'].
-  which_cls: namaster # Type: str.
-  nreal: 5000 # Type: int. Number of realizations for the sample covariance matrix
+  which_cls: healpy # Type: str.
+  nreal: 1000 # Type: int. Number of realizations for the sample covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
+  save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
 
 precision:
   # =============================== harmonic-space cov =================================

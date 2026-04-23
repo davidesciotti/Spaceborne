@@ -91,6 +91,54 @@ Naming conventions (just to ease the notation):
 """
 
 
+def zero_spline_factory(template: np.ndarray) -> callable:
+    """Factory function to create a zero spline with the same shape and dtype
+    as the template array."""
+    shape = template.shape[1:]
+    dtype = template.dtype
+
+    def _zero_spline(x):
+        return np.zeros((len(x), *shape), dtype=dtype)
+
+    return _zero_spline
+
+
+def hartlap_factor(n_sim: int, n_data: int) -> float:
+    """hartlap correction factor for the precision matrix:
+    Cov^{-1}_{corrected} = hartlap_factor * Cov^{-1}_{measured}
+    where hartlap_factor is the value returned by this function.
+
+    Note: Requires n_sim > n_data + 2 for a positive correction factor.
+    """
+    if n_sim <= 1:
+        raise ValueError('n_sim must be > 1 to avoid division by zero')
+
+    if n_sim <= n_data + 2:
+        import warnings
+
+        warnings.warn(
+            f'Hartlap factor is non-positive for n_sim={n_sim}, n_data={n_data}. '
+            'Requires n_sim > n_data + 2 for a valid correction.',
+            stacklevel=2,
+        )
+
+    return (n_sim - n_data - 2) / (n_sim - 1)
+
+
+def percival_factor(n_sim, n_data, n_param):
+    """
+    Percival et al. 2014 correction factor for the inverse covariance matrix.
+    Combined Hartlap + Percival factors.
+    """
+    A = 2 / (n_sim - n_data - 1) / (n_sim - n_data - 4)
+    B = (n_sim - n_data - 2) / (n_sim - n_data - 1) / (n_sim - n_data - 4)
+    m1 = 1 + B * (n_data - n_param)
+    m2 = 1 + A + B * (n_data - n_param)
+    beta = m1 / m2
+
+    return beta
+
+
 def get_probe_combs_wrapper(
     obs_space: str, probe_selection: dict, cross_cov: bool
 ) -> dict:
@@ -4318,11 +4366,11 @@ def cov_4D_to_6D_blocks(
     assert cov_4D.ndim == 4, 'cov_4D must be a 4D array'
     assert cov_4D.shape[0] == nbl, 'cov_4D.shape[0] != nbl'
     assert cov_4D.shape[1] == nbl, 'cov_4D.shape[1] != nbl'
-    
+
     ncols = ind_ab.shape[1]
     zpairs_ab = ind_ab.shape[0]
     zpairs_cd = ind_cd.shape[0]
-    
+
     assert cov_4D.shape[2] == zpairs_ab, 'cov_4D.shape[2] != zpairs_ab'
     assert cov_4D.shape[3] == zpairs_cd, 'cov_4D.shape[3] != zpairs_cd'
 

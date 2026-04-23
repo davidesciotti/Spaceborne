@@ -113,22 +113,6 @@ def cl_bnt_transform_3x2pt(cl_3x2pt_5d, bnt_matrix):
     return cl_3x2pt_bnt_5d
 
 
-def get_ell_cuts_indices(ell_values, ell_cuts_2d_array, zbins):
-    """Creates an array of lists containing the ell indices to cut (to set to 0)
-    for each zi, zj)
-    """
-    ell_idxs_tocut = np.zeros((zbins, zbins), dtype=list)
-    for zi in range(zbins):
-        for zj in range(zbins):
-            ell_cut = ell_cuts_2d_array[zi, zj]
-            if np.any(ell_values > ell_cut):  # i.e., if you need to do a cut at all
-                ell_idxs_tocut[zi, zj] = np.where(ell_values > ell_cut)[0]
-            else:
-                ell_idxs_tocut[zi, zj] = np.array([])
-
-    return ell_idxs_tocut
-
-
 def build_x_matrix_bnt(bnt_matrix):
     """Builds the X matrix for the BNT transform, according to eq.
     :param bnt_matrix:

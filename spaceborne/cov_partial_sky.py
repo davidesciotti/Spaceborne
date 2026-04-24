@@ -1188,6 +1188,7 @@ class NmtCov:
         w00_dict, w02_dict, w22_dict = {}, {}, {}
         cw_dict = {}
 
+        # TODO add possibility to load cached w and cw (I already save them!)
         # in case we use the footprint, these can be computed once
         if self.use_footprint:
             print('\nComputing namaster fields...')
@@ -1273,7 +1274,7 @@ class NmtCov:
             elif self.use_footprint:
                 cw_dict[zi, zj, zk, zl] = cw
 
-        # store in cache for later reuse, if required (TODO)
+        # store in cache for later reuse, if required
         os.makedirs(f'{self.output_path}/cache/nmt', exist_ok=True)
         for zi, zj in tqdm(zij_cross_combs):
             w00_dict[zi, zj].write_to(
@@ -1281,9 +1282,6 @@ class NmtCov:
             )
             w02_dict[zi, zj].write_to(
                 f'{self.output_path}/cache/nmt/wsp_s0s2_zi{zi + 1}zj{zj + 1}.fits'
-            )
-            w22_dict[zi, zj].write_to(
-                f'{self.output_path}/cache/nmt/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits'
             )
             w22_dict[zi, zj].write_to(
                 f'{self.output_path}/cache/nmt/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits'

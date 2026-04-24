@@ -148,14 +148,14 @@ class Mask:
             )
             # get nside and up/downgrade if needed
             for zi in range(self.weight_maps.shape[0]):
-                self.nside_weight_map = hp.get_nside(self.weight_maps[zi])
-                if self.nside is not None and self.nside != self.nside_weight_map:
+                nside_weight_map = hp.get_nside(self.weight_maps[zi])
+                if self.nside is not None and self.nside != nside_weight_map:
                     print(
                         f'Changing map resolution from nside = '
-                        f'{self.nside_weight_map} to nside = {self.nside}'
+                        f'{nside_weight_map} to nside = {self.nside}'
                     )
                     self.weight_maps[zi] = hp.ud_grade(
-                        map_in=self.nside_weight_map, nside_out=self.nside
+                        map_in=self.weight_maps[zi], nside_out=self.nside
                     )
 
         # 2. apodize

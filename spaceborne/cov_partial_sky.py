@@ -1181,14 +1181,16 @@ class NmtCov:
         self.weight_maps_gg = self.mask_obj.weight_maps
         # TODO delete end
 
-        # ! create nmt field from the mask
+        # ! 1. Create field objects
         # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
         f0_dict, f2_dict = {}, {}
         w00_dict, w02_dict, w22_dict = {}, {}, {}
+        cw_dict = {}
 
         # in case we use the footprint, these can be computed once
         if self.use_footprint:
+            print('\nComputing namaster fields...')
             f0_mask = nmt.NmtField(
                 mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=ell_max_eff
             )
@@ -1196,13 +1198,17 @@ class NmtCov:
                 mask=self.mask_obj.mask, maps=None, spin=2, lite=True, lmax=ell_max_eff
             )
 
-            with sl.timer('\nComputing namaster workspaces and coupling matrices...'):
-                w00_mask = nmt.NmtWorkspace()
-                w02_mask = nmt.NmtWorkspace()
-                w22_mask = nmt.NmtWorkspace()
-                w00_mask.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
-                w02_mask.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
-                w22_mask.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
+            print('\nComputing namaster workspaces and coupling matrices...')
+            w00_mask = nmt.NmtWorkspace()
+            w02_mask = nmt.NmtWorkspace()
+            w22_mask = nmt.NmtWorkspace()
+            w00_mask.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
+            w02_mask.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
+            w22_mask.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
+
+            print('\nComputing cov workspace coupling coefficients...')
+            cw = nmt.NmtCovarianceWorkspace()
+            cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
 
         print('\nComputing namaster fields...')
         # now, either compute per-bin fields from weight maps, or just assign the
@@ -1234,6 +1240,7 @@ class NmtCov:
             #     w00[zi, zj].compute_coupling_matrix(...)
             #     w22[zi, zj].compute_coupling_matrix(...)
 
+        # ! 2. Create workspace objects
         print('\nComputing namaster workspaces and coupling matrices...')
         for zi, zj in tqdm(zij_cross_combs):
             if self.use_weight_maps:
@@ -1254,6 +1261,18 @@ class NmtCov:
                 w02_dict[zi, zj] = w02_mask
                 w22_dict[zi, zj] = w22_mask
 
+        # ! 3. Create covariance workspace objects (for the coupled covariance)
+        # TODO is there any way to reduce the number of bin combinations??
+        print('\nComputing cov workspace coupling coefficients...')
+        for zi, zj, zk, zl in tqdm(zijkl_combs):
+            if self.use_weight_maps:
+                cw_dict[zi, zj, zk, zl] = nmt.NmtCovarianceWorkspace()
+                cw_dict[zi, zj, zk, zl].compute_coupling_coefficients(
+                    f0_dict[zi], f0_dict[zj], f0_dict[zk], f0_dict[zl]
+                )
+            elif self.use_footprint:
+                cw_dict[zi, zj, zk, zl] = cw
+
         # store in cache for later reuse, if required (TODO)
         os.makedirs(f'{self.output_path}/cache/nmt', exist_ok=True)
         for zi, zj in tqdm(zij_cross_combs):
@@ -1265,6 +1284,14 @@ class NmtCov:
             )
             w22_dict[zi, zj].write_to(
                 f'{self.output_path}/cache/nmt/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits'
+            )
+            w22_dict[zi, zj].write_to(
+                f'{self.output_path}/cache/nmt/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits'
+            )
+        for zi, zj, zk, zl in tqdm(zijkl_combs):
+            cw_dict[zi, zj, zk, zl].write_to(
+                f'{self.output_path}/cache/nmt/cw_s0s0s0s0_'
+                f'zi{zi + 1}zj{zj + 1}zk{zk + 1}zl{zl + 1}.fits'
             )
 
         # if the coupled covariance is required, I'll later need to convolve the
@@ -1350,16 +1377,7 @@ class NmtCov:
         cl_eb_4covnmt = np.zeros_like(cl_tt_4covnmt)
         cl_bb_4covnmt = np.zeros_like(cl_tt_4covnmt)
 
-        # ! NAMASTER covariance
-        # TODO is there any way to reduce the number of bin combinations??
-        print('\nComputing cov workspace coupling coefficients...')
-        cw = {}
-        for zi, zj, zk, zl in tqdm(zijkl_combs):
-            cw[zi, zj, zk, zl] = nmt.NmtCovarianceWorkspace()
-            cw[zi, zj, zk, zl].compute_coupling_coefficients(
-                f0_dict[zi], f0_dict[zj], f0_dict[zk], f0_dict[zl]
-            )
-
+        # ! Finally, compute covariance
         if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
             coupled_str = self.cfg['covariance']['cov_type']
             spin0_str = ' spin0' if self.cfg['precision']['spin0'] else ''
@@ -1382,7 +1400,7 @@ class NmtCov:
                     nbl=nbl_eff,
                     zbins=self.zbins,
                     ind_dict=self.ind_dict,
-                    cw=cw,
+                    cw=cw_dict,
                     w00=w00_dict,
                     w02=w02_dict,
                     w22=w22_dict,

@@ -847,7 +847,9 @@ def _compute_one_realization(
         )
         f2 = np.array(
             [
-                nmt.NmtField(_weight_per_bin(weight_maps_ll, zi), [q, u], **nmt_field_kw)
+                nmt.NmtField(
+                    _weight_per_bin(weight_maps_ll, zi), [q, u], **nmt_field_kw
+                )
                 for zi, (q, u) in enumerate(corr_maps_ll)
             ]
         )
@@ -1177,14 +1179,15 @@ class NmtCov:
         self.use_weight_maps = True
         self.weight_maps_ll = self.mask_obj.weight_maps
         self.weight_maps_gg = self.mask_obj.weight_maps
-
         # TODO delete end
 
-        # ! create nmt field from the mask (there will be no maps associated to the fields)
+        # ! create nmt field from the mask
+        # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
-        f0, f2 = {}, {}
-        w00, w02, w22 = {}, {}, {}
+        f0_dict, f2_dict = {}, {}
+        w00_dict, w02_dict, w22_dict = {}, {}, {}
 
+        # in case we use the footprint, these can be computed once
         if self.use_footprint:
             f0_mask = nmt.NmtField(
                 mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=ell_max_eff
@@ -1194,52 +1197,75 @@ class NmtCov:
             )
 
             with sl.timer('\nComputing namaster workspaces and coupling matrices...'):
-                w00 = nmt.NmtWorkspace()
-                w02 = nmt.NmtWorkspace()
-                w22 = nmt.NmtWorkspace()
-                w00.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
-                w02.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
-                w22.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
+                w00_mask = nmt.NmtWorkspace()
+                w02_mask = nmt.NmtWorkspace()
+                w22_mask = nmt.NmtWorkspace()
+                w00_mask.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
+                w02_mask.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
+                w22_mask.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
 
-        elif self.use_weight_maps:
-            print('\nComputing namaster fields...')
-            for zi in tqdm(range(self.zbins)):
-                f0[zi] = nmt.NmtField(
+        print('\nComputing namaster fields...')
+        # now, either compute per-bin fields from weight maps, or just assign the
+        # same field (from the footprint) to all bins (i.e., to all keys in the dict)
+        for zi in tqdm(range(self.zbins)):
+            if self.use_weight_maps:
+                f0_dict[zi] = nmt.NmtField(
                     mask=self.weight_maps_gg[zi],
                     maps=None,
                     spin=0,
                     lite=True,
                     lmax=ell_max_eff,
                 )
-                f2[zi] = nmt.NmtField(
+                f2_dict[zi] = nmt.NmtField(
                     mask=self.weight_maps_ll[zi],
                     maps=None,
                     spin=2,
                     lite=True,
                     lmax=ell_max_eff,
                 )
+            elif self.use_footprint:
+                f0_dict[zi] = f0_mask
+                f2_dict[zi] = f2_mask
 
             # in principle I could do this for w00 and w22, but let's start easy
             # for zi, zj in tqdm(zij_auto_combs):
             #     w00[zi, zj] = nmt.NmtWorkspace()
             #     w22[zi, zj] = nmt.NmtWorkspace()
-            #     w00[zi, zj].compute_coupling_matrix(f0[zi], f0[zj], nmt_bin_obj)
-            #     w22[zi, zj].compute_coupling_matrix(f2[zi], f2[zj], nmt_bin_obj)
-            print('\nComputing namaster workspaces and coupling matrices...')
-            for zi, zj in tqdm(zij_cross_combs):
-                w00[zi, zj] = nmt.NmtWorkspace()
-                w02[zi, zj] = nmt.NmtWorkspace()
-                w22[zi, zj] = nmt.NmtWorkspace()
-                w00[zi, zj].compute_coupling_matrix(f0[zi], f0[zj], nmt_bin_obj)
-                w02[zi, zj].compute_coupling_matrix(f0[zi], f2[zj], nmt_bin_obj)
-                w22[zi, zj].compute_coupling_matrix(f2[zi], f2[zj], nmt_bin_obj)
+            #     w00[zi, zj].compute_coupling_matrix(...)
+            #     w22[zi, zj].compute_coupling_matrix(...)
+
+        print('\nComputing namaster workspaces and coupling matrices...')
+        for zi, zj in tqdm(zij_cross_combs):
+            if self.use_weight_maps:
+                w00_dict[zi, zj] = nmt.NmtWorkspace()
+                w02_dict[zi, zj] = nmt.NmtWorkspace()
+                w22_dict[zi, zj] = nmt.NmtWorkspace()
+                w00_dict[zi, zj].compute_coupling_matrix(
+                    f0_dict[zi], f0_dict[zj], nmt_bin_obj
+                )
+                w02_dict[zi, zj].compute_coupling_matrix(
+                    f0_dict[zi], f2_dict[zj], nmt_bin_obj
+                )
+                w22_dict[zi, zj].compute_coupling_matrix(
+                    f2_dict[zi], f2_dict[zj], nmt_bin_obj
+                )
+            elif self.use_footprint:
+                w00_dict[zi, zj] = w00_mask
+                w02_dict[zi, zj] = w02_mask
+                w22_dict[zi, zj] = w22_mask
 
         # store in cache for later reuse, if required (TODO)
         os.makedirs(f'{self.output_path}/cache/nmt', exist_ok=True)
         for zi, zj in tqdm(zij_cross_combs):
-            w00[zi, zj].write_to(f'{self.output_path}/cache/nmt/w00_{zi}_{zj}_wsp.fits')
-            w02[zi, zj].write_to(f'{self.output_path}/cache/nmt/w02_{zi}_{zj}_wsp.fits')
-            w22[zi, zj].write_to(f'{self.output_path}/cache/nmt/w22_{zi}_{zj}_wsp.fits')
+            w00_dict[zi, zj].write_to(
+                f'{self.output_path}/cache/nmt/wsp_s0s0_zi{zi + 1}zj{zj + 1}.fits'
+            )
+            w02_dict[zi, zj].write_to(
+                f'{self.output_path}/cache/nmt/wsp_s0s2_zi{zi + 1}zj{zj + 1}.fits'
+            )
+            w22_dict[zi, zj].write_to(
+                f'{self.output_path}/cache/nmt/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits'
+            )
 
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
@@ -1251,19 +1277,21 @@ class NmtCov:
             self.mcm_te_binned, self.mcm_ee_binned = {}, {}
             for zi, zj in tqdm(zij_cross_combs):
                 w20[zi, zj] = nmt.NmtWorkspace()
-                w20[zi, zj].compute_coupling_matrix(f2[zi], f0[zj], nmt_bin_obj)
+                w20[zi, zj].compute_coupling_matrix(
+                    f2_dict[zi], f0_dict[zj], nmt_bin_obj
+                )
 
                 # extract only the relevant blocks
-                mcm_tt_unb[zi, zj] = w00[zi, zj].get_coupling_matrix()[
+                mcm_tt_unb[zi, zj] = w00_dict[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
                 mcm_et_unb[zi, zj] = w20[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
-                mcm_te_unb[zi, zj] = w02[zi, zj].get_coupling_matrix()[
+                mcm_te_unb[zi, zj] = w02_dict[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
-                mcm_ee_unb[zi, zj] = w22[zi, zj].get_coupling_matrix()[
+                mcm_ee_unb[zi, zj] = w22_dict[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
 
@@ -1304,9 +1332,15 @@ class NmtCov:
                     np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
                 ]
                 # TODO the denominator should be the product of the masks?
-                cl_gg_4covnmt[:, zi, zj] = w00[zi, zj].couple_cell(list_gg)[0] / fsky
-                cl_gl_4covnmt[:, zi, zj] = w02[zi, zj].couple_cell(list_gl)[0] / fsky
-                cl_ll_4covnmt[:, zi, zj] = w22[zi, zj].couple_cell(list_ll)[0] / fsky
+                cl_gg_4covnmt[:, zi, zj] = (
+                    w00_dict[zi, zj].couple_cell(list_gg)[0] / fsky
+                )
+                cl_gl_4covnmt[:, zi, zj] = (
+                    w02_dict[zi, zj].couple_cell(list_gl)[0] / fsky
+                )
+                cl_ll_4covnmt[:, zi, zj] = (
+                    w22_dict[zi, zj].couple_cell(list_ll)[0] / fsky
+                )
 
         # add noise to spectra to compute NMT cov
         cl_tt_4covnmt = cl_gg_4covnmt + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
@@ -1323,7 +1357,7 @@ class NmtCov:
         for zi, zj, zk, zl in tqdm(zijkl_combs):
             cw[zi, zj, zk, zl] = nmt.NmtCovarianceWorkspace()
             cw[zi, zj, zk, zl].compute_coupling_coefficients(
-                f0[zi], f0[zj], f0[zk], f0[zl]
+                f0_dict[zi], f0_dict[zj], f0_dict[zk], f0_dict[zl]
             )
 
         if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
@@ -1349,9 +1383,9 @@ class NmtCov:
                     zbins=self.zbins,
                     ind_dict=self.ind_dict,
                     cw=cw,
-                    w00=w00,
-                    w02=w02,
-                    w22=w22,
+                    w00=w00_dict,
+                    w02=w02_dict,
+                    w22=w22_dict,
                     unique_probe_combs=unique_probe_combs,
                     nonreq_probe_combs=self.nonreq_probe_combs,
                     coupled=self.coupled_cov,
@@ -1406,6 +1440,7 @@ class NmtCov:
 
             # ! note that self.cov_dict is mutated in-place, no need to return it
             start = time.perf_counter()
+            _path = f'{self.output_path}/cache/nmt'
             result = sample_covariance_parallel(
                 cov_dict=self.cov_dict,
                 cl_GG_unbinned=cl_tt_4covsim,
@@ -1424,9 +1459,9 @@ class NmtCov:
                 which_cls=self.cfg['sample_covariance']['which_cls'],
                 nmt_bin_obj=nmt_bin_obj,
                 lmax=ell_max_eff,
-                w00_path_template=f'{self.output_path}/cache/nmt/w00_{{zi}}_{{zj}}_wsp.fits',
-                w02_path_template=f'{self.output_path}/cache/nmt/w02_{{zi}}_{{zj}}_wsp.fits',
-                w22_path_template=f'{self.output_path}/cache/nmt/w22_{{zi}}_{{zj}}_wsp.fits',
+                w00_path_template=f'{_path}/wsp_s0s0_zi{zi + 1}zj{zj + 1}.fits',
+                w02_path_template=f'{_path}/wsp_s0s2_zi{zi + 1}zj{zj + 1}.fits',
+                w22_path_template=f'{_path}/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits',
                 fix_seed=self.cfg['sample_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],
             )

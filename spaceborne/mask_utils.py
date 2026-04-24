@@ -126,8 +126,16 @@ class Mask:
         )
 
         if self.load_mask:
+            # load
             self.load_mask_func()
+            # get nside and up/downgrade if needed
             self.nside_mask = hp.get_nside(self.mask)
+            if self.nside is not None and self.nside != self.nside_mask:
+                print(
+                    f'Changing mask resolution from nside = '
+                    f'{self.nside_mask} to nside = {self.nside}'
+                )
+                self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
 
         elif self.generate_polar_cap:
             self.mask = generate_polar_cap_func(
@@ -138,14 +146,17 @@ class Mask:
             self.weight_maps = io_handler.load_weight_map_fits(
                 self.weight_maps_filename
             )
-            self.nside_weight_map = hp.get_nside(self.weight_maps[0])
-
-        if self.load_mask and self.nside is not None and self.nside != self.nside_mask:
-            print(
-                f'Changing mask resolution from nside = '
-                f'{self.nside_mask} to nside = {self.nside}'
-            )
-            self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
+            # get nside and up/downgrade if needed
+            for zi in range(self.weight_maps.shape[0]):
+                self.nside_weight_map = hp.get_nside(self.weight_maps[zi])
+                if self.nside is not None and self.nside != self.nside_weight_map:
+                    print(
+                        f'Changing map resolution from nside = '
+                        f'{self.nside_weight_map} to nside = {self.nside}'
+                    )
+                    self.weight_maps[zi] = hp.ud_grade(
+                        map_in=self.nside_weight_map, nside_out=self.nside
+                    )
 
         # 2. apodize
         if hasattr(self, 'mask') and self.apodize:

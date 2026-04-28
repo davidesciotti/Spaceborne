@@ -908,11 +908,11 @@ def compare_2d_covs(
         compare_funcs(
             x=None,
             y={
-                f'abs diag {name_a}': np.diag(np.abs(cov_a)),
-                f'abs diag {name_b}': np.diag(np.abs(cov_b)),
+                f'{name_a}': np.diag(np.abs(cov_a)),
+                f'{name_b}': np.diag(np.abs(cov_b)),
             },
             logscale_y=[True, False],
-            title=title + ' diag',
+            title=title + ' abs diag',
         )
 
     # compare cov flat
@@ -920,12 +920,12 @@ def compare_2d_covs(
         compare_funcs(
             x=None,
             y={
-                f'abs flat {name_a}': np.abs(cov_a).flatten(),
-                f'abs flat {name_b}': np.abs(cov_b).flatten(),
+                f'{name_a}': np.abs(cov_a).flatten(),
+                f'{name_b}': np.abs(cov_b).flatten(),
             },
             logscale_y=[True, False],
             ylim_diff=[-100, 100],
-            title=title + ' flat',
+            title=title + ' abs flat',
         )
 
     # compare SB against mat - cov spectrum

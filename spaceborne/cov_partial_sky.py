@@ -1288,7 +1288,10 @@ class NmtCov:
                 f'{self.cache_path}...'
             )
         else:
-            print('\nComputing cov workspace coupling coefficients...')
+            print(
+                '\nComputing cov workspace coupling coefficients '
+                '(this may take a while)...'
+            )
 
         for probe_abcd in tqdm(unique_probe_combs):
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
@@ -1330,6 +1333,7 @@ class NmtCov:
                     # ! option 2: compute from footprint
                     elif self.use_footprint and not self.load_cached_wsp:
                         cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = cw
+
                     # ! option 3: load cached
                     elif self.load_cached_wsp:
                         spin_list = [0 if p == 'G' else 2 for p in probe_abcd]
@@ -1388,28 +1392,20 @@ class NmtCov:
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
         # (mcm), which I store in self
+        # TODO XXX again, only loop over the unique zpairs
         if (
             self.coupled_cov
             and (self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG'])
         ) or self.cfg['covariance']['save_mcms']:
             print('\nComputing and binning mode coupling matrices...')
-            # w20 = {}
-            mcm_tt_unb, mcm_et_unb, mcm_te_unb, mcm_ee_unb = {}, {}, {}, {}
+            mcm_tt_unb, mcm_te_unb, mcm_ee_unb = {}, {}, {}, {}
             self.mcm_tt_binned, self.mcm_et_binned = {}, {}
             self.mcm_te_binned, self.mcm_ee_binned = {}, {}
             for zi, zj in tqdm(zij_cross_combs):
-                # w20[zi, zj] = nmt.NmtWorkspace()
-                # w20[zi, zj].compute_coupling_matrix(
-                # f2_dict[zi], f0_dict[zj], nmt_bin_obj
-                # )
-
                 # extract only the relevant blocks
                 mcm_tt_unb[zi, zj] = w00_dict[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
-                # mcm_et_unb[zi, zj] = w20[zi, zj].get_coupling_matrix()[
-                # :nbl_unb, :nbl_unb
-                # ]
                 mcm_te_unb[zi, zj] = w02_dict[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
@@ -1419,7 +1415,6 @@ class NmtCov:
 
                 # bin (and store in self)
                 self.mcm_tt_binned[zi, zj] = bin_mcm(mcm_tt_unb[zi, zj], nmt_bin_obj)
-                # self.mcm_et_binned[zi, zj] = bin_mcm(mcm_et_unb[zi, zj], nmt_bin_obj)
                 self.mcm_te_binned[zi, zj] = bin_mcm(mcm_te_unb[zi, zj], nmt_bin_obj)
                 self.mcm_ee_binned[zi, zj] = bin_mcm(mcm_ee_unb[zi, zj], nmt_bin_obj)
 
@@ -1427,7 +1422,6 @@ class NmtCov:
                 np.savez(
                     f'{self.output_path}/mode_coupling_matrices.npz',
                     mcm_gg_unbinned=mcm_tt_unb,
-                    # mcm_lg_unbinned=mcm_et_unb,
                     mcm_gl_unbinned=mcm_te_unb,
                     mcm_ll_unbinned=mcm_ee_unb,
                     mcm_gg_binned=self.mcm_tt_binned,

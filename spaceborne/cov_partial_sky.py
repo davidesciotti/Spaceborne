@@ -212,7 +212,7 @@ def nmt_gaussian_cov_opt(
                 zi, zj, zk, zl = int(zi), int(zj), int(zk), int(zl)
 
                 cov_l1l2 = nmt.gaussian_covariance(
-                    cw=cw_dict[zi, zj, zk, zl],
+                    cw=cw_dict[probe_ab, probe_cd][zi, zj, zk, zl],
                     spin_a1=0 if spin0 else s1,
                     spin_a2=0 if spin0 else s2,
                     spin_b1=0 if spin0 else s3,
@@ -668,8 +668,9 @@ def sample_covariance_parallel( # fmt: skip
     cov_dict,
     cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned,
     cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned,
-    nbl, zbins, weight_maps_gg, weight_maps_ll, nside, nreal, coupled_cls, which_cls, nmt_bin_obj,
-    w00_path_template, w02_path_template, w22_path_template, lmax, fix_seed=True, n_jobs=None,
+    nbl, zbins, weight_maps_gg, weight_maps_ll, nside, nreal, 
+    coupled_cls, which_cls, nmt_bin_obj,
+    wsp_path_template, lmax, fix_seed=True, n_jobs=None,
 ):  # fmt: skip
 
     SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
@@ -723,9 +724,7 @@ def sample_covariance_parallel( # fmt: skip
             weight_maps_ll=weight_maps_ll,
             coupled_cls=coupled_cls,
             which_cls=which_cls,
-            w00_path_template=w00_path_template,
-            w02_path_template=w02_path_template,
-            w22_path_template=w22_path_template,
+            wsp_path_template=wsp_path_template,
             nbl=nbl,
             ell_min_edges=ell_min_edges,
             ell_max_edges=ell_max_edges,
@@ -791,9 +790,7 @@ def _compute_one_realization(
     weight_maps_ll,
     coupled_cls,
     which_cls,
-    w00_path_template,
-    w02_path_template,
-    w22_path_template,
+    wsp_path_template,
     nbl,
     ell_min_edges,
     ell_max_edges,
@@ -810,9 +807,9 @@ def _compute_one_realization(
         w00[zi, zj] = nmt.NmtWorkspace()
         w02[zi, zj] = nmt.NmtWorkspace()
         w22[zi, zj] = nmt.NmtWorkspace()
-        w00[zi, zj].read_from(w00_path_template.format(zi=zi, zj=zj))
-        w02[zi, zj].read_from(w02_path_template.format(zi=zi, zj=zj))
-        w22[zi, zj].read_from(w22_path_template.format(zi=zi, zj=zj))
+        w00[zi, zj].read_from(wsp_path_template.format(0, 0, zi=zi, zj=zj))
+        w02[zi, zj].read_from(wsp_path_template.format(0, 2, zi=zi, zj=zj))
+        w22[zi, zj].read_from(wsp_path_template.format(2, 2, zi=zi, zj=zj))
 
     # Reconstruct NmtBin object from edges (nmt_bin_obj objects are not picklable)
     nmt_bin_obj = nmt.NmtBin.from_edges(ell_min_edges, ell_max_edges)
@@ -1106,6 +1103,10 @@ class NmtCov:
         self.output_path = self.cfg['misc']['output_path']
         self.load_cached_wsp = self.cfg['covariance']['load_cached_nmt_workspaces']
 
+        self.wsp_fname = 'wsp_s{:d}s{:d}_zi{zi:d}zj{zj:d}.fits'
+        self.cw_fname = 'cw_s{:d}s{:d}s{:d}s{:d}_zi{zi:d}zj{zj:d}zk{zk:d}zl{zl:d}.fits'
+        self.cache_path = f'{self.output_path}/cache/nmt'
+
         # instantiate cov dict
         # ! note that this class only computes
         #   - g term
@@ -1238,22 +1239,16 @@ class NmtCov:
                 f0_dict[zi] = f0_mask
                 f2_dict[zi] = f2_mask
 
-            # in principle I could do this for w00 and w22, but let's start easy
-            # for zi, zj in tqdm(zij_auto_combs):
-            #     w00[zi, zj] = nmt.NmtWorkspace()
-            #     w22[zi, zj] = nmt.NmtWorkspace()
-            #     w00[zi, zj].compute_coupling_matrix(...)
-            #     w22[zi, zj].compute_coupling_matrix(...)
-
         # ! 2. Create workspace objects
+        # TODO XXX this can be made probe-dependent as for cw, and looped only over
+        # TODO XXX unique pairs
         if self.load_cached_wsp:
             print(
                 '\nLoading namaster workspaces and coupling matrices from\n'
-                f'{self.output_path}/cache/nmt...'
+                f'{self.cache_path}...'
             )
         else:
             print('\nComputing namaster workspaces and coupling matrices...')
-
         for zi, zj in tqdm(zij_cross_combs):
             if self.use_weight_maps and not self.load_cached_wsp:
                 w00_dict[zi, zj] = nmt.NmtWorkspace()
@@ -1275,36 +1270,31 @@ class NmtCov:
                 w22_dict[zi, zj] = w22_mask
 
             elif self.load_cached_wsp:
+                w00_name = self.wsp_fname.format(0, 0, zi=zi, zj=zj)
+                w02_name = self.wsp_fname.format(0, 2, zi=zi, zj=zj)
+                w22_name = self.wsp_fname.format(2, 2, zi=zi, zj=zj)
                 w00_dict[zi, zj] = nmt.NmtWorkspace()
                 w02_dict[zi, zj] = nmt.NmtWorkspace()
                 w22_dict[zi, zj] = nmt.NmtWorkspace()
-                w00_dict[zi, zj].read_from(
-                    f'{self.output_path}/cache/nmt/wsp_s0s0_zi{zi + 1}zj{zj + 1}.fits'
-                )
-                w02_dict[zi, zj].read_from(
-                    f'{self.output_path}/cache/nmt/wsp_s0s2_zi{zi + 1}zj{zj + 1}.fits'
-                )
-                w22_dict[zi, zj].read_from(
-                    f'{self.output_path}/cache/nmt/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits'
-                )
+                w00_dict[zi, zj].read_from(f'{self.cache_path}/{w00_name}')
+                w02_dict[zi, zj].read_from(f'{self.cache_path}/{w02_name}')
+                w22_dict[zi, zj].read_from(f'{self.cache_path}/{w22_name}')
 
         # ! 3. Create covariance workspace objects (for the coupled covariance)
         # TODO is there any way to reduce the number of bin combinations??
         if self.load_cached_wsp:
             print(
                 '\nLoading cov workspace coupling coefficients from\n'
-                f'{self.output_path}/cache/nmt...'
+                f'{self.cache_path}...'
             )
         else:
             print('\nComputing cov workspace coupling coefficients...')
 
-        # the cw doen
         for probe_abcd in tqdm(unique_probe_combs):
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             cw_dict[probe_ab, probe_cd] = {}
             zpairs_ab = self.ind_dict[probe_ab].shape[0]
             zpairs_cd = self.ind_dict[probe_cd].shape[0]
-
             is_auto = probe_ab == probe_cd
 
             # symmetry note: for auto-blocks (LL, LL), (GL, GL), (GG, GG),
@@ -1337,46 +1327,49 @@ class NmtCov:
                             zi, zj, zk, zl
                         ].compute_coupling_coefficients(_f1, _f2, _f3, _f4)
 
-                        # fill lower triangle by reference for auto-blocks
-                        # (if zkl > zij, we are in the upper triangle,
-                        # so swapping them gives the corresponding point in the lower
-                        # triangle)
-                        if is_auto and zkl > zij:
-                            cw_dict[probe_ab, probe_cd][zk, zl, zi, zj] = cw_dict[
-                                probe_ab, probe_cd
-                            ][zi, zj, zk, zl]
-
                     # ! option 2: compute from footprint
                     elif self.use_footprint and not self.load_cached_wsp:
                         cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = cw
                     # ! option 3: load cached
                     elif self.load_cached_wsp:
+                        spin_list = [0 if p == 'G' else 2 for p in probe_abcd]
+                        cw_name = self.cw_fname.format(
+                            *spin_list, zi=zi, zj=zj, zk=zk, zl=zl
+                        )
                         cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = (
                             nmt.NmtCovarianceWorkspace()
                         )
                         cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].read_from(
-                            f'{self.output_path}/cache/nmt/cw_{probe_abcd}_'
-                            f'zi{zi + 1}zj{zj + 1}zk{zk + 1}zl{zl + 1}.fits'
+                            f'{self.cache_path}/{cw_name}'
                         )
+
+                    # fill lower triangle by reference for auto-blocks
+                    # (if zkl > zij, we are in the upper triangle,
+                    # so swapping them gives the corresponding point in the lower
+                    # triangle)
+                    # TODO XXX this can be done at the nmt cov level and deleted here!
+                    if is_auto and zkl > zij:
+                        cw_dict[probe_ab, probe_cd][zk, zl, zi, zj] = cw_dict[
+                            probe_ab, probe_cd
+                        ][zi, zj, zk, zl]
 
         # ! store in cache for later reuse, if not already loaded
         if not self.load_cached_wsp:
-            os.makedirs(f'{self.output_path}/cache/nmt', exist_ok=True)
+            os.makedirs(f'{self.cache_path}', exist_ok=True)
             print('\nSaving namaster workspaces in cache...')
             for zi, zj in tqdm(zij_cross_combs):
-                w00_dict[zi, zj].write_to(
-                    f'{self.output_path}/cache/nmt/wsp_s0s0_zi{zi + 1}zj{zj + 1}.fits'
-                )
-                w02_dict[zi, zj].write_to(
-                    f'{self.output_path}/cache/nmt/wsp_s0s2_zi{zi + 1}zj{zj + 1}.fits'
-                )
-                w22_dict[zi, zj].write_to(
-                    f'{self.output_path}/cache/nmt/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits'
-                )
+                w00_name = self.wsp_fname.format(0, 0, zi=zi, zj=zj)
+                w02_name = self.wsp_fname.format(0, 2, zi=zi, zj=zj)
+                w22_name = self.wsp_fname.format(2, 2, zi=zi, zj=zj)
+                w00_dict[zi, zj].write_to(f'{self.cache_path}/{w00_name}')
+                w02_dict[zi, zj].write_to(f'{self.cache_path}/{w02_name}')
+                w22_dict[zi, zj].write_to(f'{self.cache_path}/{w22_name}')
 
             print('\nSaving covariance workspaces in cache...')
-            for probe_abcd in unique_probe_combs:
+            for probe_abcd in tqdm(unique_probe_combs):
                 probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+                zpairs_ab = self.ind_dict[probe_ab].shape[0]
+                zpairs_cd = self.ind_dict[probe_cd].shape[0]
                 is_auto = probe_ab == probe_cd
                 for zij in range(zpairs_ab):
                     zkl_range = range(zij, zpairs_cd) if is_auto else range(zpairs_cd)
@@ -1384,9 +1377,12 @@ class NmtCov:
                         _, _, zi, zj = self.ind_dict[probe_ab][zij]
                         _, _, zk, zl = self.ind_dict[probe_cd][zkl]
                         zi, zj, zk, zl = int(zi), int(zj), int(zk), int(zl)
+                        spin_list = [0 if p == 'G' else 2 for p in probe_abcd]
+                        cw_name = self.cw_fname.format(
+                            *spin_list, zi=zi, zj=zj, zk=zk, zl=zl
+                        )
                         cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].write_to(
-                            f'{self.output_path}/cache/nmt/cw_{probe_abcd}_'
-                            f'zi{zi + 1}zj{zj + 1}zk{zk + 1}zl{zl + 1}.fits'
+                            f'{self.cache_path}/{cw_name}'
                         )
 
         # if the coupled covariance is required, I'll later need to convolve the
@@ -1558,7 +1554,6 @@ class NmtCov:
 
             # ! note that self.cov_dict is mutated in-place, no need to return it
             start = time.perf_counter()
-            _path = f'{self.output_path}/cache/nmt'
             result = sample_covariance_parallel(
                 cov_dict=self.cov_dict,
                 cl_GG_unbinned=cl_tt_4covsim,
@@ -1577,9 +1572,7 @@ class NmtCov:
                 which_cls=self.cfg['sample_covariance']['which_cls'],
                 nmt_bin_obj=nmt_bin_obj,
                 lmax=ell_max_eff,
-                w00_path_template=f'{_path}/wsp_s0s0_zi{zi + 1}zj{zj + 1}.fits',
-                w02_path_template=f'{_path}/wsp_s0s2_zi{zi + 1}zj{zj + 1}.fits',
-                w22_path_template=f'{_path}/wsp_s2s2_zi{zi + 1}zj{zj + 1}.fits',
+                wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['sample_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],
             )
@@ -1588,7 +1581,7 @@ class NmtCov:
 
             if self.cfg['sample_covariance']['save_sim_cls']:
                 np.savez_compressed(
-                    self.cfg['misc']['output_path'] + '/sample_cov_sim_cls.npz',
+                    f'{self.cfg["misc"]["output_path"]}/sample_cov_sim_cls.npz',
                     sim_cl_LL=self.sim_cl_LL,
                     sim_cl_GL=self.sim_cl_GL,
                     sim_cl_GG=self.sim_cl_GG,

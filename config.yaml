@@ -12,7 +12,6 @@
 # melodie: /_home/cosmo/davide.sciotti/data
 # mileva: /_data/sciotti
 
-
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
   Ob: 0.05 # Type: float. Baryonic density parameter Omega_b, at z=0
@@ -97,8 +96,8 @@ nz:
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
-  ngal_sources: [8.09216, 7.09215, 6.09215] # Type: list[float]
-  ngal_lenses: [1.09216, 2.09215, 3.09215] # Type: list[float]
+  ngal_sources: [ 8.09216, 7.09215, 6.09215 ] # Type: list[float]
+  ngal_lenses: [ 1.09216, 2.09215, 3.09215 ] # Type: list[float]
 
   # [Note] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -107,8 +106,8 @@ nz:
   normalize_nz: True # Type: bool. Whether to normalize the input n_i(z) if they are not already (within atol=0, rtol=1e-3)
 
   shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-  dzWL: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
-  dzGC: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
+  dzWL: [ 0.0, 0.0, 0.0 ] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
+  dzGC: [ 0.0, 0.0, 0.0 ] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
@@ -169,8 +168,8 @@ C_ell:
 
   # Coefficients of the third-order polynomial galaxy and magnification bias.
   # The order is [z^0, z^1, z^2, z^3]
-  galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
-  magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
+  galaxy_bias_fit_coeff: [ 1.33291, -0.72414, 1.0183, -0.14913 ] # Type: list[float]
+  magnification_bias_fit_coeff: [ -1.50685, 1.35034, 0.08321, 0.04279 ] # Type: list[float]
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
@@ -186,7 +185,7 @@ C_ell:
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
-  mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
+  mult_shear_bias: [ 0.0, 0.0, 0.0 ] # Type: list[float]
 
   # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
   has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
@@ -200,22 +199,26 @@ C_ell:
     limber_integration_method: spline # Type: str
     non_limber_integration_method: FKEM # Type: str
 
+# Generate a polar cap (binary) footprint on the fly.
+# Load the footprint from file, common to all redshift bins.
+# Load the per-bin weight maps from file
 mask:
-  load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-  mask_filename: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
-  generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
-  # TODO the exclusivity of these three should be checked better  
-  load_weight_maps: True
-  weight_maps_filename: ../../data/DATA/Spaceborne_jobs/shear_weight_maps_nmt/input/shear_weight_map.fits
+  LL:
+    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    footprint_filename: ../../data/DATA/Spaceborne_jobs/cov_validation_2026/cov_FS2_jose/input/vmap_binary.fits # Type: str. 
+    weight_maps_filename: ../../data/DATA/Spaceborne_jobs/cov_validation_2026/cov_FS2_jose/input/shear_weight_map.fits # optional (null => disabled)
+  GG:
+    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    footprint_filename: ../../data/DATA/Spaceborne_jobs/cov_validation_2026/cov_FS2_jose/input/vmap_binary.fits
+    weight_maps_filename: null # Type: str. 
 
   # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
   # If null (None), the nside of the input mask will be used, without up/downgrading.
   nside: 1024 # Type: int | None.
 
-  survey_area_deg2: 13245 # Type: int
+  survey_area_deg2: 13245 # Type: int. Only used if geometry is set to 'polar_cap'. 
   apodize: False # Type: bool
   aposize: 0.1 # Type: float. Apodization scale in deg
-
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -249,7 +252,7 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.16, 0.36] # Type: list[float]
+  sigma_eps_i: [ 0.26, 0.16, 0.36 ] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the
   # Gaussian covariance matrix.
@@ -290,7 +293,6 @@ covariance:
   # - scale_probe_zpair: Ordered by scale index (ell/theta/n), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
-
   # =================================== output =======================================
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
   # The output will be a npz file for each term, containing arrays of shape
@@ -305,6 +307,7 @@ covariance:
   # When using NaMaster for the partial-sky Gaussian covariance, choose whether to 
   # save the (binned and unbinned) mode coupling matrices (mcm) 
   save_mcms: True # Type: bool. 
+  load_cached_nmt_workspaces: False # Type: bool. Whether to load the NaMaster workspaces from the cache, if they have already been computed.
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
@@ -333,7 +336,7 @@ sample_covariance:
   # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
   # Options: ['namaster', 'healpy'].
   which_cls: healpy # Type: str.
-  nreal: 2 # Type: int. Number of realizations for the sample covariance matrix
+  nreal: 20000 # Type: int. Number of realizations for the sample covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
 
@@ -410,7 +413,8 @@ precision:
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
-  spline_params: # Type: dict | None
+  spline_params:
+    # Type: dict | None
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 

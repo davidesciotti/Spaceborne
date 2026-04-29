@@ -1106,7 +1106,7 @@ class NmtCov:
         # TODO delete
         self.use_footprint = self.cfg['mask']['use_footprint']
         self.use_weight_maps = self.cfg['mask']['use_footprint']
-        self.weight_maps_ll = self.mask_obj.weight_maps_ll
+        self.weight_maps_ll = self.mask_obj.weight_maps
         self.weight_maps_gg = self.mask_obj.weight_maps_gg
         # TODO delete end
 
@@ -1152,7 +1152,7 @@ class NmtCov:
         # 1. ell binning
         # shorten names for brevity
         nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
-        fsky = self.mask_obj.fsky
+        fsky = self.mask_obj.fsky_footprint
         unique_probe_combs = self.pvt_cfg['unique_probe_combs_hs']
 
         zij_auto_combs = list(combinations_with_replacement(range(self.zbins), 2))
@@ -1201,7 +1201,7 @@ class NmtCov:
                 mask=self.mask_obj.footprint_gg, maps=None, spin=0, lite=True, lmax=ell_max_eff
             )
             f2_mask = nmt.NmtField(
-                mask=self.mask_obj.footprint_ll, maps=None, spin=2, lite=True, lmax=ell_max_eff
+                mask=self.mask_obj.footprint, maps=None, spin=2, lite=True, lmax=ell_max_eff
             )
 
             print('\nComputing namaster workspaces and coupling matrices...')

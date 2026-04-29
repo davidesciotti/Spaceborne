@@ -226,27 +226,17 @@ class SpaceborneConfigChecker:
         # Mask
         assert isinstance(self.cfg['mask'], dict), "Section 'mask' must be a dictionary"
         mask_cfg = self.cfg['mask']
-        assert isinstance(mask_cfg['use_polar_cap'], bool), (
-            'mask: use_polar_cap must be a boolean'
-        )
-        assert isinstance(mask_cfg['use_footprint'], bool), (
-            'mask: use_footprint must be a boolean'
-        )
-        assert isinstance(mask_cfg['use_weight_maps'], bool), (
-            'mask: use_weight_maps must be a boolean'
-        )
-        assert isinstance(mask_cfg['footprint_LL_filename'], str), (
-            'mask: footprint_LL_filename must be a string'
-        )
-        assert isinstance(mask_cfg['footprint_GG_filename'], str), (
-            'mask: footprint_GG_filename must be a string'
-        )
-        assert isinstance(mask_cfg['weight_maps_LL_filename'], str), (
-            'mask: weight_maps_LL_filename must be a string'
-        )
-        assert isinstance(mask_cfg['weight_maps_GG_filename'], str), (
-            'mask: weight_maps_GG_filename must be a string'
-        )
+        for probe in ['LL', 'GG']:
+            assert isinstance(mask_cfg[probe]['geometry'], str), (
+                f'mask[{probe}][geometry] must be a string'
+            )
+            assert isinstance(mask_cfg[probe]['footprint_filename'], str), (
+                f'mask[{probe}][footprint_filename] must be a string'
+            )
+            assert isinstance(
+                mask_cfg[probe]['weight_maps_filename'], (str, type(None))
+            ), f'mask[{probe}][weight_maps_filename] must be a string or None'
+
         assert isinstance(mask_cfg['nside'], (int, type(None))), (
             'mask: nside must be an int or None'
         )
@@ -772,12 +762,14 @@ class SpaceborneConfigChecker:
             )
 
     def check_mask(self) -> None:
-        assert (
-            self.cfg['mask']['use_polar_cap'] + self.cfg['mask']['use_footprint']
-        ) == 1, (
-            'Only one of use_polar_cap or use_footprint can be '
-            'True in the mask configuration'
-        )
+        for probe in ['LL', 'GG']:
+            assert self.cfg['mask'][probe]['geometry'] in [
+                'footprint_file',
+                'polar_cap',
+            ], (
+                f'cfg["mask"][{probe}]["geometry"] must be either'
+                ' "footprint_file" or "polar_cap"'
+            )
 
     def run_all_checks(self) -> None:
         self.check_nmt()

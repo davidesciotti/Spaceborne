@@ -45,130 +45,109 @@ def generate_polar_cap_func(area_deg2, nside):
     return mask
 
 
-def _read_masking_map(path, nside, *, nest=False):
-    """
-    Read a HEALPix map in "partial" format from *path* and return it at
-    resolution *nside*.
+def up_downgrade_map(map_in, nside_out):
+    """Very simple wrapper, basically gets nside_in and prints a message
+    if up/downgrading is needed"""
 
-    The returned NSIDE cannot be larger than the NSIDE of the stored
-    map.
-
-    If *nest* is true, returns the map in NESTED ordering.
-    """
-    import fitsio
-
-    data, header = fitsio.read(path, header=True)
-    nside_in = header['NSIDE']
-    fact = (nside_in // nside) ** 2
-    if fact == 0:
-        raise ValueError(f'requested NSIDE={nside} greater than map NSIDE={nside_in}')
-    out = np.zeros(12 * nside**2)
-    ipix, wht = data['PIXEL'], data['WEIGHT']
-    order = header['ORDERING']
-    if order == 'RING':
-        ipix = hp.ring2nest(nside, ipix)
-    elif order != 'NESTED':
-        raise ValueError(f'unknown pixel ordering {order} in map')
-    ipix = ipix // fact
-    if not nest:
-        ipix = hp.nest2ring(nside, ipix)
-    np.add.at(out, ipix, wht / fact)
-    return out
+    nside_in = hp.get_nside(map_in)
+    if nside_out is not None and nside_out != nside_in:
+        print(f'Changing map resolution from nside = {nside_in} to nside = {nside_out}')
+        map_out = hp.ud_grade(map_in=map_in, nside_out=nside_out)
+        return map_out
+    else:
+        return map_in
 
 
 class Mask:
     def __init__(self, mask_cfg):
-        self.load_mask = mask_cfg['load_mask']
-        self.mask_filename = mask_cfg['mask_filename']
-        self.nside = mask_cfg['nside']
+        self.use_polar_cap = mask_cfg['use_polar_cap']
+        self.use_footprint = mask_cfg['use_footprint']
+        self.use_weight_maps = mask_cfg['use_weight_maps']
+
+        self.footprint_ll_filename = mask_cfg['footprint_LL_filename']
+        self.footprint_gg_filename = mask_cfg['footprint_GG_filename']
+        self.weight_maps_ll_filename = mask_cfg['weight_maps_LL_filename']
+        self.weight_maps_gg_filename = mask_cfg['weight_maps_GG_filename']
+
+        self.nside_cfg = mask_cfg['nside']
         self.desired_survey_area_deg2 = mask_cfg['survey_area_deg2']
         self.apodize = mask_cfg['apodize']
         self.aposize = float(mask_cfg['aposize'])
-        self.generate_polar_cap = mask_cfg['generate_polar_cap']
-        self.load_weight_maps = mask_cfg['load_weight_maps']
-        self.weight_maps_filename = mask_cfg['weight_maps_filename']
-
-    def load_mask_func(self):
-        if not os.path.exists(self.mask_filename):
-            raise FileNotFoundError(f'{self.mask_filename} does not exist.')
-
-        print(f'\nLoading mask file from {self.mask_filename}\n')
-
-        if self.mask_filename.endswith('.fits') or self.mask_filename.endswith(
-            '.fits.gz'
-        ):
-            try:
-                # function provided by VMPZ team to read very high resolution map
-                # and downgrade it on the fly
-                self.mask = _read_masking_map(self.mask_filename, self.nside)
-            except ValueError as ve:
-                self.mask = hp.read_map(self.mask_filename)
-                print(
-                    f'ValueError raised: {ve}, \n'
-                    'falling back on hp.read_map to read input map'
-                )
-
-        elif self.mask_filename.endswith('.npy'):
-            self.mask = np.load(self.mask_filename)
-
-        else:
-            raise ValueError(
-                f'Unsupported file format for mask file: {self.mask_filename}'
-                'Supported formats are .fits, .fits.gz and .npy'
-            )
 
     def process(self):
-        # 1. load or generate mask
 
-        # check that one and only one of load_mask and generate_polar_cap is True
-        assert self.load_mask != self.generate_polar_cap, (
-            'Please choose whether to load OR generate the mask, not neither or both.'
-        )
-
-        if self.load_mask:
+        # ! 1. load footprint/weight maps or generate polar cap
+        if self.use_footprint:
             # load
-            self.load_mask_func()
+            self.footprint_ll = io_handler.load_footprint(
+                path=self.footprint_ll_filename, nside=self.nside_cfg
+            )
+            self.footprint_gg = io_handler.load_footprint(
+                path=self.footprint_gg_filename, nside=self.nside_cfg
+            )
             # get nside and up/downgrade if needed
-            self.nside_mask = hp.get_nside(self.mask)
-            if self.nside is not None and self.nside != self.nside_mask:
-                print(
-                    f'Changing mask resolution from nside = '
-                    f'{self.nside_mask} to nside = {self.nside}'
+            self.footprint_ll = up_downgrade_map(self.footprint_ll, self.nside_cfg)
+            self.footprint_gg = up_downgrade_map(self.footprint_gg, self.nside_cfg)
+
+        elif self.use_polar_cap:
+            self.footprint_ll = generate_polar_cap_func(
+                self.desired_survey_area_deg2, self.nside_cfg
+            )
+            self.footprint_gg = generate_polar_cap_func(
+                self.desired_survey_area_deg2, self.nside_cfg
+            )
+
+        if self.use_weight_maps:
+            # load
+            self.weight_maps_ll = io_handler.load_weight_map_fits(
+                self.weight_maps_ll_filename
+            )
+            self.weight_maps_gg = io_handler.load_weight_map_fits(
+                self.weight_maps_gg_filename
+            )
+            import ipdb; ipdb.set_trace()
+            # get nside and up/downgrade if needed
+            for zi in range(self.weight_maps_ll.shape[0]):
+                self.weight_maps_ll[zi] = up_downgrade_map(
+                    self.weight_maps_ll[zi], self.nside_cfg
                 )
-                self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
+            for zi in range(self.weight_maps_gg.shape[1]):
+                self.weight_maps_gg[zi] = up_downgrade_map(
+                    self.weight_maps_gg[zi], self.nside_cfg
+                )
+            # create corresponding footprints
+            support_ll = self.weight_maps_ll > 0
+            if not np.all(support_ll == support_ll[0]):
+                raise ValueError('LL weight map support is not the same across bins')
+            self.footprint_ll = support_ll[0].astype(float)
 
-        elif self.generate_polar_cap:
-            self.mask = generate_polar_cap_func(
-                self.desired_survey_area_deg2, self.nside
-            )
+            support_gg = self.weight_maps_gg > 0
+            if not np.all(support_gg == support_gg[0]):
+                raise ValueError('GG weight map support is not the same across bins')
+            self.footprint_gg = support_gg[0].astype(float)
 
-        if self.load_weight_maps:
-            self.weight_maps = io_handler.load_weight_map_fits(
-                self.weight_maps_filename
-            )
-            # get nside and up/downgrade if needed
-            for zi in range(self.weight_maps.shape[0]):
-                nside_weight_map = hp.get_nside(self.weight_maps[zi])
-                if self.nside is not None and self.nside != nside_weight_map:
-                    print(
-                        f'Changing map resolution from nside = '
-                        f'{nside_weight_map} to nside = {self.nside}'
-                    )
-                    self.weight_maps[zi] = hp.ud_grade(
-                        map_in=self.weight_maps[zi], nside_out=self.nside
-                    )
+            self.footprint_ll = np.ones_like(self.weight_maps_ll[0])
+            self.footprint_gg = np.ones_like(self.weight_maps_gg[0])
+            self.footprint_ll[self.weight_maps_ll[0] == 0] = 0
+            self.footprint_gg[self.weight_maps_gg[0] == 0] = 0
 
-        # 2. apodize
-        if hasattr(self, 'mask') and self.apodize:
-            print(f'Apodizing mask with aposize = {self.aposize} deg')
+        # ! 2. apodize
+        if self.apodize:
+            print(f'Apodizing footprints with aposize = {self.aposize} deg')
             import pymaster as nmt
 
             # Ensure the mask is float64 before apodization
-            self.mask = self.mask.astype('float64', copy=False)
-            self.mask = nmt.mask_apodization(self.mask, aposize=self.aposize)
+            self.footprint_ll = self.footprint_ll.astype('float64', copy=False)
+            self.footprint_ll = nmt.mask_apodization(
+                self.footprint_ll, aposize=self.aposize
+            )
+            self.footprint_gg = self.footprint_gg.astype('float64', copy=False)
+            self.footprint_gg = nmt.mask_apodization(
+                self.footprint_gg, aposize=self.aposize
+            )
 
-        # 3. get mask spectrum and fsky (the latter is from the healpix mask!!)
-        self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.mask)
+        # ! 3. get mask spectrum and fsky (the latter is from the healpix mask!!)
+        self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.footprint_ll)
         self.cl_mask_norm = (
             self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
         )
@@ -189,3 +168,25 @@ class Mask:
         print(f'fsky = {self.fsky:.4f}')
         print(f'survey_area_sr = {self.survey_area_sr:.4f}')
         print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}\n')
+
+    def plot_maps(self):
+
+        hp.mollview(
+            self.footprint_ll, cmap='inferno_r', title='Footprint LL - Mollweide view'
+        )
+        hp.mollview(
+            self.footprint_gg, cmap='inferno_r', title='Footprint GG - Mollweide view'
+        )
+
+        if self.use_weight_maps:
+            for zi in range(self.weight_maps_ll.shape[0]):
+                hp.mollview(
+                    self.weight_maps_ll[zi],
+                    cmap='inferno_r',
+                    title=f'Weight map LL, zi={zi} - Mollweide view',
+                )
+                hp.mollview(
+                    self.weight_maps_gg[zi],
+                    cmap='inferno_r',
+                    title=f'Weight map GG, zi={zi} - Mollweide view',
+                )

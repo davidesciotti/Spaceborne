@@ -20,7 +20,7 @@ class TestGetMaskCl:
         npix = hp.nside2npix(nside)
         mask = np.ones(npix)
 
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_mask_cl(mask)
+        ell_mask, cl_mask, fsky_mask = mask_utils.get_maps_cl(mask)
 
         assert len(ell_mask) == len(cl_mask)
         assert ell_mask[0] == 0
@@ -34,7 +34,7 @@ class TestGetMaskCl:
         mask = np.zeros(npix)
         mask[: npix // 2] = 1.0
 
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_mask_cl(mask)
+        ell_mask, cl_mask, fsky_mask = mask_utils.get_maps_cl(mask)
 
         # fsky = mean(mask**2) = (npix/2 * 1.0**2) / npix = 0.5 for half-sky binary mask
         assert fsky_mask == pytest.approx(0.5, abs=0.01)
@@ -46,7 +46,7 @@ class TestGetMaskCl:
         coverage = 0.7
         mask = np.full(npix, coverage)
 
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_mask_cl(mask)
+        ell_mask, cl_mask, fsky_mask = mask_utils.get_maps_cl(mask)
 
         # fsky = mean(mask**2) for uniform mask
         assert fsky_mask == pytest.approx(coverage**2, rel=1e-6)
@@ -57,7 +57,7 @@ class TestGetMaskCl:
         npix = hp.nside2npix(nside)
         mask = np.ones(npix)
 
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_mask_cl(mask)
+        ell_mask, cl_mask, fsky_mask = mask_utils.get_maps_cl(mask)
 
         # For nside=16, lmax should be 3*nside-1 = 47
         expected_lmax = 3 * nside - 1
@@ -228,7 +228,7 @@ class TestMask:
         assert mask_obj.use_polar_cap is True
         assert mask_obj.nside_cfg == 32
         assert mask_obj.desired_survey_area_deg2 == 1000.0
-        assert mask_obj.apodize is False
+        assert mask_obj.apodize_func is False
         assert mask_obj.aposize == 1.0
 
     def test_generate_polar_cap(self, basic_mask_config_generate):
@@ -237,12 +237,12 @@ class TestMask:
         mask_obj.process()
 
         assert hasattr(mask_obj, 'mask')
-        assert len(mask_obj.footprint_ll) == hp.nside2npix(32)
+        assert len(mask_obj.footprint) == hp.nside2npix(32)
         assert hasattr(mask_obj, 'fsky')
         assert hasattr(mask_obj, 'survey_area_deg2')
         assert hasattr(mask_obj, 'survey_area_sr')
-        assert mask_obj.fsky > 0
-        assert mask_obj.fsky < 1
+        assert mask_obj.fsky_footprint > 0
+        assert mask_obj.fsky_footprint < 1
 
     def test_use_footprint_npy(self, basic_mask_config_load):
         """Test loading mask from .npy file."""
@@ -250,9 +250,9 @@ class TestMask:
         mask_obj.process()
 
         assert hasattr(mask_obj, 'mask')
-        assert len(mask_obj.footprint_ll) == hp.nside2npix(32)
+        assert len(mask_obj.footprint) == hp.nside2npix(32)
         # Full sky mask should give fsky ~ 1
-        assert mask_obj.fsky == pytest.approx(1.0, rel=0.01)
+        assert mask_obj.fsky_footprint == pytest.approx(1.0, rel=0.01)
 
     def test_use_footprint_fits(self, tmp_path):
         """Test loading mask from .fits file."""
@@ -276,7 +276,7 @@ class TestMask:
         mask_obj.process()
 
         assert hasattr(mask_obj, 'mask')
-        assert len(mask_obj.footprint_ll) == npix
+        assert len(mask_obj.footprint) == npix
 
     def test_mask_file_not_found(self):
         """Test that FileNotFoundError is raised for missing file."""
@@ -372,7 +372,7 @@ class TestMask:
         mask_obj.process()
 
         # Mask should be downgraded to target nside
-        assert len(mask_obj.footprint_ll) == hp.nside2npix(nside_target)
+        assert len(mask_obj.footprint) == hp.nside2npix(nside_target)
 
     def test_apodization(self, basic_mask_config_generate):
         """Test mask apodization."""
@@ -384,7 +384,7 @@ class TestMask:
         mask_obj.process()
 
         # After apodization, mask should have non-binary values
-        unique_values = np.unique(mask_obj.footprint_ll)
+        unique_values = np.unique(mask_obj.footprint)
         assert len(unique_values) > 2  # More than just 0 and 1
 
     def test_mask_spectrum_attributes(self, basic_mask_config_generate):
@@ -395,8 +395,8 @@ class TestMask:
         assert hasattr(mask_obj, 'ell_mask')
         assert hasattr(mask_obj, 'cl_mask')
         assert hasattr(mask_obj, 'cl_mask_norm')
-        assert len(mask_obj.ell_mask) == len(mask_obj.cl_mask)
-        assert len(mask_obj.cl_mask) == len(mask_obj.cl_mask_norm)
+        assert len(mask_obj.ells_footprint) == len(mask_obj.cl_footprint)
+        assert len(mask_obj.cl_footprint) == len(mask_obj.cl_footprint_norm)
 
     def test_survey_area_computation(self, basic_mask_config_generate):
         """Test that survey area is correctly computed from fsky."""
@@ -404,7 +404,7 @@ class TestMask:
         mask_obj.process()
 
         # Check consistency between fsky and survey areas
-        expected_area_deg2 = mask_obj.fsky * constants.DEG2_IN_SPHERE
+        expected_area_deg2 = mask_obj.fsky_footprint * constants.DEG2_IN_SPHERE
         assert mask_obj.survey_area_deg2 == pytest.approx(expected_area_deg2, rel=1e-10)
 
         expected_area_sr = mask_obj.survey_area_deg2 * constants.DEG2_TO_SR
@@ -422,4 +422,4 @@ class TestMask:
         mask_obj.process()
 
         # Mask should be float64 after apodization
-        assert mask_obj.footprint_ll.dtype == np.float64
+        assert mask_obj.footprint.dtype == np.float64

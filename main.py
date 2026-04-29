@@ -804,18 +804,26 @@ pvt_cfg['nbx'] = nbx
 # TODO Parallel: Workers compute independently, results are stacked after
 # TODO add to it theta and cosebis binning
 # TODO use geometric mean for ell centers!
-# TODO arange(ell_max_3x2pt)? are we sure?
+# TODO arange(ell_max_3x2pt)? are we sure? it would be better to at least start from 1...
 
 # ! ===================================== Mask =========================================
-mask_obj = mask_utils.Mask(cfg['mask'])
-mask_obj.process()
-if hasattr(mask_obj, 'mask'):
-    import healpy as hp
+mask_obj_ll = mask_utils.Mask(cfg['mask'], probe='LL')
+mask_obj_gg = mask_utils.Mask(cfg['mask'], probe='GG')
+mask_obj_ll.process()
+mask_obj_gg.process()
+mask_obj_ll.plot_maps()
+mask_obj_gg.plot_maps()
 
-    hp.mollview(mask_obj.mask, cmap='inferno_r', title='Mask - Mollweide view')
 
+# TODO XXX change this!!!
 # add fsky to pvt_cfg
-pvt_cfg['fsky'] = mask_obj.fsky
+assert np.isclose(
+    mask_obj_ll.fsky_footprint, mask_obj_gg.fsky_footprint, atol=0, rtol=1e-5
+), (
+    f'LL and GG masks have different fsky! {mask_obj_ll.fsky_footprint = :.4f} vs. '
+    f'{mask_obj_gg.fsky_footprint = :.4f}. Please check the masks.'
+)
+pvt_cfg['fsky'] = mask_obj_ll.fsky_footprint
 
 
 # ! ===================================== n(z) =========================================
@@ -1108,7 +1116,7 @@ if (
 
     # initialize cov_nmt_obj and set a couple useful attributes
     cov_nmt_obj = cov_partial_sky.NmtCov(
-        cfg=cfg, pvt_cfg=pvt_cfg, ell_obj=ell_obj, mask_obj=mask_obj
+        cfg=cfg, pvt_cfg=pvt_cfg, ell_obj=ell_obj, mask_obj=mask_obj_ll
     )
 
     # set unbinned ells in cov_nmt_obj
@@ -1126,7 +1134,7 @@ cov_rs_obj = None
 
 if obs_space == 'real':
     # initialize cov_rs_obj and set a couple useful attributes
-    cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
+    cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj_ll)
 
     # set ell values used for projection
     ell_obj.compute_ells_3x2pt_proj()
@@ -1146,7 +1154,7 @@ if obs_space == 'real':
 # cov projector class
 cov_cs_obj = None
 if obs_space == 'cosebis':
-    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
+    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj_ll)
     ell_obj.compute_ells_3x2pt_proj()
 
     # set ell values used for projection
@@ -1559,7 +1567,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     from spaceborne import cov_ssc
 
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
-    cov_ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
+    cov_ssc_obj.set_sigma2_b(ccl_obj, mask_obj_ll, k_grid_s2b, which_sigma2_b)
 
     cov_ssc_obj.compute_ssc(
         d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
@@ -1575,7 +1583,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     if which_sigma2_b == 'full_curved_sky':
         for probe_2tpl in cov_ssc_obj.cov_dict['ssc']:
             for dim in cov_ssc_obj.cov_dict['ssc'][probe_2tpl]:
-                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= mask_obj.fsky
+                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= mask_obj_ll.fsky
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
@@ -1592,7 +1600,7 @@ if compute_ccl_ssc:
     ccl_obj.set_sigma2_b(
         z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
         which_sigma2_b=which_sigma2_b,
-        mask_obj=mask_obj,
+        mask_obj=mask_obj_ll,
     )
 
 if compute_ccl_ssc or compute_ccl_cng:
@@ -1621,7 +1629,7 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
             ell_grid,
-            mask_obj.fsky,
+            mask_obj_ll.fsky,
             integration_method=cfg['PyCCL']['cov_integration_method'],
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
@@ -2173,12 +2181,12 @@ if cfg['misc']['save_output_as_benchmark']:
             misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
 
     # Mask information
-    if mask_obj is not None:
-        misc_dict['mask'] = mask_obj.mask
-        misc_dict['mask_ell'] = mask_obj.ell_mask
-        misc_dict['mask_cl'] = mask_obj.cl_mask
-        misc_dict['mask_fsky'] = np.array([mask_obj.fsky])
-        misc_dict['mask_survey_area_deg2'] = np.array([mask_obj.survey_area_deg2])
+    if mask_obj_ll is not None:
+        misc_dict['mask'] = mask_obj_ll.footprint_ll
+        misc_dict['mask_ell'] = mask_obj_ll.ell_mask
+        misc_dict['mask_cl'] = mask_obj_ll.cl_mask
+        misc_dict['mask_fsky'] = np.array([mask_obj_ll.fsky])
+        misc_dict['mask_survey_area_deg2'] = np.array([mask_obj_ll.survey_area_deg2])
 
     # save metadata
     import datetime

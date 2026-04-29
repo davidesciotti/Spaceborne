@@ -1,6 +1,7 @@
 """Class for reading in data in various formats"""
 
 import itertools
+import os
 from pathlib import Path
 
 import healpy as hp
@@ -9,13 +10,93 @@ import numpy as np
 from spaceborne import constants as const
 
 
-def load_weight_map_fits(path):
+def load_weight_map_fits(path: str) -> np.ndarray:
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f'{path} does not exist.')
 
     extension = Path(path).suffix.lower()
     assert extension == '.fits', 'Weight map file must be a .fits file'
 
+    print(f'\nLoading weight map file from {path}\n')
+
     weight_map_arr = hp.read_map(path, field=None)
+
+    # sanity checks
+    assert weight_map_arr.ndim == 2, (
+        'Weight map FITS file should contain a 2D array with shape (zbins, npix)'
+    )
+    if np.any(weight_map_arr < 0):
+        raise ValueError('Weight maps contain negative values')
+
     return weight_map_arr
+
+
+def load_footprint(path: str, nside: int) -> np.ndarray:
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f'{path} does not exist.')
+
+    p = Path(path)
+    suffixes = [s.lower() for s in p.suffixes]
+    is_fits = suffixes[-1:] == ['.fits'] or suffixes[-2:] == ['.fits', '.gz']
+    is_npy = suffixes[-1:] == ['.npy']
+
+    print(f'\nLoading footprint file from {path}\n')
+
+    if is_fits:
+        try:
+            # function provided by VMPZ team to read very high resolution map
+            # and downgrade it on the fly
+            footprint = _read_masking_map(path, nside)
+        except ValueError as ve:
+            footprint = hp.read_map(path)
+            print(
+                f'ValueError raised: {ve}, \n'
+                'falling back on hp.read_map to read input map'
+            )
+
+    elif is_npy:
+        footprint = np.load(path)
+
+    else:
+        raise ValueError(
+            f'Unsupported file format for mask file: {path}'
+            'Supported formats are .fits, .fits.gz and .npy'
+        )
+
+    return footprint
+
+
+def _read_masking_map(path, nside, *, nest=False):
+    """
+    Read a HEALPix map in "partial" format from *path* and return it at
+    resolution *nside*.
+
+    The returned NSIDE cannot be larger than the NSIDE of the stored
+    map.
+
+    If *nest* is true, returns the map in NESTED ordering.
+    """
+    import fitsio
+
+    data, header = fitsio.read(path, header=True)
+    nside_in = header['NSIDE']
+    fact = (nside_in // nside) ** 2
+    if fact == 0:
+        raise ValueError(f'requested NSIDE={nside} greater than map NSIDE={nside_in}')
+    out = np.zeros(12 * nside**2)
+    ipix, wht = data['PIXEL'], data['WEIGHT']
+    order = header['ORDERING']
+    if order == 'RING':
+        ipix = hp.ring2nest(nside, ipix)
+    elif order != 'NESTED':
+        raise ValueError(f'unknown pixel ordering {order} in map')
+    ipix = ipix // fact
+    if not nest:
+        ipix = hp.nest2ring(nside, ipix)
+    np.add.at(out, ipix, wht / fact)
+    return out
 
 
 def load_nz_euclidlib(nz_filename):

@@ -191,7 +191,7 @@ class TestMask:
     def basic_mask_config_generate(self):
         """Basic configuration for mask generation."""
         return {
-            'load_mask': False,
+            'use_footprint': False,
             'mask_filename': '',
             'nside': 32,
             'survey_area_deg2': 1000.0,
@@ -211,7 +211,7 @@ class TestMask:
         np.save(mask_filename, mask)
 
         return {
-            'load_mask': True,
+            'use_footprint': True,
             'mask_filename': str(mask_filename),
             'nside': nside,
             'survey_area_deg2': 1000.0,
@@ -224,9 +224,9 @@ class TestMask:
         """Test Mask class initialization."""
         mask_obj = mask_utils.Mask(basic_mask_config_generate)
 
-        assert mask_obj.load_mask is False
-        assert mask_obj.generate_polar_cap is True
-        assert mask_obj.nside == 32
+        assert mask_obj.use_footprint is False
+        assert mask_obj.use_polar_cap is True
+        assert mask_obj.nside_cfg == 32
         assert mask_obj.desired_survey_area_deg2 == 1000.0
         assert mask_obj.apodize is False
         assert mask_obj.aposize == 1.0
@@ -237,24 +237,24 @@ class TestMask:
         mask_obj.process()
 
         assert hasattr(mask_obj, 'mask')
-        assert len(mask_obj.mask) == hp.nside2npix(32)
+        assert len(mask_obj.footprint_ll) == hp.nside2npix(32)
         assert hasattr(mask_obj, 'fsky')
         assert hasattr(mask_obj, 'survey_area_deg2')
         assert hasattr(mask_obj, 'survey_area_sr')
         assert mask_obj.fsky > 0
         assert mask_obj.fsky < 1
 
-    def test_load_mask_npy(self, basic_mask_config_load):
+    def test_use_footprint_npy(self, basic_mask_config_load):
         """Test loading mask from .npy file."""
         mask_obj = mask_utils.Mask(basic_mask_config_load)
         mask_obj.process()
 
         assert hasattr(mask_obj, 'mask')
-        assert len(mask_obj.mask) == hp.nside2npix(32)
+        assert len(mask_obj.footprint_ll) == hp.nside2npix(32)
         # Full sky mask should give fsky ~ 1
         assert mask_obj.fsky == pytest.approx(1.0, rel=0.01)
 
-    def test_load_mask_fits(self, tmp_path):
+    def test_use_footprint_fits(self, tmp_path):
         """Test loading mask from .fits file."""
         nside = 32
         npix = hp.nside2npix(nside)
@@ -263,7 +263,7 @@ class TestMask:
         hp.write_map(str(mask_filename), mask, overwrite=True, dtype=np.float64)
 
         config = {
-            'load_mask': True,
+            'use_footprint': True,
             'mask_filename': str(mask_filename),
             'nside': nside,
             'survey_area_deg2': 1000.0,
@@ -276,12 +276,12 @@ class TestMask:
         mask_obj.process()
 
         assert hasattr(mask_obj, 'mask')
-        assert len(mask_obj.mask) == npix
+        assert len(mask_obj.footprint_ll) == npix
 
     def test_mask_file_not_found(self):
         """Test that FileNotFoundError is raised for missing file."""
         config = {
-            'load_mask': True,
+            'use_footprint': True,
             'mask_filename': '/nonexistent/path/mask.npy',
             'nside': 32,
             'survey_area_deg2': 1000.0,
@@ -301,7 +301,7 @@ class TestMask:
         mask_filename.write_text('dummy data')
 
         config = {
-            'load_mask': True,
+            'use_footprint': True,
             'mask_filename': str(mask_filename),
             'nside': 32,
             'survey_area_deg2': 1000.0,
@@ -316,9 +316,9 @@ class TestMask:
             mask_obj.process()
 
     def test_both_load_and_generate_fails(self):
-        """Test that both load_mask and generate_polar_cap True raises error."""
+        """Test that both use_footprint and generate_polar_cap True raises error."""
         config = {
-            'load_mask': True,
+            'use_footprint': True,
             'mask_filename': 'some_path.npy',
             'nside': 32,
             'survey_area_deg2': 1000.0,
@@ -333,9 +333,9 @@ class TestMask:
             mask_obj.process()
 
     def test_neither_load_nor_generate_fails(self):
-        """Test that neither load_mask nor generate_polar_cap True raises error."""
+        """Test that neither use_footprint nor generate_polar_cap True raises error."""
         config = {
-            'load_mask': False,
+            'use_footprint': False,
             'mask_filename': '',
             'nside': 32,
             'survey_area_deg2': 1000.0,
@@ -359,7 +359,7 @@ class TestMask:
         np.save(mask_filename, mask)
 
         config = {
-            'load_mask': True,
+            'use_footprint': True,
             'mask_filename': str(mask_filename),
             'nside': nside_target,
             'survey_area_deg2': 1000.0,
@@ -372,7 +372,7 @@ class TestMask:
         mask_obj.process()
 
         # Mask should be downgraded to target nside
-        assert len(mask_obj.mask) == hp.nside2npix(nside_target)
+        assert len(mask_obj.footprint_ll) == hp.nside2npix(nside_target)
 
     def test_apodization(self, basic_mask_config_generate):
         """Test mask apodization."""
@@ -384,7 +384,7 @@ class TestMask:
         mask_obj.process()
 
         # After apodization, mask should have non-binary values
-        unique_values = np.unique(mask_obj.mask)
+        unique_values = np.unique(mask_obj.footprint_ll)
         assert len(unique_values) > 2  # More than just 0 and 1
 
     def test_mask_spectrum_attributes(self, basic_mask_config_generate):
@@ -422,4 +422,4 @@ class TestMask:
         mask_obj.process()
 
         # Mask should be float64 after apodization
-        assert mask_obj.mask.dtype == np.float64
+        assert mask_obj.footprint_ll.dtype == np.float64

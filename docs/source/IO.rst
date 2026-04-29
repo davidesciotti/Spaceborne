@@ -119,7 +119,7 @@ configuration file.
    .. code-block:: yaml
 
       mask:
-         load_mask: False 
+         use_footprint: False 
          mask_filename: ../input/mask.fits 
          generate_polar_cap: True 
          nside: 1024 

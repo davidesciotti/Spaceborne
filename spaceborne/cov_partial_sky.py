@@ -1102,6 +1102,13 @@ class NmtCov:
         self.coupled_cov = cfg['covariance']['cov_type'] == 'coupled'
         self.output_path = self.cfg['misc']['output_path']
         self.load_cached_wsp = self.cfg['covariance']['load_cached_nmt_workspaces']
+        
+        # TODO delete
+        self.use_footprint = self.cfg['mask']['use_footprint']
+        self.use_weight_maps = self.cfg['mask']['use_footprint']
+        self.weight_maps_ll = self.mask_obj.weight_maps_ll
+        self.weight_maps_gg = self.mask_obj.weight_maps_gg
+        # TODO delete end
 
         self.wsp_fname = 'wsp_s{:d}s{:d}_zi{zi:d}zj{zj:d}.fits'
         self.cw_fname = 'cw_s{:d}s{:d}s{:d}s{:d}_zi{zi:d}zj{zj:d}zk{zk:d}zl{zl:d}.fits'
@@ -1128,10 +1135,10 @@ class NmtCov:
         # check on lmax and NSIDE
         for probe in ('WL', 'GC'):
             _lmax = getattr(self.ell_obj, f'ell_max_{probe}')
-            if _lmax >= 3 * self.mask_obj.nside - 1:
+            if _lmax >= 3 * self.mask_obj.nside_cfg - 1:
                 warnings.warn(
-                    f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.mask_obj.nside - 1}\n'
-                    f'(NSIDE = {self.mask_obj.nside}) for probe {probe}. '
+                    f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.mask_obj.nside_cfg - 1}\n'
+                    f'(NSIDE = {self.mask_obj.nside_cfg}) for probe {probe}. '
                     'You should probably increase NSIDE or decrease lmax ',
                     stacklevel=2,
                 )
@@ -1179,13 +1186,6 @@ class NmtCov:
         cl_gl_4covnmt = self.cl_3x2pt_unb_5d[1, 0, :, :, :].copy()
         cl_ll_4covnmt = self.cl_3x2pt_unb_5d[0, 0, :, :, :].copy()
 
-        # TODO delete
-        self.use_footprint = False
-        self.use_weight_maps = True
-        self.weight_maps_ll = self.mask_obj.weight_maps
-        self.weight_maps_gg = self.mask_obj.weight_maps
-        # TODO delete end
-
         # ! 1. Create field objects
         # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
@@ -1198,10 +1198,10 @@ class NmtCov:
         if self.use_footprint:
             print('\nComputing namaster fields...')
             f0_mask = nmt.NmtField(
-                mask=self.mask_obj.mask, maps=None, spin=0, lite=True, lmax=ell_max_eff
+                mask=self.mask_obj.footprint_gg, maps=None, spin=0, lite=True, lmax=ell_max_eff
             )
             f2_mask = nmt.NmtField(
-                mask=self.mask_obj.mask, maps=None, spin=2, lite=True, lmax=ell_max_eff
+                mask=self.mask_obj.footprint_ll, maps=None, spin=2, lite=True, lmax=ell_max_eff
             )
 
             print('\nComputing namaster workspaces and coupling matrices...')
@@ -1293,6 +1293,7 @@ class NmtCov:
                 '(this may take a while)...'
             )
 
+        # TODO XXX leverage the remaining symmetry for other slow parts, e.g. cNG!!
         for probe_abcd in tqdm(unique_probe_combs):
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             cw_dict[probe_ab, probe_cd] = {}
@@ -1393,6 +1394,9 @@ class NmtCov:
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
         # (mcm), which I store in self
         # TODO XXX again, only loop over the unique zpairs
+
+        # TODO XXX in general, I should definetly create some function to declutter the
+        # TODO XXX "main"...
         if (
             self.coupled_cov
             and (self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG'])
@@ -1434,8 +1438,8 @@ class NmtCov:
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
         if self.cfg['precision']['use_iNKA']:
-            # TODO this could be made more efficient by only looping over the auto-combs
-            # TODO for ll and gg
+            # TODO XXX this could be made more efficient by only looping over the auto-combs
+            # TODO XXX for ll and gg
             for zi, zj in zij_cross_combs:
                 list_gg = [self.cl_3x2pt_unb_5d[1, 1, :, zi, zj]]
                 list_gl = [
@@ -1560,7 +1564,7 @@ class NmtCov:
                 zbins=self.zbins,
                 weight_maps_gg=self.weight_maps_gg,
                 weight_maps_ll=self.weight_maps_ll,
-                nside=self.mask_obj.nside,
+                nside=self.mask_obj.nside_cfg,
                 nreal=self.cfg['sample_covariance']['nreal'],
                 coupled_cls=self.coupled_cov,
                 which_cls=self.cfg['sample_covariance']['which_cls'],

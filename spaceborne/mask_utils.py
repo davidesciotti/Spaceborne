@@ -6,11 +6,17 @@ import numpy as np
 from spaceborne import constants, cosmo_lib, io_handler
 
 
-def get_mask_cl(mask: np.ndarray) -> tuple:
-    cl_mask = hp.anafast(mask)
-    ell_mask = np.arange(len(cl_mask))
-    fsky_mask = np.mean(mask**2)  # TODO 2 different masks
-    return ell_mask, cl_mask, fsky_mask
+def combined_fsky(map1, map2):
+    """Combine two masks (e.g. footprint and weight map) by multiplying them
+    and compute the resulting fsky."""
+    fsky_combined = np.mean(map1 * map2)
+    return fsky_combined
+
+
+def get_maps_cl(map1: np.ndarray, map2: np.ndarray) -> tuple:
+    cl = hp.anafast(map1, map2)
+    ells = np.arange(len(cl))
+    return ells, cl
 
 
 def generate_polar_cap_func(area_deg2, nside):
@@ -59,101 +65,91 @@ def up_downgrade_map(map_in, nside_out):
 
 
 class Mask:
-    def __init__(self, mask_cfg):
-        self.use_polar_cap = mask_cfg['use_polar_cap']
-        self.use_footprint = mask_cfg['use_footprint']
-        self.use_weight_maps = mask_cfg['use_weight_maps']
+    def __init__(self, mask_cfg, probe):
+        self.probe = probe
+        self.geometry = mask_cfg[probe]['geometry']
 
-        self.footprint_ll_filename = mask_cfg['footprint_LL_filename']
-        self.footprint_gg_filename = mask_cfg['footprint_GG_filename']
-        self.weight_maps_ll_filename = mask_cfg['weight_maps_LL_filename']
-        self.weight_maps_gg_filename = mask_cfg['weight_maps_GG_filename']
+        self.use_weight_maps = (
+            False if mask_cfg[probe]['weight_maps_filename'] is None else True
+        )
+
+        self.footprint_filename = mask_cfg[probe]['footprint_filename']
+        self.weight_maps_filename = mask_cfg[probe]['weight_maps_filename']
+        
+        self.footprint = None
+        self.weight_maps = None
 
         self.nside_cfg = mask_cfg['nside']
         self.desired_survey_area_deg2 = mask_cfg['survey_area_deg2']
         self.apodize = mask_cfg['apodize']
         self.aposize = float(mask_cfg['aposize'])
 
-    def process(self):
+    def load(self):
 
         # ! 1. load footprint/weight maps or generate polar cap
-        if self.use_footprint:
+        if self.geometry == 'footprint_file':
             # load
-            self.footprint_ll = io_handler.load_footprint(
-                path=self.footprint_ll_filename, nside=self.nside_cfg
-            )
-            self.footprint_gg = io_handler.load_footprint(
-                path=self.footprint_gg_filename, nside=self.nside_cfg
+            self.footprint = io_handler.load_footprint(
+                path=self.footprint_filename, nside=self.nside_cfg
             )
             # get nside and up/downgrade if needed
-            self.footprint_ll = up_downgrade_map(self.footprint_ll, self.nside_cfg)
-            self.footprint_gg = up_downgrade_map(self.footprint_gg, self.nside_cfg)
+            self.footprint = up_downgrade_map(self.footprint, self.nside_cfg)
 
-        elif self.use_polar_cap:
-            self.footprint_ll = generate_polar_cap_func(
-                self.desired_survey_area_deg2, self.nside_cfg
-            )
-            self.footprint_gg = generate_polar_cap_func(
+        elif self.geometry == 'polar_cap':
+            self.footprint = generate_polar_cap_func(
                 self.desired_survey_area_deg2, self.nside_cfg
             )
 
         if self.use_weight_maps:
             # load
-            self.weight_maps_ll = io_handler.load_weight_map_fits(
-                self.weight_maps_ll_filename
+            self.weight_maps = io_handler.load_weight_map_fits(
+                self.weight_maps_filename
             )
-            self.weight_maps_gg = io_handler.load_weight_map_fits(
-                self.weight_maps_gg_filename
-            )
-            import ipdb; ipdb.set_trace()
             # get nside and up/downgrade if needed
-            for zi in range(self.weight_maps_ll.shape[0]):
-                self.weight_maps_ll[zi] = up_downgrade_map(
-                    self.weight_maps_ll[zi], self.nside_cfg
+            for zi in range(self.weight_maps.shape[0]):
+                self.weight_maps[zi] = up_downgrade_map(
+                    self.weight_maps[zi], self.nside_cfg
                 )
-            for zi in range(self.weight_maps_gg.shape[1]):
-                self.weight_maps_gg[zi] = up_downgrade_map(
-                    self.weight_maps_gg[zi], self.nside_cfg
-                )
-            # create corresponding footprints
-            support_ll = self.weight_maps_ll > 0
-            if not np.all(support_ll == support_ll[0]):
-                raise ValueError('LL weight map support is not the same across bins')
-            self.footprint_ll = support_ll[0].astype(float)
+            # TODO this is a very approximate approach!!
+            # self.footprint = np.sum(self.weight_maps, axis=0)
+            # self.footprint[self.footprint > 0] = 1
 
-            support_gg = self.weight_maps_gg > 0
-            if not np.all(support_gg == support_gg[0]):
-                raise ValueError('GG weight map support is not the same across bins')
-            self.footprint_gg = support_gg[0].astype(float)
-
-            self.footprint_ll = np.ones_like(self.weight_maps_ll[0])
-            self.footprint_gg = np.ones_like(self.weight_maps_gg[0])
-            self.footprint_ll[self.weight_maps_ll[0] == 0] = 0
-            self.footprint_gg[self.weight_maps_gg[0] == 0] = 0
-
+    def apodize_func(self):
         # ! 2. apodize
-        if self.apodize:
-            print(f'Apodizing footprints with aposize = {self.aposize} deg')
-            import pymaster as nmt
+        if not self.apodize:
+            return
 
-            # Ensure the mask is float64 before apodization
-            self.footprint_ll = self.footprint_ll.astype('float64', copy=False)
-            self.footprint_ll = nmt.mask_apodization(
-                self.footprint_ll, aposize=self.aposize
-            )
-            self.footprint_gg = self.footprint_gg.astype('float64', copy=False)
-            self.footprint_gg = nmt.mask_apodization(
-                self.footprint_gg, aposize=self.aposize
-            )
+        print(f'Apodizing footprints with aposize = {self.aposize} deg')
+        import pymaster as nmt
 
-        # ! 3. get mask spectrum and fsky (the latter is from the healpix mask!!)
-        self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.footprint_ll)
-        self.cl_mask_norm = (
-            self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
+        # Ensure the mask is float64 before apodization
+        self.footprint = self.footprint.astype('float64', copy=False)
+        self.footprint = nmt.mask_apodization(self.footprint, aposize=self.aposize)
+
+        if self.use_weight_maps:
+            for zi in range(self.weight_maps.shape[0]):
+                self.weight_maps[zi] = self.weight_maps[zi].astype(
+                    'float64', copy=False
+                )
+                self.weight_maps[zi] = nmt.mask_apodization(
+                    self.weight_maps[zi], aposize=self.aposize
+                )
+
+    def get_cls_fsky(self):
+        """get footprint angular power spectrum and effective fsky"""
+        self.ells_footprint, self.cl_footprint = get_maps_cl(
+            self.footprint, self.footprint
+        )
+        self.fsky_footprint = combined_fsky(self.footprint, self.footprint)
+
+        self.cl_footprint_norm = (
+            self.cl_footprint
+            * (2 * self.ells_footprint + 1)
+            / (4 * np.pi * self.fsky_footprint) ** 2
         )
 
         # 4. finally, set survey area in steradians and other useful quantities
-        self.survey_area_deg2 = self.fsky * constants.DEG2_IN_SPHERE
+        self.survey_area_deg2 = self.fsky_footprint * constants.DEG2_IN_SPHERE
         self.survey_area_sr = self.survey_area_deg2 * constants.DEG2_TO_SR
 
         # else:
@@ -165,28 +161,38 @@ class Mask:
         #     self.cl_mask = None
         #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
-        print(f'fsky = {self.fsky:.4f}')
+        # TODO prolly this should be done for all probe and bin combinations...
+        if self.use_weight_maps:
+            self.ells_weight_maps = []
+            self.cl_weight_maps = []
+            self.fsky_weight_maps = []
+            for zi in range(self.weight_maps.shape[0]):
+                ells, cl = get_maps_cl(self.weight_maps[zi], self.weight_maps[zi])
+                _fsky = combined_fsky(self.weight_maps[zi], self.weight_maps[zi])
+                self.ells_weight_maps.append(ells)
+                self.cl_weight_maps.append(cl)
+                self.fsky_weight_maps.append(_fsky)
+
+        print(f'fsky = {self.fsky_footprint:.4f}')
         print(f'survey_area_sr = {self.survey_area_sr:.4f}')
         print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}\n')
+
+    def process(self):
+        self.load()
+        self.apodize_func()
+        self.get_cls_fsky()
 
     def plot_maps(self):
 
         hp.mollview(
-            self.footprint_ll, cmap='inferno_r', title='Footprint LL - Mollweide view'
+            self.footprint,
+            cmap='inferno_r',
+            title=f'Footprint {self.probe} - Mollweide view',
         )
-        hp.mollview(
-            self.footprint_gg, cmap='inferno_r', title='Footprint GG - Mollweide view'
-        )
-
         if self.use_weight_maps:
-            for zi in range(self.weight_maps_ll.shape[0]):
+            for zi in range(self.weight_maps.shape[0]):
                 hp.mollview(
-                    self.weight_maps_ll[zi],
+                    self.weight_maps[zi],
                     cmap='inferno_r',
-                    title=f'Weight map LL, zi={zi} - Mollweide view',
-                )
-                hp.mollview(
-                    self.weight_maps_gg[zi],
-                    cmap='inferno_r',
-                    title=f'Weight map GG, zi={zi} - Mollweide view',
+                    title=f'Weight map {self.probe}, zi={zi} - Mollweide view',
                 )

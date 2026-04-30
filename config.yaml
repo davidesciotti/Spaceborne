@@ -443,5 +443,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: ../../data/DATA/Spaceborne_jobs/shear_weight_maps_nmt # Type: str. Path to the output directory
+  output_path: ../../data/DATA/Spaceborne_jobs/develop # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

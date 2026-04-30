@@ -161,7 +161,7 @@ class Mask:
         #     self.cl_mask = None
         #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
-        # TODO prolly this should be done for all probe and bin combinations...
+        # TODO prolly this should be done for all probe and bin combinations...?
         if self.use_weight_maps:
             self.ells_weight_maps = []
             self.cl_weight_maps = []

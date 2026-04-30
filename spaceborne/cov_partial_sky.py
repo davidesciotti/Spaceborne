@@ -62,7 +62,7 @@ def bin_mcm(mbm_unbinned: np.ndarray, nmt_bin_obj) -> np.ndarray:
     return mcm_binned
 
 
-def nmt_gaussian_cov_opt(
+def nmt_gaussian_cov(
     cov_dict: dict,
     spin0: bool,
     cl_tt: np.ndarray,
@@ -521,7 +521,7 @@ def sample_covariance( # fmt: skip
     cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned,
     nbl, zbins, weight_maps_gg, weight_maps_ll, nside, nreal, coupled_cls, 
     which_cls, nmt_bin_obj,
-    w00, w02, w22, lmax=None, fix_seed=True, n_iter=None, lite=True,
+    w00_dict, w02_dict, w22_dict, lmax=None, fix_seed=True, n_iter=None, lite=True,
 ):  # fmt: skip
     if lmax is None:
         lmax = 3 * nside - 1
@@ -637,9 +637,9 @@ def sample_covariance( # fmt: skip
                 f2=f2,
                 coupled_cls=coupled_cls,
                 which_cls=which_cls,
-                w00_dict=w00,
-                w02_dict=w02,
-                w22_dict=w22,
+                w00_dict=w00_dict,
+                w02_dict=w02_dict,
+                w22_dict=w22_dict,
                 alms_T=alms_T,
                 alms_E=alms_E,
                 alms_B=alms_B,
@@ -664,14 +664,29 @@ def sample_covariance( # fmt: skip
     return sim_cl_GG, sim_cl_GL, sim_cl_LL
 
 
-def sample_covariance_parallel( # fmt: skip
-    cov_dict,
-    cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned,
-    cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned,
-    nbl, zbins, weight_maps_gg, weight_maps_ll, nside, nreal, 
-    coupled_cls, which_cls, nmt_bin_obj,
-    wsp_path_template, lmax, fix_seed=True, n_jobs=None,
-):  # fmt: skip
+def sample_covariance_parallel(
+    cov_dict: cd.FrozenDict,
+    cl_GG_unbinned: np.ndarray,
+    cl_LL_unbinned: np.ndarray,
+    cl_GL_unbinned: np.ndarray,
+    cl_BB_unbinned: np.ndarray,
+    cl_EB_unbinned: np.ndarray,
+    cl_TB_unbinned: np.ndarray,
+    nbl: int,
+    zbins: int,
+    weight_maps_gg: np.ndarray,
+    weight_maps_ll: np.ndarray,
+    nside: int,
+    nreal: int,
+    coupled_cls: bool,
+    which_cls: str,
+    nmt_bin_obj: nmt.NmtBin,
+    wsp_path_template: str,
+    lmax: int | float,
+    n_jobs: int,
+    fix_seed=True,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Computes the ensemble covariance from a set of simulated power spectra"""
 
     SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
 
@@ -711,9 +726,9 @@ def sample_covariance_parallel( # fmt: skip
     ell_min_edges = np.array([nmt_bin_obj.get_ell_min(i) for i in range(n_bands)])
     ell_max_edges = np.array([nmt_bin_obj.get_ell_max(i) + 1 for i in range(n_bands)])
 
-    effective_n_jobs = n_jobs if n_jobs is not None else 30
-
-    results = Parallel(n_jobs=effective_n_jobs, backend='loky', verbose=1)(
+    results = Parallel(
+        n_jobs=n_jobs, backend='loky', verbose=1, inner_max_num_threads=1
+    )(
         delayed(_compute_one_realization)(
             seed=SEEDVALUE[i],
             cl_ring_big_list=cl_ring_big_list,
@@ -1086,13 +1101,15 @@ class NmtCov:
         cfg: dict,
         pvt_cfg: dict,
         ell_obj: ell_utils.EllBinning,
-        mask_obj: mask_utils.Mask,
+        mask_obj_gg: mask_utils.Mask,
+        mask_obj_ll: mask_utils.Mask,
     ):
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
 
         self.ell_obj = ell_obj
-        self.mask_obj = mask_obj
+        self.mask_obj_gg = mask_obj_gg
+        self.mask_obj_ll = mask_obj_ll
 
         self.zbins = pvt_cfg['zbins']
         self.n_probes = pvt_cfg['n_probes']
@@ -1102,13 +1119,22 @@ class NmtCov:
         self.coupled_cov = cfg['covariance']['cov_type'] == 'coupled'
         self.output_path = self.cfg['misc']['output_path']
         self.load_cached_wsp = self.cfg['covariance']['load_cached_nmt_workspaces']
-        
-        # TODO delete
-        self.use_footprint = self.cfg['mask']['use_footprint']
-        self.use_weight_maps = self.cfg['mask']['use_footprint']
-        self.weight_maps_ll = self.mask_obj.weight_maps
-        self.weight_maps_gg = self.mask_obj.weight_maps_gg
-        # TODO delete end
+
+        self.footprint_gg = self.mask_obj_gg.footprint
+        self.footprint_ll = self.mask_obj_ll.footprint
+        self.weight_maps_gg = self.mask_obj_gg.weight_maps
+        self.weight_maps_ll = self.mask_obj_ll.weight_maps
+
+        self.use_weight_maps_ll = self.weight_maps_ll is not None
+        self.use_weight_maps_gg = self.weight_maps_gg is not None
+        # just for readability
+        self.use_footprint_gg = not self.use_weight_maps_gg
+        self.use_footprint_ll = not self.use_weight_maps_ll
+
+        if self.use_footprint_gg:
+            self.weight_maps_gg = np.tile(self.footprint_gg[None, :], (self.zbins, 1))
+        if self.use_footprint_ll:
+            self.weight_maps_ll = np.tile(self.footprint_ll[None, :], (self.zbins, 1))
 
         self.wsp_fname = 'wsp_s{:d}s{:d}_zi{zi:d}zj{zj:d}.fits'
         self.cw_fname = 'cw_s{:d}s{:d}s{:d}s{:d}_zi{zi:d}zj{zj:d}zk{zk:d}zl{zl:d}.fits'
@@ -1133,31 +1159,314 @@ class NmtCov:
         )
 
         # check on lmax and NSIDE
-        for probe in ('WL', 'GC'):
-            _lmax = getattr(self.ell_obj, f'ell_max_{probe}')
-            if _lmax >= 3 * self.mask_obj.nside_cfg - 1:
-                warnings.warn(
-                    f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.mask_obj.nside_cfg - 1}\n'
-                    f'(NSIDE = {self.mask_obj.nside_cfg}) for probe {probe}. '
-                    'You should probably increase NSIDE or decrease lmax ',
-                    stacklevel=2,
-                )
+        _lmax = self.ell_obj.ell_max_GC
+        if _lmax >= 3 * self.mask_obj_gg.nside_cfg - 1:
+            warnings.warn(
+                f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.mask_obj_gg.nside_cfg - 1}\n'
+                f'(NSIDE = {self.mask_obj_gg.nside_cfg}) for probe GC. '
+                'You should probably increase NSIDE or decrease lmax ',
+                stacklevel=2,
+            )
+        _lmax = self.ell_obj.ell_max_WL
+        if _lmax >= 3 * self.mask_obj_ll.nside_cfg - 1:
+            warnings.warn(
+                f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.mask_obj_ll.nside_cfg - 1}\n'
+                f'(NSIDE = {self.mask_obj_ll.nside_cfg}) for probe WL. '
+                'You should probably increase NSIDE or decrease lmax ',
+                stacklevel=2,
+            )
 
         self.cl_3x2pt_unb_5d = _UNSET
         self.ells_3x2pt_unb = _UNSET
         self.nbl_3x2pt_unb = _UNSET
 
+    def build_fields(self, ell_max_eff):
+        # TODO XXX make this also dependent on the selected probes!
+        self.f0_dict, self.f2_dict = {}, {}
+        print('\nComputing namaster fields...')
+
+        # in case only the footprint is provided, the fields can be computed once
+        if not self.use_weight_maps_gg:
+            self.f0_ftp = nmt.NmtField(
+                mask=self.footprint_gg, maps=None, spin=0, lite=True, lmax=ell_max_eff
+            )
+        if not self.use_weight_maps_ll:
+            self.f2_ftp = nmt.NmtField(
+                mask=self.footprint_ll, maps=None, spin=2, lite=True, lmax=ell_max_eff
+            )
+
+        # now, either compute per-bin fields from weight maps, or just assign the
+        # same field (from the footprint) to all bins (i.e., to all keys in the dict)
+        for zi in tqdm(range(self.zbins)):
+            if self.use_weight_maps_gg:
+                self.f0_dict[zi] = nmt.NmtField(
+                    mask=self.weight_maps_gg[zi],
+                    maps=None,
+                    spin=0,
+                    lite=True,
+                    lmax=ell_max_eff,
+                )
+            else:
+                self.f0_dict[zi] = self.f0_ftp
+
+            if self.use_weight_maps_ll:
+                self.f2_dict[zi] = nmt.NmtField(
+                    mask=self.weight_maps_ll[zi],
+                    maps=None,
+                    spin=2,
+                    lite=True,
+                    lmax=ell_max_eff,
+                )
+            else:
+                self.f2_dict[zi] = self.f2_ftp
+
+    def build_wsp(self):
+        if self.load_cached_wsp:
+            print(
+                '\nLoading namaster workspaces and coupling matrices from\n'
+                f'{self.cache_path}...'
+            )
+        else:
+            print('\nComputing namaster workspaces and coupling matrices...')
+
+        self.w00_dict, self.w02_dict, self.w22_dict = {}, {}, {}
+
+        # ! 1. If no weight maps are passed, one wsp is sufficient
+        if not self.load_cached_wsp:
+            if not self.use_weight_maps_gg:
+                self.w00_ftp = nmt.NmtWorkspace()
+                self.w00_ftp.compute_coupling_matrix(
+                    self.f0_ftp, self.f0_ftp, self.nmt_bin_obj
+                )
+            if (not self.use_weight_maps_ll) and (not self.use_weight_maps_gg):
+                self.w02_ftp = nmt.NmtWorkspace()
+                self.w02_ftp.compute_coupling_matrix(
+                    self.f0_ftp, self.f2_ftp, self.nmt_bin_obj
+                )
+            if not self.use_weight_maps_ll:
+                self.w22_ftp = nmt.NmtWorkspace()
+                self.w22_ftp.compute_coupling_matrix(
+                    self.f2_ftp, self.f2_ftp, self.nmt_bin_obj
+                )
+
+        # ! Regardless of the presence of weight maps, build wsp dictionaries
+        # ! for all bin pairs, either by computing them (if weight maps are present)
+        # ! or by assigning the same wsp (if only the footprint is present),
+        # ! or by loading from cache
+        # TODO XXX this can be made probe-dependent as for cw, and looped only over
+        # TODO XXX unique pairs
+        for zi, zj in tqdm(self.zij_cross_combs):
+            if self.load_cached_wsp:
+                w00_name = self.wsp_fname.format(0, 0, zi=zi, zj=zj)
+                w02_name = self.wsp_fname.format(0, 2, zi=zi, zj=zj)
+                w22_name = self.wsp_fname.format(2, 2, zi=zi, zj=zj)
+                self.w00_dict[zi, zj] = nmt.NmtWorkspace()
+                self.w02_dict[zi, zj] = nmt.NmtWorkspace()
+                self.w22_dict[zi, zj] = nmt.NmtWorkspace()
+                self.w00_dict[zi, zj].read_from(f'{self.cache_path}/{w00_name}')
+                self.w02_dict[zi, zj].read_from(f'{self.cache_path}/{w02_name}')
+                self.w22_dict[zi, zj].read_from(f'{self.cache_path}/{w22_name}')
+
+            else:
+                if self.use_weight_maps_gg:
+                    self.w00_dict[zi, zj] = nmt.NmtWorkspace()
+                    self.w00_dict[zi, zj].compute_coupling_matrix(
+                        self.f0_dict[zi], self.f0_dict[zj], self.nmt_bin_obj
+                    )
+                else:
+                    self.w00_dict[zi, zj] = self.w00_ftp
+
+                if self.use_weight_maps_gg or self.use_weight_maps_ll:
+                    self.w02_dict[zi, zj] = nmt.NmtWorkspace()
+                    self.w02_dict[zi, zj].compute_coupling_matrix(
+                        self.f0_dict[zi], self.f2_dict[zj], self.nmt_bin_obj
+                    )
+                else:
+                    self.w02_dict[zi, zj] = self.w02_ftp
+
+                if self.use_weight_maps_ll:
+                    self.w22_dict[zi, zj] = nmt.NmtWorkspace()
+                    self.w22_dict[zi, zj].compute_coupling_matrix(
+                        self.f2_dict[zi], self.f2_dict[zj], self.nmt_bin_obj
+                    )
+                else:
+                    self.w22_dict[zi, zj] = self.w22_ftp
+
+    def build_cw(self, unique_probe_combs):
+        """
+        Builds the covariance workspace objects for all required probe combinations and
+        redshift bins. Some clarifications about this:
+        * If only the footprint is provided, the coupling coefficients are the same for
+        all bin combinations, so we can avoid looping over all bins
+        * If only the footprint is provided and the ll and gg footprints match,
+        the coupling coefficients are the same for all probe combinations, so we can
+        avopid looping over all probe combinations as well
+
+        """
+
+        self.cw_dict = {}
+
+        if self.load_cached_wsp:
+            print(
+                '\nLoading cov workspace coupling coefficients from\n'
+                f'{self.cache_path}...'
+            )
+        else:
+            print(
+                '\nComputing cov workspace coupling coefficients '
+                '(this may take a while)...'
+            )
+
+        cw_dict_ftp = {}
+
+        # ! Case 1: if the footprint is used for all probes, and the masks are equal
+        use_footprint_allprobes = self.use_footprint_gg and self.use_footprint_ll
+        footprint_is_equal = np.array_equal(self.footprint_gg, self.footprint_ll)
+        if use_footprint_allprobes and footprint_is_equal and not self.load_cached_wsp:
+            with sl.timer('case 1: '):
+                cw_ftp = nmt.NmtCovarianceWorkspace()
+                cw_ftp.compute_coupling_coefficients(
+                    self.f0_ftp, self.f0_ftp, self.f0_ftp, self.f0_ftp
+                )
+
+        # ! Case 2: if the footprint is used for all probes, but the masks are not equal
+        # ! in this case we have to loop over the probes, but not over the bins
+        for probe_abcd in unique_probe_combs:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            if (
+                use_footprint_allprobes
+                and not footprint_is_equal
+                and not self.load_cached_wsp
+            ):
+                _f1 = self.f0_ftp if probe_ab[0] == 'G' else self.f2_ftp
+                _f2 = self.f0_ftp if probe_ab[1] == 'G' else self.f2_ftp
+                _f3 = self.f0_ftp if probe_cd[0] == 'G' else self.f2_ftp
+                _f4 = self.f0_ftp if probe_cd[1] == 'G' else self.f2_ftp
+                cw_dict_ftp[probe_ab, probe_cd] = nmt.NmtCovarianceWorkspace()
+                cw_dict_ftp[probe_ab, probe_cd].compute_coupling_coefficients(
+                    _f1, _f2, _f3, _f4
+                )
+            elif (
+                use_footprint_allprobes
+                and footprint_is_equal
+                and not self.load_cached_wsp
+            ):
+                cw_dict_ftp[probe_ab, probe_cd] = cw_ftp
+
+        # the last branch is accessed only when use_footprint_allprobes is True,
+        # but in the particular case of auto-correlations I can look just at the
+        # specific key:
+        if self.use_footprint_gg and not self.load_cached_wsp:
+            cw_dict_ftp['GG', 'GG'] = nmt.NmtCovarianceWorkspace()
+            cw_dict_ftp['GG', 'GG'].compute_coupling_coefficients(
+                self.f0_ftp, self.f0_ftp, self.f0_ftp, self.f0_ftp
+            )
+        if self.use_footprint_ll and not self.load_cached_wsp:
+            cw_dict_ftp['LL', 'LL'] = nmt.NmtCovarianceWorkspace()
+            cw_dict_ftp['LL', 'LL'].compute_coupling_coefficients(
+                self.f2_ftp, self.f2_ftp, self.f2_ftp, self.f2_ftp
+            )
+
+        # ! Case 3: some probes require weight maps, and/or
+        # ! the footprints are different (I'm not checking whether the weight maps
+        # ! are different...)
+        # TODO XXX leverage the remaining symmetry for other slow parts, e.g. cNG!!
+        for probe_abcd in tqdm(unique_probe_combs):
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            self.cw_dict[probe_ab, probe_cd] = {}
+            zpairs_ab = self.ind_dict[probe_ab].shape[0]
+            zpairs_cd = self.ind_dict[probe_cd].shape[0]
+            is_auto = probe_ab == probe_cd
+
+            # is there at least one probe that requires weight maps? This is the
+            # "general case" (e.g.: weight maps for shear, footprint for clustering:
+            # in this case, cov_GGGL can't be taken from the ones precomputed above,
+            # since it contains one "bin-dependent" field
+            use_weight_maps = self.use_weight_maps_ll or self.use_weight_maps_gg
+            # in the special auto-covariance case, I can take just the corresponding
+            # boolean flag:
+            if probe_abcd == 'LLLL':
+                use_weight_maps = self.use_weight_maps_ll
+            elif probe_abcd == 'GGGG':
+                use_weight_maps = self.use_weight_maps_gg
+
+            # symmetry note: for auto-blocks (LL, LL), (GL, GL), (GG, GG),
+            # the symmetry (12) <-> (34) gives
+            # cov[GL, GL][i, j, k, l] = cov[GL, GL][k, l, i, j]
+            # which is different from the cross-probe blocks, in which you'r also
+            # have to exchange the probes (GL <-> LL), giving
+            # cov[LL, GL][i, j, k, l] = cov[GL, LL][k, l, i, j]
+            # this is implemented for by only looping over the upper triangle of
+            # (zij, zkl) for the auto-blocks (and filling the lower triangle
+            # by reference)
+            for zij in range(zpairs_ab):
+                zkl_range = range(zij, zpairs_cd) if is_auto else range(zpairs_cd)
+                for zkl in zkl_range:
+                    _, _, zi, zj = self.ind_dict[probe_ab][zij]
+                    _, _, zk, zl = self.ind_dict[probe_cd][zkl]
+                    zi, zj, zk, zl = int(zi), int(zj), int(zk), int(zl)
+
+                    # ! Case 3: compute from weight maps (probe- and bin-dependent)
+                    if use_weight_maps and (not self.load_cached_wsp):
+                        _f1 = (
+                            self.f0_dict[zi] if probe_ab[0] == 'G' else self.f2_dict[zi]
+                        )
+                        _f2 = (
+                            self.f0_dict[zj] if probe_ab[1] == 'G' else self.f2_dict[zj]
+                        )
+                        _f3 = (
+                            self.f0_dict[zk] if probe_cd[0] == 'G' else self.f2_dict[zk]
+                        )
+                        _f4 = (
+                            self.f0_dict[zl] if probe_cd[1] == 'G' else self.f2_dict[zl]
+                        )
+                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = (
+                            nmt.NmtCovarianceWorkspace()
+                        )
+                        self.cw_dict[probe_ab, probe_cd][
+                            zi, zj, zk, zl
+                        ].compute_coupling_coefficients(_f1, _f2, _f3, _f4)
+
+                    # ! Case 1-2: get from previous computation
+                    elif (not use_weight_maps) and (not self.load_cached_wsp):
+                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = cw_dict_ftp[
+                            probe_ab, probe_cd
+                        ]
+
+                    # ! Case 4: load cached
+                    elif self.load_cached_wsp:
+                        spin_list = [0 if p == 'G' else 2 for p in probe_abcd]
+                        cw_name = self.cw_fname.format(
+                            *spin_list, zi=zi, zj=zj, zk=zk, zl=zl
+                        )
+                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = (
+                            nmt.NmtCovarianceWorkspace()
+                        )
+                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].read_from(
+                            f'{self.cache_path}/{cw_name}'
+                        )
+
+                    # fill lower triangle by reference for auto-blocks
+                    # (if zkl > zij, we are in the upper triangle,
+                    # so swapping them gives the corresponding point in the lower
+                    # triangle)
+                    # TODO XXX this can be done at the nmt cov level and deleted here!
+                    if is_auto and zkl > zij:
+                        self.cw_dict[probe_ab, probe_cd][zk, zl, zi, zj] = self.cw_dict[
+                            probe_ab, probe_cd
+                        ][zi, zj, zk, zl]
+
     def build_psky_cov(self):
         # TODO again, here I'm using 3x2pt = GC
         # 1. ell binning
         # shorten names for brevity
-        nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
-        fsky = self.mask_obj.fsky_footprint
+        self.nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
+        fsky_ll = self.mask_obj_ll.fsky_footprint
         unique_probe_combs = self.pvt_cfg['unique_probe_combs_hs']
 
-        zij_auto_combs = list(combinations_with_replacement(range(self.zbins), 2))
-        zij_cross_combs = list(itertools.product(range(self.zbins), repeat=2))
-        zijkl_combs = list(itertools.product(range(self.zbins), repeat=4))
+        self.zij_auto_combs = list(combinations_with_replacement(range(self.zbins), 2))
+        self.zij_cross_combs = list(itertools.product(range(self.zbins), repeat=2))
+        self.zijkl_combs = list(itertools.product(range(self.zbins), repeat=4))
 
         ells_eff = self.ell_obj.ells_3x2pt
         nbl_eff = self.ell_obj.nbl_3x2pt
@@ -1189,186 +1498,22 @@ class NmtCov:
         # ! 1. Create field objects
         # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
-        f0_dict, f2_dict = {}, {}
-        w00_dict, w02_dict, w22_dict = {}, {}, {}
-        cw_dict = {}
 
-        # TODO add possibility to load cached w and cw (I already save them!)
-        # in case we use the footprint, these can be computed once
-        if self.use_footprint:
-            print('\nComputing namaster fields...')
-            f0_mask = nmt.NmtField(
-                mask=self.mask_obj.footprint_gg, maps=None, spin=0, lite=True, lmax=ell_max_eff
-            )
-            f2_mask = nmt.NmtField(
-                mask=self.mask_obj.footprint, maps=None, spin=2, lite=True, lmax=ell_max_eff
-            )
-
-            print('\nComputing namaster workspaces and coupling matrices...')
-            w00_mask = nmt.NmtWorkspace()
-            w02_mask = nmt.NmtWorkspace()
-            w22_mask = nmt.NmtWorkspace()
-            w00_mask.compute_coupling_matrix(f0_mask, f0_mask, nmt_bin_obj)
-            w02_mask.compute_coupling_matrix(f0_mask, f2_mask, nmt_bin_obj)
-            w22_mask.compute_coupling_matrix(f2_mask, f2_mask, nmt_bin_obj)
-
-            print('\nComputing cov workspace coupling coefficients...')
-            cw = nmt.NmtCovarianceWorkspace()
-            cw.compute_coupling_coefficients(f0_mask, f0_mask, f0_mask, f0_mask)
-
-        print('\nComputing namaster fields...')
-        # now, either compute per-bin fields from weight maps, or just assign the
-        # same field (from the footprint) to all bins (i.e., to all keys in the dict)
-        for zi in tqdm(range(self.zbins)):
-            if self.use_weight_maps:
-                f0_dict[zi] = nmt.NmtField(
-                    mask=self.weight_maps_gg[zi],
-                    maps=None,
-                    spin=0,
-                    lite=True,
-                    lmax=ell_max_eff,
-                )
-                f2_dict[zi] = nmt.NmtField(
-                    mask=self.weight_maps_ll[zi],
-                    maps=None,
-                    spin=2,
-                    lite=True,
-                    lmax=ell_max_eff,
-                )
-            elif self.use_footprint:
-                f0_dict[zi] = f0_mask
-                f2_dict[zi] = f2_mask
-
-        # ! 2. Create workspace objects
-        # TODO XXX this can be made probe-dependent as for cw, and looped only over
-        # TODO XXX unique pairs
-        if self.load_cached_wsp:
-            print(
-                '\nLoading namaster workspaces and coupling matrices from\n'
-                f'{self.cache_path}...'
-            )
-        else:
-            print('\nComputing namaster workspaces and coupling matrices...')
-        for zi, zj in tqdm(zij_cross_combs):
-            if self.use_weight_maps and not self.load_cached_wsp:
-                w00_dict[zi, zj] = nmt.NmtWorkspace()
-                w02_dict[zi, zj] = nmt.NmtWorkspace()
-                w22_dict[zi, zj] = nmt.NmtWorkspace()
-                w00_dict[zi, zj].compute_coupling_matrix(
-                    f0_dict[zi], f0_dict[zj], nmt_bin_obj
-                )
-                w02_dict[zi, zj].compute_coupling_matrix(
-                    f0_dict[zi], f2_dict[zj], nmt_bin_obj
-                )
-                w22_dict[zi, zj].compute_coupling_matrix(
-                    f2_dict[zi], f2_dict[zj], nmt_bin_obj
-                )
-
-            elif self.use_footprint and not self.load_cached_wsp:
-                w00_dict[zi, zj] = w00_mask
-                w02_dict[zi, zj] = w02_mask
-                w22_dict[zi, zj] = w22_mask
-
-            elif self.load_cached_wsp:
-                w00_name = self.wsp_fname.format(0, 0, zi=zi, zj=zj)
-                w02_name = self.wsp_fname.format(0, 2, zi=zi, zj=zj)
-                w22_name = self.wsp_fname.format(2, 2, zi=zi, zj=zj)
-                w00_dict[zi, zj] = nmt.NmtWorkspace()
-                w02_dict[zi, zj] = nmt.NmtWorkspace()
-                w22_dict[zi, zj] = nmt.NmtWorkspace()
-                w00_dict[zi, zj].read_from(f'{self.cache_path}/{w00_name}')
-                w02_dict[zi, zj].read_from(f'{self.cache_path}/{w02_name}')
-                w22_dict[zi, zj].read_from(f'{self.cache_path}/{w22_name}')
-
-        # ! 3. Create covariance workspace objects (for the coupled covariance)
-        # TODO is there any way to reduce the number of bin combinations??
-        if self.load_cached_wsp:
-            print(
-                '\nLoading cov workspace coupling coefficients from\n'
-                f'{self.cache_path}...'
-            )
-        else:
-            print(
-                '\nComputing cov workspace coupling coefficients '
-                '(this may take a while)...'
-            )
-
-        # TODO XXX leverage the remaining symmetry for other slow parts, e.g. cNG!!
-        for probe_abcd in tqdm(unique_probe_combs):
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-            cw_dict[probe_ab, probe_cd] = {}
-            zpairs_ab = self.ind_dict[probe_ab].shape[0]
-            zpairs_cd = self.ind_dict[probe_cd].shape[0]
-            is_auto = probe_ab == probe_cd
-
-            # symmetry note: for auto-blocks (LL, LL), (GL, GL), (GG, GG),
-            # the symmetry (12) <-> (34) gives
-            # cov[GL, GL][i, j, k, l] = cov[GL, GL][k, l, i, j]
-            # which is different from the cross-probe blocks, in which you'r also
-            # have to exchange the probes (GL <-> LL), giving
-            # cov[LL, GL][i, j, k, l] = cov[GL, LL][k, l, i, j]
-            # this is implemented for by only looping over the upper triangle of
-            # (zij, zkl) for the auto-blocks (and filling the lower triangle
-            # by reference)
-            for zij in range(zpairs_ab):
-                zkl_range = range(zij, zpairs_cd) if is_auto else range(zpairs_cd)
-                for zkl in zkl_range:
-                    _, _, zi, zj = self.ind_dict[probe_ab][zij]
-                    _, _, zk, zl = self.ind_dict[probe_cd][zkl]
-                    zi, zj, zk, zl = int(zi), int(zj), int(zk), int(zl)
-
-                    # ! option 1: compute from weight maps
-                    if self.use_weight_maps and not self.load_cached_wsp:
-                        _f1 = f0_dict[zi] if probe_ab[0] == 'G' else f2_dict[zi]
-                        _f2 = f0_dict[zj] if probe_ab[1] == 'G' else f2_dict[zj]
-                        _f3 = f0_dict[zk] if probe_cd[0] == 'G' else f2_dict[zk]
-                        _f4 = f0_dict[zl] if probe_cd[1] == 'G' else f2_dict[zl]
-
-                        cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = (
-                            nmt.NmtCovarianceWorkspace()
-                        )
-                        cw_dict[probe_ab, probe_cd][
-                            zi, zj, zk, zl
-                        ].compute_coupling_coefficients(_f1, _f2, _f3, _f4)
-
-                    # ! option 2: compute from footprint
-                    elif self.use_footprint and not self.load_cached_wsp:
-                        cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = cw
-
-                    # ! option 3: load cached
-                    elif self.load_cached_wsp:
-                        spin_list = [0 if p == 'G' else 2 for p in probe_abcd]
-                        cw_name = self.cw_fname.format(
-                            *spin_list, zi=zi, zj=zj, zk=zk, zl=zl
-                        )
-                        cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = (
-                            nmt.NmtCovarianceWorkspace()
-                        )
-                        cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].read_from(
-                            f'{self.cache_path}/{cw_name}'
-                        )
-
-                    # fill lower triangle by reference for auto-blocks
-                    # (if zkl > zij, we are in the upper triangle,
-                    # so swapping them gives the corresponding point in the lower
-                    # triangle)
-                    # TODO XXX this can be done at the nmt cov level and deleted here!
-                    if is_auto and zkl > zij:
-                        cw_dict[probe_ab, probe_cd][zk, zl, zi, zj] = cw_dict[
-                            probe_ab, probe_cd
-                        ][zi, zj, zk, zl]
+        self.build_fields(ell_max_eff)
+        self.build_wsp()
+        self.build_cw(unique_probe_combs)
 
         # ! store in cache for later reuse, if not already loaded
         if not self.load_cached_wsp:
             os.makedirs(f'{self.cache_path}', exist_ok=True)
             print('\nSaving namaster workspaces in cache...')
-            for zi, zj in tqdm(zij_cross_combs):
+            for zi, zj in tqdm(self.zij_cross_combs):
                 w00_name = self.wsp_fname.format(0, 0, zi=zi, zj=zj)
                 w02_name = self.wsp_fname.format(0, 2, zi=zi, zj=zj)
                 w22_name = self.wsp_fname.format(2, 2, zi=zi, zj=zj)
-                w00_dict[zi, zj].write_to(f'{self.cache_path}/{w00_name}')
-                w02_dict[zi, zj].write_to(f'{self.cache_path}/{w02_name}')
-                w22_dict[zi, zj].write_to(f'{self.cache_path}/{w22_name}')
+                self.w00_dict[zi, zj].write_to(f'{self.cache_path}/{w00_name}')
+                self.w02_dict[zi, zj].write_to(f'{self.cache_path}/{w02_name}')
+                self.w22_dict[zi, zj].write_to(f'{self.cache_path}/{w22_name}')
 
             print('\nSaving covariance workspaces in cache...')
             for probe_abcd in tqdm(unique_probe_combs):
@@ -1386,7 +1531,7 @@ class NmtCov:
                         cw_name = self.cw_fname.format(
                             *spin_list, zi=zi, zj=zj, zk=zk, zl=zl
                         )
-                        cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].write_to(
+                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].write_to(
                             f'{self.cache_path}/{cw_name}'
                         )
 
@@ -1402,25 +1547,31 @@ class NmtCov:
             and (self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG'])
         ) or self.cfg['covariance']['save_mcms']:
             print('\nComputing and binning mode coupling matrices...')
-            mcm_tt_unb, mcm_te_unb, mcm_ee_unb = {}, {}, {}, {}
+            mcm_tt_unb, mcm_te_unb, mcm_ee_unb = {}, {}, {}
             self.mcm_tt_binned, self.mcm_et_binned = {}, {}
             self.mcm_te_binned, self.mcm_ee_binned = {}, {}
-            for zi, zj in tqdm(zij_cross_combs):
+            for zi, zj in tqdm(self.zij_cross_combs):
                 # extract only the relevant blocks
-                mcm_tt_unb[zi, zj] = w00_dict[zi, zj].get_coupling_matrix()[
+                mcm_tt_unb[zi, zj] = self.w00_dict[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
-                mcm_te_unb[zi, zj] = w02_dict[zi, zj].get_coupling_matrix()[
+                mcm_te_unb[zi, zj] = self.w02_dict[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
-                mcm_ee_unb[zi, zj] = w22_dict[zi, zj].get_coupling_matrix()[
+                mcm_ee_unb[zi, zj] = self.w22_dict[zi, zj].get_coupling_matrix()[
                     :nbl_unb, :nbl_unb
                 ]
 
                 # bin (and store in self)
-                self.mcm_tt_binned[zi, zj] = bin_mcm(mcm_tt_unb[zi, zj], nmt_bin_obj)
-                self.mcm_te_binned[zi, zj] = bin_mcm(mcm_te_unb[zi, zj], nmt_bin_obj)
-                self.mcm_ee_binned[zi, zj] = bin_mcm(mcm_ee_unb[zi, zj], nmt_bin_obj)
+                self.mcm_tt_binned[zi, zj] = bin_mcm(
+                    mcm_tt_unb[zi, zj], self.nmt_bin_obj
+                )
+                self.mcm_te_binned[zi, zj] = bin_mcm(
+                    mcm_te_unb[zi, zj], self.nmt_bin_obj
+                )
+                self.mcm_ee_binned[zi, zj] = bin_mcm(
+                    mcm_ee_unb[zi, zj], self.nmt_bin_obj
+                )
 
             if self.cfg['covariance']['save_mcms']:
                 np.savez(
@@ -1440,7 +1591,7 @@ class NmtCov:
         if self.cfg['precision']['use_iNKA']:
             # TODO XXX this could be made more efficient by only looping over the auto-combs
             # TODO XXX for ll and gg
-            for zi, zj in zij_cross_combs:
+            for zi, zj in self.zij_cross_combs:
                 list_gg = [self.cl_3x2pt_unb_5d[1, 1, :, zi, zj]]
                 list_gl = [
                     self.cl_3x2pt_unb_5d[1, 0, :, zi, zj],
@@ -1454,13 +1605,13 @@ class NmtCov:
                 ]
                 # TODO the denominator should be the product of the masks?
                 cl_gg_4covnmt[:, zi, zj] = (
-                    w00_dict[zi, zj].couple_cell(list_gg)[0] / fsky
+                    self.w00_dict[zi, zj].couple_cell(list_gg)[0] / fsky_ll
                 )
                 cl_gl_4covnmt[:, zi, zj] = (
-                    w02_dict[zi, zj].couple_cell(list_gl)[0] / fsky
+                    self.w02_dict[zi, zj].couple_cell(list_gl)[0] / fsky_ll
                 )
                 cl_ll_4covnmt[:, zi, zj] = (
-                    w22_dict[zi, zj].couple_cell(list_ll)[0] / fsky
+                    self.w22_dict[zi, zj].couple_cell(list_ll)[0] / fsky_ll
                 )
 
         # add noise to spectra to compute NMT cov
@@ -1482,7 +1633,7 @@ class NmtCov:
                 f'\nComputing {coupled_str}{spin0_str} partial-sky '
                 'Gaussian covariance...'
             ):
-                nmt_gaussian_cov_opt(
+                nmt_gaussian_cov(
                     cov_dict=self.cov_dict,
                     spin0=self.cfg['precision']['spin0'],
                     cl_tt=cl_tt_4covnmt,
@@ -1494,10 +1645,10 @@ class NmtCov:
                     nbl=nbl_eff,
                     zbins=self.zbins,
                     ind_dict=self.ind_dict,
-                    cw_dict=cw_dict,
-                    w00_dict=w00_dict,
-                    w02_dict=w02_dict,
-                    w22_dict=w22_dict,
+                    cw_dict=self.cw_dict,
+                    w00_dict=self.w00_dict,
+                    w02_dict=self.w02_dict,
+                    w22_dict=self.w22_dict,
                     unique_probe_combs=unique_probe_combs,
                     nonreq_probe_combs=self.nonreq_probe_combs,
                     coupled=self.coupled_cov,
@@ -1564,11 +1715,11 @@ class NmtCov:
                 zbins=self.zbins,
                 weight_maps_gg=self.weight_maps_gg,
                 weight_maps_ll=self.weight_maps_ll,
-                nside=self.mask_obj.nside_cfg,
+                nside=self.mask_obj_ll.nside_cfg,
                 nreal=self.cfg['sample_covariance']['nreal'],
                 coupled_cls=self.coupled_cov,
                 which_cls=self.cfg['sample_covariance']['which_cls'],
-                nmt_bin_obj=nmt_bin_obj,
+                nmt_bin_obj=self.nmt_bin_obj,
                 lmax=ell_max_eff,
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['sample_covariance']['fix_seed'],

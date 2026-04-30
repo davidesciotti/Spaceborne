@@ -1462,6 +1462,7 @@ class NmtCov:
         # shorten names for brevity
         self.nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
         fsky_ll = self.mask_obj_ll.fsky_footprint
+        fsky_gg = self.mask_obj_gg.fsky_footprint
         unique_probe_combs = self.pvt_cfg['unique_probe_combs_hs']
 
         self.zij_auto_combs = list(combinations_with_replacement(range(self.zbins), 2))
@@ -1605,7 +1606,7 @@ class NmtCov:
                 ]
                 # TODO the denominator should be the product of the masks?
                 cl_gg_4covnmt[:, zi, zj] = (
-                    self.w00_dict[zi, zj].couple_cell(list_gg)[0] / fsky_ll
+                    self.w00_dict[zi, zj].couple_cell(list_gg)[0] / fsky_gg
                 )
                 cl_gl_4covnmt[:, zi, zj] = (
                     self.w02_dict[zi, zj].couple_cell(list_gl)[0] / fsky_ll
@@ -1730,7 +1731,7 @@ class NmtCov:
 
             if self.cfg['sample_covariance']['save_sim_cls']:
                 np.savez_compressed(
-                    f'{self.cfg["misc"]["output_path"]}/sample_cov_sim_cls.npz',
+                    f'{self.output_path}/sample_cov_sim_cls.npz',
                     sim_cl_LL=self.sim_cl_LL,
                     sim_cl_GL=self.sim_cl_GL,
                     sim_cl_GG=self.sim_cl_GG,

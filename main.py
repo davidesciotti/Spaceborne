@@ -817,12 +817,13 @@ mask_obj_gg.plot_maps()
 
 # TODO XXX change this!!!
 # add fsky to pvt_cfg
-assert np.isclose(
+if not np.isclose(
     mask_obj_ll.fsky_footprint, mask_obj_gg.fsky_footprint, atol=0, rtol=1e-5
-), (
-    f'LL and GG masks have different fsky! {mask_obj_ll.fsky_footprint = :.4f} vs. '
-    f'{mask_obj_gg.fsky_footprint = :.4f}. Please check the masks.'
-)
+):
+    raise ValueError(
+        f'LL and GG footprints have different fsky! {mask_obj_ll.fsky_footprint = :.4f} vs. '
+        f'{mask_obj_gg.fsky_footprint = :.4f}. Please check the footprints.'
+    )
 pvt_cfg['fsky'] = mask_obj_ll.fsky_footprint
 
 

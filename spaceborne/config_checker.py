@@ -772,6 +772,7 @@ class SpaceborneConfigChecker:
             )
 
     def run_all_checks(self) -> None:
+        self.check_types()
         self.check_nmt()
         self.check_mask()
         self.check_BNT_transform()
@@ -780,7 +781,6 @@ class SpaceborneConfigChecker:
         self.check_lists()
         # self.check_fsky()
         self.check_probe_selection()
-        self.check_types()
         self.check_misc()
         self.check_nz()
         self.check_cosmo()

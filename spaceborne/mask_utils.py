@@ -69,9 +69,8 @@ class Mask:
         self.probe = probe
         self.geometry = mask_cfg[probe]['geometry']
 
-        self.use_weight_maps = (
-            False if mask_cfg[probe]['weight_maps_filename'] is None else True
-        )
+        self.use_weight_maps = mask_cfg[probe]['weight_maps_filename'] is not None
+
 
         self.footprint_filename = mask_cfg[probe]['footprint_filename']
         self.weight_maps_filename = mask_cfg[probe]['weight_maps_filename']
@@ -98,6 +97,11 @@ class Mask:
         elif self.geometry == 'polar_cap':
             self.footprint = generate_polar_cap_func(
                 self.desired_survey_area_deg2, self.nside_cfg
+            )
+        else:
+            raise ValueError(
+                f'Unsupported geometry type: {self.geometry} for probe {self.probe}. '
+                'Supported types are: footprint_file and polar_cap'
             )
 
         if self.use_weight_maps:

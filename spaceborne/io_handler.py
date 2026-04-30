@@ -50,18 +50,23 @@ def load_footprint(path: str, nside: int) -> np.ndarray:
             # and downgrade it on the fly
             footprint = _read_masking_map(path, nside)
         except ValueError as ve:
-            footprint = hp.read_map(path)
             print(
                 f'ValueError raised: {ve}, \n'
                 'falling back on hp.read_map to read input map'
             )
+            footprint_raw = hp.read_map(path)
+            nside_in = hp.npix2nside(len(footprint_raw))
+            if nside_in != nside:
+                footprint = hp.ud_grade(footprint_raw, nside)
+            else:
+                footprint = footprint_raw
 
     elif is_npy:
         footprint = np.load(path)
 
     else:
         raise ValueError(
-            f'Unsupported file format for mask file: {path}'
+            f'Unsupported file format for mask file: {path} '
             'Supported formats are .fits, .fits.gz and .npy'
         )
 

@@ -237,8 +237,9 @@ class TestMask:
         mask_obj.process()
 
         assert hasattr(mask_obj, 'mask')
+        assert hasattr(mask_obj, 'footprint')
         assert len(mask_obj.footprint) == hp.nside2npix(32)
-        assert hasattr(mask_obj, 'fsky')
+        assert hasattr(mask_obj, 'fsky_footprint')
         assert hasattr(mask_obj, 'survey_area_deg2')
         assert hasattr(mask_obj, 'survey_area_sr')
         assert mask_obj.fsky_footprint > 0
@@ -248,10 +249,10 @@ class TestMask:
         """Test loading mask from .npy file."""
         mask_obj = mask_utils.Mask(basic_mask_config_load)
         mask_obj.process()
-
-        assert hasattr(mask_obj, 'mask')
+        assert hasattr(mask_obj, 'footprint')
         assert len(mask_obj.footprint) == hp.nside2npix(32)
         # Full sky mask should give fsky ~ 1
+        assert mask_obj.fsky_footprint == pytest.approx(1.0, rel=0.01)
         assert mask_obj.fsky_footprint == pytest.approx(1.0, rel=0.01)
 
     def test_use_footprint_fits(self, tmp_path):
@@ -275,7 +276,7 @@ class TestMask:
         mask_obj = mask_utils.Mask(config)
         mask_obj.process()
 
-        assert hasattr(mask_obj, 'mask')
+        assert hasattr(mask_obj, 'footprint')
         assert len(mask_obj.footprint) == npix
 
     def test_mask_file_not_found(self):

@@ -1116,7 +1116,11 @@ if (
 
     # initialize cov_nmt_obj and set a couple useful attributes
     cov_nmt_obj = cov_partial_sky.NmtCov(
-        cfg=cfg, pvt_cfg=pvt_cfg, ell_obj=ell_obj, mask_obj=mask_obj_ll
+        cfg=cfg,
+        pvt_cfg=pvt_cfg,
+        ell_obj=ell_obj,
+        mask_obj_gg=mask_obj_gg,
+        mask_obj_ll=mask_obj_ll,
     )
 
     # set unbinned ells in cov_nmt_obj
@@ -2181,8 +2185,9 @@ if cfg['misc']['save_output_as_benchmark']:
             misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
 
     # Mask information
+    # TODO XXX fix this after rerunning benchmarks
     if mask_obj_ll is not None:
-        misc_dict['mask'] = mask_obj_ll.footprint_ll
+        misc_dict['mask'] = mask_obj_ll.footprint
         misc_dict['mask_ell'] = mask_obj_ll.ell_mask
         misc_dict['mask_cl'] = mask_obj_ll.cl_mask
         misc_dict['mask_fsky'] = np.array([mask_obj_ll.fsky])

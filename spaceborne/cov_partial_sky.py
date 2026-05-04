@@ -818,14 +818,16 @@ def _compute_one_realization(
     np.random.seed(seed)
 
     # Load workspaces inside worker (NmtWorkspace objects are not picklable)
-    w00, w02, w22 = {}, {}, {}
-    for zi, zj in itertools.product(range(zbins), repeat=2):
-        w00[zi, zj] = nmt.NmtWorkspace()
-        w02[zi, zj] = nmt.NmtWorkspace()
-        w22[zi, zj] = nmt.NmtWorkspace()
-        w00[zi, zj].read_from(wsp_path_template.format(0, 0, zi=zi, zj=zj))
-        w02[zi, zj].read_from(wsp_path_template.format(0, 2, zi=zi, zj=zj))
-        w22[zi, zj].read_from(wsp_path_template.format(2, 2, zi=zi, zj=zj))
+    # [Note]: this is only necessary if we want to decouple the Cls!
+    w00_dict, w02_dict, w22_dict = {}, {}, {}
+    if not coupled_cls:
+        for zi, zj in itertools.product(range(zbins), repeat=2):
+            w00_dict[zi, zj] = nmt.NmtWorkspace()
+            w02_dict[zi, zj] = nmt.NmtWorkspace()
+            w22_dict[zi, zj] = nmt.NmtWorkspace()
+            w00_dict[zi, zj].read_from(wsp_path_template.format(0, 0, zi=zi, zj=zj))
+            w02_dict[zi, zj].read_from(wsp_path_template.format(0, 2, zi=zi, zj=zj))
+            w22_dict[zi, zj].read_from(wsp_path_template.format(2, 2, zi=zi, zj=zj))
 
     # Reconstruct NmtBin object from edges (nmt_bin_obj objects are not picklable)
     nmt_bin_obj = nmt.NmtBin.from_edges(ell_min_edges, ell_max_edges)
@@ -893,9 +895,9 @@ def _compute_one_realization(
             f2=f2,
             coupled_cls=coupled_cls,
             which_cls=which_cls,
-            w00_dict=w00,
-            w02_dict=w02,
-            w22_dict=w22,
+            w00_dict=w00_dict,
+            w02_dict=w02_dict,
+            w22_dict=w22_dict,
             alms_T=alms_T,
             alms_E=alms_E,
             alms_B=alms_B,

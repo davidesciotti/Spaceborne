@@ -21,9 +21,11 @@ Spaceborne is a code for the fast and accurate computation of the analytical pho
 Some of its features include:
 
 * Easy to use: all settings are detailed (along with type hints) in the `yaml` example config file, with further explanations in the [readthecods](https://spaceborne.readthedocs.io/en/latest/?badge=latest) page.
+* Different statistics available: $C(\ell)$, 2PCF and COSEBIs
+* Interfaced with NaMaster for computation of the harmonic-space (coupled and decoupled) Gaussian covariance for partial sky coverage.
+* Possibility to compute ensemble covariance from a set of (masked) healpy Gaussian realisations, parallelised in a memory-efficient way.
+* Interfaced with the Core Cosmology Library (CCL), one of the most modern and extensive cosmological libraries.
 * Extensively validated against simulations and other public codes.
-* Interfaced with CCL and cloelib (soon), two of the most modern and extensive cosmological libraries.
-* Different statistics available: $C(\ell)$ and 2PCF
 * Python native: written entirely in pure Python, with no low-level interfaces (e.g., C/C++ wrappers). This makes the code highly accessible, transparent, and easy to modify.
 * JAX-accelerated: the most intensive computations are optimised using JAX, seamlessly providing multi-device (CPU, GPU, TPU) support.
 * ... and much more!

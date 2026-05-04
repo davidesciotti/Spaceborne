@@ -367,8 +367,9 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
 
 
 def _weight_per_bin(weight_maps, zi):
-    """Accept either one shared mask (1D array)
-    # or a per-bin container (list/dict/array with zbin axis first)"""
+    """Returns the weight map for the given z bin index zi, 
+    whether we are using a footprint (1D array of shape (N_pix,))
+    or weight maps (2D array of shape (zbins, N_pix))"""
     if isinstance(weight_maps, np.ndarray) and weight_maps.ndim == 1:
         return weight_maps
     return weight_maps[zi]
@@ -578,13 +579,15 @@ def sample_covariance( # fmt: skip
             # nmt ingredients
             f0 = np.array(
                 [
-                    nmt.NmtField(weight_maps_gg[zi], [m], **nmt_field_kw)
+                    nmt.NmtField(_weight_per_bin(weight_maps_gg, zi), [m], **nmt_field_kw)
                     for zi, (m) in enumerate(corr_maps_gg)
                 ]
             )
             f2 = np.array(
                 [
-                    nmt.NmtField(weight_maps_ll[zi], [Q, U], **nmt_field_kw)
+                    nmt.NmtField(
+                        _weight_per_bin(weight_maps_ll, zi), [Q, U], **nmt_field_kw
+                    )
                     for zi, (Q, U) in enumerate(corr_maps_ll)
                 ]
             )
@@ -717,8 +720,12 @@ def sample_covariance_parallel(
 
     # Workers are terminated when the context manager exits cleanly,
     # avoiding zombie processes
-    with parallel_backend('loky'), Parallel(n_jobs=n_jobs) as parallel:
-        results = parallel(
+    # Limit worker-internal BLAS/OpenMP pools only for this joblib section to
+    # avoid n_jobs x OMP_NUM_THREADS oversubscription.
+    with parallel_backend('loky', inner_max_num_threads=1), Parallel(
+        n_jobs=n_jobs, return_as='generator'
+    ) as parallel:
+        results_iter = parallel(
             delayed(_compute_one_realization)(
                 seed=SEEDVALUE[i],
                 cl_ring_big_list=cl_ring_big_list,
@@ -736,10 +743,12 @@ def sample_covariance_parallel(
             )
             for i in range(nreal)
         )
-
-    sim_cl_GG = np.stack([r[0] for r in results])  # (nreal, nbl, zbins, zbins)
-    sim_cl_GL = np.stack([r[1] for r in results])
-    sim_cl_LL = np.stack([r[2] for r in results])
+        for i, (cl_gg_i, cl_gl_i, cl_ll_i) in enumerate(
+            tqdm(results_iter, total=nreal)
+        ):
+            sim_cl_GG[i] = cl_gg_i
+            sim_cl_GL[i] = cl_gl_i
+            sim_cl_LL[i] = cl_ll_i
 
     # * Step II: compute sample covariance
     sim_cls_to_sample_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins)
@@ -1124,9 +1133,9 @@ class NmtCov:
         self.use_footprint_ll = not self.use_weight_maps_ll
 
         if self.use_footprint_gg:
-            self.weight_maps_gg = np.tile(self.footprint_gg[None, :], (self.zbins, 1))
+            self.weight_maps_gg = self.footprint_gg
         if self.use_footprint_ll:
-            self.weight_maps_ll = np.tile(self.footprint_ll[None, :], (self.zbins, 1))
+            self.weight_maps_ll = self.footprint_ll
 
         self.wsp_fname = 'wsp_s{:d}s{:d}_zi{zi:d}zj{zj:d}.fits'
         self.cw_fname = 'cw_s{:d}s{:d}s{:d}s{:d}_zi{zi:d}zj{zj:d}zk{zk:d}zl{zl:d}.fits'
@@ -1192,7 +1201,7 @@ class NmtCov:
         for zi in tqdm(range(self.zbins)):
             if self.use_weight_maps_gg:
                 self.f0_dict[zi] = nmt.NmtField(
-                    mask=self.weight_maps_gg[zi],
+                    mask=_weight_per_bin(self.weight_maps_gg, zi),
                     maps=None,
                     spin=0,
                     lite=True,
@@ -1203,7 +1212,7 @@ class NmtCov:
 
             if self.use_weight_maps_ll:
                 self.f2_dict[zi] = nmt.NmtField(
-                    mask=self.weight_maps_ll[zi],
+                    mask=_weight_per_bin(self.weight_maps_ll, zi),
                     maps=None,
                     spin=2,
                     lite=True,

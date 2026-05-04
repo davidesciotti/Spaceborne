@@ -8,7 +8,7 @@ from typing import TypedDict
 import healpy as hp
 import numpy as np
 import pymaster as nmt
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_backend
 from tqdm import tqdm
 
 from spaceborne import constants, ell_utils, mask_utils
@@ -726,26 +726,27 @@ def sample_covariance_parallel(
     ell_min_edges = np.array([nmt_bin_obj.get_ell_min(i) for i in range(n_bands)])
     ell_max_edges = np.array([nmt_bin_obj.get_ell_max(i) + 1 for i in range(n_bands)])
 
-    results = Parallel(
-        n_jobs=n_jobs, backend='loky', verbose=1, inner_max_num_threads=1
-    )(
-        delayed(_compute_one_realization)(
-            seed=SEEDVALUE[i],
-            cl_ring_big_list=cl_ring_big_list,
-            lmax=lmax,
-            nside=nside,
-            zbins=zbins,
-            weight_maps_gg=weight_maps_gg,
-            weight_maps_ll=weight_maps_ll,
-            coupled_cls=coupled_cls,
-            which_cls=which_cls,
-            wsp_path_template=wsp_path_template,
-            nbl=nbl,
-            ell_min_edges=ell_min_edges,
-            ell_max_edges=ell_max_edges,
+    # Workers are terminated when the context manager exits cleanly,
+    # avoiding zombie processes
+    with parallel_backend('loky'), Parallel(n_jobs=n_jobs) as parallel:
+        results = parallel(
+            delayed(_compute_one_realization)(
+                seed=SEEDVALUE[i],
+                cl_ring_big_list=cl_ring_big_list,
+                lmax=lmax,
+                nside=nside,
+                zbins=zbins,
+                weight_maps_gg=weight_maps_gg,
+                weight_maps_ll=weight_maps_ll,
+                coupled_cls=coupled_cls,
+                which_cls=which_cls,
+                wsp_path_template=wsp_path_template,
+                nbl=nbl,
+                ell_min_edges=ell_min_edges,
+                ell_max_edges=ell_max_edges,
+            )
+            for i in range(nreal)
         )
-        for i in range(nreal)
-    )
 
     sim_cl_GG = np.stack([r[0] for r in results])  # (nreal, nbl, zbins, zbins)
     sim_cl_GL = np.stack([r[1] for r in results])
@@ -1306,6 +1307,10 @@ class NmtCov:
 
         self.cw_dict = {}
 
+        # no need for cw if we want the sample covariance
+        if self.cfg['sample_covariance']['compute_sample_cov']:
+            return
+
         if self.load_cached_wsp:
             print(
                 '\nLoading cov workspace coupling coefficients from\n'
@@ -1456,6 +1461,48 @@ class NmtCov:
                             probe_ab, probe_cd
                         ][zi, zj, zk, zl]
 
+    def save_to_cache(self, unique_probe_combs):
+
+        # if workspaces are already laoded from cache, do not save them again
+        if self.load_cached_wsp:
+            return
+
+        # else, create folder if absent and save everything
+        os.makedirs(f'{self.cache_path}', exist_ok=True)
+        print('\nSaving namaster workspaces in cache...')
+        for zi, zj in tqdm(self.zij_cross_combs):
+            w00_name = self.wsp_fname.format(0, 0, zi=zi, zj=zj)
+            w02_name = self.wsp_fname.format(0, 2, zi=zi, zj=zj)
+            w22_name = self.wsp_fname.format(2, 2, zi=zi, zj=zj)
+            self.w00_dict[zi, zj].write_to(f'{self.cache_path}/{w00_name}')
+            self.w02_dict[zi, zj].write_to(f'{self.cache_path}/{w02_name}')
+            self.w22_dict[zi, zj].write_to(f'{self.cache_path}/{w22_name}')
+
+        # if the sample covariance is required, no cw are computed,
+        # so no need to save them
+        if self.cfg['sample_covariance']['compute_sample_cov']:
+            return
+
+        print('\nSaving covariance workspaces in cache...')
+        for probe_abcd in tqdm(unique_probe_combs):
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            zpairs_ab = self.ind_dict[probe_ab].shape[0]
+            zpairs_cd = self.ind_dict[probe_cd].shape[0]
+            is_auto = probe_ab == probe_cd
+            for zij in range(zpairs_ab):
+                zkl_range = range(zij, zpairs_cd) if is_auto else range(zpairs_cd)
+                for zkl in zkl_range:
+                    _, _, zi, zj = self.ind_dict[probe_ab][zij]
+                    _, _, zk, zl = self.ind_dict[probe_cd][zkl]
+                    zi, zj, zk, zl = int(zi), int(zj), int(zk), int(zl)
+                    spin_list = [0 if p == 'G' else 2 for p in probe_abcd]
+                    cw_name = self.cw_fname.format(
+                        *spin_list, zi=zi, zj=zj, zk=zk, zl=zl
+                    )
+                    self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].write_to(
+                        f'{self.cache_path}/{cw_name}'
+                    )
+
     def build_psky_cov(self):
         # TODO again, here I'm using 3x2pt = GC
         # 1. ell binning
@@ -1503,38 +1550,6 @@ class NmtCov:
         self.build_fields(ell_max_eff)
         self.build_wsp()
         self.build_cw(unique_probe_combs)
-
-        # ! store in cache for later reuse, if not already loaded
-        if not self.load_cached_wsp:
-            os.makedirs(f'{self.cache_path}', exist_ok=True)
-            print('\nSaving namaster workspaces in cache...')
-            for zi, zj in tqdm(self.zij_cross_combs):
-                w00_name = self.wsp_fname.format(0, 0, zi=zi, zj=zj)
-                w02_name = self.wsp_fname.format(0, 2, zi=zi, zj=zj)
-                w22_name = self.wsp_fname.format(2, 2, zi=zi, zj=zj)
-                self.w00_dict[zi, zj].write_to(f'{self.cache_path}/{w00_name}')
-                self.w02_dict[zi, zj].write_to(f'{self.cache_path}/{w02_name}')
-                self.w22_dict[zi, zj].write_to(f'{self.cache_path}/{w22_name}')
-
-            print('\nSaving covariance workspaces in cache...')
-            for probe_abcd in tqdm(unique_probe_combs):
-                probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-                zpairs_ab = self.ind_dict[probe_ab].shape[0]
-                zpairs_cd = self.ind_dict[probe_cd].shape[0]
-                is_auto = probe_ab == probe_cd
-                for zij in range(zpairs_ab):
-                    zkl_range = range(zij, zpairs_cd) if is_auto else range(zpairs_cd)
-                    for zkl in zkl_range:
-                        _, _, zi, zj = self.ind_dict[probe_ab][zij]
-                        _, _, zk, zl = self.ind_dict[probe_cd][zkl]
-                        zi, zj, zk, zl = int(zi), int(zj), int(zk), int(zl)
-                        spin_list = [0 if p == 'G' else 2 for p in probe_abcd]
-                        cw_name = self.cw_fname.format(
-                            *spin_list, zi=zi, zj=zj, zk=zk, zl=zl
-                        )
-                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].write_to(
-                            f'{self.cache_path}/{cw_name}'
-                        )
 
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices

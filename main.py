@@ -73,12 +73,27 @@ print(f'JAX backend: {jax.default_backend()}')
 # if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
 
-# Cap num_threads at logical CPU count to prevent oversubscription
+# Cap num_threads at the CPUs available to this process.
+# On Linux, this respects taskset/cgroup CPU affinity masks.
 cpu_count = os.cpu_count() or 1
-if num_threads > cpu_count:
-    print(f'WARNING: num_threads={num_threads} exceeds CPU count={cpu_count}')
-    print(f'         Capping at {cpu_count} to prevent thread oversubscription')
-    num_threads = cpu_count
+available_cpu_count = cpu_count
+affinity_source = 'logical CPU count'
+with contextlib.suppress(AttributeError, NotImplementedError):
+    affinity = os.sched_getaffinity(0)
+    if affinity:
+        available_cpu_count = len(affinity)
+        affinity_source = 'CPU affinity mask'
+
+if num_threads > available_cpu_count:
+    print(
+        f'WARNING: num_threads={num_threads} exceeds available CPUs '
+        f'({affinity_source}={available_cpu_count})'
+    )
+    print(
+        f'         Capping at {available_cpu_count} to prevent thread oversubscription'
+    )
+    num_threads = available_cpu_count
+
 
 os.environ['OMP_NUM_THREADS'] = str(num_threads)
 os.environ['OPENBLAS_NUM_THREADS'] = str(num_threads)

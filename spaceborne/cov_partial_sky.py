@@ -400,39 +400,28 @@ def precompute_alms_healpy(
     -------
     alms_T, alms_E, alms_B : lists of length zbins, alm arrays
     """
-    zbins = len(corr_maps_gg)
+    # Keep peak memory low: process one z-bin at a time instead of materializing
+    # masked copies for all bins at once.
+    alms_T, alms_E, alms_B = [], [], []
+    for zi, (map_T, (map_Q, map_U)) in enumerate(
+        zip(corr_maps_gg, corr_maps_ll, strict=True)
+    ):
+        weight_gg = _weight_per_bin(weight_maps_gg, zi)
+        weight_ll = _weight_per_bin(weight_maps_ll, zi)
 
-    if remove_monopole:
-        # Mask + remove monopole once per map (not per pair)
-        masked_T = [
-            hp.remove_monopole(corr_maps_gg[zi] * _weight_per_bin(weight_maps_gg, zi))
-            for zi in range(zbins)
-        ]
-        masked_QU = [
-            (
-                hp.remove_monopole(Q * _weight_per_bin(weight_maps_ll, zi)),
-                hp.remove_monopole(U * _weight_per_bin(weight_maps_ll, zi)),
-            )
-            for zi, (Q, U) in enumerate(corr_maps_ll)
-        ]
-    else:
-        masked_T = [
-            corr_maps_gg[zi] * _weight_per_bin(weight_maps_gg, zi)
-            for zi in range(zbins)
-        ]
-        masked_QU = [
-            (
-                Q * _weight_per_bin(weight_maps_ll, zi),
-                U * _weight_per_bin(weight_maps_ll, zi),
-            )
-            for zi, (Q, U) in enumerate(corr_maps_ll)
-        ]
+        masked_T = map_T * weight_gg
+        masked_Q = map_Q * weight_ll
+        masked_U = map_U * weight_ll
 
-    # zbins spin-0 SHTs + zbins spin-2 SHTs = 3*zbins total
-    alms_T = [hp.map2alm(m, lmax=lmax, iter=n_iter) for m in masked_T]
-    alms_EB = [hp.map2alm_spin([Q, U], spin=2, lmax=lmax) for Q, U in masked_QU]
-    alms_E = [eb[0] for eb in alms_EB]
-    alms_B = [eb[1] for eb in alms_EB]
+        if remove_monopole:
+            masked_T = hp.remove_monopole(masked_T)
+            masked_Q = hp.remove_monopole(masked_Q)
+            masked_U = hp.remove_monopole(masked_U)
+
+        alms_T.append(hp.map2alm(masked_T, lmax=lmax, iter=n_iter))
+        alm_E, alm_B = hp.map2alm_spin([masked_Q, masked_U], spin=2, lmax=lmax)
+        alms_E.append(alm_E)
+        alms_B.append(alm_B)
 
     return alms_T, alms_E, alms_B
 
@@ -846,15 +835,6 @@ def _compute_one_realization(
     # free alms
     del corr_alms_tot, corr_alms_T, corr_alms_E_B
 
-    # ! Mask each map (there are zbins of them) and compute ("masked") alms
-    alms_T, alms_E, alms_B = precompute_alms_healpy(
-        corr_maps_gg=corr_maps_gg,
-        corr_maps_ll=corr_maps_ll,
-        weight_maps_gg=weight_maps_gg,
-        weight_maps_ll=weight_maps_ll,
-        lmax=lmax,
-    )
-
     if which_cls == 'namaster':
         nmt_field_kw = {'n_iter': None, 'lite': True, 'lmax': lmax}
         f0 = np.array(
@@ -871,8 +851,17 @@ def _compute_one_realization(
                 for zi, (q, u) in enumerate(corr_maps_ll)
             ]
         )
+        alms_T = alms_E = alms_B = None
     else:
         f0, f2 = None, None
+        # ! Mask each map (there are zbins of them) and compute ("masked") alms
+        alms_T, alms_E, alms_B = precompute_alms_healpy(
+            corr_maps_gg=corr_maps_gg,
+            corr_maps_ll=corr_maps_ll,
+            weight_maps_gg=weight_maps_gg,
+            weight_maps_ll=weight_maps_ll,
+            lmax=lmax,
+        )
 
     # free maps
     del corr_maps_gg, corr_maps_ll

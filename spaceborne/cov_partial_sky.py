@@ -722,7 +722,7 @@ def sample_covariance_parallel(
     # avoiding zombie processes
     # Limit worker-internal BLAS/OpenMP pools only for this joblib section to
     # avoid n_jobs x OMP_NUM_THREADS oversubscription.
-    with parallel_backend('loky', inner_max_num_threads=1), Parallel(
+    with parallel_backend('loky', inner_max_num_threads=1, verbose=1), Parallel(
         n_jobs=n_jobs, return_as='generator'
     ) as parallel:
         results_iter = parallel(

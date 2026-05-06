@@ -481,7 +481,7 @@ class CCLInterface:
                         )
                     except FileNotFoundError:
                         print(
-                            f'No trispectrum files found in folder \n{tkka_path}\n. '
+                            f'No trispectrum files found in folder \n{tkka_path}\n'
                             'Proceeding to compute the trispectrum...'
                         )
 

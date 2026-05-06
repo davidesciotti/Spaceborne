@@ -1699,7 +1699,7 @@ def zpair_from_zidx(zidx, ind):
 
 
 def plot_dominant_array_element(
-    arrays_dict, tab_colors, elements_auto, elements_cross, elements_3x2pt
+    arrays_dict, tab_colors, elements_auto, elements_cross, show_zero: bool = True
 ):
     """Plot 2D arrays from a dictionary, highlighting the dominant component in
     each element.
@@ -1728,33 +1728,52 @@ def plot_dominant_array_element(
     dominant_indices[np.all(stacked_abs_arrays == 0, axis=-1)] = non_dominant_value
 
     # Prepare the colormap, including an extra color for non-dominant cases
-    selected_colors = ['white'] + tab_colors[
-        : len(arrays_dict)
-    ]  # 'white' is for non-dominant cases
+    # 'white' is for non-dominant cases
+    selected_colors = ['white'] + tab_colors[: len(arrays_dict)]
     cmap = ListedColormap(selected_colors)
 
     # Plot the dominant indices with the custom colormap
     plt.figure(figsize=(10, 8))
     im = plt.imshow(
-        dominant_indices, cmap=cmap, vmin=non_dominant_value, vmax=len(arrays_dict) - 1
+        dominant_indices,
+        cmap=cmap,
+        vmin=non_dominant_value - 0.5,  # Shifted by -0.5
+        vmax=len(arrays_dict)
+        - 0.5,  # Shifted to +0.5 (which is len(arrays_dict) - 0.5)
     )
 
     # Create a colorbar with labels
-    # Set the ticks so they are at the center of each color segment
-    cbar_ticks = np.linspace(
-        non_dominant_value, len(arrays_dict) - 1, len(selected_colors)
-    )
-    cbar_labels = ['0'] + list(
-        arrays_dict.keys()
-    )  # 'None' corresponds to the non-dominant case
-    cbar = plt.colorbar(im, ticks=cbar_ticks)
-    cbar.set_ticklabels(cbar_labels)
+    all_ticks = np.arange(non_dominant_value, len(arrays_dict))
+    all_labels = ['0'] + list(arrays_dict.keys())
 
-    lw = 2
-    plt.axvline(elements_auto, c='k', lw=lw)
-    plt.axvline(elements_auto + elements_cross, c='k', lw=lw)
-    plt.axhline(elements_auto, c='k', lw=lw)
-    plt.axhline(elements_auto + elements_cross, c='k', lw=lw)
+    if show_zero:
+        # Show everything normally
+        cbar = plt.colorbar(im, ticks=all_ticks)
+        cbar.set_ticklabels(all_labels)
+    else:
+        # We need a new mappable just for the colorbar that excludes the -1 (white) class
+        # Create a colormap with ONLY the valid colors (ignoring the first 'white' color)
+        cmap_no_zero = ListedColormap(selected_colors[1:])
+
+        # Create a dummy scalar mappable for the colorbar
+        sm = plt.cm.ScalarMappable(
+            cmap=cmap_no_zero,
+            # We want the indices to be 0, 1, 2, ..., N.
+            # So the boundaries of the colors must be at -0.5, 0.5, 1.5, ..., N+0.5
+            norm=plt.Normalize(vmin=-0.5, vmax=len(arrays_dict) - 1 + 0.5),
+        )
+        sm.set_array([])
+
+        # Draw the colorbar using the dummy mappable, explicitly attaching it to the image axes
+        cbar = plt.colorbar(sm, ax=im.axes, ticks=np.arange(0, len(arrays_dict)))
+        cbar.set_ticklabels(all_labels[1:])
+
+    # plot lines to separate the probe blocks
+    kw = {'lw': 2, 'color': 'k', 'ls': '--'}
+    plt.axvline(elements_auto - 0.5, **kw)
+    plt.axvline(elements_auto + elements_cross - 0.5, **kw)
+    plt.axhline(elements_auto - 0.5, **kw)
+    plt.axhline(elements_auto + elements_cross - 0.5, **kw)
     plt.xticks([])
     plt.yticks([])
 
@@ -1763,7 +1782,6 @@ def plot_dominant_array_element(
         plt.text(x, -1.5, label, va='bottom', ha='center')
         plt.text(-1.5, x, label, va='center', ha='right', rotation='vertical')
 
-    plt.show()
 
 
 def cov_3x2pt_dict_8d_to_10d(

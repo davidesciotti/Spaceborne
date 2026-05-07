@@ -1,5 +1,5 @@
 """
-LAST UPDATE: 2025-09-16
+LAST UPDATE: 2025-09-16 
 
 Script to run Spaceborne and compare the output against a specified set of benchmarks
 More in detail, it performs the following operations:

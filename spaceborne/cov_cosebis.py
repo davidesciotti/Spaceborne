@@ -284,13 +284,12 @@ class CovCOSEBIs(CovarianceProjector):
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term in ['ssc', 'cng'] and (probe_ab, probe_cd) == ('En', 'En'):
-            
             if cov_hs_ng_dict is None:
                 raise ValueError(
                     f'Non-Gaussian covariance term {term} requested, '
                     'but no harmonic-space non-Gaussian covariance dictionary provided.'
                 )
-            
+
             # recover corresponding harmonic-space probe names
             probe_abcd_hs = (
                 const.HS_PROBE_IX_TO_NAME_DICT[probe_a_ix]
@@ -330,7 +329,7 @@ class CovCOSEBIs(CovarianceProjector):
                         cov_hs_ng_4d=cov_hs_ng_4d,
                         kernel_1_func_of_ell=kernel_n,
                         kernel_2_func_of_ell=kernel_m,
-                        integration_method='simps'
+                        integration_method='simps',
                     )
 
             # reshape to 6d and symmetrize if needed

@@ -116,7 +116,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 from scipy.integrate import simpson as simps
-from scipy.interpolate import CubicSpline, RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
 
 from spaceborne import (
@@ -2378,7 +2378,7 @@ if cfg['misc']['save_figs']:
     print(f'Figures saved in {output_path_figs}\n')
 
 
-print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} m')
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
 # Stop monitoring

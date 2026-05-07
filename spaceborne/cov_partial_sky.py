@@ -367,7 +367,7 @@ def coupling_matrix(bin_scheme, mask, wkspce_name):
 
 
 def _weight_per_bin(weight_maps, zi):
-    """Returns the weight map for the given z bin index zi, 
+    """Returns the weight map for the given z bin index zi,
     whether we are using a footprint (1D array of shape (N_pix,))
     or weight maps (2D array of shape (zbins, N_pix))"""
     if isinstance(weight_maps, np.ndarray) and weight_maps.ndim == 1:
@@ -579,7 +579,9 @@ def sample_covariance( # fmt: skip
             # nmt ingredients
             f0 = np.array(
                 [
-                    nmt.NmtField(_weight_per_bin(weight_maps_gg, zi), [m], **nmt_field_kw)
+                    nmt.NmtField(
+                        _weight_per_bin(weight_maps_gg, zi), [m], **nmt_field_kw
+                    )
                     for zi, (m) in enumerate(corr_maps_gg)
                 ]
             )
@@ -722,9 +724,10 @@ def sample_covariance_parallel(
     # avoiding zombie processes
     # Limit worker-internal BLAS/OpenMP pools only for this joblib section to
     # avoid n_jobs x OMP_NUM_THREADS oversubscription.
-    with parallel_backend('loky', inner_max_num_threads=1, verbose=1), Parallel(
-        n_jobs=n_jobs, return_as='generator'
-    ) as parallel:
+    with (
+        parallel_backend('loky', inner_max_num_threads=1, verbose=1),
+        Parallel(n_jobs=n_jobs, return_as='generator') as parallel,
+    ):
         results_iter = parallel(
             delayed(_compute_one_realization)(
                 seed=SEEDVALUE[i],
@@ -1742,7 +1745,10 @@ class NmtCov:
                 n_jobs=self.cfg['misc']['num_threads'],
             )
             self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
-            print(f'sample covariance computed in {time.perf_counter() - start:.2f} s.')
+            print(
+                f'sample covariance computed in '
+                f'{(time.perf_counter() - start) / 60:.2f} m.'
+            )
 
             if self.cfg['sample_covariance']['save_sim_cls']:
                 np.savez_compressed(

@@ -91,13 +91,12 @@ def convolve_nz_with_p_ph(
     integrand = nz[None, :] * p_ph_2d
     integral = simps(y=integrand, x=z_p_grid, axis=0)
 
-    norm = 1.0
     if normalize:
         # integrate over z to get the denominator
         norm = simps(y=integral, x=z_grid, axis=0)
+        integral /= norm
 
-    # normalize
-    return integral / norm
+    return integral
 
 
 def f_ia(z, eta_IA, beta_IA, z_pivot_IA, lumin_ratio_func):

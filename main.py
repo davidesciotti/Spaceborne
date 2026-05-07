@@ -923,7 +923,6 @@ else:
 # two-dimensional", for shape consistency
 single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 
-
 # ! ============================ Magnification bias ====================================
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
@@ -963,7 +962,6 @@ ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
 )
 
-gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 
@@ -988,34 +986,7 @@ wf_ia = ccl_obj.wf_ia_arr
 wf_mu = ccl_obj.wf_mu_arr
 wf_lensing = ccl_obj.wf_lensing_arr
 
-# plot
-wf_names_list = [
-    'delta',
-    'gamma',
-    'IA',
-    'magnification',
-    'lensing',
-    gal_kernel_plt_title,
-]
-wf_ccl_list = [
-    ccl_obj.wf_delta_arr,
-    ccl_obj.wf_gamma_arr,
-    ccl_obj.wf_ia_arr,
-    ccl_obj.wf_mu_arr,
-    ccl_obj.wf_lensing_arr,
-    ccl_obj.wf_galaxy_arr,
-]
-
-for wf_idx in range(len(wf_ccl_list)):
-    plt.figure()
-    for zi in range(zbins):
-        plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
-    plt.xlabel('$z$')
-    plt.ylabel(r'$W_i^X(z)$')
-    plt.suptitle(f'{wf_names_list[wf_idx]}')
-    plt.tight_layout()
-    plt.show()
-
+sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 
 # ! ======================================== Cls =======================================
 # ! note that the function below includes the multiplicative shear bias
@@ -1177,7 +1148,7 @@ if obs_space == 'harmonic':
 else:
     cov_hs_obj = None
 
-# ! =================================== OneCovariance ================================
+# ! =================================== OneCovariance ==================================
 # initialize object
 cov_oc_obj = None
 if (
@@ -1651,9 +1622,10 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
+    print('')
     for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
-        print(f'\n2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
+        print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
             print(f'Computing term {_term}...')
             cov_rs_obj.compute_rs_cov_term_probe_6d(
@@ -1710,9 +1682,10 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
+    print('')
     for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
-        print(f'\nCOSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
+        print(f'COSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_cs_obj.terms_toloop:
             cov_cs_obj.compute_cs_cov_term_probe_6d(
                 cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term

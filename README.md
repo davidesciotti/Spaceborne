@@ -21,9 +21,11 @@ Spaceborne is a code for the fast and accurate computation of the analytical pho
 Some of its features include:
 
 * Easy to use: all settings are detailed (along with type hints) in the `yaml` example config file, with further explanations in the [readthecods](https://spaceborne.readthedocs.io/en/latest/?badge=latest) page.
+* Different statistics available: $C(\ell)$, 2PCF and COSEBIs
+* Interfaced with NaMaster for computation of the harmonic-space (coupled and decoupled) Gaussian covariance for partial sky coverage.
+* Possibility to compute ensemble covariance from a set of (masked) healpy Gaussian realisations, parallelised in a memory-efficient way.
+* Interfaced with the Core Cosmology Library (CCL), one of the most modern and extensive cosmological libraries.
 * Extensively validated against simulations and other public codes.
-* Interfaced with CCL and cloelib (soon), two of the most modern and extensive cosmological libraries.
-* Different statistics available: $C(\ell)$ and 2PCF
 * Python native: written entirely in pure Python, with no low-level interfaces (e.g., C/C++ wrappers). This makes the code highly accessible, transparent, and easy to modify.
 * JAX-accelerated: the most intensive computations are optimised using JAX, seamlessly providing multi-device (CPU, GPU, TPU) support.
 * ... and much more!
@@ -64,7 +66,7 @@ pip install .
 **As the code is evolving quite quickly at the moment, please make sure to check for new [releases](https://github.com/davidesciotti/Spaceborne/releases) periodically**
 Moreover, installation is only supported in a dedicated Conda environment, for the time being (installation via PyPI is work in progress).
 
-🐍 To significantly speed up the environment creation, install `mamba` by running `conda install mamba` in your `base` environment., then do
+🐍 To significantly speed up the environment creation, install `mamba` by running `conda install mamba` in your `base` environment, then do
 
 ```bash
 mamba env create -f environment.yaml 
@@ -74,14 +76,26 @@ conda env create -f environment.yaml --solver=libmamba
 
 🔵🟢🟣 Spaceborne leverages `JAX` for computationally intensive tasks. This is included as 
 a `pip` dependency in the `environment.yaml` file. If you want to run the jax-optimised 
-parts of the code on an NVIDIA GPU, after creating and activating the enviromnent do
+parts of the code on an NVIDIA GPU, after creating and activating the environment, do
 
 ```bash
 pip install -U "jax[cuda12]"
 ```
 
 Please refer to the [official installation instructions](https://docs.jax.dev/en/latest/installation.html#installation) for more accurate, up-to date and platform specific 
-(see e.g. Silicon Macs) intructions.
+(see e.g. Silicon Macs) instructions.
+
+### Keeping the code up to date
+Please make sure to keep the code updated to the latest version. To do that, simply go to the `Spaceborne` root folder (for good measure, make sure the directory is clean, i.e., all of your configs/outputs/ecc are outside of it), then do
+
+```bash
+git fetch --tags         
+git checkout <latest_version_tag>
+# or
+# git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+# to get the latest tag automatically
+pip install .  # remember to do this after activating the spaceborne conda environment
+```
 
 ## Running the Code
 

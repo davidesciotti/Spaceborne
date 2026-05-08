@@ -92,7 +92,8 @@ def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
     plt.legend()
     plt.show()
     
-    ia_bias = 1 if ccl_obj.ia_bias_tuple is None else ccl_obj.ia_bias_tuple[0]
+
+    wf_ia_contribution_arr = ccl_obj.wf_ia_contribution_arr
 
     plt.figure()
     for zi in range(zbins):
@@ -106,7 +107,7 @@ def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
         )
         plt.plot(
             z_grid,
-            ccl_obj.wf_ia_arr[:, zi] * ia_bias,
+            wf_ia_contribution_arr[:, zi],
             c=clr[zi],
             alpha=0.6,
             ls='--',

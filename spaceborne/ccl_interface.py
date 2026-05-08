@@ -375,11 +375,11 @@ class CCLInterface:
         self.wf_gamma_arr = wf_lensing_tot_arr[:, 0, :].T
         if self.has_ia:
             self.wf_ia_arr = wf_lensing_tot_arr[:, 1, :].T
-            self.wf_lensing_arr = (
-                self.wf_gamma_arr + self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
-            )
+            self.wf_ia_contribution_arr = self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+            self.wf_lensing_arr = self.wf_gamma_arr + self.wf_ia_contribution_arr
         else:
             self.wf_ia_arr = np.zeros_like(self.wf_gamma_arr)
+            self.wf_ia_contribution_arr = np.zeros_like(self.wf_gamma_arr)
             self.wf_lensing_arr = self.wf_gamma_arr
 
         # galaxy

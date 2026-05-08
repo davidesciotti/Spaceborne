@@ -58,8 +58,8 @@ def run_spaceborne(yaml_files: list[str], sb_root_path: str) -> None:
 ROOT = '/home/sciotti/code'
 DATA_ROOT = '/data/sciotti'
 sb_root_path = f'{ROOT}/Spaceborne'
-base_cfg_path = f'{sb_root_path}/config.yaml'
-create_output_folders = True
+base_cfg_path = '/data/sciotti/DATA/Spaceborne_jobs/cov_validation_2026/cov_FS2_jose/run_config_live_cone_vis24.5_h22.yaml'
+create_output_folders = False
 # ! SETTINGS END
 
 start_time = time.time()
@@ -67,36 +67,27 @@ start_time = time.time()
 with open(base_cfg_path) as f:
     base_cfg = yaml.safe_load(f)
 
-# current PID is 3900663
 
 configs_to_run = []
-for ell_min in [10, 20, 40, 100]:
-    for cov_type in ['decoupled', 'coupled']:
-        for partial_sky_method, sample_cov in zip(
-            ['NaMaster', 'Knox'], [False, True], strict=True
-        ):
-            out_path = (
-                f'{DATA_ROOT}/DATA/Spaceborne_jobs/cov_validation_2026/'
-                f'v2_psky{partial_sky_method}_sample{sample_cov}_{cov_type}_ellmin{ell_min}'
-            )
-            configs_to_run.append(
-                {
-                    'binning': {'ell_min': ell_min},
-                    'covariance': {
-                        'partial_sky_method': partial_sky_method,
-                        'cov_type': cov_type,
-                    },
-                    'misc': {'output_path': out_path},
-                    'sample_covariance': {
-                        'compute_sample_cov': sample_cov,
-                        'which_cls': 'healpy',
-                        'nreal': 20000,
-                        'fix_seed': True,
-                    },
-                }
-            )
-            if create_output_folders:
-                os.makedirs(out_path, exist_ok=True)
+for partial_sky_method, sample_cov, output_folder in zip(
+    ['NaMaster', 'Knox'],
+    [False, True],
+    ['output_cone_vis24.5_h22_nmt', 'output_cone_vis24.5_h22_sample'],
+    strict=True,
+):
+    out_path = (
+        f'/data/sciotti/DATA/Spaceborne_jobs/cov_validation_2026/'
+        f'cov_FS2_jose/{output_folder}'
+    )
+    configs_to_run.append(
+        {
+            'covariance': {'partial_sky_method': partial_sky_method},
+            'misc': {'output_path': out_path},
+            'sample_covariance': {'compute_sample_cov': sample_cov},
+        }
+    )
+    if create_output_folders:
+        os.makedirs(out_path, exist_ok=True)
 
 
 # assign yaml filenames based on output path

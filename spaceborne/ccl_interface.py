@@ -276,6 +276,15 @@ class CCLInterface:
     def set_mag_bias_tuple(
         self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values
     ):
+        """
+        Set the magnification bias values and store in a tuple. In this function,
+        we call "mag_bias" the usual s(z).
+        
+        Note: In the cases handled by this function (no magnification bias, 
+        polinomial fit), the magnification bias is the same for all redshift bins, 
+        thus the use of np.repeat to construct the 2d array. 
+        """
+
         if has_magnification_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality,
             # the same array is given for each bin
@@ -329,8 +338,6 @@ class CCLInterface:
                 )
             )
 
-    def set_ell_grid(self, ell_grid):
-        self.ell_grid = ell_grid
 
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(
@@ -481,7 +488,7 @@ class CCLInterface:
                         )
                     except FileNotFoundError:
                         print(
-                            f'No trispectrum files found in folder \n{tkka_path}\n. '
+                            f'No trispectrum files found in folder \n{tkka_path}\n'
                             'Proceeding to compute the trispectrum...'
                         )
 

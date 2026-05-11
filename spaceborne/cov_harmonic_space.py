@@ -70,27 +70,12 @@ class SpaceborneCovariance:
         self.ssc_code = self.cov_cfg['SSC_code']
         self.cng_code = self.cov_cfg['cNG_code']
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
-        self.use_nmt = self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-        self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
+
         # other useful objects
         self.cov_nmt_obj = cov_nmt_obj
 
     def consistency_checks(self):
         # sanity checks
-
-        assert not (self.use_nmt and self.do_sample_cov), (
-            'either cfg["covariance"]["partial_sky_method"] == "NaMaster" or '
-            'cfg["sample_covariance"]["compute_sample_cov"] should be True, '
-            'not both (but they can both be False)'
-        )
-
-        if (
-            self.ell_obj.ells_WL.max() < 15
-        ):  # very rudimental check of whether they're in lin or log scale
-            raise ValueError(
-                'looks like the ell values are in log scale. '
-                'You should use linear scale instead.'
-            )
 
         # sanity check: the last 2 columns of ind_auto should be equal to the
         # last two of ind_auto
@@ -195,13 +180,12 @@ class SpaceborneCovariance:
 
         # ! Partial sky with nmt
         # ! this case overwrites self.cov_3x2pt_g_10d only, but the cfg checker will
-        # ! raise an error if you require to split the G cov and use_nmt or
-        # ! do_sample_cov are True
-        if self.use_nmt or self.do_sample_cov:
+        # ! raise an error if you require to split the G cov and 'NaMaster', 'ensemble'
+        if self.cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
             if self.cov_nmt_obj is None:
                 raise ValueError(
                     'cov_nmt_obj is required when partial_sky_method == "NaMaster" or '
-                    'compute_sample_cov is True'
+                    '"ensemble"'
                 )
 
             # noise vector doesn't have to be recomputed, but repeated a larger number

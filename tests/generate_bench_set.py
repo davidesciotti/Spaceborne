@@ -391,12 +391,7 @@ base_cfg = {
         'load_cached_tkka': False,
         'use_default_k_a_grids': False,
     },
-    'sample_covariance': {
-        'compute_sample_cov': False,
-        'which_cls': 'namaster',
-        'nreal': 5000,
-        'fix_seed': True,
-    },
+    'ensemble_covariance': {'which_cls': 'healpy', 'nreal': 5000, 'fix_seed': True},
     'precision': {
         'cov_hs_g_ell_bin_average': True,
         'log10_k_min': -5.0,

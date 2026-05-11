@@ -505,7 +505,7 @@ def pcls_from_maps(  # fmt: skip
     return np.array(cl_tt_out), np.array(cl_te_out), np.array(cl_ee_out)
 
 
-def sample_covariance( # fmt: skip
+def compute_ensemble_covariance( # fmt: skip
     cov_dict,
     cl_GG_unbinned, cl_LL_unbinned, cl_GL_unbinned,
     cl_BB_unbinned, cl_EB_unbinned, cl_TB_unbinned,
@@ -653,12 +653,12 @@ def sample_covariance( # fmt: skip
                 sim_cl_LL[i, :, zi, zj] = sim_cl_LL_ij
 
     # * 3. compute sample covariance
-    sim_cls_to_sample_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins)
+    sim_cls_to_ensemble_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins)
 
     return sim_cl_GG, sim_cl_GL, sim_cl_LL
 
 
-def sample_covariance_parallel(
+def compute_ensemble_covariance_parallel(
     cov_dict: cd.FrozenDict,
     cl_GG_unbinned: np.ndarray,
     cl_LL_unbinned: np.ndarray,
@@ -754,12 +754,12 @@ def sample_covariance_parallel(
             sim_cl_LL[i] = cl_ll_i
 
     # * Step II: compute sample covariance
-    sim_cls_to_sample_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins)
+    sim_cls_to_ensemble_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins)
 
     return sim_cl_GG, sim_cl_GL, sim_cl_LL
 
 
-def sim_cls_to_sample_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins):
+def sim_cls_to_ensemble_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins):
 
     zijkl_combinations = list(itertools.product(range(zbins), repeat=4))
 
@@ -1311,7 +1311,7 @@ class NmtCov:
         self.cw_dict = {}
 
         # no need for cw if we want the sample covariance
-        if self.cfg['sample_covariance']['compute_sample_cov']:
+        if self.cfg['covariance']['partial_sky_method'] == 'ensemble':
             return
 
         if self.load_cached_wsp:
@@ -1483,7 +1483,7 @@ class NmtCov:
 
         # if the sample covariance is required, no cw are computed,
         # so no need to save them
-        if self.cfg['sample_covariance']['compute_sample_cov']:
+        if self.cfg['covariance']['partial_sky_method'] == 'ensemble':
             return
 
         print('\nSaving covariance workspaces in cache...')
@@ -1703,7 +1703,7 @@ class NmtCov:
             for probe_2tpl in self.cov_dict['g']:
                 self.cov_dict['g'][probe_2tpl]['4d'] = None
 
-        elif self.cfg['sample_covariance']['compute_sample_cov']:
+        elif self.cfg['covariance']['partial_sky_method'] == 'ensemble':
             cl_tt_4covsim = (
                 self.cl_3x2pt_unb_5d[1, 1, :, :, :]
                 + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
@@ -1722,7 +1722,7 @@ class NmtCov:
 
             # ! note that self.cov_dict is mutated in-place, no need to return it
             start = time.perf_counter()
-            result = sample_covariance_parallel(
+            result = compute_ensemble_covariance_parallel(
                 cov_dict=self.cov_dict,
                 cl_GG_unbinned=cl_tt_4covsim,
                 cl_LL_unbinned=cl_ee_4covsim,
@@ -1735,24 +1735,24 @@ class NmtCov:
                 weight_maps_gg=self.weight_maps_gg,
                 weight_maps_ll=self.weight_maps_ll,
                 nside=self.mask_obj_ll.nside_cfg,
-                nreal=self.cfg['sample_covariance']['nreal'],
+                nreal=self.cfg['ensemble_covariance']['nreal'],
                 coupled_cls=self.coupled_cov,
-                which_cls=self.cfg['sample_covariance']['which_cls'],
+                which_cls=self.cfg['ensemble_covariance']['which_cls'],
                 nmt_bin_obj=self.nmt_bin_obj,
                 lmax=ell_max_eff,
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
-                fix_seed=self.cfg['sample_covariance']['fix_seed'],
+                fix_seed=self.cfg['ensemble_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],
             )
             self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
             print(
-                f'sample covariance computed in '
+                f'ensemble covariance computed in '
                 f'{(time.perf_counter() - start) / 60:.2f} m.'
             )
 
-            if self.cfg['sample_covariance']['save_sim_cls']:
+            if self.cfg['ensemble_covariance']['save_sim_cls']:
                 np.savez_compressed(
-                    f'{self.output_path}/sample_cov_sim_cls.npz',
+                    f'{self.output_path}/ensemble_cov_sim_cls.npz',
                     sim_cl_LL=self.sim_cl_LL,
                     sim_cl_GL=self.sim_cl_GL,
                     sim_cl_GG=self.sim_cl_GG,

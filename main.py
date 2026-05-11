@@ -1114,8 +1114,7 @@ if cfg['misc']['cl_triangle_plot']:
 
 # ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
 if (
-    cfg['covariance']['partial_sky_method'] == 'NaMaster'
-    or cfg['sample_covariance']['compute_sample_cov']
+    cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']
     or cfg['precision']['cov_hs_g_ell_bin_average']
 ):
     # in these cases I need an unbinned ell grid
@@ -1124,10 +1123,7 @@ if (
     )
 
 
-if (
-    cfg['covariance']['partial_sky_method'] == 'NaMaster'
-    or cfg['sample_covariance']['compute_sample_cov']
-):
+if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
     # initialize cov_nmt_obj and set a couple useful attributes

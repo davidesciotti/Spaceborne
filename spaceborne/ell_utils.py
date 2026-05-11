@@ -172,7 +172,6 @@ class EllBinning:
 
         self.binning_type = cfg['binning']['binning_type']
         self.partial_sky_method = cfg['covariance']['partial_sky_method']
-        self.do_sample_cov = cfg['sample_covariance']['compute_sample_cov']
 
         # Only load filenames if using 'from_input' binning type
         if self.binning_type == 'from_input':
@@ -333,10 +332,7 @@ class EllBinning:
         else:
             raise ValueError(f'binning_type {self.binning_type} not recognized.')
 
-        if (
-            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-            or self.cfg['sample_covariance']['compute_sample_cov']
-        ):
+        if self.cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
             # TODO what about WL?
             import pymaster as nmt
 

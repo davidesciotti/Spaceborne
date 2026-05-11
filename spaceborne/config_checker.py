@@ -247,21 +247,18 @@ class SpaceborneConfigChecker:
         assert isinstance(mask_cfg['aposize'], float), 'mask: aposize must be a float'
 
         # Sample Covariance
-        assert isinstance(self.cfg['sample_covariance'], dict), (
-            "Section 'sample_covariance' must be a dictionary"
+        ensemble_cov_cfg = self.cfg['ensemble_covariance']
+        assert isinstance(ensemble_cov_cfg, dict), (
+            "Section 'ensemble_covariance' must be a dictionary"
         )
-        sample_cov_cfg = self.cfg['sample_covariance']
-        assert isinstance(sample_cov_cfg['compute_sample_cov'], bool), (
-            'sample_covariance: compute_sample_cov must be a boolean'
+        assert isinstance(ensemble_cov_cfg['which_cls'], str), (
+            'ensemble_covariance: which_cls must be a string'
         )
-        assert isinstance(sample_cov_cfg['which_cls'], str), (
-            'sample_covariance: which_cls must be a string'
+        assert isinstance(ensemble_cov_cfg['nreal'], int), (
+            'ensemble_covariance: nreal must be an int'
         )
-        assert isinstance(sample_cov_cfg['nreal'], int), (
-            'sample_covariance: nreal must be an int'
-        )
-        assert isinstance(sample_cov_cfg['fix_seed'], bool), (
-            'sample_covariance: fix_seed must be a boolean'
+        assert isinstance(ensemble_cov_cfg['fix_seed'], bool), (
+            'ensemble_covariance: fix_seed must be a boolean'
         )
 
         # OneCovariance
@@ -337,8 +334,9 @@ class SpaceborneConfigChecker:
                     "Allowed values are: 'Spaceborne', 'PyCCL', 'OneCovariance'."
                 )
 
-        assert cov_cfg['partial_sky_method'] in ['Knox', 'NaMaster'], (
-            'covariance: partial_sky_method must be either "Knox" or "NaMaster"'
+        assert cov_cfg['partial_sky_method'] in ['Knox', 'NaMaster', 'ensemble'], (
+            'covariance: partial_sky_method must be either "Knox", "NaMaster", '
+            'or "ensemble"'
         )
         assert isinstance(cov_cfg['cov_type'], str), (
             'covariance: cov_type must be a string'
@@ -623,27 +621,16 @@ class SpaceborneConfigChecker:
             'row_col_major must be either "row-major" or "col-major"'
         )
 
-        if self.cfg['sample_covariance']['compute_sample_cov']:
+        if self.cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
             assert self.cfg['probe_selection']['space'] == 'harmonic', (
-                'Sample covariance can only be computed for harmonic space for '
-                'the moment'
+                'Namaster and ensemble covariances can only be computed for '
+                'harmonic space for the moment'
             )
-
-        if self.cfg['covariance']['split_gaussian_cov'] and (
-            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-            or self.cfg['sample_covariance']['compute_sample_cov']
-        ):
-            raise ValueError(
+            assert not self.cfg['covariance']['split_gaussian_cov'], (
                 'cfg["covariance"]["split_gaussian_cov"] cannot be '
                 'set to True with either '
-                'cfg["covariance"]["partial_sky_method"] == "NaMaster" or '
-                'cfg["sample_covariance"]["compute_sample_cov"].'
+                'Namaster and ensemble covariances'
             )
-        assert not (
-            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-            and self.cfg['sample_covariance']['compute_sample_cov']
-        ), 'Only one of `partial_sky_method == "NaMaster"` and `compute_sample_cov` '
-        'can be True — not both.'
 
     def check_probe_selection(self) -> None:
         allowed_keys = [
@@ -710,13 +697,13 @@ class SpaceborneConfigChecker:
             self.cfg['covariance']['cov_type'] == 'coupled'
             and self.cfg['covariance']['G']
         ):
-            assert (
-                self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-                or self.cfg['sample_covariance']['compute_sample_cov']
-            ), (
+            assert self.cfg['covariance']['partial_sky_method'] in [
+                'NaMaster',
+                'ensemble',
+            ], (
                 'if the coupled Gaussian covariance is requested either '
-                'cfg["covariance"]["partial_sky_method"] must be "NaMaster" or '
-                'cfg["sample_covariance"]["compute_sample_cov"] must be True'
+                'cfg["covariance"]["partial_sky_method"] must be "NaMaster" '
+                'or "ensemble"'
             )
         if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
             assert self.cfg['binning']['binning_type'] != 'ref_cut', (

@@ -136,7 +136,6 @@ class TestEllBinning:
                 'ell_bins': 10,
             },
             'covariance': {'partial_sky_method': 'Knox'},
-            'sample_covariance': {'compute_sample_cov': False},
         }
 
     def test_initialization(self, basic_config):
@@ -145,7 +144,6 @@ class TestEllBinning:
 
         assert ell_obj.binning_type == 'log'
         assert ell_obj.partial_sky_method == 'Knox'
-        assert ell_obj.do_sample_cov is False
 
     def test_log_binning(self, basic_config):
         """Test logarithmic binning."""

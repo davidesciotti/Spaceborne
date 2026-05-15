@@ -146,8 +146,7 @@ CS_PROBE_NAME_TO_IX_DICT = {
 # }  # fmt: skip
 
 # Heracles-specific probe mappings: POS (position, spin-0), SHE (shear, spin-2)
-HS_PROBE_IX_TO_NAME_DICT_HERACLES = {0: 'POS', 1: 'SHE'}
-HS_PROBE_NAME_TO_IX_DICT_HERACLES = {'POS': 0, 'SHE': 1}
+HC_PROBE_NAME_SB_TO_HERACLES = {'L': 'SHE', 'G': 'POS'}
 
 # this dictionary specifies the dimension of the corresponding axes in the output
 # arrays. The dimensions correspond to the spin, except POS (spin-0) still needs 1

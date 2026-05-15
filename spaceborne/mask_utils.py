@@ -1,5 +1,3 @@
-import os
-
 import healpy as hp
 import numpy as np
 
@@ -71,10 +69,9 @@ class Mask:
 
         self.use_weight_maps = mask_cfg[probe]['weight_maps_filename'] is not None
 
-
         self.footprint_filename = mask_cfg[probe]['footprint_filename']
         self.weight_maps_filename = mask_cfg[probe]['weight_maps_filename']
-        
+
         self.footprint = None
         self.weight_maps = None
 

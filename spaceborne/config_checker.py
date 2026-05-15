@@ -246,7 +246,7 @@ class SpaceborneConfigChecker:
         assert isinstance(mask_cfg['apodize'], bool), 'mask: apodize must be a boolean'
         assert isinstance(mask_cfg['aposize'], float), 'mask: aposize must be a float'
 
-        # Sample Covariance
+        # Ensemble Covariance
         ensemble_cov_cfg = self.cfg['ensemble_covariance']
         assert isinstance(ensemble_cov_cfg, dict), (
             "Section 'ensemble_covariance' must be a dictionary"
@@ -259,6 +259,9 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(ensemble_cov_cfg['fix_seed'], bool), (
             'ensemble_covariance: fix_seed must be a boolean'
+        )
+        assert isinstance(ensemble_cov_cfg['save_sim_cls'], bool), (
+            'ensemble_covariance: save_sim_cls must be a boolean'
         )
 
         # OneCovariance

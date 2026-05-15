@@ -62,7 +62,7 @@ def load_footprint(path: str, nside: int) -> np.ndarray:
                 footprint = footprint_raw
 
     elif is_npy:
-        footprint = np.load(path)
+        footprint = np.load(path, allow_pickle=False)
 
     else:
         raise ValueError(
@@ -95,6 +95,7 @@ def _read_masking_map(path, nside, *, nest=False):
     order = header['ORDERING']
     if order == 'RING':
         ipix = hp.ring2nest(nside, ipix)
+        # ipix = hp.ring2nest(nside_in, ipix)
     elif order != 'NESTED':
         raise ValueError(f'unknown pixel ordering {order} in map')
     ipix = ipix // fact

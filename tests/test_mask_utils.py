@@ -253,7 +253,6 @@ class TestMask:
         assert len(mask_obj.footprint) == hp.nside2npix(32)
         # Full sky mask should give fsky ~ 1
         assert mask_obj.fsky_footprint == pytest.approx(1.0, rel=0.01)
-        assert mask_obj.fsky_footprint == pytest.approx(1.0, rel=0.01)
 
     def test_use_footprint_fits(self, tmp_path):
         """Test loading mask from .fits file."""

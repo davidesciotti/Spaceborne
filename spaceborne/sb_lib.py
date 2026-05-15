@@ -1699,7 +1699,7 @@ def zpair_from_zidx(zidx, ind):
 
 
 def plot_dominant_array_element(
-    arrays_dict, tab_colors, elements_auto, elements_cross, elements_3x2pt
+    arrays_dict, tab_colors, elements_auto, elements_cross
 ):
     """Plot 2D arrays from a dictionary, highlighting the dominant component in
     each element.

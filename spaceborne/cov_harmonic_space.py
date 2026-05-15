@@ -181,7 +181,7 @@ class SpaceborneCovariance:
         # ! Partial sky with nmt
         # ! this case overwrites self.cov_3x2pt_g_10d only, but the cfg checker will
         # ! raise an error if you require to split the G cov and 'NaMaster', 'ensemble'
-        if self.cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
+        if self.cov_cfg['partial_sky_method'] in ['NaMaster', 'ensemble']:
             if self.cov_nmt_obj is None:
                 raise ValueError(
                     'cov_nmt_obj is required when partial_sky_method == "NaMaster" or '
@@ -396,7 +396,7 @@ class SpaceborneCovariance:
                 )
 
         # ! BNT transform (6/10D covs needed for this implementation)
-        if self.cfg['covariance']['BNT_transform']:
+        if self.cov_cfg['BNT_transform']:
             print('BNT-transforming the covariance matrix...')
             start = time.perf_counter()
             self.cov_dict = bnt_utils.bnt_transform_cov_dict(
@@ -444,7 +444,7 @@ class SpaceborneCovariance:
         ):
             return
 
-        if self.cfg['covariance']['BNT_transform']:
+        if self.cov_cfg['BNT_transform']:
             warnings.warn(
                 'BNT transformation has not been tested for coupled covariance '
                 'matrices.',

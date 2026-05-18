@@ -139,11 +139,11 @@ bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_
 bench_yaml_names.sort()
 
 # real space
-# bench_yaml_names = [f'config_{i:04d}' for i in range(84, 120)]
+# bench_yaml_names = [f'config_{i:04d}' for i in range(55, 120)]
 
 
 # run certain tests only
-# bench_yaml_names = bench_yaml_names[606:]
+# bench_yaml_names = bench_yaml_names[192:]
 
 # slow_benchs = [
 #     'config_0018',

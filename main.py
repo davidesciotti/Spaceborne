@@ -101,7 +101,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 from scipy.integrate import simpson as simps
-from scipy.interpolate import CubicSpline, RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
 
 from spaceborne import (
@@ -112,6 +111,7 @@ from spaceborne import (
     cov_cosebis,
     cov_harmonic_space,
     cov_real_space,
+    cov_ssc,
     ell_utils,
     io_handler,
     mask_utils,
@@ -1471,55 +1471,26 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
 
-    dPmm_ddeltab_spline = RectBivariateSpline(
-        k_grid, z_grid_trisp, dPmm_ddeltab, kx=3, ky=3
-    )
-    mm_list = [
-        dPmm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-        for ell_val in ell_grid
-    ]
-    dPmm_ddeltab_klimb = np.array(mm_list)
-
-    dPgm_ddeltab_klimb = np.zeros((len(ell_grid), len(z_grid), zbins))
-    for zi in range(zbins):
-        dPgm_ddeltab_spline = RectBivariateSpline(
-            k_grid, z_grid_trisp, dPgm_ddeltab[:, :, zi], kx=3, ky=3
+    dPmm_ddeltab_klimb, dPgm_ddeltab_klimb, dPgg_ddeltab_klimb = (
+        resp_obj.dPxx_ddeltab_klimber(
+            dPmm_ddeltab=dPmm_ddeltab,
+            dPgm_ddeltab=dPgm_ddeltab,
+            dPgg_ddeltab=dPgg_ddeltab,
+            z_grid_out=z_grid,
+            ell_grid=ell_grid,
+            zbins=zbins,
         )
-        gm_list = [
-            dPgm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-            for ell_val in ell_grid
-        ]
-        dPgm_ddeltab_klimb[:, :, zi] = np.array(gm_list)
-
-    dPgg_ddeltab_klimb = np.zeros((len(ell_grid), len(z_grid), zbins, zbins))
-    for zi in range(zbins):
-        for zj in range(zbins):
-            dPgg_ddeltab_spline = RectBivariateSpline(
-                k_grid, z_grid_trisp, dPgg_ddeltab[:, :, zi, zj], kx=3, ky=3
-            )
-            gg_list = [
-                dPgg_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-                for ell_val in ell_grid
-            ]
-            dPgg_ddeltab_klimb[:, :, zi, zj] = np.array(gg_list)
-
-    # ! observable densities
-    # z: z_grid index (for the radial projection)
-    # i, j: zbin index
-    d2CLL_dVddeltab = np.einsum(
-        'zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb
-    )
-    d2CGL_dVddeltab = np.einsum(
-        'zi,zj,Lzi->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb
-    ) + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
-    d2CGG_dVddeltab = (
-        np.einsum('zi,zj,Lzij->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb)
-        + np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb)
-        + np.einsum('zi,zj,Lzj->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb)
-        + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
     )
 
-    from spaceborne import cov_ssc
+    # observable densities
+    d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab = responses.d2Clxx_dVddeltab(
+        dPmm_ddeltab_klimb=dPmm_ddeltab_klimb,
+        dPgm_ddeltab_klimb=dPgm_ddeltab_klimb,
+        dPgg_ddeltab_klimb=dPgg_ddeltab_klimb,
+        wf_lensing=wf_lensing,
+        wf_delta=wf_delta,
+        wf_mu=wf_mu,
+    )
 
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
     cov_ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)

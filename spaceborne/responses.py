@@ -48,7 +48,7 @@ def d2Clxx_dVddeltab(
         + np.einsum('zi,zj,Lzj->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb)
         + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
     )
-    
+
     assert d2Clmm_dVddeltab.ndim == 4, (
         'Output arrays must be 4D with indices (L, i, j, z)'
     )
@@ -640,6 +640,21 @@ class SpaceborneResponses:
         wavenumber.
         Note: The per-bin interpolators are necessary for the galaxy-related responses
         """
+
+        # shape checks
+        assert dPmm_ddeltab.ndim == 2, 'dPmm_ddeltab must have shape (k, zbins)'
+        assert dPgm_ddeltab.ndim == 3, 'dPgm_ddeltab must have shape (k, zbins, zbins)'
+        assert dPgg_ddeltab.ndim == 4, 'dPgg_ddeltab must have shape (k, zbins, zbins)'
+
+        assert dPgm_ddeltab.shape[1] == zbins, (
+            'dPgm_ddeltab second dimension must match zbins'
+        )
+        assert dPgg_ddeltab.shape[1] == zbins, (
+            'dPgg_ddeltab second dimension must match zbins'
+        )
+        assert dPgg_ddeltab.shape[2] == zbins, (
+            'dPgg_ddeltab third dimension must match zbins'
+        )
 
         # rename just to make things clearer
         z_grid_in = self.z_grid

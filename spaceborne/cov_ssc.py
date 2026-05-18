@@ -20,9 +20,9 @@ def sigma2_z1z2_fft(
     k_grid_sigma2: np.ndarray,
     cosmo_ccl: ccl.Cosmology,
     which_sigma2_b: str,
-    ell_mask: np.ndarray,
-    cl_mask: np.ndarray,
-    fsky_mask: float,
+    ells_footprint: np.ndarray,
+    cl_footprint: np.ndarray,
+    fsky_footprint: float,
     *,
     nk_fft: int = 2**21,
 ):
@@ -30,6 +30,15 @@ def sigma2_z1z2_fft(
     z1_arr = np.atleast_1d(z1_arr)
     z2_arr = np.atleast_1d(z2_arr)
     np.testing.assert_equal(z1_arr, z2_arr)
+
+    if (
+        which_sigma2_b in {'polar_cap_on_the_fly', 'from_input_mask'}
+        and ells_footprint.shape != cl_footprint.shape
+    ):
+        raise ValueError(
+            f'Shape mismatch: ells_footprint {ells_footprint.shape} '
+            f'vs cl_footprint {cl_footprint.shape}'
+        )
 
     a1 = cosmo_lib.z_to_a(z1_arr)
     a2 = cosmo_lib.z_to_a(z2_arr)
@@ -70,9 +79,9 @@ def sigma2_z1z2_fft(
         return (g1[:, None] * g2[None, :]) * integral / (2.0 * np.pi**2)
 
     elif which_sigma2_b in {'polar_cap_on_the_fly', 'from_input_mask'}:
-        part_result = np.sum((2 * ell_mask + 1) * cl_mask) * 2.0 / np.pi
+        part_result = np.sum((2 * ells_footprint + 1) * cl_footprint) * 2.0 / np.pi
         return (part_result * g1[:, None] * g2[None, :] * integral) / (
-            4.0 * np.pi * fsky_mask
+            4.0 * np.pi * fsky_footprint
         ) ** 2
 
     raise ValueError('Invalid which_sigma2_b option.')
@@ -217,9 +226,9 @@ class SpaceborneSSC:
                 k_grid_sigma2=k_grid_s2b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
-                ell_mask=mask_obj.ell_mask,
-                cl_mask=mask_obj.cl_mask,
-                fsky_mask=mask_obj.fsky,
+                ells_footprint=mask_obj.ells_footprint,
+                cl_footprint=mask_obj.cl_footprint,
+                fsky_footprint=mask_obj.fsky_footprint,
                 nk_fft=2**21,
             )
 

@@ -329,9 +329,6 @@ class CCLInterface:
                 )
             )
 
-    def set_ell_grid(self, ell_grid):
-        self.ell_grid = ell_grid
-
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(
             wf_a=kernel_a,
@@ -423,13 +420,15 @@ class CCLInterface:
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
                 cosmo=self.cosmo_ccl,
                 a_arr=self.a_grid_sigma2_b,
-                mask_wl=mask_obj.cl_mask_norm,
+                mask_wl=mask_obj.cl_footprint_norm,
             )
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b == 'flat_sky':
             sigma2_b = ccl.covariances.sigma2_B_disc(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=mask_obj.fsky
+                cosmo=self.cosmo_ccl,
+                a_arr=self.a_grid_sigma2_b,
+                fsky=mask_obj.fsky_footprint,
             )
             self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
@@ -481,7 +480,7 @@ class CCLInterface:
                         )
                     except FileNotFoundError:
                         print(
-                            f'No trispectrum files found in folder \n{tkka_path}\n. '
+                            f'No trispectrum files found in folder \n{tkka_path}\n '
                             'Proceeding to compute the trispectrum...'
                         )
 

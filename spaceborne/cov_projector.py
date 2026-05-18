@@ -106,7 +106,7 @@ def proj_cov_2d(
     kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
     integration_method: str,
 ) -> np.ndarray:
-    """Projects a 2D array (a non-Gaussian covariance in harmonic space) using the
+    r"""Projects a 2D array (a non-Gaussian covariance in harmonic space) using the
     equation
         \int d\ell_1 d\ell_2 k_1(\ell_1) k_2(\ell_1) cov(\ell_1, \ell_2)
     The input array should be 4D, with shape
@@ -296,7 +296,7 @@ class CovarianceProjector:
         # TODO generalise to different survey areas (max(Aij, Akl))
         self.survey_area_deg2 = mask_obj.survey_area_deg2
         self.survey_area_sr = mask_obj.survey_area_sr
-        self.fsky = mask_obj.fsky
+        self.fsky = mask_obj.fsky_footprint
         self.srtoarcmin2 = const.SR_TO_ARCMIN2
         self.amax = max((self.survey_area_sr, self.survey_area_sr))
 

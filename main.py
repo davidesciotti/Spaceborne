@@ -1599,7 +1599,9 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     if which_sigma2_b == 'full_curved_sky':
         for probe_2tpl in cov_ssc_obj.cov_dict['ssc']:
             for dim in cov_ssc_obj.cov_dict['ssc'][probe_2tpl]:
-                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= mask_obj_ll.fsky
+                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= (
+                    mask_obj_ll.fsky_footprint
+                )
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
@@ -1645,7 +1647,7 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov,
             ell_grid,
-            mask_obj_ll.fsky,
+            mask_obj_ll.fsky_footprint,
             integration_method=cfg['PyCCL']['cov_integration_method'],
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
@@ -2200,9 +2202,9 @@ if cfg['misc']['save_output_as_benchmark']:
     # TODO XXX fix this after rerunning benchmarks
     if mask_obj_ll is not None:
         misc_dict['mask'] = mask_obj_ll.footprint
-        misc_dict['mask_ell'] = mask_obj_ll.ell_mask
-        misc_dict['mask_cl'] = mask_obj_ll.cl_mask
-        misc_dict['mask_fsky'] = np.array([mask_obj_ll.fsky])
+        misc_dict['mask_ell'] = mask_obj_ll.ells_footprint
+        misc_dict['mask_cl'] = mask_obj_ll.cl_footprint
+        misc_dict['mask_fsky'] = np.array([mask_obj_ll.fsky_footprint])
         misc_dict['mask_survey_area_deg2'] = np.array([mask_obj_ll.survey_area_deg2])
 
     # save metadata

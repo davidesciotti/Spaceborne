@@ -646,13 +646,13 @@ class SpaceborneResponses:
         assert dPgm_ddeltab.ndim == 3, 'dPgm_ddeltab must have shape (k, zbins, zbins)'
         assert dPgg_ddeltab.ndim == 4, 'dPgg_ddeltab must have shape (k, zbins, zbins)'
 
-        assert dPgm_ddeltab.shape[1] == zbins, (
+        assert dPgm_ddeltab.shape[2] == zbins, (
             'dPgm_ddeltab second dimension must match zbins'
         )
-        assert dPgg_ddeltab.shape[1] == zbins, (
+        assert dPgg_ddeltab.shape[2] == zbins, (
             'dPgg_ddeltab second dimension must match zbins'
         )
-        assert dPgg_ddeltab.shape[2] == zbins, (
+        assert dPgg_ddeltab.shape[3] == zbins, (
             'dPgg_ddeltab third dimension must match zbins'
         )
 

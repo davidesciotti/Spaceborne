@@ -30,8 +30,8 @@ def d2Clxx_dVddeltab(
     )
     assert wf_lensing.ndim == 2, 'Window functions must be 2D arrays'
     assert wf_lensing.shape[0] == dPmm_ddeltab_klimb.shape[1], (
-        'The second dimension of the window functions must match first dimension of '
-        'dPxx_ddeltab_klimb'
+        'The first dimension of the window functions must match the second '
+        'dimension of dPxx_ddeltab_klimb'
     )
 
     d2Clmm_dVddeltab = np.einsum(

@@ -430,10 +430,10 @@ def precompute_alms_healpy(
 def pcls_from_maps(  # fmt: skip
     zi: int,
     zj: int,
-    f0,
-    f2,
-    coupled_cls,
-    which_cls,
+    f0: list | None,
+    f2: list | None,
+    coupled_cls: bool,
+    which_cls: str,
     w00_dict: dict,
     w02_dict: dict,
     w22_dict: dict,
@@ -652,7 +652,7 @@ def compute_ensemble_covariance( # fmt: skip
                 sim_cl_GL[i, :, zi, zj] = sim_cl_GL_ij
                 sim_cl_LL[i, :, zi, zj] = sim_cl_LL_ij
 
-    # * 3. compute sample covariance
+    # * 3. compute ensemble covariance
     sim_cls_to_ensemble_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins)
 
     return sim_cl_GG, sim_cl_GL, sim_cl_LL
@@ -753,7 +753,7 @@ def compute_ensemble_covariance_parallel(
             sim_cl_GL[i] = cl_gl_i
             sim_cl_LL[i] = cl_ll_i
 
-    # * Step II: compute sample covariance
+    # * Step II: compute ensemble covariance
     sim_cls_to_ensemble_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins)
 
     return sim_cl_GG, sim_cl_GL, sim_cl_LL
@@ -884,12 +884,12 @@ def _compute_one_realization(
     # [Note]: the healpy branch should be much faster now that the alms have been
     # pre-computed for each bin, rather than (uselessly) re-computed for each bin
     # pair inside the loop below pcls_from_maps.
-    cl_gg = np.zeros((nbl, zbins, zbins))
-    cl_gl = np.zeros((nbl, zbins, zbins))
-    cl_ll = np.zeros((nbl, zbins, zbins))
+    cl_gg_3d = np.zeros((nbl, zbins, zbins))
+    cl_gl_3d = np.zeros((nbl, zbins, zbins))
+    cl_ll_3d = np.zeros((nbl, zbins, zbins))
 
     for zi, zj in itertools.product(range(zbins), repeat=2):
-        gg, gl, ll = pcls_from_maps(
+        cl_gg_1d, cl_gl_1d, cl_ll_1d = pcls_from_maps(
             zi=zi,
             zj=zj,
             f0=f0,
@@ -903,17 +903,17 @@ def _compute_one_realization(
             alms_E=alms_E,
             alms_B=alms_B,
         )
-        if len(gg) != nbl:
-            gg = nmt_bin_obj.bin_cell(gg)
-            gl = nmt_bin_obj.bin_cell(gl)
-            ll = nmt_bin_obj.bin_cell(ll)
+        if len(cl_gg_1d) != nbl:
+            cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d)
+            cl_gl_1d = nmt_bin_obj.bin_cell(cl_gl_1d)
+            cl_ll_1d = nmt_bin_obj.bin_cell(cl_ll_1d)
 
-        cl_gg[:, zi, zj] = gg
-        cl_gl[:, zi, zj] = gl
-        cl_ll[:, zi, zj] = ll
+        cl_gg_3d[:, zi, zj] = cl_gg_1d
+        cl_gl_3d[:, zi, zj] = cl_gl_1d
+        cl_ll_3d[:, zi, zj] = cl_ll_1d
 
     # shape: (nbl, zbins, zbins)
-    return cl_gg, cl_gl, cl_ll
+    return cl_gg_3d, cl_gl_3d, cl_ll_3d
 
 
 def build_cl_ring_ordering(cl_3d):
@@ -1310,7 +1310,7 @@ class NmtCov:
 
         self.cw_dict = {}
 
-        # no need for cw if we want the sample covariance
+        # no need for cw if we want the ensemble covariance
         if self.cfg['covariance']['partial_sky_method'] == 'ensemble':
             return
 
@@ -1465,6 +1465,7 @@ class NmtCov:
                         ][zi, zj, zk, zl]
 
     def save_to_cache(self, unique_probe_combs):
+        """Saves to cache the workspeces and covariance workspaces."""
 
         # if workspaces are already laoded from cache, do not save them again
         if self.load_cached_wsp:
@@ -1481,7 +1482,7 @@ class NmtCov:
             self.w02_dict[zi, zj].write_to(f'{self.cache_path}/{w02_name}')
             self.w22_dict[zi, zj].write_to(f'{self.cache_path}/{w22_name}')
 
-        # if the sample covariance is required, no cw are computed,
+        # if the ensemble covariance is required, no cw are computed,
         # so no need to save them
         if self.cfg['covariance']['partial_sky_method'] == 'ensemble':
             return
@@ -1505,6 +1506,63 @@ class NmtCov:
                     self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl].write_to(
                         f'{self.cache_path}/{cw_name}'
                     )
+
+    def compute_and_save_mcms(self, nbl_unb: int):
+        """Explicitly computes and bins the mode coupling matrices.
+        The guards below ensure this function is called only in the following cases:
+
+        1. The user wants to save the MCMs,
+        and/or
+        2. The user wants to compute a coupled non-Gaussian covariance (SSC and/or cNG)
+
+        In the second case, the MCMs are needed to "manually" couple the SSC and cNG
+        terms, since these are not handled by nmt.
+
+        Args:
+            nbl_unb (int): number of unbinned multipoles (i.e., lmax_eff + 1)
+        """
+
+        # guards
+        ssc_or_cng = self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']
+        save_mcms = self.cfg['covariance']['save_mcms']
+        if save_mcms:
+            pass
+        elif not self.coupled_cov or not ssc_or_cng:
+            return
+
+        print('\nComputing and binning mode coupling matrices...')
+        mcm_tt_unb, mcm_te_unb, mcm_ee_unb = {}, {}, {}
+        self.mcm_tt_binned, self.mcm_et_binned = {}, {}
+        self.mcm_te_binned, self.mcm_ee_binned = {}, {}
+        for zi, zj in tqdm(self.zij_cross_combs):
+            # extract only the relevant blocks
+            mcm_tt_unb[zi, zj] = self.w00_dict[zi, zj].get_coupling_matrix()[
+                :nbl_unb, :nbl_unb
+            ]
+            mcm_te_unb[zi, zj] = self.w02_dict[zi, zj].get_coupling_matrix()[
+                :nbl_unb, :nbl_unb
+            ]
+            mcm_ee_unb[zi, zj] = self.w22_dict[zi, zj].get_coupling_matrix()[
+                :nbl_unb, :nbl_unb
+            ]
+
+            # bin (and store in self)
+            self.mcm_tt_binned[zi, zj] = bin_mcm(mcm_tt_unb[zi, zj], self.nmt_bin_obj)
+            self.mcm_te_binned[zi, zj] = bin_mcm(mcm_te_unb[zi, zj], self.nmt_bin_obj)
+            self.mcm_ee_binned[zi, zj] = bin_mcm(mcm_ee_unb[zi, zj], self.nmt_bin_obj)
+
+        if save_mcms:
+            np.savez(
+                f'{self.output_path}/mode_coupling_matrices.npz',
+                mcm_gg_unbinned=mcm_tt_unb,
+                mcm_gl_unbinned=mcm_te_unb,
+                mcm_ll_unbinned=mcm_ee_unb,
+                mcm_gg_binned=self.mcm_tt_binned,
+                mcm_lg_binned=self.mcm_et_binned,
+                mcm_gl_binned=self.mcm_te_binned,
+                mcm_ll_binned=self.mcm_ee_binned,
+            )
+            print(f'\nMode coupling matrices saved in {self.output_path}')
 
     def build_psky_cov(self):
         # TODO again, here I'm using 3x2pt = GC
@@ -1553,57 +1611,15 @@ class NmtCov:
         self.build_fields(ell_max_eff)
         self.build_wsp()
         self.build_cw(unique_probe_combs)
+        self.save_to_cache(unique_probe_combs)
+        self.compute_and_save_mcms(nbl_unb=nbl_unb)
 
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
         # (mcm), which I store in self
         # TODO XXX again, only loop over the unique zpairs
-
         # TODO XXX in general, I should definetly create some function to declutter the
         # TODO XXX "main"...
-        if (
-            self.coupled_cov
-            and (self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG'])
-        ) or self.cfg['covariance']['save_mcms']:
-            print('\nComputing and binning mode coupling matrices...')
-            mcm_tt_unb, mcm_te_unb, mcm_ee_unb = {}, {}, {}
-            self.mcm_tt_binned, self.mcm_et_binned = {}, {}
-            self.mcm_te_binned, self.mcm_ee_binned = {}, {}
-            for zi, zj in tqdm(self.zij_cross_combs):
-                # extract only the relevant blocks
-                mcm_tt_unb[zi, zj] = self.w00_dict[zi, zj].get_coupling_matrix()[
-                    :nbl_unb, :nbl_unb
-                ]
-                mcm_te_unb[zi, zj] = self.w02_dict[zi, zj].get_coupling_matrix()[
-                    :nbl_unb, :nbl_unb
-                ]
-                mcm_ee_unb[zi, zj] = self.w22_dict[zi, zj].get_coupling_matrix()[
-                    :nbl_unb, :nbl_unb
-                ]
-
-                # bin (and store in self)
-                self.mcm_tt_binned[zi, zj] = bin_mcm(
-                    mcm_tt_unb[zi, zj], self.nmt_bin_obj
-                )
-                self.mcm_te_binned[zi, zj] = bin_mcm(
-                    mcm_te_unb[zi, zj], self.nmt_bin_obj
-                )
-                self.mcm_ee_binned[zi, zj] = bin_mcm(
-                    mcm_ee_unb[zi, zj], self.nmt_bin_obj
-                )
-
-            if self.cfg['covariance']['save_mcms']:
-                np.savez(
-                    f'{self.output_path}/mode_coupling_matrices.npz',
-                    mcm_gg_unbinned=mcm_tt_unb,
-                    mcm_gl_unbinned=mcm_te_unb,
-                    mcm_ll_unbinned=mcm_ee_unb,
-                    mcm_gg_binned=self.mcm_tt_binned,
-                    mcm_lg_binned=self.mcm_et_binned,
-                    mcm_gl_binned=self.mcm_te_binned,
-                    mcm_ll_binned=self.mcm_ee_binned,
-                )
-                print(f'\nMode coupling matrices saved in {self.output_path}')
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky

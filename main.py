@@ -1484,12 +1484,12 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
 
     # observable densities
     d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab = responses.d2Clxx_dVddeltab(
-        dPmm_ddeltab_klimb,
-        dPgm_ddeltab_klimb,
-        dPgg_ddeltab_klimb,
-        wf_lensing,
-        wf_delta,
-        wf_mu,
+        dPmm_ddeltab_klimb=dPmm_ddeltab_klimb,
+        dPgm_ddeltab_klimb=dPgm_ddeltab_klimb,
+        dPgg_ddeltab_klimb=dPgg_ddeltab_klimb,
+        wf_lensing=wf_lensing,
+        wf_delta=wf_delta,
+        wf_mu=wf_mu,
     )
 
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)

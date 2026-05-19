@@ -18,6 +18,10 @@ import yaml
 # - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
 
 
+def get_zsteps(z_min, z_max, delta_z):
+    return int(np.ceil((z_max - z_min) / delta_z)) + 1
+
+
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
     if 'ipykernel_launcher.py' in sys.argv[0]:
@@ -369,7 +373,6 @@ cfg['precision']['levin_bin_avg'] = True  # Type: bool.
 # convenence settings that have been hardcoded
 n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
-
 # ! probe selection
 
 # * small naming guide for the confused developer:
@@ -611,23 +614,38 @@ if cfg['intrinsic_alignment']['lumin_ratio_filename'] is not None:
 else:
     ccl_obj.lumin_ratio_2d_arr = None
 
+
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
+
+
 z_grid = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    cfg['precision']['z_steps']
-)  # fmt: skip
+    get_zsteps(
+        cfg['precision']['z_min'],
+        cfg['precision']['z_max'],
+        cfg['precision']['delta_z'],
+    ),
+)
 z_grid_trisp_ssc = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    cfg['precision']['z_steps_trisp_SSC'],
+    get_zsteps(
+        cfg['precision']['z_min'],
+        cfg['precision']['z_max'],
+        cfg['precision']['delta_z_trisp_SSC'],
+    ),
 )
 z_grid_trisp_cng = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    cfg['precision']['z_steps_trisp_cNG'],
+    get_zsteps(
+        cfg['precision']['z_min'],
+        cfg['precision']['z_max'],
+        cfg['precision']['delta_z_trisp_cNG'],
+    ),
 )
 
 if len(z_grid) < 1000:
@@ -636,12 +654,6 @@ if len(z_grid) < 1000:
         'you may want to consider increasing it',
         stacklevel=2,
     )
-
-zgrid_str = (
-    f'zmin{cfg["precision"]["z_min"]}_'
-    f'zmax{cfg["precision"]["z_max"]}_'
-    f'zsteps{cfg["precision"]["z_steps"]}'
-)
 
 
 # ! check that the required k_max is compatible with k_max_limber given the required
@@ -1267,7 +1279,6 @@ if (
         cfg, pvt_cfg, do_g=compute_oc_g, do_ssc=compute_oc_ssc, do_cng=compute_oc_cng
     )
     cov_oc_obj.oc_path = oc_path
-    cov_oc_obj.z_grid_trisp_sb_cng = z_grid_trisp_cng
     cov_oc_obj.path_to_config_oc_ini = f'{cov_oc_obj.oc_path}/input_configs.ini'
     cov_oc_obj.ells_sb = ell_obj.ells_3x2pt
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
@@ -1503,7 +1514,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         d2CGL_dVddeltab_4d=d2CGL_dVddeltab,
         d2CGG_dVddeltab_4d=d2CGG_dVddeltab,
         unique_probe_combs_hs=unique_probe_combs_hs,
-        symm_probe_combs_hs=symm_probe_combs_hs,
         nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
 

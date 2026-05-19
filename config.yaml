@@ -334,15 +334,22 @@ precision:
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc
   k_steps: 250 # Type: int. Around 250 should be enough
 
+  # z range used across the code. The grid includes the endpoints, as it's computed with 
+  # z_steps = int(np.ceil((z_max - z_min) / delta_z)) + 1
+  # np.linspace(z_min, z_max, z_steps)
+  # so the actual delta_z may be slightly smaller (but not larger) than the input delta_z
   z_min: 0.01 # Type: float
   z_max: 3.0 # Type: float
-  # Number of z steps used for the NG covariance projection.
-  # Should be quite high, e.g., to trace the rapid variation of the sigma2_b function.
-  # Around 1000 should be enough.
-  z_steps: 10000 # Type: int.
-  # Number of z steps used to compute the SSC and cNG trispectrum - around 50 should be enough.
-  # Increasing this will significantly slow down the computation of the cNG term.
-  z_steps_trisp: 50 # Type: int.
+
+  # Precision for the P(k) projection to get the Cls, the computation of sigma2_b, 
+  # and SSC projection. Should be quite high, mostly to trace the rapid variation of 
+  # the sigma2_b function, especially when not using the KE approximation
+  delta_z: 3.e-4 # Type: float. Around 3.e-4 should be enough.
+
+  # Precision for the computation of SSC and cNG trispectra. 
+  # The cNG computation slows quite significantly when decreasing delta_z_trisp_cNG.
+  delta_z_trisp_SSC: 1.e-2 # Type: float. Around 1.e-2 should be enough.
+  delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
 
   # Whether or not to use the single-redshift integral approximation for the SSC.
   use_KE_approximation: False # Type: bool.
@@ -395,7 +402,7 @@ precision:
 misc:
   # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
   #        have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 127 # Type: int. How many threads to use for the parallel computations
+  num_threads: 30 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.
@@ -417,5 +424,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: ../../data/DATA/Spaceborne_jobs/develop # Type: str. Path to the output directory
+  output_path: ../../data/DATA/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

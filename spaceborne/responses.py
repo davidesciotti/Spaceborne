@@ -1,10 +1,65 @@
+import itertools
 import time
+from functools import partial
 
 import numpy as np
 import pyccl as ccl
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
 
 from spaceborne import cosmo_lib
+
+
+def d2Clxx_dVddeltab(
+    dPmm_ddeltab_klimb: np.ndarray,
+    dPgm_ddeltab_klimb: np.ndarray,
+    dPgg_ddeltab_klimb: np.ndarray,
+    wf_lensing: np.ndarray,
+    wf_delta: np.ndarray,
+    wf_mu: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Computes the d2Clxx/dVddeltab observable densities (i.e., the radial kernels
+    times the dPxx_ddeltab_klimb) to be integrated for the SSC covariance.
+    Einsum indices:
+    z: z_grid index (for the radial projection)
+    i, j: zbin index
+    L: ell index
+    """
+
+    assert wf_lensing.shape == wf_delta.shape == wf_mu.shape, (
+        'Window functions must have the same shape'
+    )
+    assert wf_lensing.ndim == 2, 'Window functions must be 2D arrays'
+    assert wf_lensing.shape[0] == dPmm_ddeltab_klimb.shape[1], (
+        'The first dimension of the window functions must match the second '
+        'dimension of dPxx_ddeltab_klimb'
+    )
+
+    d2Clmm_dVddeltab = np.einsum(
+        'zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb
+    )
+
+    d2Clgm_dVddeltab = np.einsum(
+        'zi,zj,Lzi->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb
+    ) + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
+
+    d2Clgg_dVddeltab = (
+        np.einsum('zi,zj,Lzij->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb)
+        + np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb)
+        + np.einsum('zi,zj,Lzj->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb)
+        + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
+    )
+
+    assert d2Clmm_dVddeltab.ndim == 4, (
+        'Output arrays must be 4D with indices (L, i, j, z)'
+    )
+    assert d2Clgm_dVddeltab.ndim == 4, (
+        'Output arrays must be 4D with indices (L, i, j, z)'
+    )
+    assert d2Clgg_dVddeltab.ndim == 4, (
+        'Output arrays must be 4D with indices (L, i, j, z)'
+    )
+
+    return d2Clmm_dVddeltab, d2Clgm_dVddeltab, d2Clgg_dVddeltab
 
 
 class SpaceborneResponses:
@@ -570,4 +625,80 @@ class SpaceborneResponses:
         self.r1_gm_hm = self.dPgm_ddeltab_hm / self.pknlhm_gm
         self.r1_gg_hm = self.dPgg_ddeltab_hm / self.pknlhm_gg
 
-        print(f'...done in {time.perf_counter() - start_time:.2f}s')
+        print(f'...done in {time.perf_counter() - start_time:.2f} s')
+
+    def dPxx_ddeltab_klimber(
+        self,
+        dPmm_ddeltab: np.ndarray,
+        dPgm_ddeltab: np.ndarray,
+        dPgg_ddeltab: np.ndarray,
+        z_grid_out: np.ndarray,
+        ell_grid: np.ndarray,
+        zbins: int,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Interpolates the dPxx/ddeltab responses and recomputes them on the Limber
+        wavenumber.
+        Note: The per-bin interpolators are necessary for the galaxy-related responses
+        """
+
+        # shape checks
+        assert dPmm_ddeltab.ndim == 2, 'dPmm_ddeltab must have shape (k, z)'
+        assert dPgm_ddeltab.ndim == 3, 'dPgm_ddeltab must have shape (k, z, zbins)'
+        assert dPgg_ddeltab.ndim == 4, 'dPgg_ddeltab must have shape (k, z, zbins, zbins)'
+        
+        assert dPgm_ddeltab.shape[2] == zbins, (
+            'dPgm_ddeltab second dimension must match zbins'
+        )
+        assert dPgg_ddeltab.shape[2] == zbins, (
+            'dPgg_ddeltab second dimension must match zbins'
+        )
+        assert dPgg_ddeltab.shape[3] == zbins, (
+            'dPgg_ddeltab third dimension must match zbins'
+        )
+
+        # rename just to make things clearer
+        z_grid_in = self.z_grid
+        nbl = len(ell_grid)
+
+        # convenience variable for the gg loops below
+        zij_cross_combs = itertools.product(range(zbins), repeat=2)
+
+        # precompute k_limber values
+        k_limber_func = partial(
+            cosmo_lib.k_limber, cosmo_ccl=self.cosmo_ccl, use_h_units=self.use_h_units
+        )
+        k_limb_vals = np.array([k_limber_func(ell, z_grid_out) for ell in ell_grid])
+
+        # Instantiate arrays
+        dPmm_ddeltab_klimb = np.zeros((nbl, len(z_grid_out)))
+        dPgm_ddeltab_klimb = np.zeros((nbl, len(z_grid_out), zbins))
+        dPgg_ddeltab_klimb = np.zeros((nbl, len(z_grid_out), zbins, zbins))
+
+        # matter-matter response is the same for all zbins,
+        # so I can just interpolate it once
+        dPmm_ddeltab_spline = RectBivariateSpline(self.k_grid, z_grid_in, dPmm_ddeltab)
+        for ell_ix in range(nbl):
+            dPmm_ddeltab_klimb[ell_ix, :] = dPmm_ddeltab_spline(
+                k_limb_vals[ell_ix, :], z_grid_out, grid=False
+            )
+
+        # for gm and gg, the bias can change bin by bin
+        for zi in range(zbins):
+            dPgm_ddeltab_spline = RectBivariateSpline(
+                self.k_grid, z_grid_in, dPgm_ddeltab[:, :, zi]
+            )
+            for ell_ix in range(nbl):
+                dPgm_ddeltab_klimb[ell_ix, :, zi] = dPgm_ddeltab_spline(
+                    k_limb_vals[ell_ix, :], z_grid_out, grid=False
+                )
+
+        for zi, zj in zij_cross_combs:
+            dPgg_ddeltab_spline = RectBivariateSpline(
+                self.k_grid, z_grid_in, dPgg_ddeltab[:, :, zi, zj]
+            )
+            for ell_ix in range(nbl):
+                dPgg_ddeltab_klimb[ell_ix, :, zi, zj] = dPgg_ddeltab_spline(
+                    k_limb_vals[ell_ix, :], z_grid_out, grid=False
+                )
+
+        return dPmm_ddeltab_klimb, dPgm_ddeltab_klimb, dPgg_ddeltab_klimb

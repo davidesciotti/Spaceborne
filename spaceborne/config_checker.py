@@ -484,11 +484,14 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['z_max'], float), (
             'precision: z_max must be a float'
         )
-        assert isinstance(precision_cfg['z_steps'], int), (
-            'precision: z_steps must be an int'
+        assert isinstance(precision_cfg['delta_z'], float), (
+            'precision: delta_z must be a float'
         )
-        assert isinstance(precision_cfg['z_steps_trisp'], int), (
-            'precision: z_steps_trisp must be an int'
+        assert isinstance(precision_cfg['delta_z_trisp_SSC'], float), (
+            'precision: delta_z_trisp_SSC must be a float'
+        )
+        assert isinstance(precision_cfg['delta_z_trisp_cNG'], float), (
+            'precision: delta_z_trisp_cNG must be a float'
         )
         assert isinstance(precision_cfg['use_KE_approximation'], bool), (
             'precision: use_KE_approximation must be a boolean'
@@ -766,6 +769,10 @@ class SpaceborneConfigChecker:
                 'polynomial_fit',
             ], 'which_mag_bias should be "from_input" or "polynomial_fit"'
 
+        assert self.cfg['C_ell']['which_gal_bias'] in [
+            'from_input',
+            'polynomial_fit',
+        ], 'which_gal_bias should be "from_input" or "polynomial_fit"'
 
     def run_all_checks(self) -> None:
         self.check_nmt()

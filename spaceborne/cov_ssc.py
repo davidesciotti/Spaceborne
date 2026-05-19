@@ -239,7 +239,6 @@ class SpaceborneSSC:
         d2CGL_dVddeltab_4d,
         d2CGG_dVddeltab_4d,
         unique_probe_combs_hs,
-        symm_probe_combs_hs,
         nonreq_probe_combs_hs,
     ):
         z_steps = len(self.z_grid)

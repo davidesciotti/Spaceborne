@@ -447,95 +447,16 @@ base_cfg = {
 # Each dictionary represents one configuration to test
 configs_to_test = []
 
-
-# ! Ordering, probe selection, input Cls
-for space in ['harmonic', 'real', 'cosebis']:
-    for cross_cov in [True, False]:
-        for use_input_cls in [True, False]:
-            if space == 'harmonic':
-                for cov_hs_g_ell_bin_average in [True, False]:
-                    for LL, GL, GG in product([True, False], repeat=3):
-                        if not any([LL, GL, GG]):
-                            continue
-                        configs_to_test.append(
-                            {
-                                'probe_selection': {
-                                    'LL': LL,
-                                    'GL': GL,
-                                    'GG': GG,
-                                    'cross_cov': cross_cov,
-                                    'space': space,
-                                },
-                                'covariance': {'SSC': False},
-                                'C_ell': {'use_input_cls': use_input_cls},
-                                'precision': {
-                                    'cov_hs_g_ell_bin_average': cov_hs_g_ell_bin_average
-                                },
-                            }
-                        )
-            elif space == 'real':
-                for xip, xim, gt, w in product([True, False], repeat=4):
-                    if not any([xip, xim, gt, w]):
-                        continue
-                    configs_to_test.append(
-                        {
-                            'probe_selection': {
-                                'xip': xip,
-                                'xim': xim,
-                                'gt': gt,
-                                'w': w,
-                                'cross_cov': cross_cov,
-                                'space': space,
-                            },
-                            'covariance': {'SSC': False},
-                            'C_ell': {'use_input_cls': use_input_cls},
-                        }
-                    )
-            elif space == 'cosebis':
-                for En, Bn in product([True, False], repeat=2):
-                    if not any([En, Bn]):
-                        continue
-                    configs_to_test.append(
-                        {
-                            'probe_selection': {
-                                'En': En,
-                                'Bn': Bn,
-                                'cross_cov': cross_cov,
-                                'space': space,
-                            },
-                            'covariance': {'SSC': False},
-                            'C_ell': {'use_input_cls': use_input_cls},
-                        }
-                    )
-
-# ordering, with and without split Gaussian cov
+# ! Ordering, with and without split Gaussian cov
 for ordering in ['probe_scale_zpair', 'probe_zpair_scale', 'scale_probe_zpair']:
     for split_gaussian_cov in [True, False]:
         configs_to_test.append(
             {
                 'covariance': {
-                    'SSC': False,
+                    'SSC': True,
                     'covariance_ordering_2D': ordering,
                     'split_gaussian_cov': split_gaussian_cov,
                 }
-            }
-        )
-
-# ! G and NG proj for real space, COSEBIs
-for obs_space in ['real', 'cosebis']:
-    for proj_gauss_integration_method, proj_nongauss_integration_method in [
-        ('simps', 'simps'),
-        ('levin', 'levin'),
-        ('simps', 'FFTLog'),
-    ]:
-        configs_to_test.append(
-            {
-                'covariance': {'SSC': True, 'cNG': True},
-                'probe_selection': {'space': obs_space},
-                'precision': {
-                    'proj_gauss_integration_method': proj_gauss_integration_method,
-                    'proj_nongauss_integration_method': proj_nongauss_integration_method,
-                },
             }
         )
 
@@ -603,14 +524,6 @@ for ke_approx in [True, False]:
                 }
             )
 
-# ! cNG
-for cng in [True, False]:
-    configs_to_test.append({'covariance': {'cNG': cng}})
-
-# ! other codes [TODO add OneCov]
-for ssc_code in ['Spaceborne', 'PyCCL']:
-    configs_to_test.append({'covariance': {'SSC_code': ssc_code}})
-
 
 # ! nz variations
 for shift_nz in [True, False]:
@@ -634,6 +547,94 @@ for load_input_mask, generate_polar_cap in zip(
 
 # ! BNT transform
 configs_to_test.append({'covariance': {'BNT_transform': True}})
+
+# ! Ordering, probe selection, input Cls
+for space in ['harmonic', 'real', 'cosebis']:
+    for cross_cov in [True, False]:
+        for use_input_cls in [True, False]:
+            if space == 'harmonic':
+                for cov_hs_g_ell_bin_average in [True, False]:
+                    for LL, GL, GG in product([True, False], repeat=3):
+                        if not any([LL, GL, GG]):
+                            continue
+                        configs_to_test.append(
+                            {
+                                'probe_selection': {
+                                    'LL': LL,
+                                    'GL': GL,
+                                    'GG': GG,
+                                    'cross_cov': cross_cov,
+                                    'space': space,
+                                },
+                                'covariance': {'SSC': False},
+                                'C_ell': {'use_input_cls': use_input_cls},
+                                'precision': {
+                                    'cov_hs_g_ell_bin_average': cov_hs_g_ell_bin_average
+                                },
+                            }
+                        )
+            elif space == 'real':
+                for xip, xim, gt, w in product([True, False], repeat=4):
+                    if not any([xip, xim, gt, w]):
+                        continue
+                    configs_to_test.append(
+                        {
+                            'probe_selection': {
+                                'xip': xip,
+                                'xim': xim,
+                                'gt': gt,
+                                'w': w,
+                                'cross_cov': cross_cov,
+                                'space': space,
+                            },
+                            'covariance': {'SSC': False},
+                            'C_ell': {'use_input_cls': use_input_cls},
+                        }
+                    )
+            elif space == 'cosebis':
+                for En, Bn in product([True, False], repeat=2):
+                    if not any([En, Bn]):
+                        continue
+                    configs_to_test.append(
+                        {
+                            'probe_selection': {
+                                'En': En,
+                                'Bn': Bn,
+                                'cross_cov': cross_cov,
+                                'space': space,
+                            },
+                            'covariance': {'SSC': False},
+                            'C_ell': {'use_input_cls': use_input_cls},
+                        }
+                    )
+
+
+# ! G and NG proj for real space, COSEBIs
+for obs_space in ['real', 'cosebis']:
+    for proj_gauss_integration_method, proj_nongauss_integration_method in [
+        ('simps', 'simps'),
+        ('levin', 'levin'),
+        ('simps', 'FFTLog'),
+    ]:
+        configs_to_test.append(
+            {
+                'covariance': {'SSC': True, 'cNG': True},
+                'probe_selection': {'space': obs_space},
+                'precision': {
+                    'proj_gauss_integration_method': proj_gauss_integration_method,
+                    'proj_nongauss_integration_method': proj_nongauss_integration_method,
+                },
+            }
+        )
+
+# ! cNG
+for cng in [True, False]:
+    configs_to_test.append({'covariance': {'cNG': cng}})
+
+# ! other codes [TODO add OneCov]
+for ssc_code in ['Spaceborne', 'PyCCL']:
+    configs_to_test.append({'covariance': {'SSC_code': ssc_code}})
+
 
 # ! NAMASTER (test only G cov)
 for cov_type in ['coupled', 'decoupled']:

@@ -19,8 +19,17 @@ import yaml
 
 
 def get_zsteps(z_min, z_max, delta_z):
+    """
+    Compute the number of grid points for linspace given a desired step size.
+    
+    Returns the count needed so that np.linspace(z_min, z_max, count) produces
+    a grid with actual spacing <= delta_z (endpoint-inclusive).
+    """
+    if delta_z <= 0:
+        raise ValueError(f"delta_z must be positive, got {delta_z}")
+    if z_max <= z_min:
+        raise ValueError(f"z_max must be greater than z_min, got {z_max=}, {z_min=}")
     return int(np.ceil((z_max - z_min) / delta_z)) + 1
-
 
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)

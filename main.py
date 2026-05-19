@@ -9,9 +9,6 @@ from copy import deepcopy
 import yaml
 
 # TODOS BRANCH
-# - ssc computation should not be in the main, btw, I don't think it'll be difficult to port it to the SSC class
-# - try feeding OC NG covs to the simps projection
-# - port to Melodie for speed?
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
 # - put markers in CPU vs time to understand portion of the code which could be parallelised
@@ -21,15 +18,16 @@ import yaml
 def get_zsteps(z_min, z_max, delta_z):
     """
     Compute the number of grid points for linspace given a desired step size.
-    
+
     Returns the count needed so that np.linspace(z_min, z_max, count) produces
     a grid with actual spacing <= delta_z (endpoint-inclusive).
     """
     if delta_z <= 0:
-        raise ValueError(f"delta_z must be positive, got {delta_z}")
+        raise ValueError(f'delta_z must be positive, got {delta_z}')
     if z_max <= z_min:
-        raise ValueError(f"z_max must be greater than z_min, got {z_max=}, {z_min=}")
+        raise ValueError(f'z_max must be greater than z_min, got {z_max=}, {z_min=}')
     return int(np.ceil((z_max - z_min) / delta_z)) + 1
+
 
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)

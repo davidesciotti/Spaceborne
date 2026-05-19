@@ -619,10 +619,15 @@ z_grid = np.linspace(
     cfg['precision']['z_max'],
     cfg['precision']['z_steps']
 )  # fmt: skip
-z_grid_trisp = np.linspace(
+z_grid_trisp_ssc = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    cfg['precision']['z_steps_trisp'],
+    cfg['precision']['z_steps_trisp_SSC'],
+)
+z_grid_trisp_cng = np.linspace(
+    cfg['precision']['z_min'],
+    cfg['precision']['z_max'],
+    cfg['precision']['z_steps_trisp_cNG'],
 )
 
 if len(z_grid) < 1000:
@@ -686,8 +691,8 @@ cfg['precision']['spline_params']['K_MAX_SPLINE'] = (
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 # TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
-z_grid_tkka_SSC = z_grid_trisp
-z_grid_tkka_cNG = z_grid_trisp
+z_grid_tkka_SSC = z_grid_trisp_ssc
+z_grid_tkka_cNG = z_grid_trisp_cng
 ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_tkka_SSC)[::-1]
 ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_tkka_cNG)[::-1]
 ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
@@ -700,7 +705,9 @@ if not np.all(np.diff(ccl_obj.a_grid_tkka_cNG) > 0):
     raise ValueError('a_grid_tkka_cNG is not in ascending order!')
 if not np.all(np.diff(z_grid) > 0):
     raise ValueError('z grid is not in ascending order!')
-if not np.all(np.diff(z_grid_trisp) > 0):
+if not np.all(np.diff(z_grid_trisp_ssc) > 0):
+    raise ValueError('z grid is not in ascending order!')
+if not np.all(np.diff(z_grid_trisp_cng) > 0):
     raise ValueError('z grid is not in ascending order!')
 
 if cfg['PyCCL']['use_default_k_a_grids']:
@@ -1260,7 +1267,7 @@ if (
         cfg, pvt_cfg, do_g=compute_oc_g, do_ssc=compute_oc_ssc, do_cng=compute_oc_cng
     )
     cov_oc_obj.oc_path = oc_path
-    cov_oc_obj.z_grid_trisp_sb = z_grid_trisp
+    cov_oc_obj.z_grid_trisp_sb_cng = z_grid_trisp_cng
     cov_oc_obj.path_to_config_oc_ini = f'{cov_oc_obj.oc_path}/input_configs.ini'
     cov_oc_obj.ells_sb = ell_obj.ells_3x2pt
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
@@ -1363,7 +1370,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     # TODO most of this should go in the cov_ssc class
     # ! ================================= Probe responses ==============================
     resp_obj = responses.SpaceborneResponses(
-        cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp, ccl_obj=ccl_obj
+        cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp_ssc, ccl_obj=ccl_obj
     )
     resp_obj.use_h_units = use_h_units
 
@@ -1373,7 +1380,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
 
         # recompute galaxy bias on the z grid used to compute the responses/trispectrum
-        gal_bias_2d_trisp = ccl_obj.gal_bias_func(z_grid_trisp)
+        gal_bias_2d_trisp = ccl_obj.gal_bias_func(z_grid_trisp_ssc)
         if gal_bias_2d_trisp.ndim == 1:
             assert single_b_of_z, (
                 'Galaxy bias should be a single function of redshift for all bins, '
@@ -1381,9 +1388,9 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             )
             gal_bias_2d_trisp = np.tile(gal_bias_2d_trisp[:, None], zbins)
 
-        dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
-        dPgm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
-        dPgg_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
+        dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
+        dPgm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
+        dPgg_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
         # TODO this can be made more efficient - eg by having a
         # TODO "if_bias_equal_all_bins" flag
 
@@ -1391,7 +1398,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             # compute dPAB/ddelta_b
             resp_obj.set_hm_resp(
                 k_grid=k_grid,
-                z_grid=z_grid_trisp,
+                z_grid=z_grid_trisp_ssc,
                 which_b1g=which_b1g_in_resp,
                 b1g_zi=gal_bias_2d_trisp[:, 0],
                 b1g_zj=gal_bias_2d_trisp[:, 0],
@@ -1420,7 +1427,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
                 for zj in range(zbins):
                     resp_obj.set_hm_resp(
                         k_grid=k_grid,
-                        z_grid=z_grid_trisp,
+                        z_grid=z_grid_trisp_ssc,
                         which_b1g=which_b1g_in_resp,
                         b1g_zi=gal_bias_2d_trisp[:, zi],
                         b1g_zj=gal_bias_2d_trisp[:, zj],
@@ -2175,7 +2182,8 @@ if cfg['misc']['save_output_as_benchmark']:
         ind=ind,
         backup_cfg=cfg,
         z_grid=z_grid,
-        z_grid_trisp=z_grid_trisp,
+        z_grid_trisp_ssc=z_grid_trisp_ssc,
+        z_grid_trisp_cng=z_grid_trisp_cng,
         k_grid=k_grid,
         k_grid_sigma2_b=k_grid_s2b,
         nz_src=nz_src,

@@ -19,16 +19,14 @@ Key Features:
 import configparser
 import os
 import subprocess
+import warnings
 from collections import defaultdict
-from copy import deepcopy
 
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.optimize import minimize_scalar
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
-from spaceborne import ell_utils
 from spaceborne import sb_lib as sl
 
 _UNSET = object()
@@ -539,7 +537,6 @@ class OneCovarianceInterface:
 
         self.oc_path: str = _UNSET
         # OC has a single z grid for the trispectrum, so we choose the coarser one
-        self.z_grid_trisp_sb_cng: np.ndarray = _UNSET  
         self.path_to_config_oc_ini: str = _UNSET
         self.ells_sb: np.ndarray = _UNSET
         self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
@@ -664,14 +661,6 @@ class OneCovarianceInterface:
         cfg_oc_ini['output settings']['save_as_binary'] = str(False)
 
         # ! [covELLspace settings]
-        np.testing.assert_allclose(
-            np.diff(self.z_grid_trisp_sb_cng)[0],
-            np.diff(self.z_grid_trisp_sb_cng),
-            atol=0,
-            rtol=1e-7,
-            err_msg='The redshift grid is not uniform.',
-        )
-        delta_z = np.diff(self.z_grid_trisp_sb_cng)[0]
 
         self.binning_type = self.cfg['binning']['binning_type']
         if self.cfg['binning']['binning_type'] == 'ref_cut':
@@ -680,8 +669,15 @@ class OneCovarianceInterface:
         # settings common to both observables
         cfg_oc_ini['covELLspace settings']['limber'] = str(True)
         cfg_oc_ini['covELLspace settings']['nglimber'] = str(True)
-        cfg_oc_ini['covELLspace settings']['delta_z'] = str(delta_z)
-        cfg_oc_ini['covELLspace settings']['tri_delta_z'] = str(0.5)
+        warnings.warn(
+            'delta_z is quite low, increase if runtime becomes an issue!', stacklevel=2
+        )
+        cfg_oc_ini['covELLspace settings']['delta_z'] = str(
+            self.cfg['precision']['delta_z']
+        )  # used to be delta_z_trisp_cNG
+        cfg_oc_ini['covELLspace settings']['tri_delta_z'] = str(
+            self.cfg['precision']['delta_z_trisp_cNG']
+        )  # used to be 0.5
         # * PRECISION PARAMETER MODIFIED IN THE PAST (500 -> 1000)
         cfg_oc_ini['covELLspace settings']['integration_steps'] = str(500)
         cfg_oc_ini['covELLspace settings']['nz_interpolation_polynom_order'] = str(1)

@@ -538,7 +538,8 @@ class OneCovarianceInterface:
         self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
 
         self.oc_path: str = _UNSET
-        self.z_grid_trisp_sb: np.ndarray = _UNSET
+        # OC has a single z grid for the trispectrum, so we choose the coarser one
+        self.z_grid_trisp_sb_cng: np.ndarray = _UNSET  
         self.path_to_config_oc_ini: str = _UNSET
         self.ells_sb: np.ndarray = _UNSET
         self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
@@ -664,13 +665,13 @@ class OneCovarianceInterface:
 
         # ! [covELLspace settings]
         np.testing.assert_allclose(
-            np.diff(self.z_grid_trisp_sb)[0],
-            np.diff(self.z_grid_trisp_sb),
+            np.diff(self.z_grid_trisp_sb_cng)[0],
+            np.diff(self.z_grid_trisp_sb_cng),
             atol=0,
             rtol=1e-7,
             err_msg='The redshift grid is not uniform.',
         )
-        delta_z = np.diff(self.z_grid_trisp_sb)[0]
+        delta_z = np.diff(self.z_grid_trisp_sb_cng)[0]
 
         self.binning_type = self.cfg['binning']['binning_type']
         if self.cfg['binning']['binning_type'] == 'ref_cut':

@@ -641,10 +641,6 @@ zgrid_str = (
 
 # ! check that the required k_max is compatible with k_max_limber given the required
 # ! ell grids and redshift ranges
-k_limber_func = partial(
-    cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units
-)
-
 _z_min = cfg['precision']['z_min']
 _ell_max = cfg['binning']['ell_max']
 if obs_space != 'harmonic' and ('ssc' in req_terms or 'cng' in req_terms):

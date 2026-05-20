@@ -681,7 +681,7 @@ z_grid_trisp_cng = np.linspace(
 if len(z_grid) < 1000:
     warnings.warn(
         'the number of steps in the redshift grid is small, '
-        'you may want to consider increasing it',
+        'you may want to consider decreasing delta_z',
         stacklevel=2,
     )
 

@@ -32,7 +32,7 @@ def generate_polar_cap_func(area_deg2, nside):
 
     # Convert the angular radius to degrees for visualization
     theta_cap_deg = np.degrees(theta_cap_rad)
-    print(f'Angular radius of the cap: {theta_cap_deg:.4f} deg')
+    print(f'Angle subtended by the cap: {theta_cap_deg:.4f} deg')
 
     # Vector pointing to the North Pole (θ=0); φ can take any value
     vec = hp.ang2vec(0, 0)

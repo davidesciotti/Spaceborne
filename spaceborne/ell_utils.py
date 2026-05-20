@@ -219,12 +219,12 @@ class EllBinning:
                 'Check failed: nbl_GC == len(ells_GC) == len(delta_l_GC) is False'
             )
 
-        elif self.binning_type == 'log':
+        elif self.binning_type in ['lin', 'log']:
             self.ells_WL, self.delta_l_WL, self.ell_edges_WL = compute_ells(
                 nbl=self.nbl_WL,
                 ell_min=self.ell_min_WL,
                 ell_max=self.ell_max_WL,
-                binning_type='ISTF',
+                binning_type=self.binning_type,
                 output_ell_bin_edges=True,
             )
 
@@ -232,24 +232,7 @@ class EllBinning:
                 nbl=self.nbl_GC,
                 ell_min=self.ell_min_GC,
                 ell_max=self.ell_max_GC,
-                binning_type='ISTF',
-                output_ell_bin_edges=True,
-            )
-
-        elif self.binning_type == 'lin':
-            self.ells_WL, self.delta_l_WL, self.ell_edges_WL = compute_ells(
-                nbl=self.nbl_WL,
-                ell_min=self.ell_min_WL,
-                ell_max=self.ell_max_WL,
-                binning_type='lin',
-                output_ell_bin_edges=True,
-            )
-
-            self.ells_GC, self.delta_l_GC, self.ell_edges_GC = compute_ells(
-                nbl=self.nbl_GC,
-                ell_min=self.ell_min_GC,
-                ell_max=self.ell_max_GC,
-                binning_type='lin',
+                binning_type=self.binning_type,
                 output_ell_bin_edges=True,
             )
 

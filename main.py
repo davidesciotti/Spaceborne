@@ -9,13 +9,24 @@ from copy import deepcopy
 import yaml
 
 # TODOS BRANCH
-# - ssc computation should not be in the main, btw, I don't think it'll be difficult to port it to the SSC class
-# - try feeding OC NG covs to the simps projection
-# - port to Melodie for speed?
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
 # - put markers in CPU vs time to understand portion of the code which could be parallelised
 # - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
+
+
+def get_zsteps(z_min, z_max, delta_z):
+    """
+    Compute the number of grid points for linspace given a desired step size.
+
+    Returns the count needed so that np.linspace(z_min, z_max, count) produces
+    a grid with actual spacing <= delta_z (endpoint-inclusive).
+    """
+    if delta_z <= 0:
+        raise ValueError(f'delta_z must be positive, got {delta_z}')
+    if z_max <= z_min:
+        raise ValueError(f'z_max must be greater than z_min, got {z_max=}, {z_min=}')
+    return int(np.ceil((z_max - z_min) / delta_z)) + 1
 
 
 def load_config(_config_path):
@@ -116,7 +127,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 from scipy.integrate import simpson as simps
-from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage import gaussian_filter1d
 
 from spaceborne import (
@@ -127,6 +137,7 @@ from spaceborne import (
     cov_cosebis,
     cov_harmonic_space,
     cov_real_space,
+    cov_ssc,
     ell_utils,
     io_handler,
     mask_utils,
@@ -170,33 +181,33 @@ pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
-import threading
+# import threading
 
-import pandas as pd
-import psutil
+# import pandas as pd
+# import psutil
 
-cpu_data = []
-
-
-def monitor_cpu(interval=0.5):
-    """Monitor CPU usage per core"""
-    print('Starting CPU monitor...')
-    while not stop_event.is_set():
-        timestamp = time.time()
-        per_core = psutil.cpu_percent(percpu=True, interval=interval)
-        cpu_data.append(
-            {
-                'time': timestamp,
-                'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
-                'per_core': per_core,
-            }
-        )
-    print('CPU monitoring stopped')
+# cpu_data = []
 
 
-stop_event = threading.Event()
-monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
-monitor_thread.start()
+# def monitor_cpu(interval=0.5):
+#     """Monitor CPU usage per core"""
+#     print('Starting CPU monitor...')
+#     while not stop_event.is_set():
+#         timestamp = time.time()
+#         per_core = psutil.cpu_percent(percpu=True, interval=interval)
+#         cpu_data.append(
+#             {
+#                 'time': timestamp,
+#                 'cores_used': sum(1 for x in per_core if x > 10),  # cores > 10% usage
+#                 'per_core': per_core,
+#             }
+#         )
+#     print('CPU monitoring stopped')
+
+
+# stop_event = threading.Event()
+# monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
+# monitor_thread.start()
 
 
 def plot_cls():
@@ -392,7 +403,6 @@ cfg['precision']['levin_bin_avg'] = True  # Type: bool.
 # convenence settings that have been hardcoded
 n_probes = cfg['covariance']['n_probes']
 which_sigma2_b = cfg['covariance']['which_sigma2_b']
-
 # ! probe selection
 
 # * small naming guide for the confused developer:
@@ -634,18 +644,38 @@ if cfg['intrinsic_alignment']['lumin_ratio_filename'] is not None:
 else:
     ccl_obj.lumin_ratio_2d_arr = None
 
+
 # ! define k and z grids used throughout the code (k is in 1/Mpc)
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
+
+
 z_grid = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    cfg['precision']['z_steps']
-)  # fmt: skip
-z_grid_trisp = np.linspace(
+    get_zsteps(
+        cfg['precision']['z_min'],
+        cfg['precision']['z_max'],
+        cfg['precision']['delta_z'],
+    ),
+)
+z_grid_trisp_ssc = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    cfg['precision']['z_steps_trisp'],
+    get_zsteps(
+        cfg['precision']['z_min'],
+        cfg['precision']['z_max'],
+        cfg['precision']['delta_z_trisp_SSC'],
+    ),
+)
+z_grid_trisp_cng = np.linspace(
+    cfg['precision']['z_min'],
+    cfg['precision']['z_max'],
+    get_zsteps(
+        cfg['precision']['z_min'],
+        cfg['precision']['z_max'],
+        cfg['precision']['delta_z_trisp_cNG'],
+    ),
 )
 
 if len(z_grid) < 1000:
@@ -655,19 +685,9 @@ if len(z_grid) < 1000:
         stacklevel=2,
     )
 
-zgrid_str = (
-    f'zmin{cfg["precision"]["z_min"]}_'
-    f'zmax{cfg["precision"]["z_max"]}_'
-    f'zsteps{cfg["precision"]["z_steps"]}'
-)
-
 
 # ! check that the required k_max is compatible with k_max_limber given the required
 # ! ell grids and redshift ranges
-k_limber_func = partial(
-    cosmo_lib.k_limber, cosmo_ccl=ccl_obj.cosmo_ccl, use_h_units=use_h_units
-)
-
 _z_min = cfg['precision']['z_min']
 _ell_max = cfg['binning']['ell_max']
 if obs_space != 'harmonic' and ('ssc' in req_terms or 'cng' in req_terms):
@@ -713,8 +733,8 @@ cfg['precision']['spline_params']['K_MAX_SPLINE'] = (
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 # TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
-z_grid_tkka_SSC = z_grid_trisp
-z_grid_tkka_cNG = z_grid_trisp
+z_grid_tkka_SSC = z_grid_trisp_ssc
+z_grid_tkka_cNG = z_grid_trisp_cng
 ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_tkka_SSC)[::-1]
 ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_tkka_cNG)[::-1]
 ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
@@ -727,7 +747,9 @@ if not np.all(np.diff(ccl_obj.a_grid_tkka_cNG) > 0):
     raise ValueError('a_grid_tkka_cNG is not in ascending order!')
 if not np.all(np.diff(z_grid) > 0):
     raise ValueError('z grid is not in ascending order!')
-if not np.all(np.diff(z_grid_trisp) > 0):
+if not np.all(np.diff(z_grid_trisp_ssc) > 0):
+    raise ValueError('z grid is not in ascending order!')
+if not np.all(np.diff(z_grid_trisp_cng) > 0):
     raise ValueError('z grid is not in ascending order!')
 
 if cfg['PyCCL']['use_default_k_a_grids']:
@@ -815,10 +837,10 @@ pvt_cfg['nbl_3x2pt'] = ell_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
 pvt_cfg['nbx'] = nbx
 
+
 # TODO rename ell_obj to bin_obj
 # TODO Parallel: Workers compute independently, results are stacked after
 # TODO add to it theta and cosebis binning
-# TODO use geometric mean for ell centers!
 # TODO arange(ell_max_3x2pt)? are we sure? it would be better to at least start from 1...
 
 # ! ===================================== Mask =========================================
@@ -955,7 +977,6 @@ else:
 # two-dimensional", for shape consistency
 single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 
-
 # ! ============================ Magnification bias ====================================
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
@@ -995,7 +1016,6 @@ ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
 )
 
-gal_kernel_plt_title = 'galaxy kernel\n(w/o gal bias)'
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 
@@ -1020,34 +1040,7 @@ wf_ia = ccl_obj.wf_ia_arr
 wf_mu = ccl_obj.wf_mu_arr
 wf_lensing = ccl_obj.wf_lensing_arr
 
-# plot
-wf_names_list = [
-    'delta',
-    'gamma',
-    'IA',
-    'magnification',
-    'lensing',
-    gal_kernel_plt_title,
-]
-wf_ccl_list = [
-    ccl_obj.wf_delta_arr,
-    ccl_obj.wf_gamma_arr,
-    ccl_obj.wf_ia_arr,
-    ccl_obj.wf_mu_arr,
-    ccl_obj.wf_lensing_arr,
-    ccl_obj.wf_galaxy_arr,
-]
-
-for wf_idx in range(len(wf_ccl_list)):
-    plt.figure()
-    for zi in range(zbins):
-        plt.plot(z_grid, wf_ccl_list[wf_idx][:, zi], c=clr[zi], alpha=0.6)
-    plt.xlabel('$z$')
-    plt.ylabel(r'$W_i^X(z)$')
-    plt.suptitle(f'{wf_names_list[wf_idx]}')
-    plt.tight_layout()
-    plt.show()
-
+sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 
 # ! ======================================== Cls =======================================
 # ! note that the function below includes the multiplicative shear bias
@@ -1209,7 +1202,7 @@ if obs_space == 'harmonic':
 else:
     cov_hs_obj = None
 
-# ! =================================== OneCovariance ================================
+# ! =================================== OneCovariance ==================================
 # initialize object
 cov_oc_obj = None
 if (
@@ -1325,7 +1318,6 @@ if (
         cfg, pvt_cfg, do_g=compute_oc_g, do_ssc=compute_oc_ssc, do_cng=compute_oc_cng
     )
     cov_oc_obj.oc_path = oc_path
-    cov_oc_obj.z_grid_trisp_sb = z_grid_trisp
     cov_oc_obj.path_to_config_oc_ini = f'{cov_oc_obj.oc_path}/input_configs.ini'
     cov_oc_obj.ells_sb = ell_obj.ells_3x2pt
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
@@ -1428,7 +1420,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     # TODO most of this should go in the cov_ssc class
     # ! ================================= Probe responses ==============================
     resp_obj = responses.SpaceborneResponses(
-        cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp, ccl_obj=ccl_obj
+        cfg=cfg, k_grid=k_grid, z_grid=z_grid_trisp_ssc, ccl_obj=ccl_obj
     )
     resp_obj.use_h_units = use_h_units
 
@@ -1438,7 +1430,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
 
         # recompute galaxy bias on the z grid used to compute the responses/trispectrum
-        gal_bias_2d_trisp = ccl_obj.gal_bias_func(z_grid_trisp)
+        gal_bias_2d_trisp = ccl_obj.gal_bias_func(z_grid_trisp_ssc)
         if gal_bias_2d_trisp.ndim == 1:
             assert single_b_of_z, (
                 'Galaxy bias should be a single function of redshift for all bins, '
@@ -1446,9 +1438,9 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             )
             gal_bias_2d_trisp = np.tile(gal_bias_2d_trisp[:, None], zbins)
 
-        dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
-        dPgm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
-        dPgg_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp), zbins, zbins))
+        dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
+        dPgm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
+        dPgg_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
         # TODO this can be made more efficient - eg by having a
         # TODO "if_bias_equal_all_bins" flag
 
@@ -1456,7 +1448,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             # compute dPAB/ddelta_b
             resp_obj.set_hm_resp(
                 k_grid=k_grid,
-                z_grid=z_grid_trisp,
+                z_grid=z_grid_trisp_ssc,
                 which_b1g=which_b1g_in_resp,
                 b1g_zi=gal_bias_2d_trisp[:, 0],
                 b1g_zj=gal_bias_2d_trisp[:, 0],
@@ -1485,7 +1477,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
                 for zj in range(zbins):
                     resp_obj.set_hm_resp(
                         k_grid=k_grid,
-                        z_grid=z_grid_trisp,
+                        z_grid=z_grid_trisp_ssc,
                         which_b1g=which_b1g_in_resp,
                         b1g_zi=gal_bias_2d_trisp[:, zi],
                         b1g_zj=gal_bias_2d_trisp[:, zj],
@@ -1532,55 +1524,26 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
 
-    dPmm_ddeltab_spline = RectBivariateSpline(
-        k_grid, z_grid_trisp, dPmm_ddeltab, kx=3, ky=3
-    )
-    mm_list = [
-        dPmm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-        for ell_val in ell_grid
-    ]
-    dPmm_ddeltab_klimb = np.array(mm_list)
-
-    dPgm_ddeltab_klimb = np.zeros((len(ell_grid), len(z_grid), zbins))
-    for zi in range(zbins):
-        dPgm_ddeltab_spline = RectBivariateSpline(
-            k_grid, z_grid_trisp, dPgm_ddeltab[:, :, zi], kx=3, ky=3
+    dPmm_ddeltab_klimb, dPgm_ddeltab_klimb, dPgg_ddeltab_klimb = (
+        resp_obj.dPxx_ddeltab_klimber(
+            dPmm_ddeltab=dPmm_ddeltab,
+            dPgm_ddeltab=dPgm_ddeltab,
+            dPgg_ddeltab=dPgg_ddeltab,
+            z_grid_out=z_grid,
+            ell_grid=ell_grid,
+            zbins=zbins,
         )
-        gm_list = [
-            dPgm_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-            for ell_val in ell_grid
-        ]
-        dPgm_ddeltab_klimb[:, :, zi] = np.array(gm_list)
-
-    dPgg_ddeltab_klimb = np.zeros((len(ell_grid), len(z_grid), zbins, zbins))
-    for zi in range(zbins):
-        for zj in range(zbins):
-            dPgg_ddeltab_spline = RectBivariateSpline(
-                k_grid, z_grid_trisp, dPgg_ddeltab[:, :, zi, zj], kx=3, ky=3
-            )
-            gg_list = [
-                dPgg_ddeltab_spline(k_limber_func(ell_val, z_grid), z_grid, grid=False)
-                for ell_val in ell_grid
-            ]
-            dPgg_ddeltab_klimb[:, :, zi, zj] = np.array(gg_list)
-
-    # ! observable densities
-    # z: z_grid index (for the radial projection)
-    # i, j: zbin index
-    d2CLL_dVddeltab = np.einsum(
-        'zi,zj,Lz->Lijz', wf_lensing, wf_lensing, dPmm_ddeltab_klimb
-    )
-    d2CGL_dVddeltab = np.einsum(
-        'zi,zj,Lzi->Lijz', wf_delta, wf_lensing, dPgm_ddeltab_klimb
-    ) + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_lensing, dPmm_ddeltab_klimb)
-    d2CGG_dVddeltab = (
-        np.einsum('zi,zj,Lzij->Lijz', wf_delta, wf_delta, dPgg_ddeltab_klimb)
-        + np.einsum('zi,zj,Lzi->Lijz', wf_delta, wf_mu, dPgm_ddeltab_klimb)
-        + np.einsum('zi,zj,Lzj->Lijz', wf_mu, wf_delta, dPgm_ddeltab_klimb)
-        + np.einsum('zi,zj,Lz->Lijz', wf_mu, wf_mu, dPmm_ddeltab_klimb)
     )
 
-    from spaceborne import cov_ssc
+    # observable densities
+    d2CLL_dVddeltab, d2CGL_dVddeltab, d2CGG_dVddeltab = responses.d2Clxx_dVddeltab(
+        dPmm_ddeltab_klimb=dPmm_ddeltab_klimb,
+        dPgm_ddeltab_klimb=dPgm_ddeltab_klimb,
+        dPgg_ddeltab_klimb=dPgg_ddeltab_klimb,
+        wf_lensing=wf_lensing,
+        wf_delta=wf_delta,
+        wf_mu=wf_mu,
+    )
 
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
     cov_ssc_obj.set_sigma2_b(ccl_obj, mask_obj_ll, k_grid_s2b, which_sigma2_b)
@@ -1590,7 +1553,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         d2CGL_dVddeltab_4d=d2CGL_dVddeltab,
         d2CGG_dVddeltab_4d=d2CGG_dVddeltab,
         unique_probe_combs_hs=unique_probe_combs_hs,
-        symm_probe_combs_hs=symm_probe_combs_hs,
         nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
 
@@ -1685,9 +1647,10 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
+    print('')
     for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
-        print(f'\n2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
+        print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
             print(f'Computing term {_term}...')
             cov_rs_obj.compute_rs_cov_term_probe_6d(
@@ -1744,9 +1707,10 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
     # TODO understand a bit better how to treat real-space SSC and cNG
+    print('')
     for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
-        print(f'\nCOSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
+        print(f'COSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_cs_obj.terms_toloop:
             cov_cs_obj.compute_cs_cov_term_probe_6d(
                 cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
@@ -2270,7 +2234,8 @@ if cfg['misc']['save_output_as_benchmark']:
         ind=ind,
         backup_cfg=cfg,
         z_grid=z_grid,
-        z_grid_trisp=z_grid_trisp,
+        z_grid_trisp_ssc=z_grid_trisp_ssc,
+        z_grid_trisp_cng=z_grid_trisp_cng,
         k_grid=k_grid,
         k_grid_sigma2_b=k_grid_s2b,
         nz_src=nz_src,
@@ -2293,9 +2258,9 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         **_ell_dict,
         **covs_totest_dict,
-        **misc_dict,
         **covs_3x2pt_2d_tosave_dict,
         **covs_6d_tosave_dict,
+        **misc_dict,
         metadata=metadata,
     )
 
@@ -2380,20 +2345,20 @@ print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} m')
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
 # Stop monitoring
-stop_event.set()
-monitor_thread.join()
+# stop_event.set()
+# monitor_thread.join()
 
-# Save and plot
-df = pd.DataFrame(cpu_data)
+# # Save and plot
+# df = pd.DataFrame(cpu_data)
 
 
-plt.figure()
-df['time_elapsed'] = df['time'] - df['time'].min()
-plt.plot(df['time_elapsed'], df['cores_used'])
-plt.axhline(
-    cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
-)
-plt.xlabel('Time (s)')
-plt.ylabel('Number of Active Cores')
-plt.title('CPU Core Usage Over Time')
-plt.show()
+# plt.figure()
+# df['time_elapsed'] = df['time'] - df['time'].min()
+# plt.plot(df['time_elapsed'], df['cores_used'])
+# plt.axhline(
+#     cfg['misc']['num_threads'], label="cfg['misc']['num_threads']", c='k', ls='--'
+# )
+# plt.xlabel('Time (s)')
+# plt.ylabel('Number of Active Cores')
+# plt.title('CPU Core Usage Over Time')
+# plt.show()

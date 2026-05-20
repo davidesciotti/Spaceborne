@@ -1463,7 +1463,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             f' Got {cfg["covariance"]["which_pk_responses"]}.'
         )
 
-    # ! prepare integrands (d2CAB_dVddeltab) and volume element
+    # ! prepare integrands (d2Cxx_dVddeltab)
     # the finer grid is needed for the non-Gaussian covariance projection
     if obs_space == 'harmonic':
         ell_grid = ell_obj.ells_3x2pt
@@ -1471,6 +1471,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
 
+    # compute responses on k_limber and the finer z_grid
     dPmm_ddeltab_klimb, dPgm_ddeltab_klimb, dPgg_ddeltab_klimb = (
         resp_obj.dPxx_ddeltab_klimber(
             dPmm_ddeltab=dPmm_ddeltab,

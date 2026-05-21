@@ -3,7 +3,6 @@ import os
 import time
 import warnings
 from itertools import combinations_with_replacement
-from typing import TypedDict
 
 import healpy as hp
 import numpy as np
@@ -19,16 +18,6 @@ _UNSET = object()
 
 DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
-
-
-# construct a TypedDcit to allow static type checkers to check packed **kwargs
-class Bin2DArrayKwargs(TypedDict):
-    ells_in: np.ndarray
-    ells_out: np.ndarray
-    ells_out_edges: np.ndarray
-    weights_in: np.ndarray | None
-    which_binning: str
-    interpolate: bool
 
 
 def couple_cov_6d(
@@ -166,7 +155,7 @@ def nmt_gaussian_cov(
     wsp_spin0_dict = {'00': w00_dict, '02': w00_dict, '22': w00_dict}
     wsp_dict = wsp_spin0_dict if spin0 else wsp_spin2_dict
 
-    bin_cov_kw: Bin2DArrayKwargs = {
+    bin_cov_kw = {
         'ells_in': ells_in,
         'ells_out': ells_out,
         'ells_out_edges': ells_out_edges,
@@ -426,7 +415,7 @@ def precompute_alms_healpy(
     return alms_T, alms_E, alms_B
 
 
-def pcls_from_maps(  # fmt: skip
+def pcls_from_maps(
     zi: int,
     zj: int,
     f0: list | None,
@@ -1123,14 +1112,15 @@ class NmtCov:
         self.output_path = self.cfg['misc']['output_path']
         self.load_cached_wsp = self.cfg['covariance']['load_cached_nmt_workspaces']
 
+        # just for readability
         self.footprint_gg = self.mask_obj_gg.footprint
         self.footprint_ll = self.mask_obj_ll.footprint
         self.weight_maps_gg = self.mask_obj_gg.weight_maps
         self.weight_maps_ll = self.mask_obj_ll.weight_maps
 
+        # also just for readability (double negatives are ugly)
         self.use_weight_maps_ll = self.weight_maps_ll is not None
         self.use_weight_maps_gg = self.weight_maps_gg is not None
-        # just for readability
         self.use_footprint_gg = not self.use_weight_maps_gg
         self.use_footprint_ll = not self.use_weight_maps_ll
 
@@ -1145,9 +1135,9 @@ class NmtCov:
 
         # instantiate cov dict
         # ! note that this class only computes
-        #   - g term
-        #   - g all hs probe combinations (no 3x2pt!!)
-        #   - 6d dim
+        #   - only g term
+        #   - all HS probe combinations (no 3x2pt!!)
+        #   - only 4d and 6d dim
 
         self.req_terms = ['g']
         self.req_probe_combs_2d = pvt_cfg['req_probe_combs_hs_2d']
@@ -1642,7 +1632,7 @@ class NmtCov:
                     self.w00_dict[zi, zj].couple_cell(list_gg)[0] / fsky_gg
                 )
                 cl_gl_4covnmt[:, zi, zj] = (
-                    self.w02_dict[zi, zj].couple_cell(list_gl)[0] / fsky_ll
+                    self.w02_dict[zi, zj].couple_cell(list_gl)[0] / fsky_gl
                 )
                 cl_ll_4covnmt[:, zi, zj] = (
                     self.w22_dict[zi, zj].couple_cell(list_ll)[0] / fsky_ll

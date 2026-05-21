@@ -241,7 +241,7 @@ class CovarianceProjector:
     - Statistic-specific infrastructure (theta bins, modes, etc.)
     """
 
-    def __init__(self, cfg, pvt_cfg, mask_obj):
+    def __init__(self, cfg, pvt_cfg, mask_obj_ll, mask_obj_gg):
         """
         Initialize shared infrastructure.
 
@@ -274,7 +274,7 @@ class CovarianceProjector:
         prepend = [t for t in ['sva', 'sn', 'mix'] if t not in base_terms]
         self.req_terms = prepend + list(base_terms)
 
-        self._set_survey_info(mask_obj)
+        self._set_survey_info(mask_obj_ll, mask_obj_gg)
         self._set_terms_toloop()
         self._set_neff_and_sigma_eps()
 
@@ -291,14 +291,17 @@ class CovarianceProjector:
 
         self.obs_space = _UNSET
 
-    def _set_survey_info(self, mask_obj):
+    def _set_survey_info(self, mask_obj_ll, mask_obj_gg):
         """Set up survey geometry information."""
         # TODO generalise to different survey areas (max(Aij, Akl))
-        self.survey_area_deg2 = mask_obj.survey_area_deg2
-        self.survey_area_sr = mask_obj.survey_area_sr
-        self.fsky = mask_obj.fsky_footprint
         self.srtoarcmin2 = const.SR_TO_ARCMIN2
-        self.amax = max((self.survey_area_sr, self.survey_area_sr))
+        self.survey_area_deg2_ll = mask_obj_ll.survey_area_deg2
+        self.survey_area_deg2_gg = mask_obj_gg.survey_area_deg2
+        self.survey_area_sr_gg = mask_obj_gg.survey_area_sr
+        self.survey_area_sr_ll = mask_obj_ll.survey_area_sr
+        self.fsky_ll = mask_obj_ll.fsky_footprint
+        self.fsky_gg = mask_obj_gg.fsky_footprint
+        self.amax = max((self.survey_area_sr_ll, self.survey_area_sr_gg))
 
     def _set_terms_toloop(self):
         self.terms_toloop = []

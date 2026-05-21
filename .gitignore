@@ -20,3 +20,8 @@ output/*
 docs/build/
 node_modules
 dist/*
+
+# hidden folders
+**/.*/
+
+

@@ -4,7 +4,7 @@ import numpy as np
 from spaceborne import constants, cosmo_lib, io_handler
 
 
-def combined_fsky(map1, map2):
+def combined_fsky(map1: np.ndarray, map2: np.ndarray) -> float:
     """Combine two masks (e.g. footprint and weight map) by multiplying them
     and compute the resulting fsky."""
     fsky_combined = np.mean(map1 * map2)
@@ -111,9 +111,6 @@ class Mask:
                 self.weight_maps[zi] = up_downgrade_map(
                     self.weight_maps[zi], self.nside_cfg
                 )
-            # TODO this is a very approximate approach!!
-            # self.footprint = np.sum(self.weight_maps, axis=0)
-            # self.footprint[self.footprint > 0] = 1
 
     def apodize_func(self):
         # ! 2. apodize

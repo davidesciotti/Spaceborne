@@ -859,7 +859,7 @@ if not np.isclose(
 ):
     raise ValueError(
         f'LL and GG footprints have different fsky! {mask_obj_ll.fsky_footprint = :.4f} vs. '
-        f'{mask_obj_gg.fsky_footprint = :.4f}. Please check the footprints.'
+        f'{mask_obj_gg.fsky_footprint = :.4f}. For the moment, they should be equal.'
     )
 pvt_cfg['fsky'] = mask_obj_ll.fsky_footprint
 

@@ -162,6 +162,7 @@ class CCLInterface:
         self.cl_gg_3d: np.ndarray = _UNSET
         self.cl_3x2pt_5d: np.ndarray = _UNSET
         self.sigma2_b_tuple: tuple = _UNSET
+        self.pvt_cfg: dict = _UNSET
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], (
@@ -279,10 +280,10 @@ class CCLInterface:
         """
         Set the magnification bias values and store in a tuple. In this function,
         we call "mag_bias" the usual s(z).
-        
-        Note: In the cases handled by this function (no magnification bias, 
-        polinomial fit), the magnification bias is the same for all redshift bins, 
-        thus the use of np.repeat to construct the 2d array. 
+
+        Note: In the cases handled by this function (no magnification bias,
+        polinomial fit), the magnification bias is the same for all redshift bins,
+        thus the use of np.repeat to construct the 2d array.
         """
 
         if has_magnification_bias:
@@ -338,7 +339,6 @@ class CCLInterface:
                 )
             )
 
-
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(
             wf_a=kernel_a,
@@ -375,7 +375,9 @@ class CCLInterface:
         self.wf_gamma_arr = wf_lensing_tot_arr[:, 0, :].T
         if self.has_ia:
             self.wf_ia_arr = wf_lensing_tot_arr[:, 1, :].T
-            self.wf_ia_contribution_arr = self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+            self.wf_ia_contribution_arr = (
+                self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+            )
             self.wf_lensing_arr = self.wf_gamma_arr + self.wf_ia_contribution_arr
         else:
             self.wf_ia_arr = np.zeros_like(self.wf_gamma_arr)
@@ -736,7 +738,6 @@ class CCLInterface:
         self,
         which_ng_cov,
         ells,
-        fsky,
         integration_method,
         unique_probe_combs,
         nonreq_probe_combs,
@@ -770,6 +771,10 @@ class CCLInterface:
             probe_a, probe_b, probe_c, probe_d = probe_abcd
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
 
+            fsky_abcd = max(
+                self.pvt_cfg[f'fsky_{probe_ab}'], self.pvt_cfg[f'fsky_{probe_cd}']
+            )
+
             tqdm.write(
                 f'{which_ng_cov} cov: computing probe combination {(probe_ab, probe_cd)}'
             )
@@ -782,7 +787,7 @@ class CCLInterface:
                 kernel_D=kernel_dict[probe_d],
                 ell=ells,
                 tkka=self.tkka_dict[probe_ab, probe_cd],
-                fsky=fsky,
+                fsky=fsky_abcd,
                 ind_AB=ind_dict[probe_ab],
                 ind_CD=ind_dict[probe_cd],
                 integration_method=integration_method,

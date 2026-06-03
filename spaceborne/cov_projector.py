@@ -121,8 +121,8 @@ def proj_cov_2d(
     The quad_vec branch does *not* interpolate the challenging part of the integrand,
     i.e. the kernels! This means that it only assumes the 2D input covariance to be
     a smooth function of ell1, ell2
-    
-    Also, the fact that I'm not passing workers to quad_vec is intentional, I can't 
+
+    Also, the fact that I'm not passing workers to quad_vec is intentional, I can't
     quite get it to work even when turning off the other layers of parallelism
     (I think I should move ell*_integrand_func outside the function)
     """
@@ -190,11 +190,7 @@ def proj_cov_2d(
 
         # define callable of ell1
         def ell1_integrand_func(ells_1, _interp=ell2_integral_interp_func):
-            return (
-                ells_1
-                * kernel_1_func_of_ell(ells_1)
-                * _interp(ells_1)
-            )
+            return ells_1 * kernel_1_func_of_ell(ells_1) * _interp(ells_1)
 
         # integrate again
         outer_result, _ = quad_vec(ell1_integrand_func, ell_min, ell_max)
@@ -241,7 +237,7 @@ class CovarianceProjector:
     - Statistic-specific infrastructure (theta bins, modes, etc.)
     """
 
-    def __init__(self, cfg, pvt_cfg, mask_obj_ll, mask_obj_gg):
+    def __init__(self, cfg, pvt_cfg):
         """
         Initialize shared infrastructure.
 
@@ -251,8 +247,6 @@ class CovarianceProjector:
             Configuration dictionary
         pvt_cfg : dict
             Private configuration with derived quantities
-        mask_obj : object
-            Mask object with survey geometry information
         """
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
@@ -274,12 +268,10 @@ class CovarianceProjector:
         prepend = [t for t in ['sva', 'sn', 'mix'] if t not in base_terms]
         self.req_terms = prepend + list(base_terms)
 
-        self._set_survey_info(mask_obj_ll, mask_obj_gg)
         self._set_terms_toloop()
         self._set_neff_and_sigma_eps()
 
         # TODO here (in the init) I should add the finely binned Cls, which are used in all projections!
-
         self.cov_shape_6d = (
             self.nbx,
             self.nbx,
@@ -290,18 +282,6 @@ class CovarianceProjector:
         )
 
         self.obs_space = _UNSET
-
-    def _set_survey_info(self, mask_obj_ll, mask_obj_gg):
-        """Set up survey geometry information."""
-        # TODO generalise to different survey areas (max(Aij, Akl))
-        self.srtoarcmin2 = const.SR_TO_ARCMIN2
-        self.survey_area_deg2_ll = mask_obj_ll.survey_area_deg2
-        self.survey_area_deg2_gg = mask_obj_gg.survey_area_deg2
-        self.survey_area_sr_gg = mask_obj_gg.survey_area_sr
-        self.survey_area_sr_ll = mask_obj_ll.survey_area_sr
-        self.fsky_ll = mask_obj_ll.fsky_footprint
-        self.fsky_gg = mask_obj_gg.fsky_footprint
-        self.amax = max((self.survey_area_sr_ll, self.survey_area_sr_gg))
 
     def _set_terms_toloop(self):
         self.terms_toloop = []
@@ -320,15 +300,15 @@ class CovarianceProjector:
 
     def proj_cov_parallel_helper(
         self,
-        scale_ix_1,
-        scale_ix_2,
-        zij,
-        zkl,
-        ind_ab,
-        ind_cd,
-        cov_func,
-        cov_func_kw,
-        kernel_builder_func_kw,
+        scale_ix_1: int,
+        scale_ix_2: int,
+        zij: int,
+        zkl: int,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        cov_func: Callable,
+        cov_func_kw: dict,
+        kernel_builder_func_kw: dict,
     ):
         """
         Universal parallel helper for covariance computation.
@@ -359,7 +339,7 @@ class CovarianceProjector:
             - COSEBIs: builds W_n(ell) lambda functions
         **kwargs : dict
             Additional arguments containing:
-            - Data: probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, cl_5d, ells, Amax
+            - Data: probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, cl_5d, ells
             - Projection-specific: mu, nu, w_ells_arr, kernel_1_func, kernel_2_func, etc.
 
         Returns
@@ -513,17 +493,18 @@ class CovarianceProjector:
         zl: int,
         kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
         kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
+        amax_abcd: float
     ):  # fmt: skip
-        def integrand_func(ells, inner_integrand):
+        def integrand_func(ells, inner_integrand, amax_abcd):
             k1 = kernel_1_func_of_ell(ells)
             k2 = kernel_2_func_of_ell(ells)
-            return (1 / (2 * np.pi * self.amax)) * ells * k1 * k2 * inner_integrand
+            return (1 / (2 * np.pi * amax_abcd)) * ells * k1 * k2 * inner_integrand
 
         def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
             prefac = (
                 get_delta_tomo(probe_a_ix, probe_b_ix, self.zbins)[zi, zj]
                 * t_mix(probe_a_ix, self.zbins, self.sigma_eps_i)[zi]
-                / (self.n_eff_2d[probe_a_ix, zi] * self.srtoarcmin2)
+                / (self.n_eff_2d[probe_a_ix, zi] * const.SR_TO_ARCMIN2)
             )
             return prefac
 
@@ -538,6 +519,7 @@ class CovarianceProjector:
             * get_prefac(probe_b_ix, probe_c_ix, zj, zk)
             + self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk]
             * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
+            amax_abcd,
         )
 
         integral = simps(y=integrand, x=self.ells_proj_g)
@@ -571,6 +553,7 @@ class CovarianceProjector:
         zl: int,
         kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
         kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
+        amax_abcd: float,
     ) -> float:
         """
         Universal Simpson integrator for SVA covariance - projection kernel agnostic.
@@ -615,4 +598,4 @@ class CovarianceProjector:
         integral = simps(y=integrand, x=self.ells_proj_g)
 
         # Apply normalization factor
-        return integral / (2.0 * np.pi * self.amax)
+        return integral / (2.0 * np.pi * amax_abcd)

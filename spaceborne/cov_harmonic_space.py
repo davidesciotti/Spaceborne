@@ -9,19 +9,19 @@ from spaceborne import constants as const
 from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 from spaceborne.ccl_interface import CCLInterface
-from spaceborne.cov_partial_sky import NmtCov
+from spaceborne.cov_partial_sky import CovNaMaster
 from spaceborne.cov_ssc import SpaceborneSSC
 from spaceborne.ell_utils import EllBinning
 from spaceborne.oc_interface import OneCovarianceInterface
 
 
-class SpaceborneCovariance:
+class CovHarmonicSpace:
     def __init__(
         self,
         cfg: dict,
         pvt_cfg: dict,
         ell_obj: EllBinning,
-        cov_nmt_obj: NmtCov | None,
+        cov_nmt_obj: CovNaMaster | None,
         bnt_matrix: np.ndarray | None,
     ):
         self.cfg = cfg

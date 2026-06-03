@@ -1087,7 +1087,7 @@ def produce_correlated_maps(
     return corr_maps_gg_list, corr_maps_ll_list
 
 
-class NmtCov:
+class CovNaMaster:
     def __init__(
         self,
         cfg: dict,
@@ -1320,11 +1320,10 @@ class NmtCov:
         use_footprint_allprobes = self.use_footprint_gg and self.use_footprint_ll
         footprint_is_equal = np.array_equal(self.footprint_gg, self.footprint_ll)
         if use_footprint_allprobes and footprint_is_equal and not self.load_cached_wsp:
-            with sl.timer('case 1: '):
-                cw_ftp = nmt.NmtCovarianceWorkspace()
-                cw_ftp.compute_coupling_coefficients(
-                    self.f0_ftp, self.f0_ftp, self.f0_ftp, self.f0_ftp
-                )
+            cw_ftp = nmt.NmtCovarianceWorkspace()
+            cw_ftp.compute_coupling_coefficients(
+                self.f0_ftp, self.f0_ftp, self.f0_ftp, self.f0_ftp
+            )
 
         # ! Case 2: if the footprint is used for all probes, but the masks are not equal
         # ! in this case we have to loop over the probes, but not over the bins

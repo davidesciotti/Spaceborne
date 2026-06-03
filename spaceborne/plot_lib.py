@@ -252,7 +252,10 @@ def cls_triangle_plot(
     return fig, ax
 
 
-def cls_triangle_plot_v2(cl_dict, zbins, is_auto):
+def cls_triangle_plot_v2(cl_dict, zbins, is_auto, weights=None):
+    """
+    Function adapted from https://heracles.readthedocs.io/stable/examples/example.html
+    """
 
     # Find max y value across all cls for setting y-axis limits
     cl_list = [cl_dict[key]['cls'] for key in cl_dict]
@@ -261,7 +264,7 @@ def cls_triangle_plot_v2(cl_dict, zbins, is_auto):
     # Find min and max y values across all ells for setting x-axis limits
     ell_list = [cl_dict[key]['ells'] for key in cl_dict]
     max_x = 3 * np.max([np.max(ell) for ell in ell_list])
-    min_x = 1/3 * np.min([np.min(ell) for ell in ell_list])
+    min_x = 1 / 3 * np.min([np.min(ell) for ell in ell_list])
 
     fig, ax = plt.subplots(
         zbins, zbins, figsize=(zbins, zbins), sharex=True, sharey=True
@@ -271,18 +274,25 @@ def cls_triangle_plot_v2(cl_dict, zbins, is_auto):
         ells = cl_dict[key]['ells']
         cl_3d = cl_dict[key]['cls']
         ls = cl_dict[key]['ls']
+
+        prefactor = 2 * ells + 1 if weights == 'twoellplusone' else 1.0
+
         if is_auto:
             for zi in range(zbins):
                 for zj in range(zi):
                     ax[zj, zi].axis('off')
                 for zj in range(zi, zbins):
-                    ax[zj, zi].plot(ells, cl_3d[:, zi, zj], label=key, ls=ls)
+                    ax[zj, zi].plot(
+                        ells, prefactor * cl_3d[:, zi, zj], label=key, ls=ls
+                    )
                     ax[zj, zi].axhline(0.0, c='k', zorder=-1)
                     ax[zj, zi].tick_params(axis='both', which='both', direction='in')
         else:
             for zi in range(zbins):
                 for zj in range(zbins):
-                    ax[zj, zi].plot(ells, cl_3d[:, zi, zj], label=key, ls=ls)
+                    ax[zj, zi].plot(
+                        ells, prefactor * cl_3d[:, zi, zj], label=key, ls=ls
+                    )
                     ax[zj, zi].axhline(0.0, c='k', zorder=-1)
                     ax[zj, zi].tick_params(axis='both', which='both', direction='in')
 
@@ -292,17 +302,18 @@ def cls_triangle_plot_v2(cl_dict, zbins, is_auto):
     ax[0, 0].xaxis.get_minor_locator().set_params(
         numticks=99, subs=np.arange(0.1, 1.0, 0.1)
     )
-    ax[0, 0].set_yscale(
-        'symlog', linthresh=1e-7, linscale=0.45, subs=np.arange(0.1, 1.0, 0.1)
-    )
-    ax[0, 0].set_ylim(-2e-7, max_y)
+    # ax[0, 0].set_yscale(
+    # 'symlog', linthresh=1e-7, linscale=0.45, subs=np.arange(0.1, 1.0, 0.1)
+    # )
+    # ax[0, 0].set_ylim(-2e-7, max_y)
+    # ax[0, 0].set_yscale('log')
     ax[-1, -1].legend(loc='lower right', bbox_to_anchor=(1, -1))
 
     fig.subplots_adjust(
         left=0.0, bottom=0.0, right=1.0, top=1.0, wspace=0.0, hspace=0.0
     )
     fig.supxlabel(r'$\ell$', y=-0.05, va='top')
-    fig.supylabel(r'$C_\ell$', x=-0.1, ha='right')
+    fig.supylabel(r'$C_\ell$ diff [%]', x=-0.1, ha='right')
     plt.show()
 
 

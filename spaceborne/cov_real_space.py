@@ -1208,6 +1208,7 @@ class CovRealSpace(CovarianceProjector):
             'probe_b_ix': probe_b_ix,
             'probe_c_ix': probe_c_ix,
             'probe_d_ix': probe_d_ix,
+            'amax_abcd': amax_abcd,
         }
 
         # arguments for the covariance projector kernel functions
@@ -1226,7 +1227,6 @@ class CovRealSpace(CovarianceProjector):
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
-                    amax_abcd=amax_abcd,
                     cov_simps_func=self.proj_cov_sva_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,

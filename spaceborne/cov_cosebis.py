@@ -240,6 +240,7 @@ class CovCOSEBIs(CovarianceProjector):
             'probe_b_ix': probe_b_ix,
             'probe_c_ix': probe_c_ix,
             'probe_d_ix': probe_d_ix,
+            'amax_abcd': amax_abcd,
         }
 
         # Arguments for the kernel builder

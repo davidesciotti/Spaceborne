@@ -1729,8 +1729,8 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
 
         # compute probe-specific fsky and amax
-        probe_ab_hs = const.RS_DIAG_PROBES_TO_HS[probe_ab]
-        probe_cd_hs = const.RS_DIAG_PROBES_TO_HS[probe_cd]
+        probe_ab_hs = const.CS_DIAG_PROBES_TO_HS[probe_ab]
+        probe_cd_hs = const.CS_DIAG_PROBES_TO_HS[probe_cd]
         fsky_abcd = max(pvt_cfg[f'fsky_{probe_ab_hs}'], pvt_cfg[f'fsky_{probe_cd_hs}'])
         amax_abcd = fsky_abcd * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
 

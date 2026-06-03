@@ -1557,8 +1557,6 @@ class CovNaMaster:
         # 1. ell binning
         # shorten names for brevity
         self.nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
-        fsky_ll = self.mask_obj_ll.fsky_footprint
-        fsky_gg = self.mask_obj_gg.fsky_footprint
         unique_probe_combs = self.pvt_cfg['unique_probe_combs_hs']
 
         self.zij_auto_combs = list(combinations_with_replacement(range(self.zbins), 2))
@@ -1626,15 +1624,17 @@ class CovNaMaster:
                     np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
                     np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
                 ]
-                # TODO the denominator should be the product of the masks?
                 cl_gg_4covnmt[:, zi, zj] = (
-                    self.w00_dict[zi, zj].couple_cell(list_gg)[0] / fsky_gg
+                    self.w00_dict[zi, zj].couple_cell(list_gg)[0]
+                    / self.pvt_cfg['fsky_GG']
                 )
                 cl_gl_4covnmt[:, zi, zj] = (
-                    self.w02_dict[zi, zj].couple_cell(list_gl)[0] / fsky_gl
+                    self.w02_dict[zi, zj].couple_cell(list_gl)[0]
+                    / self.pvt_cfg['fsky_GL']
                 )
                 cl_ll_4covnmt[:, zi, zj] = (
-                    self.w22_dict[zi, zj].couple_cell(list_ll)[0] / fsky_ll
+                    self.w22_dict[zi, zj].couple_cell(list_ll)[0]
+                    / self.pvt_cfg['fsky_LL']
                 )
 
         # add noise to spectra to compute NMT cov

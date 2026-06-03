@@ -159,18 +159,6 @@ class Mask:
         #     self.cl_mask = None
         #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
-        # TODO prolly this should be done for all probe and bin combinations...?
-        if self.use_weight_maps:
-            self.ells_weight_maps = []
-            self.cl_weight_maps = []
-            self.fsky_weight_maps = []
-            for zi in range(self.weight_maps.shape[0]):
-                ells, cl = get_maps_cl(self.weight_maps[zi], self.weight_maps[zi])
-                _fsky = combined_fsky(self.weight_maps[zi], self.weight_maps[zi])
-                self.ells_weight_maps.append(ells)
-                self.cl_weight_maps.append(cl)
-                self.fsky_weight_maps.append(_fsky)
-
         print(f'fsky = {self.fsky_footprint:.4f}')
         print(f'survey_area_sr = {self.survey_area_sr:.4f}')
         print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}\n')

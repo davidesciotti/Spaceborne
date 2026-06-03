@@ -552,8 +552,8 @@ def proj_cov_2d_fftlog(
     ells_proj,
     theta_edges,
     theta_centers,
-    mu,
-    nu,
+    mu: int,
+    nu: int,
     nu1=1.01,  # for accuracy issues, play witin ~ [0.5, 1.5]
     nu2=1.01,  # for accuracy issues, play witin ~ [0.5, 1.5]
     N_extrap_low=0,  # number of extrapolation points at low ell (default 0, no extrapolation)
@@ -709,8 +709,8 @@ def proj_cov_2d_parallel_helper(
 
 
 class CovRealSpace(CovarianceProjector):
-    def __init__(self, cfg, pvt_cfg, mask_obj):
-        super().__init__(cfg, pvt_cfg, mask_obj)
+    def __init__(self, cfg, pvt_cfg):
+        super().__init__(cfg, pvt_cfg)
 
         self.obs_space = 'real'
 
@@ -806,7 +806,9 @@ class CovRealSpace(CovarianceProjector):
             'boost_bessel': self.cfg['precision']['boost_bessel'],
         }
 
-    def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
+    def cov_sn_rs(
+        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd
+    ):
         npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
         for theta_ix in range(self.nbt_fine):
             theta_l = self.theta_edges_fine[theta_ix]
@@ -816,7 +818,7 @@ class CovRealSpace(CovarianceProjector):
                     npair_arr[theta_ix, zi, zj] = cp.get_npair(
                         theta_u,
                         theta_l,
-                        self.survey_area_sr,
+                        amax_abcd,
                         self.n_eff_2d[probe_a_ix, zi],
                         self.n_eff_2d[probe_b_ix, zj],
                     )
@@ -852,55 +854,20 @@ class CovRealSpace(CovarianceProjector):
         )
         return cov_sn_rs_6d
 
-    def _cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
-        npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
-        for theta_ix in range(self.nbt_fine):
-            for zi in range(self.zbins):
-                for zj in range(self.zbins):
-                    theta_1_l = self.theta_edges_fine[theta_ix]
-                    theta_1_u = self.theta_edges_fine[theta_ix + 1]
-                    npair_arr[theta_ix, zi, zj] = cp.get_npair(
-                        theta_1_u,
-                        theta_1_l,
-                        self.survey_area_sr,
-                        self.n_eff_2d[probe_a_ix, zi],
-                        self.n_eff_2d[probe_b_ix, zj],
-                    )
-
-        delta_mu_nu = 1.0 if (mu == nu) else 0.0
-        delta_theta = np.eye(self.nbt_fine)
-        t_arr = t_sn(
-            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, self.zbins, self.sigma_eps_i
-        )
-
-        cov_sn_rs_6d = (
-            delta_mu_nu
-            * delta_theta[:, :, None, None, None, None]
-            * (
-                cp.get_delta_tomo(probe_a_ix, probe_c_ix, self.zbins)[
-                    None, None, :, None, :, None
-                ]
-                * cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[
-                    None, None, None, :, None, :
-                ]
-                + cp.get_delta_tomo(probe_a_ix, probe_d_ix, self.zbins)[
-                    None, None, :, None, None, :
-                ]
-                * cp.get_delta_tomo(probe_b_ix, probe_c_ix, self.zbins)[
-                    None, None, None, :, :, None
-                ]
-            )
-            # * t_arr[None, None, :, None, :, None]
-            * t_arr[None, None, :, :, None, None]
-            / npair_arr[None, :, :, :, None, None]
-        )
-
-        return cov_sn_rs_6d
-
     def proj_sva_levin_fftlog(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-    ):  # fmt: skip
+        self,
+        probe_a_ix: int,
+        probe_b_ix: int,
+        probe_c_ix: int,
+        probe_d_ix: int,
+        zpairs_ab: int,
+        zpairs_cd: int,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        mu: int,
+        nu: int,
+        amax_abcd: float,
+    ):
         # Use parent method to build the universal SVA integrand
         integrand_5d = cp.build_cov_sva_integrand_5d(
             cl_5d=self.cl_3x2pt_5d,
@@ -911,17 +878,18 @@ class CovRealSpace(CovarianceProjector):
         )
 
         # Child-specific: project with Levin + Bessel kernels
-
         if self.proj_g_int_method == 'levin':
             cov_sva_rs_6d = self.proj_levin_wrapper(
                 integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
             )
         elif self.proj_g_int_method == 'FFTLog':
-            cov_sva_rs_6d = self.proj_sva_mix_fftlog_wrapper(integrand_5d, mu, nu)
+            cov_sva_rs_6d = self.proj_sva_mix_fftlog_wrapper(
+                integrand_5d, mu, nu, amax_abcd
+            )
 
         return cov_sva_rs_6d
 
-    def proj_sva_mix_fftlog_wrapper(self, integrand_5d, mu, nu):
+    def proj_sva_mix_fftlog_wrapper(self, integrand_5d, mu, nu, amax_abcd):
         # expand the first 2 axis and create an ell1, ell2 diagonal matrix
         # (as needed by the twobessel module)
         # Also, in the G case, the delta function collapses two integrals into one,
@@ -934,7 +902,7 @@ class CovRealSpace(CovarianceProjector):
             integrand_6d[i, i, ...] = integrand_5d[i, ...] / self.ells_proj_g[i]
 
         # prefactors
-        integrand_6d /= 2.0 * np.pi * self.amax
+        integrand_6d /= 2.0 * np.pi * amax_abcd
 
         # integrate
         integral_6d = proj_cov_2d_fftlog(
@@ -948,15 +916,25 @@ class CovRealSpace(CovarianceProjector):
 
         return integral_6d
 
-    def proj_mix_levin_fftlog(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-    ):  # fmt: skip
+    def proj_mix_levin_or_fftlog(
+        self,
+        probe_a_ix: int,
+        probe_b_ix: int,
+        probe_c_ix: int,
+        probe_d_ix: int,
+        zpairs_ab: int,
+        zpairs_cd: int,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        mu: int,
+        nu: int,
+        amax_abcd: float,
+    ):
         def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
             prefac = (
                 cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
                 * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
-                / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
+                / (self.n_eff_2d[probe_b_ix, zj] * const.SR_TO_ARCMIN2)
             )
             return prefac
 
@@ -1001,22 +979,28 @@ class CovRealSpace(CovarianceProjector):
 
         if self.proj_g_int_method == 'levin':
             cov_mix_rs_6d = self.proj_levin_wrapper(
-                integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+                integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, amax_abcd
             )
         elif self.proj_g_int_method == 'FFTLog':
-            cov_mix_rs_6d = self.proj_sva_mix_fftlog_wrapper(integrand_5d, mu, nu)
+            cov_mix_rs_6d = self.proj_sva_mix_fftlog_wrapper(
+                integrand_5d, mu, nu, amax_abcd
+            )
+        else:
+            raise ValueError(
+                "integration method not implemented; choose 'levin' or 'FFTLog'"
+            )
 
         return cov_mix_rs_6d
 
     def cov_mix_fftlog(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, amax_abcd
     ):  # fmt: skip
         def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
             prefac = (
                 cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
                 * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
-                / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
+                / (self.n_eff_2d[probe_b_ix, zj] * const.SR_TO_ARCMIN2)
             )
             return prefac
 
@@ -1060,17 +1044,33 @@ class CovRealSpace(CovarianceProjector):
         )
 
         cov_mix_rs_6d = self.proj_levin_wrapper(
-            integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+            integrand_5d=integrand_5d,
+            zpairs_ab=zpairs_ab,
+            zpairs_cd=zpairs_cd,
+            ind_ab=ind_ab,
+            ind_cd=ind_cd,
+            mu=mu,
+            nu=nu,
+            amax_abcd=amax_abcd,
         )
 
         return cov_mix_rs_6d
 
     def proj_levin_wrapper(
-        self, integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+        self,
+        integrand_5d: np.ndarray,
+        zpairs_ab: int,
+        zpairs_cd: int,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        mu: int,
+        nu: int,
+        amax_abcd: float,
     ):
         """This function abstracts the reshaping of the integral before and after the
         integration, as well as encapsulating the two different functions to call
         depending on the levin_bin_avg value"""
+
         integrand_3d = sl.cov_6D_to_4D_blocks(
             cov_6D=integrand_5d,
             nbl=self.nbl_proj_g,
@@ -1083,7 +1083,7 @@ class CovRealSpace(CovarianceProjector):
 
         integrand_2d = integrand_3d.reshape(self.nbl_proj_g, -1)
         integrand_2d *= self.ells_proj_g[:, None]
-        integrand_2d /= 2.0 * np.pi * self.amax
+        integrand_2d /= 2.0 * np.pi * amax_abcd
 
         if self.levin_bin_avg:
             cov_rs_4d = self.levin_binavg_helper(
@@ -1168,7 +1168,7 @@ class CovRealSpace(CovarianceProjector):
         return cov_rs_4d
 
     def compute_rs_cov_term_probe_6d(
-        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str
+        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str, amax_abcd: float
     ) -> None:
         """
         Computes the real space covariance matrix for the specified term
@@ -1226,15 +1226,25 @@ class CovRealSpace(CovarianceProjector):
                     zpairs_cd=zpairs_cd,
                     ind_ab=ind_ab,
                     ind_cd=ind_cd,
+                    amax_abcd=amax_abcd,
                     cov_simps_func=self.proj_cov_sva_simps,
                     cov_simps_func_kw=cov_simps_func_kw,
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
             elif self.proj_g_int_method in ['levin', 'FFTLog']:
                 cov_out_6d = self.proj_sva_levin_fftlog(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-                )  # fmt: skip
+                    probe_a_ix=probe_a_ix,
+                    probe_b_ix=probe_b_ix,
+                    probe_c_ix=probe_c_ix,
+                    probe_d_ix=probe_d_ix,
+                    zpairs_ab=zpairs_ab,
+                    zpairs_cd=zpairs_cd,
+                    ind_ab=ind_ab,
+                    ind_cd=ind_cd,
+                    mu=mu,
+                    nu=nu,
+                    amax_abcd=amax_abcd,
+                )
 
         elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
             if self.proj_g_int_method == 'simps':
@@ -1248,10 +1258,19 @@ class CovRealSpace(CovarianceProjector):
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
             elif self.proj_g_int_method in ['levin', 'FFTLog']:
-                cov_out_6d = self.proj_mix_levin_fftlog(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-                )  # fmt: skip
+                cov_out_6d = self.proj_mix_levin_or_fftlog(
+                    probe_a_ix=probe_a_ix,
+                    probe_b_ix=probe_b_ix,
+                    probe_c_ix=probe_c_ix,
+                    probe_d_ix=probe_d_ix,
+                    zpairs_ab=zpairs_ab,
+                    zpairs_cd=zpairs_cd,
+                    ind_ab=ind_ab,
+                    ind_cd=ind_cd,
+                    mu=mu,
+                    nu=nu,
+                    amax_abcd=amax_abcd,
+                )
 
         elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
             cov_out_6d = np.zeros(self.cov_shape_6d)
@@ -1261,7 +1280,7 @@ class CovRealSpace(CovarianceProjector):
             # ['xipxim', 'gtxim', 'gtxip', 'ggxim', 'gggt', 'ggxip']
             # but is very fast to compute so I don't skip these terms
             cov_out_6d = self.cov_sn_rs(
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
+                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd
             )
 
         elif term in ['ssc', 'cng']:

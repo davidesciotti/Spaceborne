@@ -32,7 +32,7 @@ class CovHarmonicSpace:
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
 
         self.zbins = pvt_cfg['zbins']
-        self.fsky = pvt_cfg['fsky']
+        self.pvt_cfg = pvt_cfg
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.unique_probe_combs = pvt_cfg['unique_probe_combs_hs']
 
@@ -140,7 +140,7 @@ class CovHarmonicSpace:
         (cov_3x2pt_sva_10d, cov_3x2pt_sn_10d, cov_3x2pt_mix_10d) = sl.compute_g_cov(
             cl_5d=_cl_5d,
             noise_5d=_noise_5d,
-            fsky=self.fsky,
+            fsky=1.0,  # fsky is now probe-dependent and will be applied later!
             ell_values=_ell_values,
             delta_ell=self.ell_obj.delta_l_3x2pt,
             split_terms=True,
@@ -151,12 +151,24 @@ class CovHarmonicSpace:
 
         # assign the different probes in the 10d array to the appropriate dict keys
         for probe_abcd in self.req_probe_combs_2d:
+            # 1. extract probe name and indices
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             probe_2tpl = (probe_ab, probe_cd)
             probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
+
+            # 2. select the appropriate covariance blocks
             _cov_3x2pt_sva_6d = cov_3x2pt_sva_10d[*probe_ixs]
             _cov_3x2pt_sn_6d = cov_3x2pt_sn_10d[*probe_ixs]
             _cov_3x2pt_mix_6d = cov_3x2pt_mix_10d[*probe_ixs]
+
+            # 2. select the appropriate fsky and normalise
+            fsky_abcd = max(
+                self.pvt_cfg[f'fsky_{probe_ab}'], self.pvt_cfg[f'fsky_{probe_cd}']
+            )
+            _cov_3x2pt_sva_6d /= fsky_abcd
+            _cov_3x2pt_sn_6d /= fsky_abcd
+            _cov_3x2pt_mix_6d /= fsky_abcd
+
             # if split_gaussian_cov is True, store them in cov_dict
             if self.cov_cfg['split_gaussian_cov']:
                 self.cov_dict['sva'][probe_2tpl]['6d'] = _cov_3x2pt_sva_6d

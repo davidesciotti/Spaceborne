@@ -614,12 +614,12 @@ cfg_check_obj.run_all_checks()
 
 # ! instantiate CCL object
 ccl_obj = ccl_interface.CCLInterface(
-    cfg['cosmology'],
-    cfg['extra_parameters'],
-    cfg['intrinsic_alignment'],
-    cfg['halo_model'],
-    cfg['precision']['spline_params'],
-    cfg['precision']['gsl_params'],
+    cosmology_dict=cfg['cosmology'],
+    extra_parameters_dict=cfg['extra_parameters'],
+    ia_dict=cfg['intrinsic_alignment'],
+    halo_model_dict=cfg['halo_model'],
+    spline_params=cfg['precision']['spline_params'],
+    gsl_params=cfg['precision']['gsl_params'],
 )
 # set other useful attributes
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
@@ -852,16 +852,24 @@ mask_obj_ll.plot_maps()
 mask_obj_gg.plot_maps()
 
 
-# TODO XXX change this!!!
 # add fsky to pvt_cfg
-if not np.isclose(
-    mask_obj_ll.fsky_footprint, mask_obj_gg.fsky_footprint, atol=0, rtol=1e-5
-):
-    raise ValueError(
-        f'LL and GG footprints have different fsky! {mask_obj_ll.fsky_footprint = :.4f} vs. '
-        f'{mask_obj_gg.fsky_footprint = :.4f}. For the moment, they should be equal.'
+pvt_cfg['fsky_LL'] = mask_obj_ll.fsky_footprint
+pvt_cfg['fsky_GL'] = mask_utils.combined_fsky(
+    mask_obj_ll.footprint, mask_obj_gg.footprint
+)
+pvt_cfg['fsky_GG'] = mask_obj_gg.fsky_footprint
+
+# warning
+if not np.isclose(pvt_cfg['fsky_LL'], pvt_cfg['fsky_GG'], atol=0, rtol=1e-5):
+    warnings.warn(
+        'LL and GG footprints have different fsky. Using probe-dependent sky '
+        'fractions:\n'
+        f'fsky_LL = {pvt_cfg["fsky_LL"]:.4f}, '
+        f'fsky_GG = {pvt_cfg["fsky_GG"]:.4f}.',
+        stacklevel=2,
     )
-pvt_cfg['fsky'] = mask_obj_ll.fsky_footprint
+
+ccl_obj.pvt_cfg = pvt_cfg  # pass it to the ccl object, it will be used for fsky
 
 
 # ! ===================================== n(z) =========================================
@@ -1120,7 +1128,7 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
     # initialize cov_nmt_obj and set a couple useful attributes
-    cov_nmt_obj = cov_partial_sky.NmtCov(
+    cov_nmt_obj = cov_partial_sky.CovNaMaster(
         cfg=cfg,
         pvt_cfg=pvt_cfg,
         ell_obj=ell_obj,
@@ -1187,7 +1195,7 @@ if obs_space == 'cosebis':
 
 # !  =============================== Build Gaussian covs ===============================
 if obs_space == 'harmonic':
-    cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
+    cov_hs_obj = cov_harmonic_space.CovHarmonicSpace(
         cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
     )
     cov_hs_obj.consistency_checks()
@@ -1560,10 +1568,10 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
         for probe_2tpl in cov_ssc_obj.cov_dict['ssc']:
+            probe_ab, probe_cd = probe_2tpl
+            fsky_abcd = max(pvt_cfg[f'fsky_{probe_ab}'], pvt_cfg[f'fsky_{probe_cd}'])
             for dim in cov_ssc_obj.cov_dict['ssc'][probe_2tpl]:
-                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= (
-                    mask_obj_ll.fsky_footprint
-                )
+                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= fsky_abcd
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
@@ -1607,9 +1615,8 @@ if compute_ccl_ssc or compute_ccl_cng:
             which_ng_cov, unique_probe_combs_hs, cfg['PyCCL']
         )
         ccl_obj.compute_ng_cov_3x2pt(
-            which_ng_cov,
-            ell_grid,
-            mask_obj_ll.fsky_footprint,
+            which_ng_cov=which_ng_cov,
+            ells=ell_grid,
             integration_method=cfg['PyCCL']['cov_integration_method'],
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
@@ -1650,11 +1657,21 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     print('')
     for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
+
+        # compute probe-specific fsky and amax
+        probe_ab_hs = const.RS_DIAG_PROBES_TO_HS[probe_ab]
+        probe_cd_hs = const.RS_DIAG_PROBES_TO_HS[probe_cd]
+        fsky_abcd = max(pvt_cfg[f'fsky_{probe_ab_hs}'], pvt_cfg[f'fsky_{probe_cd_hs}'])
+        amax_abcd = fsky_abcd * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
+
         print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
             print(f'Computing term {_term}...')
             cov_rs_obj.compute_rs_cov_term_probe_6d(
-                cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
+                cov_hs_ng_dict=cov_hs_ng_dict,
+                probe_abcd=_probe,
+                term=_term,
+                amax_abcd=amax_abcd,
             )
 
     for _term in cov_rs_obj.terms_toloop:
@@ -1710,10 +1727,20 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     print('')
     for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
+
+        # compute probe-specific fsky and amax
+        probe_ab_hs = const.RS_DIAG_PROBES_TO_HS[probe_ab]
+        probe_cd_hs = const.RS_DIAG_PROBES_TO_HS[probe_cd]
+        fsky_abcd = max(pvt_cfg[f'fsky_{probe_ab_hs}'], pvt_cfg[f'fsky_{probe_cd_hs}'])
+        amax_abcd = fsky_abcd * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
+
         print(f'COSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_cs_obj.terms_toloop:
             cov_cs_obj.compute_cs_cov_term_probe_6d(
-                cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
+                cov_hs_ng_dict=cov_hs_ng_dict,
+                probe_abcd=_probe,
+                term=_term,
+                amax_abcd=amax_abcd,
             )
 
     for _term in cov_cs_obj.terms_toloop:

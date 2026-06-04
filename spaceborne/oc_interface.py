@@ -19,6 +19,7 @@ Key Features:
 import configparser
 import os
 import subprocess
+import sys
 import warnings
 from collections import defaultdict
 
@@ -532,25 +533,8 @@ class OneCovarianceInterface:
         )
 
         # paths and filenems
-        self.path_to_oc_env = self.oc_cfg.get('path_to_oc_env') or os.environ.get(
-            'SPACEBORNE_OC_PYTHON', 'python'
-        )
-        self.path_to_oc_executable = self.oc_cfg.get(
-            'path_to_oc_executable'
-        ) or os.environ.get('SPACEBORNE_OC_EXECUTABLE', '')
-
-        if not self.path_to_oc_executable and (
-            self.compute_g
-            or self.compute_ssc
-            or self.compute_cng
-            or self.oc_cfg.get('compare_against_oc', False)
-            or self.oc_cfg.get('consistency_checks', False)
-        ):
-            raise ValueError(
-                'Missing OneCovariance executable path. Set '
-                'cfg["OneCovariance"]["path_to_oc_executable"] or '
-                'the SPACEBORNE_OC_EXECUTABLE environment variable.'
-            )
+        self.path_to_oc_env = self.cfg['OneCovariance']['path_to_oc_env']
+        self.path_to_oc_executable = self.cfg['OneCovariance']['path_to_oc_executable']
 
         self.oc_path: str = _UNSET
         self.path_to_config_oc_ini: str = _UNSET
@@ -1194,12 +1178,10 @@ class OneCovarianceInterface:
         )
 
     def get_oc_responses(self, ini_filename, h):
-        import sys
 
         oc_module_dir = os.path.dirname(self.path_to_oc_executable)
         if oc_module_dir and oc_module_dir not in sys.path:
             sys.path.append(oc_module_dir)
-        import os
         import platform
 
         from onecov.cov_ell_space import CovELLSpace

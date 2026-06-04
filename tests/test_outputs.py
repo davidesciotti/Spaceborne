@@ -59,12 +59,24 @@ import time
 import numpy as np
 import yaml
 
+# This is a benchmark runner script, not a pytest unit test module.
+# Prevent pytest from collecting this file while keeping it executable as a script.
+__test__ = False
+
 # # get working directory with os
 # main_script_path = os.path.abspath(__file__)
 # main_script_dir = os.path.dirname(main_script_path)
 
 
-def test_main_script(test_cfg_path):
+def run_main_script(
+    test_cfg_path,
+    *,
+    main_script_path,
+    bench_path,
+    bench_name,
+    temp_output_filename,
+    excluded_keys,
+):
     # Run the main script with the test config
     subprocess.run(['python', main_script_path, '--config', test_cfg_path], check=True)
 
@@ -118,25 +130,27 @@ def test_main_script(test_cfg_path):
     # sl.compare_arrays(bench_data['cov_3x2pt_tot_2D'], test_data['cov_3x2pt_tot_2D'], plot_diff_threshold=1, plot_diff_hist=True)
 
 
-# Path
-# DATA_ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
-DATA_ROOT = '/data/sciotti/DATA'  # mileva
-# DATA_ROOT = '/u/dsciotti/code'  # orlanth
-# DATA_ROOT = '/home/cosmo/davide.sciotti/data'  # melodie
+def run_benchmark_suite(data_root=None, code_root=None):
+    # Path
+    # data_root examples:
+    # '/Users/davidesciotti/Documents/Work/Code'  # local
+    # '/u/dsciotti/code'  # orlanth
+    # '/home/cosmo/davide.sciotti/data'  # melodie
+    if data_root is None:
+        data_root = os.environ.get('SPACEBORNE_BENCH_DATA_ROOT', '/data/sciotti/DATA')
 
-CODE_ROOT = '/home/sciotti/code'  # mileva
-# CODE_ROOT = DATA_ROOT  # all the others
+    if code_root is None:
+        code_root = os.environ.get('SPACEBORNE_CODE_ROOT', '/home/sciotti/code')
 
-bench_path = f'{DATA_ROOT}/Spaceborne_bench/bench_set_output'
+    bench_path = f'{data_root}/Spaceborne_bench/bench_set_output'
 
-# run this to also save output of this script to a file
-# python test_outputs.py 2>&1 | tee test_outputs_log.txt
-
-# run all tests...
-bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
-bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
-bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
-bench_yaml_names.sort()
+    # run all tests...
+    bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
+    bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
+    bench_yaml_names = [
+        bench_name.replace('.npz', '') for bench_name in bench_yaml_names
+    ]
+    bench_yaml_names.sort()
 
 # real space
 # bench_yaml_names = [f'config_{i:04d}' for i in range(84, 120)]
@@ -167,54 +181,69 @@ bench_yaml_names.sort()
 #     'config_0013',
 # ]
 
-start_time = time.perf_counter()
+    start_time = time.perf_counter()
 
-main_script_path = f'{CODE_ROOT}/Spaceborne/main.py'
-temp_output_filename = f'{DATA_ROOT}/Spaceborne_bench/tmp/test_file'
-temp_output_folder = os.path.dirname(temp_output_filename)
-excluded_keys = ['backup_cfg', 'metadata']
+    main_script_path = f'{code_root}/Spaceborne/main.py'
+    temp_output_filename = f'{data_root}/Spaceborne_bench/tmp/test_file'
+    temp_output_folder = os.path.dirname(temp_output_filename)
+    excluded_keys = ['backup_cfg', 'metadata']
 
-# set the working directory to the main script path
-# %cd main_script_path.rstrip('/main.py')
-os.chdir(os.path.dirname(main_script_path))
+    original_cwd = os.getcwd()
+    try:
+        # set the working directory to the main script path
+        os.chdir(os.path.dirname(main_script_path))
 
-if os.path.exists(f'{temp_output_filename}.npz'):
-    message = (
-        f'{temp_output_filename}.npz already exists, most likely '
-        'from a previous failed test. Do you want to overwrite it? y/n: '
-    )
-    if input(message) != 'y':
-        print('Exiting...')
-        sys.exit()
-    else:
-        os.remove(f'{temp_output_filename}.npz')
+        if os.path.exists(f'{temp_output_filename}.npz'):
+            message = (
+                f'{temp_output_filename}.npz already exists, most likely '
+                'from a previous failed test. Do you want to overwrite it? y/n: '
+            )
+            if input(message) != 'y':
+                print('Exiting...')
+                sys.exit()
+            else:
+                os.remove(f'{temp_output_filename}.npz')
 
-for bench_name in bench_yaml_names:
-    print(f'\n\n🧪🧪🧪 Testing {bench_name} 🧪🧪🧪...\n')
+        for bench_name in bench_yaml_names:
+            print(f'\n\n🧪🧪🧪 Testing {bench_name} 🧪🧪🧪...\n')
 
-    # ! update the cfg file to avoid overwriting the benchmarks
-    # Load the benchmark config
-    with open(f'{bench_path}/{bench_name}.yaml') as f:
-        cfg = yaml.safe_load(f)
+            # ! update the cfg file to avoid overwriting the benchmarks
+            # Load the benchmark config
+            with open(f'{bench_path}/{bench_name}.yaml') as f:
+                cfg = yaml.safe_load(f)
 
-    # Update config for the test run
-    cfg['misc']['save_output_as_benchmark'] = True
-    cfg['misc']['bench_filename'] = temp_output_filename
-    # just to make sure I don't overwrite any output files
-    cfg['misc']['output_path'] = temp_output_folder
+            # Update config for the test run
+            cfg['misc']['save_output_as_benchmark'] = True
+            cfg['misc']['bench_filename'] = temp_output_filename
+            # just to make sure I don't overwrite any output files
+            cfg['misc']['output_path'] = temp_output_folder
 
-    # Save the updated test config
-    test_cfg_path = f'{bench_path}/_tmp/test_config.yaml'
-    with open(test_cfg_path, 'w') as f:
-        yaml.safe_dump(cfg, f, default_flow_style=False, sort_keys=False)
+            # Save the updated test config
+            test_cfg_path = f'{bench_path}/_tmp/test_config.yaml'
+            with open(test_cfg_path, 'w') as f:
+                yaml.safe_dump(cfg, f, default_flow_style=False, sort_keys=False)
 
-    # ! run the actual test
-    test_main_script(test_cfg_path)
+            # ! run the actual test
+            run_main_script(
+                test_cfg_path,
+                main_script_path=main_script_path,
+                bench_path=bench_path,
+                bench_name=bench_name,
+                temp_output_filename=temp_output_filename,
+                excluded_keys=excluded_keys,
+            )
 
-    # delete the output test files in tmp folder
-    for file_path in glob.glob(f'{temp_output_folder}/*'):
-        if os.path.isfile(file_path):
-            os.remove(file_path)
+            # delete the output test files in tmp folder
+            for file_path in glob.glob(f'{temp_output_folder}/*'):
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+    finally:
+        os.chdir(original_cwd)
+
+    print(f'\nAll tests run in {(time.perf_counter() - start_time) / 60:.2f} m ☑️')
 
 
-print(f'\nAll tests run in {(time.perf_counter() - start_time) / 60:.2f} m ☑️')
+if __name__ == '__main__':
+    # run this to also save output of this script to a file
+    # python test_outputs.py 2>&1 | tee test_outputs_log.txt
+    run_benchmark_suite()

@@ -323,12 +323,22 @@ if 'cNG_code' not in cfg['covariance']:
 
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
-    cfg['OneCovariance']['path_to_oc_executable'] = (
-        '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
-    )
-    cfg['OneCovariance']['consistency_checks'] = False
-    cfg['OneCovariance']['oc_output_filename'] = 'cov_oc'
-    cfg['OneCovariance']['compare_against_oc'] = False
+
+cfg['OneCovariance']['path_to_oc_env'] = cfg['OneCovariance'].get(
+    'path_to_oc_env', os.environ.get('SPACEBORNE_OC_PYTHON', sys.executable)
+)
+cfg['OneCovariance']['path_to_oc_executable'] = cfg['OneCovariance'].get(
+    'path_to_oc_executable', os.environ.get('SPACEBORNE_OC_EXECUTABLE', '')
+)
+cfg['OneCovariance']['consistency_checks'] = cfg['OneCovariance'].get(
+    'consistency_checks', False
+)
+cfg['OneCovariance']['oc_output_filename'] = cfg['OneCovariance'].get(
+    'oc_output_filename', 'cov_oc'
+)
+cfg['OneCovariance']['compare_against_oc'] = cfg['OneCovariance'].get(
+    'compare_against_oc', False
+)
 
 if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False

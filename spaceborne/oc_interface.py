@@ -479,8 +479,8 @@ class OneCovarianceInterface:
         """
         self.cfg = cfg
         self.oc_cfg = self.cfg['OneCovariance']
-        self.pvt_cfg = pvt_cfg
-        self.n_probes = cfg['covariance']['n_probes']
+
+        self.n_probes = self.cfg['covariance']['n_probes']
         self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
         self.zbins = pvt_cfg['zbins']
         self.ind = pvt_cfg['ind']

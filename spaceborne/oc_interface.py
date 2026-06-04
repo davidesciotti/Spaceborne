@@ -19,6 +19,7 @@ Key Features:
 import configparser
 import os
 import subprocess
+import sys
 import warnings
 from collections import defaultdict
 
@@ -478,8 +479,8 @@ class OneCovarianceInterface:
         """
         self.cfg = cfg
         self.oc_cfg = self.cfg['OneCovariance']
-        self.pvt_cfg = pvt_cfg
-        self.n_probes = cfg['covariance']['n_probes']
+
+        self.n_probes = self.cfg['covariance']['n_probes']
         self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
         self.zbins = pvt_cfg['zbins']
         self.ind = pvt_cfg['ind']
@@ -532,11 +533,10 @@ class OneCovarianceInterface:
         )
 
         # paths and filenems
-        self.path_to_oc_env = cfg['OneCovariance']['path_to_oc_env']
-        self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
+        self.path_to_oc_env = self.cfg['OneCovariance']['path_to_oc_env']
+        self.path_to_oc_executable = self.cfg['OneCovariance']['path_to_oc_executable']
 
         self.oc_path: str = _UNSET
-        # OC has a single z grid for the trispectrum, so we choose the coarser one
         self.path_to_config_oc_ini: str = _UNSET
         self.ells_sb: np.ndarray = _UNSET
         self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
@@ -1178,10 +1178,10 @@ class OneCovarianceInterface:
         )
 
     def get_oc_responses(self, ini_filename, h):
-        import sys
 
-        sys.path.append('/home/davide/Documenti/Lavoro/Programmi/OneCovariance')
-        import os
+        oc_module_dir = os.path.dirname(self.path_to_oc_executable)
+        if oc_module_dir and oc_module_dir not in sys.path:
+            sys.path.append(oc_module_dir)
         import platform
 
         from onecov.cov_ell_space import CovELLSpace

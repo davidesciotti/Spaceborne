@@ -59,12 +59,24 @@ import time
 import numpy as np
 import yaml
 
+# This is a benchmark runner script, not a pytest unit test module.
+# Prevent pytest from collecting this file while keeping it executable as a script.
+__test__ = False
+
 # # get working directory with os
 # main_script_path = os.path.abspath(__file__)
 # main_script_dir = os.path.dirname(main_script_path)
 
 
-def test_main_script(test_cfg_path):
+def run_main_and_test_outputs(
+    test_cfg_path,
+    *,
+    main_script_path,
+    bench_path,
+    bench_name,
+    temp_output_filename,
+    excluded_keys,
+):
     # Run the main script with the test config
     subprocess.run(['python', main_script_path, '--config', test_cfg_path], check=True)
 
@@ -209,7 +221,7 @@ for bench_name in bench_yaml_names:
         yaml.safe_dump(cfg, f, default_flow_style=False, sort_keys=False)
 
     # ! run the actual test
-    test_main_script(test_cfg_path)
+    run_main_and_test_outputs(test_cfg_path)
 
     # delete the output test files in tmp folder
     for file_path in glob.glob(f'{temp_output_folder}/*'):

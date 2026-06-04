@@ -19,6 +19,7 @@ Key Features:
 import configparser
 import os
 import subprocess
+import sys
 import warnings
 from collections import defaultdict
 
@@ -532,8 +533,8 @@ class OneCovarianceInterface:
         )
 
         # paths and filenems
-        self.path_to_oc_env = cfg['OneCovariance']['path_to_oc_env']
-        self.path_to_oc_executable = cfg['OneCovariance']['path_to_oc_executable']
+        self.path_to_oc_env = self.cfg['OneCovariance']['path_to_oc_env']
+        self.path_to_oc_executable = self.cfg['OneCovariance']['path_to_oc_executable']
 
         self.oc_path: str = _UNSET
         self.path_to_config_oc_ini: str = _UNSET
@@ -1177,10 +1178,10 @@ class OneCovarianceInterface:
         )
 
     def get_oc_responses(self, ini_filename, h):
-        import sys
 
-        sys.path.append('/home/davide/Documenti/Lavoro/Programmi/OneCovariance')
-        import os
+        oc_module_dir = os.path.dirname(self.path_to_oc_executable)
+        if oc_module_dir and oc_module_dir not in sys.path:
+            sys.path.append(oc_module_dir)
         import platform
 
         from onecov.cov_ell_space import CovELLSpace

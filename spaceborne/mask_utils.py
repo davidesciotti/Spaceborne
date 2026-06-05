@@ -4,11 +4,28 @@ import numpy as np
 from spaceborne import constants, cosmo_lib, io_handler
 
 
+def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
+    """
+    Given the LL and GG mask objects, computes the AB masks and their fsky.
+    """
+    ftp_ab_dict = {
+        'LL': mask_obj_ll.footprint,
+        'GL': mask_obj_ll.footprint * mask_obj_gg.footprint,
+        'GG': mask_obj_gg.footprint,
+    }
+    fsky_ab_dict = {
+        'LL': combined_fsky(ftp_ab_dict['LL'], ftp_ab_dict['LL']),
+        'GL': combined_fsky(ftp_ab_dict['LL'], ftp_ab_dict['GG']),
+        'GG': combined_fsky(ftp_ab_dict['GG'], ftp_ab_dict['GG']),
+    }
+    return ftp_ab_dict, fsky_ab_dict
+
+
 def combined_fsky(map1: np.ndarray, map2: np.ndarray) -> float:
     """Combine two masks (e.g. footprint and weight map) by multiplying them
     and compute the resulting fsky."""
     fsky_combined = np.mean(map1 * map2)
-    return fsky_combined
+    return float(fsky_combined)
 
 
 def get_maps_cl(map1: np.ndarray, map2: np.ndarray) -> tuple:

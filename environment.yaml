@@ -27,6 +27,7 @@ dependencies:
   - gsl
 
   - pip:
+      - pytest # required to run the test suite (CI and local)
       - jax
       - euclidlib>=2026.4
         # optional dependency, only used to read the n(z) and C(l)

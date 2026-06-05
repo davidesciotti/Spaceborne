@@ -162,7 +162,6 @@ class CCLInterface:
         self.cl_gg_3d: np.ndarray = _UNSET
         self.cl_3x2pt_5d: np.ndarray = _UNSET
         self.sigma2_b_tuple: tuple = _UNSET
-        self.pvt_cfg: dict = _UNSET
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], (
@@ -424,7 +423,13 @@ class CCLInterface:
 
         self.cov_dict = cd.create_cov_dict(_req_terms, _req_probe_combs_2d, dims=_dims)
 
-    def set_sigma2_b(self, z_grid, which_sigma2_b, mask_obj):
+    def sigma2_b_func(
+        self,
+        z_grid: np.ndarray,
+        which_sigma2_b: str,
+        cl_footp_norm_abcd: np.ndarray | None,
+        fsky_max_abcd: float,
+    ) -> tuple | None:
         self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
 
         # normalize the mask and pass it to sigma2_B_from_mask
@@ -432,26 +437,25 @@ class CCLInterface:
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
                 cosmo=self.cosmo_ccl,
                 a_arr=self.a_grid_sigma2_b,
-                mask_wl=mask_obj.cl_footprint_norm,
+                mask_wl=cl_footp_norm_abcd,
             )
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+            sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b == 'flat_sky':
             sigma2_b = ccl.covariances.sigma2_B_disc(
-                cosmo=self.cosmo_ccl,
-                a_arr=self.a_grid_sigma2_b,
-                fsky=mask_obj.fsky_footprint,
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky_max_abcd
             )
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+            sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b is None:
-            self.sigma2_b_tuple = None
+            sigma2_b_tuple = None
 
         else:
             raise ValueError(
                 'which_sigma2_b must be either "from_input_mask", '
                 '"polar_cap_on_the_fly" or None'
             )
+        return sigma2_b_tuple
 
     def initialize_trispectrum(self, which_ng_cov, unique_probe_combs, pyccl_cfg):
         # some setup
@@ -771,10 +775,6 @@ class CCLInterface:
             probe_a, probe_b, probe_c, probe_d = probe_abcd
             symmetrize_zpairs = (probe_a, probe_b) == (probe_c, probe_d)
 
-            fsky_abcd = max(
-                self.pvt_cfg[f'fsky_{probe_ab}'], self.pvt_cfg[f'fsky_{probe_cd}']
-            )
-
             tqdm.write(
                 f'{which_ng_cov} cov: computing probe combination {(probe_ab, probe_cd)}'
             )
@@ -787,7 +787,7 @@ class CCLInterface:
                 kernel_D=kernel_dict[probe_d],
                 ell=ells,
                 tkka=self.tkka_dict[probe_ab, probe_cd],
-                fsky=fsky_abcd,
+                fsky=self.fsky_max_abcd_dict[probe_ab, probe_cd],
                 ind_AB=ind_dict[probe_ab],
                 ind_CD=ind_dict[probe_cd],
                 integration_method=integration_method,

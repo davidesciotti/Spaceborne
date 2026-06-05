@@ -211,13 +211,13 @@ class SpaceborneSSC:
 
         if self.use_ke_approx:
             # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-            ccl_obj.sigma2_b_tuple = ccl_obj.sigma2_b_func(
+            _sigma2_b_tpl = ccl_obj.sigma2_b_func(
                 z_grid=self.z_grid,
                 which_sigma2_b=which_sigma2_b,
                 cl_footp_norm_abcd=cl_footp_norm_abcd,
                 fsky_max_abcd=fsky_max_abcd,
             )
-            _a, sigma2_b = ccl_obj.sigma2_b_tuple
+            _a, sigma2_b = _sigma2_b_tpl
 
             # quick sanity check on the a/z grid
             sigma2_b = sigma2_b[::-1]

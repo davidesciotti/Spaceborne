@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 import time
 from copy import deepcopy
 from pathlib import Path
@@ -69,7 +70,7 @@ def run_spaceborne(
             print(f'\n🧮 Running job {i}/{len(yaml_files)} with config:\n{path}')
             with open(log_path, 'w') as logf:
                 proc = subprocess.run(
-                    ['python', 'main.py', '--config', path],
+                    [sys.executable, 'main.py', '--config', path],
                     check=False,
                     stdout=logf,
                     stderr=subprocess.STDOUT,

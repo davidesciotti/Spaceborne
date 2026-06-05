@@ -62,12 +62,6 @@ else:
         stacklevel=2,
     )
 
-# Import JAX after environment variables are set, then print device info
-import jax
-
-print(f'JAX devices: {jax.devices()}')
-print(f'JAX backend: {jax.default_backend()}')
-
 # if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
 
@@ -101,6 +95,12 @@ os.environ['NUMEXPR_NUM_THREADS'] = str(num_threads)
 os.environ['XLA_FLAGS'] = (
     f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
 )
+
+# Import JAX after environment variables are set, then print device info
+import jax
+
+print(f'JAX devices: {jax.devices()}')
+print(f'JAX backend: {jax.default_backend()}')
 
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads

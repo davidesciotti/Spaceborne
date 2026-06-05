@@ -880,11 +880,18 @@ class CovRealSpace(CovarianceProjector):
         # Child-specific: project with Levin + Bessel kernels
         if self.proj_g_int_method == 'levin':
             cov_sva_rs_6d = self.proj_levin_wrapper(
-                integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+                integrand_5d=integrand_5d,
+                zpairs_ab=zpairs_ab,
+                zpairs_cd=zpairs_cd,
+                ind_ab=ind_ab,
+                ind_cd=ind_cd,
+                mu=mu,
+                nu=nu,
+                amax_abcd=amax_abcd,
             )
         elif self.proj_g_int_method == 'FFTLog':
             cov_sva_rs_6d = self.proj_sva_mix_fftlog_wrapper(
-                integrand_5d, mu, nu, amax_abcd
+                integrand_5d=integrand_5d, mu=mu, nu=nu, amax_abcd=amax_abcd
             )
 
         return cov_sva_rs_6d

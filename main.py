@@ -7,26 +7,13 @@ import warnings
 from copy import deepcopy
 
 import yaml
+from tqdm import tqdm
 
 # TODOS BRANCH
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
 # - put markers in CPU vs time to understand portion of the code which could be parallelised
 # - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
-
-
-def get_zsteps(z_min, z_max, delta_z):
-    """
-    Compute the number of grid points for linspace given a desired step size.
-
-    Returns the count needed so that np.linspace(z_min, z_max, count) produces
-    a grid with actual spacing <= delta_z (endpoint-inclusive).
-    """
-    if delta_z <= 0:
-        raise ValueError(f'delta_z must be positive, got {delta_z}')
-    if z_max <= z_min:
-        raise ValueError(f'z_max must be greater than z_min, got {z_max=}, {z_min=}')
-    return int(np.ceil((z_max - z_min) / delta_z)) + 1
 
 
 def load_config(_config_path):
@@ -120,7 +107,6 @@ cfg['misc']['num_threads'] = num_threads
 
 import pprint
 import time
-from functools import partial
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -653,7 +639,7 @@ else:
 z_grid = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    get_zsteps(
+    sl.get_zsteps(
         cfg['precision']['z_min'],
         cfg['precision']['z_max'],
         cfg['precision']['delta_z'],
@@ -662,7 +648,7 @@ z_grid = np.linspace(
 z_grid_trisp_ssc = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    get_zsteps(
+    sl.get_zsteps(
         cfg['precision']['z_min'],
         cfg['precision']['z_max'],
         cfg['precision']['delta_z_trisp_SSC'],
@@ -671,7 +657,7 @@ z_grid_trisp_ssc = np.linspace(
 z_grid_trisp_cng = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    get_zsteps(
+    sl.get_zsteps(
         cfg['precision']['z_min'],
         cfg['precision']['z_max'],
         cfg['precision']['delta_z_trisp_cNG'],
@@ -852,24 +838,54 @@ mask_obj_ll.plot_maps()
 mask_obj_gg.plot_maps()
 
 
-# add fsky to pvt_cfg
-pvt_cfg['fsky_LL'] = mask_obj_ll.fsky_footprint
-pvt_cfg['fsky_GL'] = mask_utils.combined_fsky(
-    mask_obj_ll.footprint, mask_obj_gg.footprint
+footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
+    mask_obj_ll=mask_obj_ll, mask_obj_gg=mask_obj_gg
 )
-pvt_cfg['fsky_GG'] = mask_obj_gg.fsky_footprint
+
+footp_cl_abcd_dict = {}
+footp_cl_norm_abcd_dict = {}
+for probe_abcd in unique_probe_combs_hs:
+    probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+
+    # compute and store the footprint cross-spectrum...
+    _ells, _cls = mask_utils.get_maps_cl(
+        footp_ab_dict[probe_ab], footp_ab_dict[probe_cd]
+    )
+
+    # ...and its normalised version
+    footp_cl_abcd_dict[probe_ab, probe_cd] = (_ells, _cls)
+    denominator = (4 * np.pi) ** 2 * fsky_ab_dict[probe_ab] * fsky_ab_dict[probe_cd]
+    _cls_norm = _cls * (2 * _ells + 1) / denominator
+    footp_cl_norm_abcd_dict[probe_ab, probe_cd] = (_ells, _cls_norm)
+
+fsky_max_abcd_dict = {}
+for probe_abcd in req_probe_combs_hs_2d:
+    probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+    # compute and store max(fsky_ab, fsky_cd)
+    fsky_max_abcd_dict[probe_ab, probe_cd] = max(
+        fsky_ab_dict[probe_ab], fsky_ab_dict[probe_cd]
+    )
+
+
+# turn into A_max (in sr)
+amax_abcd_dict = {
+    k: v * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
+    for k, v in fsky_max_abcd_dict.items()
+}
+
 
 # warning
-if not np.isclose(pvt_cfg['fsky_LL'], pvt_cfg['fsky_GG'], atol=0, rtol=1e-5):
+if not np.isclose(fsky_ab_dict['LL'], fsky_ab_dict['GG'], atol=0, rtol=1e-5):
     warnings.warn(
         'LL and GG footprints have different fsky. Using probe-dependent sky '
         'fractions:\n'
-        f'fsky_LL = {pvt_cfg["fsky_LL"]:.4f}, '
-        f'fsky_GG = {pvt_cfg["fsky_GG"]:.4f}.',
+        f'LL = {fsky_ab_dict["LL"]:.4f}, '
+        f'GG = {fsky_ab_dict["GG"]:.4f}.',
         stacklevel=2,
     )
 
-ccl_obj.pvt_cfg = pvt_cfg  # pass it to the ccl object, it will be used for fsky
+# this will be used to normalise the SSC and cNG
+ccl_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
 
 
 # ! ===================================== n(z) =========================================
@@ -1127,7 +1143,7 @@ if (
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
-    # initialize cov_nmt_obj and set a couple useful attributes
+    # initialize cov_nmt_obj
     cov_nmt_obj = cov_partial_sky.CovNaMaster(
         cfg=cfg,
         pvt_cfg=pvt_cfg,
@@ -1136,10 +1152,11 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    # set unbinned ells in cov_nmt_obj
+    # set a couple useful attributes
     cov_nmt_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     cov_nmt_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
+    cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
 
 else:
     cov_nmt_obj = None
@@ -1151,7 +1168,7 @@ cov_rs_obj = None
 
 if obs_space == 'real':
     # initialize cov_rs_obj and set a couple useful attributes
-    cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj_ll)
+    cov_rs_obj = cov_real_space.CovRealSpace(cfg=cfg, pvt_cfg=pvt_cfg)
 
     # set ell values used for projection
     ell_obj.compute_ells_3x2pt_proj()
@@ -1171,7 +1188,7 @@ if obs_space == 'real':
 # cov projector class
 cov_cs_obj = None
 if obs_space == 'cosebis':
-    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj_ll)
+    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg=cfg, pvt_cfg=pvt_cfg)
     ell_obj.compute_ells_3x2pt_proj()
 
     # set ell values used for projection
@@ -1199,6 +1216,7 @@ if obs_space == 'harmonic':
         cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
     )
     cov_hs_obj.consistency_checks()
+    cov_hs_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
 
     # set unbinned cls if needed
     if cfg['precision']['cov_hs_g_ell_bin_average']:
@@ -1554,12 +1572,23 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     )
 
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
-    cov_ssc_obj.set_sigma2_b(ccl_obj, mask_obj_ll, k_grid_s2b, which_sigma2_b)
+
+    sigma2_b_dict = {}
+    for probe_abcd in tqdm(unique_probe_combs_hs):
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
+            ccl_obj=ccl_obj,
+            cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+            fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+            k_grid_s2b=k_grid_s2b,
+            which_sigma2_b=which_sigma2_b,
+        )
 
     cov_ssc_obj.compute_ssc(
         d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
         d2CGL_dVddeltab_4d=d2CGL_dVddeltab,
         d2CGG_dVddeltab_4d=d2CGG_dVddeltab,
+        sigma2_b_dict=sigma2_b_dict,
         unique_probe_combs_hs=unique_probe_combs_hs,
         nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
@@ -1568,8 +1597,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
         for probe_2tpl in cov_ssc_obj.cov_dict['ssc']:
-            probe_ab, probe_cd = probe_2tpl
-            fsky_abcd = max(pvt_cfg[f'fsky_{probe_ab}'], pvt_cfg[f'fsky_{probe_cd}'])
+            fsky_abcd = fsky_max_abcd_dict[probe_2tpl]  # just make name shorter
             for dim in cov_ssc_obj.cov_dict['ssc'][probe_2tpl]:
                 cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= fsky_abcd
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
@@ -1585,11 +1613,17 @@ if compute_ccl_ssc:
     # one used in the trispectrum, but from my tests is should be
     # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
-    ccl_obj.set_sigma2_b(
-        z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
-        which_sigma2_b=which_sigma2_b,
-        mask_obj=mask_obj_ll,
-    )
+    sigma2_b_tpl_dict = {}
+    for probe_abcd in tqdm(unique_probe_combs_hs):
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
+            z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
+            which_sigma2_b=which_sigma2_b,
+            cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+            fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+        )
+    ccl_obj.sigma2_b_tpl_dict = sigma2_b_tpl_dict
+
 
 if compute_ccl_ssc or compute_ccl_cng:
     # prepare list of NG covs to compute
@@ -1658,11 +1692,10 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
 
-        # compute probe-specific fsky and amax
+        # get probe-specific max area (in sr)
         probe_ab_hs = const.RS_DIAG_PROBES_TO_HS[probe_ab]
         probe_cd_hs = const.RS_DIAG_PROBES_TO_HS[probe_cd]
-        fsky_abcd = max(pvt_cfg[f'fsky_{probe_ab_hs}'], pvt_cfg[f'fsky_{probe_cd_hs}'])
-        amax_abcd = fsky_abcd * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
+        amax_abcd = amax_abcd_dict[probe_ab_hs, probe_cd_hs]
 
         print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
@@ -1728,11 +1761,10 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
 
-        # compute probe-specific fsky and amax
+        # get probe-specific max area (in sr)
         probe_ab_hs = const.CS_DIAG_PROBES_TO_HS[probe_ab]
         probe_cd_hs = const.CS_DIAG_PROBES_TO_HS[probe_cd]
-        fsky_abcd = max(pvt_cfg[f'fsky_{probe_ab_hs}'], pvt_cfg[f'fsky_{probe_cd_hs}'])
-        amax_abcd = fsky_abcd * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
+        amax_abcd = amax_abcd_dict[probe_ab_hs, probe_cd_hs]
 
         print(f'COSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_cs_obj.terms_toloop:

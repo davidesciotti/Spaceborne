@@ -161,7 +161,7 @@ class CCLInterface:
         self.cl_gl_3d: np.ndarray = _UNSET
         self.cl_gg_3d: np.ndarray = _UNSET
         self.cl_3x2pt_5d: np.ndarray = _UNSET
-        self.sigma2_b_tuple: tuple = _UNSET
+        self.sigma2_b_tpl: tuple = _UNSET
 
     def check_specs(self):
         assert self.probe in ['LL', 'GG', '3x2pt'], (
@@ -439,23 +439,23 @@ class CCLInterface:
                 a_arr=self.a_grid_sigma2_b,
                 mask_wl=cl_footp_norm_abcd,
             )
-            sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+            sigma2_b_tpl = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b == 'flat_sky':
             sigma2_b = ccl.covariances.sigma2_B_disc(
                 cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky_max_abcd
             )
-            sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+            sigma2_b_tpl = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b is None:
-            sigma2_b_tuple = None
+            sigma2_b_tpl = None
 
         else:
             raise ValueError(
                 'which_sigma2_b must be either "from_input_mask", '
                 '"polar_cap_on_the_fly" or None'
             )
-        return sigma2_b_tuple
+        return sigma2_b_tpl
 
     def initialize_trispectrum(self, which_ng_cov, unique_probe_combs, pyccl_cfg):
         # some setup
@@ -675,6 +675,7 @@ class CCLInterface:
         ell: np.ndarray,
         tkka,
         fsky: float,
+        sigma2_b_tpl: tuple | None,
         ind_AB: np.ndarray,
         ind_CD: np.ndarray,
         integration_method: str,
@@ -688,7 +689,7 @@ class CCLInterface:
         # sigma2_b argument
         if which_ng_cov == 'SSC':
             ccl_ng_cov_func = ccl.covariances.angular_cl_cov_SSC
-            sigma2_b_arg = {'sigma2_B': self.sigma2_b_tuple}
+            sigma2_b_arg = {'sigma2_B': sigma2_b_tpl}
         elif which_ng_cov == 'cNG':
             ccl_ng_cov_func = ccl.covariances.angular_cl_cov_cNG
             sigma2_b_arg = {}
@@ -779,6 +780,12 @@ class CCLInterface:
                 f'{which_ng_cov} cov: computing probe combination {(probe_ab, probe_cd)}'
             )
 
+            _sigma2_b_tpl = (
+                self.sigma2_b_tpl_dict[probe_ab, probe_cd]
+                if which_ng_cov == 'SSC'
+                else None
+            )
+
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
                 which_ng_cov=which_ng_cov,
                 kernel_A=kernel_dict[probe_a],
@@ -788,6 +795,7 @@ class CCLInterface:
                 ell=ells,
                 tkka=self.tkka_dict[probe_ab, probe_cd],
                 fsky=self.fsky_max_abcd_dict[probe_ab, probe_cd],
+                sigma2_b_tpl=_sigma2_b_tpl,
                 ind_AB=ind_dict[probe_ab],
                 ind_CD=ind_dict[probe_cd],
                 integration_method=integration_method,

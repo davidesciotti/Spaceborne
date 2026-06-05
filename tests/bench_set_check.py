@@ -59,14 +59,6 @@ import time
 import numpy as np
 import yaml
 
-# This is a benchmark runner script, not a pytest unit test module.
-# Prevent pytest from collecting this file while keeping it executable as a script.
-__test__ = False
-
-# # get working directory with os
-# main_script_path = os.path.abspath(__file__)
-# main_script_dir = os.path.dirname(main_script_path)
-
 
 def run_main_and_test_outputs(
     test_cfg_path,
@@ -125,9 +117,10 @@ def run_main_and_test_outputs(
             # Catch other errors (dtype mismatches, numerical differences)
             print(f'Comparison failed for {key}: {e}')
 
-    # example of the Note above
-    # assert False, 'stop here'
-    # sl.compare_arrays(bench_data['cov_3x2pt_tot_2D'], test_data['cov_3x2pt_tot_2D'], plot_diff_threshold=1, plot_diff_hist=True)
+
+# # get working directory with os
+# main_script_path = os.path.abspath(__file__)
+# main_script_dir = os.path.dirname(main_script_path)
 
 
 # Path

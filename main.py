@@ -1494,7 +1494,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             f' Got {cfg["covariance"]["which_pk_responses"]}.'
         )
 
-    # ! prepare integrands (d2CAB_dVddeltab) and volume element
+    # ! prepare integrands (d2Cxx_dVddeltab)
     # the finer grid is needed for the non-Gaussian covariance projection
     if obs_space == 'harmonic':
         ell_grid = ell_obj.ells_3x2pt
@@ -1502,6 +1502,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
 
+    # compute responses on k_limber and the finer z_grid
     dPmm_ddeltab_klimb, dPgm_ddeltab_klimb, dPgg_ddeltab_klimb = (
         resp_obj.dPxx_ddeltab_klimber(
             dPmm_ddeltab=dPmm_ddeltab,
@@ -1628,7 +1629,6 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
         print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
-            print(f'Computing term {_term}...')
             cov_rs_obj.compute_rs_cov_term_probe_6d(
                 cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
             )

@@ -1629,7 +1629,6 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
         print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
-            print(f'Computing term {_term}...')
             cov_rs_obj.compute_rs_cov_term_probe_6d(
                 cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
             )

@@ -162,9 +162,7 @@ class CovHarmonicSpace:
             _cov_3x2pt_mix_6d = cov_3x2pt_mix_10d[*probe_ixs]
 
             # 2. select the appropriate fsky and normalise
-            fsky_abcd = max(
-                self.pvt_cfg[f'fsky_{probe_ab}'], self.pvt_cfg[f'fsky_{probe_cd}']
-            )
+            fsky_abcd = self.fsky_max_abcd_dict[probe_ab, probe_cd]
             _cov_3x2pt_sva_6d /= fsky_abcd
             _cov_3x2pt_sn_6d /= fsky_abcd
             _cov_3x2pt_mix_6d /= fsky_abcd

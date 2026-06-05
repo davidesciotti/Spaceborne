@@ -1172,6 +1172,7 @@ class CovNaMaster:
         self.cl_3x2pt_unb_5d = _UNSET
         self.ells_3x2pt_unb = _UNSET
         self.nbl_3x2pt_unb = _UNSET
+        self.fsky_ab_dict = _UNSET
 
     def build_fields(self, ell_max_eff):
         # TODO XXX make this also dependent on the selected probes!
@@ -1626,15 +1627,15 @@ class CovNaMaster:
                 ]
                 cl_gg_4covnmt[:, zi, zj] = (
                     self.w00_dict[zi, zj].couple_cell(list_gg)[0]
-                    / self.pvt_cfg['fsky_GG']
+                    / self.fsky_ab_dict['GG']
                 )
                 cl_gl_4covnmt[:, zi, zj] = (
                     self.w02_dict[zi, zj].couple_cell(list_gl)[0]
-                    / self.pvt_cfg['fsky_GL']
+                    / self.fsky_ab_dict['GL']
                 )
                 cl_ll_4covnmt[:, zi, zj] = (
                     self.w22_dict[zi, zj].couple_cell(list_ll)[0]
-                    / self.pvt_cfg['fsky_LL']
+                    / self.fsky_ab_dict['LL']
                 )
 
         # add noise to spectra to compute NMT cov

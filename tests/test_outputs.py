@@ -89,6 +89,7 @@ def test_main_script(test_cfg_path):
     common_keys.sort()
     print('\n')
     # Compare outputs
+    has_failed = False
     for key in common_keys:
         if key in excluded_keys:
             continue
@@ -109,16 +110,16 @@ def test_main_script(test_cfg_path):
         except ValueError as e:
             # Catch shape mismatches (e.g., one empty, one non-empty)
             print(f"Shape mismatch for '{key}': {e}")
+            has_failed = True
         except (TypeError, AssertionError) as e:
             # Catch other errors (dtype mismatches, numerical differences)
             print(f'Comparison failed for {key}: {e}')
+            has_failed = True
+    if has_failed:
+        print(f'\n Config {bench_name} failed one or more tests ☠️')
 
-    # example of the Note above
-    # assert False, 'stop here'
-    # sl.compare_arrays(bench_data['cov_3x2pt_tot_2D'], test_data['cov_3x2pt_tot_2D'], plot_diff_threshold=1, plot_diff_hist=True)
 
-
-# Path
+# Paths
 # DATA_ROOT = '/Users/davidesciotti/Documents/Work/Code'  # local
 DATA_ROOT = '/data/sciotti/DATA'  # mileva
 # DATA_ROOT = '/u/dsciotti/code'  # orlanth
@@ -129,21 +130,15 @@ CODE_ROOT = '/home/sciotti/code'  # mileva
 
 bench_path = f'{DATA_ROOT}/Spaceborne_bench/bench_set_output'
 
-# run this to also save output of this script to a file
-# python test_outputs.py 2>&1 | tee test_outputs_log.txt
-
 # run all tests...
 bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
 bench_yaml_names = [os.path.basename(file) for file in bench_yaml_names]
 bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_names]
 bench_yaml_names.sort()
 
-# real space
-# bench_yaml_names = [f'config_{i:04d}' for i in range(55, 120)]
 
-
-# run certain tests only
-# bench_yaml_names = bench_yaml_names[192:]
+# run certain tests only...
+# bench_yaml_names = bench_yaml_names[134:]
 
 # slow_benchs = [
 #     'config_0018',

@@ -24,7 +24,7 @@ _UNSET = object()
 
 
 def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
-    """Compute total (ideal) number of pairs in a theta bin, i.e., N(theta).
+    r"""Compute total (ideal) number of pairs in a theta bin, i.e., N(theta).
     N(θ) = π (θ_u^2 - θ_l^2) × A × n_i × n_j
          = \int_{θ_l}^{θ_u} dθ (dN(θ)/dθ)
     """
@@ -36,7 +36,7 @@ def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
 
 
 def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
-    """Compute differential (ideal) number of pairs, i.e. dN(theta)/dtheta.
+    r"""Compute differential (ideal) number of pairs, i.e. dN(theta)/dtheta.
     dN(θ)/dθ = 2π θ × A × n_i × n_j
     """
     n_eff_i_sr = n_eff_i * const.SR_TO_ARCMIN2

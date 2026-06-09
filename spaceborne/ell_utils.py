@@ -66,7 +66,7 @@ def compute_ells(
     binning_type: str,
     output_ell_bin_edges: bool = False,
 ):
-    """Compute the ell values and the bin width\s for a given binning_type.
+    """Compute the ell values and the bin widths for a given binning_type.
 
     Parameters
     ----------

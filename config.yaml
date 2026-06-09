@@ -12,7 +12,6 @@
 # melodie: /_home/cosmo/davide.sciotti/data
 # mileva: /_data/sciotti
 
-
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
   Ob: 0.05 # Type: float. Baryonic density parameter Omega_b, at z=0
@@ -118,7 +117,7 @@ binning:
 
   # ell binning for the harmonic-space covariance matrix (not used in the 'from_input' case)
   # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
-  # so ell_bins is ignored and ell_max is included in the grid. 
+  # so ell_bins is ignored and ell_max is included in the grid.
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
   ell_bins: 32 # Type: int. Number of ell bins.
@@ -178,7 +177,7 @@ C_ell:
   mag_bias_table_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
 
   # Interpolation methods for the galaxy and magnification bias tables.
-  # This should be set to "linear" or "nearest" for step-like, or in general discontinuous, 
+  # This should be set to "linear" or "nearest" for step-like, or in general discontinuous,
   # bias functions, to avoid spurious oscillations from the spline interpolation.
   # Options: ['linear', 'nearest', 'CubicSpline']
   gal_bias_table_interp_method: CubicSpline # Type: str.
@@ -212,7 +211,6 @@ mask:
   survey_area_deg2: 13245 # Type: int
   apodize: False # Type: bool
   aposize: 0.1 # Type: float. Apodization scale in deg
-
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -291,7 +289,6 @@ covariance:
   # - scale_probe_zpair: Ordered by scale index (ell/theta/n), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
 
-
   # =================================== output =======================================
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
   # The output will be a npz file for each term, containing arrays of shape
@@ -303,9 +300,9 @@ covariance:
   cov_filename: covmats # Type: str.
   save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
 
-  # When using NaMaster for the partial-sky Gaussian covariance, choose whether to 
-  # save the (binned and unbinned) mode coupling matrices (mcm) 
-  save_mcms: True # Type: bool. 
+  # When using NaMaster for the partial-sky Gaussian covariance, choose whether to
+  # save the (binned and unbinned) mode coupling matrices (mcm)
+  save_mcms: True # Type: bool.
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
@@ -357,19 +354,19 @@ precision:
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc
   k_steps: 250 # Type: int. Around 250 should be enough
 
-  # z range used across the code. The grid includes the endpoints, as it's computed with 
+  # z range used across the code. The grid includes the endpoints, as it's computed with
   # z_steps = int(np.ceil((z_max - z_min) / delta_z)) + 1
   # np.linspace(z_min, z_max, z_steps)
   # so the actual delta_z may be slightly smaller (but not larger) than the input delta_z
   z_min: 0.01 # Type: float
   z_max: 3.0 # Type: float
 
-  # Precision for the P(k) projection to get the Cls, the computation of sigma2_b, 
-  # and SSC projection. Should be quite high, mostly to trace the rapid variation of 
+  # Precision for the P(k) projection to get the Cls, the computation of sigma2_b,
+  # and SSC projection. Should be quite high, mostly to trace the rapid variation of
   # the sigma2_b function, especially when not using the KE approximation
   delta_z: 3.e-4 # Type: float. Around 3.e-4 should be enough.
 
-  # Precision for the computation of SSC and cNG trispectra. 
+  # Precision for the computation of SSC and cNG trispectra.
   # The cNG computation slows quite significantly when decreasing delta_z_trisp_cNG.
   delta_z_trisp_SSC: 1.e-2 # Type: float. Around 1.e-2 should be enough.
   delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
@@ -383,9 +380,9 @@ precision:
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
   ell_bins_proj_gauss: 500 # Type: int.
-  ell_bins_proj_nongauss: 200 # Type: int. 
+  ell_bins_proj_nongauss: 200 # Type: int.
 
-  # integration method for the projection of the Gaussian and non-Gaussian covariance 
+  # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
   # performed with simpson integration.
   proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin']

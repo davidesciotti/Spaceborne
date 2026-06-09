@@ -252,7 +252,6 @@ def plot_cls():
             + axi.get_yticklabels()
         ):
             item.set_fontsize(16)
-    plt.show()
 
 
 # ! ====================================================================================
@@ -510,12 +509,6 @@ if 'cng' in req_terms or 'ssc' in req_terms:
 if req_terms == []:
     raise ValueError('No covariance terms have been selected!')
 
-_req_probe_combs_2d = [
-    sl.split_probe_name(probe, space=obs_space) for probe in req_probe_combs_2d
-]
-_req_probe_combs_2d.append('3x2pt')
-dims = ['6d', '4d', '2d']
-cov_dict = cd.create_cov_dict(req_terms, _req_probe_combs_2d, dims=dims)
 
 # TODO I can probably delete these?
 compute_oc_g, compute_oc_ssc, compute_oc_cng = False, False, False
@@ -2024,8 +2017,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
 # save cfg file
 run_cfg = deepcopy(cfg)
 for key in ['OneCovariance']:
-    if key in run_cfg['covariance']:
-        del run_cfg['covariance'][key]
+    if key in run_cfg:
+        del run_cfg[key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.safe_dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
 

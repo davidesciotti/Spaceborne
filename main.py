@@ -837,10 +837,16 @@ mask_obj_gg.process()
 mask_obj_ll.plot_maps()
 mask_obj_gg.plot_maps()
 
+import healpy as hp
 
 footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
     mask_obj_ll=mask_obj_ll, mask_obj_gg=mask_obj_gg
 )
+
+hp.mollview(
+    footp_ab_dict['GL'], cmap='inferno_r', title='Footprint GGL - Mollweide view'
+)
+hp.graticule()
 
 footp_cl_abcd_dict = {}
 footp_cl_norm_abcd_dict = {}
@@ -1243,6 +1249,10 @@ if (
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
 
+    # save footprints
+    for name, footp in footp_ab_dict.items():
+        hp.write_map(f'{oc_path}/sb_footprint_{name}.fits', footp, overwrite=True)
+
     nz_src_ascii_filename = cfg['nz']['nz_sources_filename'].replace(
         '.dat', f'_dzshifts{shift_nz}.ascii'
     )
@@ -1346,6 +1356,7 @@ if (
     cov_oc_obj.oc_path = oc_path
     cov_oc_obj.path_to_config_oc_ini = f'{cov_oc_obj.oc_path}/input_configs.ini'
     cov_oc_obj.ells_sb = ell_obj.ells_3x2pt
+    cov_oc_obj.fsky_ab_dict = fsky_ab_dict
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
 
     # compute cov
@@ -2177,7 +2188,7 @@ if cfg['misc']['save_output_as_benchmark']:
 
     if not compute_sb_ssc:
         k_grid_s2b = np.array([])
-        sigma2_b = np.array([])
+        sigma2_b_dict = {}
         dPmm_ddeltab = np.array([])
         dPgm_ddeltab = np.array([])
         dPgg_ddeltab = np.array([])
@@ -2188,9 +2199,6 @@ if cfg['misc']['save_output_as_benchmark']:
     if compute_sb_ssc and cfg['precision']['use_KE_approximation']:
         # in this case, the k grid used is the same as the Pk one, I think
         k_grid_s2b = np.array([])
-
-    if compute_sb_ssc:
-        sigma2_b = cov_ssc_obj.sigma2_b
 
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
@@ -2308,17 +2316,19 @@ if cfg['misc']['save_output_as_benchmark']:
         wf_mu=ccl_obj.wf_mu_arr,
         wf_lensing_arr=ccl_obj.wf_lensing_arr,
         cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
-        sigma2_b=sigma2_b,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,
         dPgg_ddeltab=dPgg_ddeltab,
         d2CLL_dVddeltab=d2CLL_dVddeltab,
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
+        # keys must be plain strings, not tuples
+        sigma2_b=sigma2_b_dict['LL', 'LL'] if compute_sb_ssc else np.array([]),
+        **{f's2b_{"".join(k)}': v for k, v in sigma2_b_dict.items()},
         **_ell_dict,
         **covs_totest_dict,
         **covs_3x2pt_2d_tosave_dict,
-        **covs_6d_tosave_dict,
+        **covs_6d_tosave_dict,  # TODO BRANCH prepend dict name as done above
         **misc_dict,
         metadata=metadata,
     )

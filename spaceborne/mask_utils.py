@@ -8,17 +8,27 @@ def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
     """
     Given the LL and GG mask objects, computes the AB masks and their fsky.
     """
-    ftp_ab_dict = {
-        'LL': mask_obj_ll.footprint,
-        'GL': mask_obj_ll.footprint * mask_obj_gg.footprint,
-        'GG': mask_obj_gg.footprint,
+    m_ll = mask_obj_ll.footprint
+    m_gg = mask_obj_gg.footprint
+
+    # The SSC window of a probe pair AB is the *product* of the two fields'
+    # masks, W_A * W_B (TJPCov convention, see covariance_fourier_ssc.py). For a
+    # non-binary/apodised mask this differs from the single mask, so the
+    # auto-pairs must be squared too (W_A^2) to stay consistent with the
+    # mean(W_A * W_B) effective fsky used in the normalisation downstream.
+    footp_ab_dict = {
+        'LL': m_ll * m_ll,
+        'GL': m_ll * m_gg,
+        'GG': m_gg * m_gg,
     }
+    # NB: fsky is the mean of the product of the *single* masks, mean(W_A * W_B),
+    # NOT the mean of the squared window above (which would be mean(W_A^2 W_B^2)).
     fsky_ab_dict = {
-        'LL': combined_fsky(ftp_ab_dict['LL'], ftp_ab_dict['LL']),
-        'GL': combined_fsky(ftp_ab_dict['LL'], ftp_ab_dict['GG']),
-        'GG': combined_fsky(ftp_ab_dict['GG'], ftp_ab_dict['GG']),
+        'LL': combined_fsky(m_ll, m_ll),
+        'GL': combined_fsky(m_ll, m_gg),
+        'GG': combined_fsky(m_gg, m_gg),
     }
-    return ftp_ab_dict, fsky_ab_dict
+    return footp_ab_dict, fsky_ab_dict
 
 
 def combined_fsky(map1: np.ndarray, map2: np.ndarray) -> float:
@@ -199,3 +209,4 @@ class Mask:
                     cmap='inferno_r',
                     title=f'Weight map {self.probe}, zi={zi} - Mollweide view',
                 )
+        hp.graticule()

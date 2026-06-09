@@ -90,7 +90,6 @@ def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
     plt.suptitle('Galaxy kernels\n(w/o galaxy bias)')
     plt.tight_layout()
     plt.legend()
-    plt.show()
 
     wf_ia_contribution_arr = ccl_obj.wf_ia_contribution_arr
 
@@ -124,7 +123,6 @@ def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
     plt.ylabel(r'$W_i^{SHE}(z)$')
     plt.suptitle('Lensing kernels')
     plt.tight_layout()
-    plt.show()
 
 
 def cls_triangle_plot(
@@ -314,7 +312,6 @@ def cls_triangle_plot_v2(cl_dict, zbins, is_auto, weights=None):
     )
     fig.supxlabel(r'$\ell$', y=-0.05, va='top')
     fig.supylabel(r'$C_\ell$ diff [%]', x=-0.1, ha='right')
-    plt.show()
 
 
 def bar_plot(

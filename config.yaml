@@ -61,10 +61,10 @@ OneCovariance:
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: False
-  new_run: False
+  compare_against_oc: True
+  new_run: True
   oc_format_to_compare_against: list
-  process_cov_from_mat_file: False
+  process_cov_from_mat_file: True
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
@@ -190,7 +190,7 @@ C_ell:
   # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
   has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
   has_IA: True # Type: bool. Enable/disable intrinsic alignment.
-  has_magnification_bias: True # Type: bool. Enable/disable magnification bias.
+  has_magnification_bias: False # Type: bool. Enable/disable magnification bias.
 
   # Keyword arguments for CCL Cl calculation (excluding `p_of_k_a`), described in
   # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl
@@ -214,14 +214,14 @@ mask:
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
   LL:
     geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
-    footprint_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/cov_FS2_jose/input/input_cone_vis24.5_h22/visibility_map_cone_h22_vis24.fits # Type: str.
-    weight_maps_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/cov_FS2_jose/input/input_cone_vis24.5_h22/weight_map_cone_h22_vis24.fits # Type: str | None.
+    footprint_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/mask_polar_cap_nside2048.fits # Type: str.
+    weight_maps_filename: null # Type: str | None
   GG:
     geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
-    footprint_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/cov_FS2_jose/input/input_cone_vis24.5_h22/visibility_map_cone_h22_vis24.fits # Type: str.
+    footprint_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/mask_polar_cap_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
 
-  # Desired nside of the polar caps, or nside to which up/downgrade the reslution of the input masks.
+  # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
   # If null (None), the nside of the input masks will be used, without up/downgrading.
   nside: 1024 # Type: int | None.
 
@@ -231,7 +231,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -249,15 +249,15 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: NaMaster # Type: str
+  partial_sky_method: Knox # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: coupled # Type: str.
+  cov_type: decoupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: False # Type: bool
+  split_gaussian_cov: True # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -385,7 +385,7 @@ precision:
   delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
 
   # Whether or not to use the single-redshift integral approximation for the SSC.
-  use_KE_approximation: False # Type: bool.
+  use_KE_approximation: True # Type: bool.
 
   # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.

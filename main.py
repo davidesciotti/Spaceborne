@@ -1817,7 +1817,6 @@ if cfg['OneCovariance']['compare_against_oc']:
         if oc_fmt == 'list':
             cov_a = _cov_dict[term]['3x2pt']['2d']
             cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
-
             sl.compare_2d_covs(
                 cov_a,
                 cov_b,
@@ -1836,7 +1835,6 @@ if cfg['OneCovariance']['compare_against_oc']:
             if term not in ['sva', 'sn', 'mix']:
                 cov_a = _cov_dict[term]['3x2pt']['2d']
                 cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
-
                 sl.compare_2d_covs(
                     cov_a,
                     cov_b,

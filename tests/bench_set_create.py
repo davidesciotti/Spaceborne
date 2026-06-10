@@ -37,6 +37,7 @@ NOTES
 
 # ruff: noqa: PERF401
 
+
 import gc
 import json
 import os
@@ -224,6 +225,10 @@ def run_benchmarks(yaml_files, sb_root_path, output_dir, skip_existing: bool = F
             json.dump(results, f, indent=2)
 
     return results
+
+
+# TODO this script should use at least a couple of the functions in spaceborne/batch_run_utils.py
+
 
 
 # ! PATHS

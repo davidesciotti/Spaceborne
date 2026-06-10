@@ -912,6 +912,7 @@ def compare_2d_covs(
                 f'abs diag {name_b}': np.diag(np.abs(cov_b)),
             },
             logscale_y=[True, False],
+            ylim_diff=[-100, 100],
             title=title + ' diag',
         )
 

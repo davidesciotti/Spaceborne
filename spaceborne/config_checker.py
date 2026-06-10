@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 RED = '\033[31m'
@@ -763,6 +765,10 @@ class SpaceborneConfigChecker:
                 f'cfg["mask"][{probe}]["geometry"] must be either'
                 ' "footprint_file" or "polar_cap"'
             )
+
+            if self.cfg['mask'][probe]['geometry'] == 'footprint_file':
+                fp = self.cfg['mask'][probe]['footprint_filename']
+                assert os.path.isfile(fp), f'Footprint file for {probe} not found: {fp}'
 
     def check_options(self) -> None:
         if self.cfg['C_ell']['has_magnification_bias']:

@@ -123,7 +123,6 @@ class CCLInterface:
             'pocinofit': wf_cl_lib.b_of_z_fs1_pocinofit,
             'fs2_fit': wf_cl_lib.b_of_z_fs2_fit,
         }
-        # self.check_specs()   # prolly I don't need these ingredients at all!
 
         # initialize halo model
         self.mass_def = getattr(ccl.halos, halo_model_dict['mass_def'])
@@ -162,15 +161,7 @@ class CCLInterface:
         self.cl_gg_3d: np.ndarray = _UNSET
         self.cl_3x2pt_5d: np.ndarray = _UNSET
         self.sigma2_b_tuple: tuple = _UNSET
-
-    def check_specs(self):
-        assert self.probe in ['LL', 'GG', '3x2pt'], (
-            'probe must be either LL, GG, or 3x2pt'
-        )
-        assert self.which_ng_cov in ['SSC', 'cNG'], (
-            'which_ng_cov must be either SSC or cNG'
-        )
-        assert self.has_rsd is False, 'RSD not validated yet...'
+        self.separable_growth: bool = _UNSET
 
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):
         k_grid_Pk, z_grid_Pk, pk_mm_2d = sl.pk_vinc_file_to_2d_npy(
@@ -279,10 +270,10 @@ class CCLInterface:
         """
         Set the magnification bias values and store in a tuple. In this function,
         we call "mag_bias" the usual s(z).
-        
-        Note: In the cases handled by this function (no magnification bias, 
-        polinomial fit), the magnification bias is the same for all redshift bins, 
-        thus the use of np.repeat to construct the 2d array. 
+
+        Note: In the cases handled by this function (no magnification bias,
+        polinomial fit), the magnification bias is the same for all redshift bins,
+        thus the use of np.repeat to construct the 2d array.
         """
 
         if has_magnification_bias:
@@ -338,7 +329,6 @@ class CCLInterface:
                 )
             )
 
-
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(
             wf_a=kernel_a,
@@ -375,7 +365,9 @@ class CCLInterface:
         self.wf_gamma_arr = wf_lensing_tot_arr[:, 0, :].T
         if self.has_ia:
             self.wf_ia_arr = wf_lensing_tot_arr[:, 1, :].T
-            self.wf_ia_contribution_arr = self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+            self.wf_ia_contribution_arr = (
+                self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+            )
             self.wf_lensing_arr = self.wf_gamma_arr + self.wf_ia_contribution_arr
         else:
             self.wf_ia_arr = np.zeros_like(self.wf_gamma_arr)
@@ -628,7 +620,7 @@ class CCLInterface:
                 'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
                 'lk_arr': self.logn_k_grid_tkka_cNG,
                 'a_arr': self.a_grid_tkka_cNG,
-                'separable_growth': False,
+                'separable_growth': self.separable_growth,
             }
 
         else:

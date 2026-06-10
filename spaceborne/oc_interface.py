@@ -670,7 +670,9 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['limber'] = str(True)
         cfg_oc_ini['covELLspace settings']['nglimber'] = str(True)
         warnings.warn(
-            'delta_z is quite low, increase if runtime becomes an issue!', stacklevel=2
+            'delta_z comes from Spaceborne and is quite small, '
+            'increase in OneCovariance if runtime becomes an issue!',
+            stacklevel=2,
         )
         cfg_oc_ini['covELLspace settings']['delta_z'] = str(
             self.cfg['precision']['delta_z']

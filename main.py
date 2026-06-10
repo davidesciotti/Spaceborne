@@ -606,6 +606,7 @@ ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.output_path = output_path
 ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+ccl_obj.separable_growth = cfg['precision']['separable_growth']
 
 # get ccl default a and k grids
 a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()

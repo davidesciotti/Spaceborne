@@ -18,7 +18,6 @@ Key Features:
 
 import configparser
 import os
-from pathlib import Path
 import subprocess
 import warnings
 from collections import defaultdict
@@ -719,7 +718,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['survey specs']['mask_directory'] = str(self.oc_path)
 
         # Pass the 'preprocessed' footprints saved by main.py as
-        # sb_footprint_{LL,GL,GG}.fits (relative to mask_directory). Pass also fskys, 
+        # sb_footprint_{LL,GL,GG}.fits (relative to mask_directory). Pass also fskys,
         # as OC raises errors otherwise (why)?
         for _probe_sb, _probe_oc in zip(
             ['LL', 'GL', 'GG'], ['lensing', 'ggl', 'clust'], strict=True
@@ -1181,15 +1180,14 @@ class OneCovarianceInterface:
         )
 
     def get_oc_responses(self, ini_filename, h):
-        import sys
-
-        sys.path.append('/home/davide/Documenti/Lavoro/Programmi/OneCovariance')
         import os
         import platform
+        import sys
 
         from onecov.cov_ell_space import CovELLSpace
         from onecov.cov_input import FileInput, Input
 
+        sys.path.append(os.path.dirname(self.path_to_oc_executable))
         if len(platform.mac_ver()[0]) > 0 and (
             platform.processor() == 'arm'
             or int(platform.mac_ver()[0][: (platform.mac_ver()[0]).find('.')]) > 13

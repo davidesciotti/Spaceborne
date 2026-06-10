@@ -20,7 +20,7 @@ DEG2_IN_SPHERE = constants.DEG2_IN_SPHERE
 DR1_DATE = constants.DR1_DATE
 
 
-def couple_cov_6d(
+def couple_cov_6d_nontomo(
     mcm_ab: np.ndarray, cov_abcd_6d: np.ndarray, mcm_cd: np.ndarray
 ) -> np.ndarray:
     if mcm_ab.shape[1] != cov_abcd_6d.shape[0]:
@@ -30,6 +30,34 @@ def couple_cov_6d(
 
     cov_abcd_6d_coupled = np.einsum(
         'XW, WZijkl, ZY -> XYijkl', mcm_ab, cov_abcd_6d, mcm_cd
+    )
+
+    return cov_abcd_6d_coupled
+
+
+def couple_cov_6d_tomo(
+    mcm_ab: np.ndarray, cov_abcd_6d: np.ndarray, mcm_cd: np.ndarray
+) -> np.ndarray:
+    """Couple a 6D (nbl, nbl, zbins, zbins, zbins, zbins) covariance with
+    *per-redshift-bin* mode coupling matrices.
+
+    When weight maps are used, the MCM is bin-pair dependent, so each block must
+    be coupled with its own matrices::
+
+        cov_coupled[:, :, zi, zj, zk, zl] =
+            M_ab[zi, zj] @ cov[:, :, zi, zj, zk, zl] @ M_cd[zk, zl].T
+
+    This generalises :func:`couple_cov_6d` (which assumes a single MCM shared by
+    all bins). ``mcm_ab`` / ``mcm_cd`` are (nbl, nbl, zbins, zbins) arrays indexed
+    by ``[:, :, zi, zj]`` (the ``mcm_*_binned`` arrays built in
+    ``CovNaMaster.compute_and_save_mcms``).
+    """
+    # cov_coupled[X, Y, i, j, k, l] =
+    #   sum_{W, Z} M_ab[X, W, i, j] cov[W, Z, i, j, k, l] M_cd[Y, Z, k, l]
+    # (the M_cd[Y, Z, k, l] index order applies M_cd[:, :, zk, zl].T on the second
+    # axis, matching the mcm_cd.T convention of couple_cov_6d)
+    cov_abcd_6d_coupled = np.einsum(
+        'XWij, WZijkl, YZkl -> XYijkl', mcm_ab, cov_abcd_6d, mcm_cd
     )
 
     return cov_abcd_6d_coupled
@@ -1520,25 +1548,42 @@ class CovNaMaster:
             return
 
         print('\nComputing and binning mode coupling matrices...')
-        mcm_tt_unb, mcm_te_unb, mcm_ee_unb = {}, {}, {}
-        self.mcm_tt_binned, self.mcm_et_binned = {}, {}
-        self.mcm_te_binned, self.mcm_ee_binned = {}, {}
+        # The MCMs are stored as (nbl, nbl, zbins, zbins) arrays indexed by
+        # [:, :, zi, zj]: with weight maps the MCM is bin-pair dependent, and the
+        # (zi, zj) grid is dense (full product), so an ndarray is the natural
+        # container (nbl-first axes, consistent with the rest of the code).
+        nbl = self.nmt_bin_obj.get_n_bands()
+        mcm_shape = (nbl, nbl, self.zbins, self.zbins)
+        mcm_unb_shape = (nbl_unb, nbl_unb, self.zbins, self.zbins)
+        mcm_tt_unb = np.zeros(mcm_unb_shape)
+        mcm_te_unb = np.zeros(mcm_unb_shape)
+        mcm_ee_unb = np.zeros(mcm_unb_shape)
+        self.mcm_tt_binned = np.zeros(mcm_shape)
+        self.mcm_te_binned = np.zeros(mcm_shape)
+        self.mcm_ee_binned = np.zeros(mcm_shape)
+
         for zi, zj in tqdm(self.zij_cross_combs):
-            # extract only the relevant blocks
-            mcm_tt_unb[zi, zj] = self.w00_dict[zi, zj].get_coupling_matrix()[
+            # extract only the relevant blocks (w*_dict are keyed by (zi, zj))
+            mcm_tt_unb[:, :, zi, zj] = self.w00_dict[zi, zj].get_coupling_matrix()[
                 :nbl_unb, :nbl_unb
             ]
-            mcm_te_unb[zi, zj] = self.w02_dict[zi, zj].get_coupling_matrix()[
+            mcm_te_unb[:, :, zi, zj] = self.w02_dict[zi, zj].get_coupling_matrix()[
                 :nbl_unb, :nbl_unb
             ]
-            mcm_ee_unb[zi, zj] = self.w22_dict[zi, zj].get_coupling_matrix()[
+            mcm_ee_unb[:, :, zi, zj] = self.w22_dict[zi, zj].get_coupling_matrix()[
                 :nbl_unb, :nbl_unb
             ]
 
             # bin (and store in self)
-            self.mcm_tt_binned[zi, zj] = bin_mcm(mcm_tt_unb[zi, zj], self.nmt_bin_obj)
-            self.mcm_te_binned[zi, zj] = bin_mcm(mcm_te_unb[zi, zj], self.nmt_bin_obj)
-            self.mcm_ee_binned[zi, zj] = bin_mcm(mcm_ee_unb[zi, zj], self.nmt_bin_obj)
+            self.mcm_tt_binned[:, :, zi, zj] = bin_mcm(
+                mcm_tt_unb[:, :, zi, zj], self.nmt_bin_obj
+            )
+            self.mcm_te_binned[:, :, zi, zj] = bin_mcm(
+                mcm_te_unb[:, :, zi, zj], self.nmt_bin_obj
+            )
+            self.mcm_ee_binned[:, :, zi, zj] = bin_mcm(
+                mcm_ee_unb[:, :, zi, zj], self.nmt_bin_obj
+            )
 
         if save_mcms:
             np.savez(
@@ -1547,7 +1592,6 @@ class CovNaMaster:
                 mcm_gl_unbinned=mcm_te_unb,
                 mcm_ll_unbinned=mcm_ee_unb,
                 mcm_gg_binned=self.mcm_tt_binned,
-                mcm_lg_binned=self.mcm_et_binned,
                 mcm_gl_binned=self.mcm_te_binned,
                 mcm_ll_binned=self.mcm_ee_binned,
             )

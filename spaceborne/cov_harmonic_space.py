@@ -15,6 +15,9 @@ from spaceborne.ell_utils import EllBinning
 from spaceborne.oc_interface import OneCovarianceInterface
 
 
+_UNSET = object()
+
+
 class CovHarmonicSpace:
     def __init__(
         self,
@@ -73,6 +76,8 @@ class CovHarmonicSpace:
 
         # other useful objects
         self.cov_nmt_obj = cov_nmt_obj
+
+        self.fsky_max_abcd_dict = _UNSET
 
     def consistency_checks(self):
         # sanity checks
@@ -469,16 +474,20 @@ class CovHarmonicSpace:
         from spaceborne import cov_partial_sky
 
         with sl.timer('\nCoupling non-Gaussian covariance matrices...'):
-            # construct mcm array for better probe handling (especially for 3x2pt)
+            # per-probe mode coupling matrices, each a (zbins, zbins, nbl, nbl)
+            # array indexed by [zi, zj], since with weight maps the MCM is bin-pair
+            # dependent (see CovNaMaster.compute_and_save_mcms).
             mcm_dict = {}
             mcm_dict['LL'] = self.cov_nmt_obj.mcm_ee_binned
             mcm_dict['GL'] = self.cov_nmt_obj.mcm_te_binned
             # mcm_3x2pt_dict['LG'] = self.cov_nmt_obj.mcm_et_binned
             mcm_dict['GG'] = self.cov_nmt_obj.mcm_tt_binned
 
-            for k, v in mcm_dict.items():
-                assert v.shape == (self.ell_obj.nbl_3x2pt, self.ell_obj.nbl_3x2pt), (
-                    f'mcm {k} has wrong shape {v.shape}'
+            nbl = self.ell_obj.nbl_3x2pt
+            expected_shape = (nbl, nbl, self.zbins, self.zbins)
+            for k, mcm in mcm_dict.items():
+                assert mcm.shape == expected_shape, (
+                    f'mcm {k} has wrong shape {mcm.shape}, expected {expected_shape}'
                 )
 
             # cov_WL_ssc_6d = cov_partial_sky.couple_cov_6d(
@@ -507,10 +516,10 @@ class CovHarmonicSpace:
                 for probe_abcd in self.req_probe_combs_2d:
                     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
                     self.cov_dict[ng_term][probe_ab, probe_cd]['6d'] = (
-                        cov_partial_sky.couple_cov_6d(
+                        cov_partial_sky.couple_cov_6d_tomo(
                             mcm_dict[probe_ab],
                             self.cov_dict[ng_term][probe_ab, probe_cd]['6d'],
-                            mcm_dict[probe_cd].T,
+                            mcm_dict[probe_cd],
                         )
                     )
 

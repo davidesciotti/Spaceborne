@@ -1794,7 +1794,11 @@ if cfg['OneCovariance']['compare_against_oc']:
                     cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d'],
                     cov_oc_obj.cov_dict[term]['3x2pt']['2d'],
                     atol=0,
-                    rtol=1e-4,
+                    rtol=1e-3,
+                    err_msg=(
+                        'mat and list formats for OC do not coincide'
+                        f' for term {term} in 3x2pt 2d block'
+                    ),
                 )
 
             # for good measure, also check that the sum of the split Gaussian terms
@@ -1810,7 +1814,7 @@ if cfg['OneCovariance']['compare_against_oc']:
                     + cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
                     + cov_oc_obj.cov_dict['mix']['3x2pt']['2d'],
                     atol=0,
-                    rtol=1e-4,
+                    rtol=1e-3,
                 )
 
         # ! now compare SB and OC

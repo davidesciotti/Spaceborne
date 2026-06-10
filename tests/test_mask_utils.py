@@ -2,54 +2,54 @@
 
 import os
 import tempfile
+import types
 
 import healpy as hp
 import numpy as np
 import pytest
 
-from spaceborne import mask_utils
-from spaceborne import constants
+from spaceborne import constants, io_handler, mask_utils
 
 
-class TestGetMaskCl:
-    """Tests for get_mask_cl function."""
+def _make_mask_cfg(
+    probe='LL',
+    *,
+    geometry='polar_cap',
+    footprint_filename='',
+    weight_maps_filename=None,
+    nside=32,
+    survey_area_deg2=1000.0,
+    apodize=False,
+    aposize=1.0,
+):
+    """Build a ``mask`` config dict in the new per-probe layout expected by Mask."""
+    return {
+        probe: {
+            'geometry': geometry,
+            'footprint_filename': footprint_filename,
+            'weight_maps_filename': weight_maps_filename,
+        },
+        'nside': nside,
+        'survey_area_deg2': survey_area_deg2,
+        'apodize': apodize,
+        'aposize': aposize,
+    }
+
+
+class TestGetMapsCl:
+    """Tests for get_maps_cl function (cross/auto spectrum of two maps)."""
 
     def test_basic_functionality(self):
-        """Test basic mask power spectrum computation."""
+        """Test basic map power spectrum computation."""
         nside = 32
         npix = hp.nside2npix(nside)
         mask = np.ones(npix)
 
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_maps_cl(mask)
+        ells, cl = mask_utils.get_maps_cl(mask, mask)
 
-        assert len(ell_mask) == len(cl_mask)
-        assert ell_mask[0] == 0
-        assert np.all(np.diff(ell_mask) == 1)
-        assert fsky_mask == pytest.approx(1.0)
-
-    def test_half_sky_mask(self):
-        """Test fsky computation for half-sky mask."""
-        nside = 32
-        npix = hp.nside2npix(nside)
-        mask = np.zeros(npix)
-        mask[: npix // 2] = 1.0
-
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_maps_cl(mask)
-
-        # fsky = mean(mask**2) = (npix/2 * 1.0**2) / npix = 0.5 for half-sky binary mask
-        assert fsky_mask == pytest.approx(0.5, abs=0.01)
-
-    def test_uniform_partial_mask(self):
-        """Test fsky for uniform partial coverage."""
-        nside = 32
-        npix = hp.nside2npix(nside)
-        coverage = 0.7
-        mask = np.full(npix, coverage)
-
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_maps_cl(mask)
-
-        # fsky = mean(mask**2) for uniform mask
-        assert fsky_mask == pytest.approx(coverage**2, rel=1e-6)
+        assert len(ells) == len(cl)
+        assert ells[0] == 0
+        assert np.all(np.diff(ells) == 1)
 
     def test_output_shapes(self):
         """Test that output arrays have expected shapes."""
@@ -57,13 +57,86 @@ class TestGetMaskCl:
         npix = hp.nside2npix(nside)
         mask = np.ones(npix)
 
-        ell_mask, cl_mask, fsky_mask = mask_utils.get_maps_cl(mask)
+        ells, cl = mask_utils.get_maps_cl(mask, mask)
 
         # For nside=16, lmax should be 3*nside-1 = 47
         expected_lmax = 3 * nside - 1
-        assert len(ell_mask) == expected_lmax + 1
-        assert len(cl_mask) == expected_lmax + 1
-        assert isinstance(fsky_mask, (float, np.floating))
+        assert len(ells) == expected_lmax + 1
+        assert len(cl) == expected_lmax + 1
+
+    def test_cross_spectrum_runs(self):
+        """Test that the cross spectrum of two different maps is finite."""
+        nside = 16
+        npix = hp.nside2npix(nside)
+        map1 = np.ones(npix)
+        map2 = np.zeros(npix)
+        map2[: npix // 2] = 1.0
+
+        ells, cl = mask_utils.get_maps_cl(map1, map2)
+
+        assert len(ells) == len(cl)
+        assert np.all(np.isfinite(cl))
+
+
+class TestCombinedFsky:
+    """Tests for combined_fsky (mean of the product of two masks)."""
+
+    def test_full_sky(self):
+        nside = 32
+        npix = hp.nside2npix(nside)
+        mask = np.ones(npix)
+        assert mask_utils.combined_fsky(mask, mask) == pytest.approx(1.0)
+
+    def test_half_sky_binary(self):
+        nside = 32
+        npix = hp.nside2npix(nside)
+        mask = np.zeros(npix)
+        mask[: npix // 2] = 1.0
+        # mean(mask * mask) = 0.5 for a half-sky binary mask
+        assert mask_utils.combined_fsky(mask, mask) == pytest.approx(0.5, abs=0.01)
+
+    def test_uniform_partial_mask(self):
+        nside = 32
+        npix = hp.nside2npix(nside)
+        coverage = 0.7
+        mask = np.full(npix, coverage)
+        # mean(mask * mask) = coverage**2 for a uniform mask
+        assert mask_utils.combined_fsky(mask, mask) == pytest.approx(
+            coverage**2, rel=1e-6
+        )
+
+    def test_returns_python_float(self):
+        nside = 16
+        npix = hp.nside2npix(nside)
+        mask = np.ones(npix)
+        assert isinstance(mask_utils.combined_fsky(mask, mask), float)
+
+
+class TestFootprintFskyAb:
+    """Tests for footprint_fsky_ab (probe-pair footprints and effective fskys)."""
+
+    def test_probe_pair_products_and_fskys(self):
+        nside = 16
+        npix = hp.nside2npix(nside)
+        m_ll = np.full(npix, 0.5)
+        m_gg = np.full(npix, 0.8)
+
+        mask_obj_ll = types.SimpleNamespace(footprint=m_ll)
+        mask_obj_gg = types.SimpleNamespace(footprint=m_gg)
+
+        footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
+            mask_obj_ll, mask_obj_gg
+        )
+
+        # AB footprints are the product of the two single-probe masks
+        np.testing.assert_allclose(footp_ab_dict['LL'], m_ll * m_ll)
+        np.testing.assert_allclose(footp_ab_dict['GL'], m_ll * m_gg)
+        np.testing.assert_allclose(footp_ab_dict['GG'], m_gg * m_gg)
+
+        # fsky is the mean of the product of the *single* masks
+        assert fsky_ab_dict['LL'] == pytest.approx(0.5 * 0.5)
+        assert fsky_ab_dict['GL'] == pytest.approx(0.5 * 0.8)
+        assert fsky_ab_dict['GG'] == pytest.approx(0.8 * 0.8)
 
 
 class TestGeneratePolarCapFunc:
@@ -117,8 +190,30 @@ class TestGeneratePolarCapFunc:
         assert np.sum(mask) > 0.95 * len(mask)
 
 
+class TestUpDowngradeMap:
+    """Tests for up_downgrade_map helper."""
+
+    def test_downgrade(self):
+        nside_in, nside_out = 64, 32
+        m = np.ones(hp.nside2npix(nside_in))
+        out = mask_utils.up_downgrade_map(m, nside_out)
+        assert len(out) == hp.nside2npix(nside_out)
+
+    def test_no_change_when_equal(self):
+        nside = 32
+        m = np.ones(hp.nside2npix(nside))
+        out = mask_utils.up_downgrade_map(m, nside)
+        assert len(out) == hp.nside2npix(nside)
+
+    def test_no_change_when_none(self):
+        nside = 32
+        m = np.ones(hp.nside2npix(nside))
+        out = mask_utils.up_downgrade_map(m, None)
+        assert len(out) == hp.nside2npix(nside)
+
+
 class TestReadMaskingMap:
-    """Tests for _read_masking_map function."""
+    """Tests for io_handler._read_masking_map (moved out of mask_utils)."""
 
     def test_nside_downgrade(self):
         """Test reading and downgrading a FITS map."""
@@ -126,7 +221,6 @@ class TestReadMaskingMap:
         nside_high = 64
         nside_low = 32
         npix = hp.nside2npix(nside_high)
-        mask_data = np.ones(npix)
 
         # Only test this if fitsio is available
         try:
@@ -147,7 +241,7 @@ class TestReadMaskingMap:
             fitsio.write(tmp.name, data, header=header, clobber=True)
 
             try:
-                mask = mask_utils._read_masking_map(tmp.name, nside_low, nest=False)
+                mask = io_handler._read_masking_map(tmp.name, nside_low, nest=False)
 
                 assert len(mask) == hp.nside2npix(nside_low)
                 # Should have some non-zero values
@@ -179,7 +273,7 @@ class TestReadMaskingMap:
 
             try:
                 with pytest.raises(ValueError, match='greater than map NSIDE'):
-                    mask_utils._read_masking_map(tmp.name, nside_out)
+                    io_handler._read_masking_map(tmp.name, nside_out)
             finally:
                 os.unlink(tmp.name)
 
@@ -188,55 +282,43 @@ class TestMask:
     """Tests for Mask class."""
 
     @pytest.fixture
-    def basic_mask_config_generate(self):
-        """Basic configuration for mask generation."""
-        return {
-            'use_footprint': False,
-            'mask_filename': '',
-            'nside': 32,
-            'survey_area_deg2': 1000.0,
-            'apodize': False,
-            'aposize': 1.0,
-            'generate_polar_cap': True,
-        }
+    def polar_cap_cfg(self):
+        """Config for on-the-fly polar cap generation."""
+        return _make_mask_cfg(probe='LL', geometry='polar_cap', nside=32)
 
     @pytest.fixture
-    def basic_mask_config_load(self, tmp_path):
-        """Basic configuration for mask loading."""
-        # Create a temporary mask file
+    def footprint_npy_cfg(self, tmp_path):
+        """Config for loading a footprint from a .npy file (full sky)."""
         nside = 32
         npix = hp.nside2npix(nside)
-        mask = np.ones(npix)
-        mask_filename = tmp_path / 'test_mask.npy'
-        np.save(mask_filename, mask)
+        footprint = np.ones(npix)
+        footprint_filename = tmp_path / 'test_footprint.npy'
+        np.save(footprint_filename, footprint)
 
-        return {
-            'use_footprint': True,
-            'mask_filename': str(mask_filename),
-            'nside': nside,
-            'survey_area_deg2': 1000.0,
-            'apodize': False,
-            'aposize': 1.0,
-            'generate_polar_cap': False,
-        }
+        return _make_mask_cfg(
+            probe='LL',
+            geometry='footprint_file',
+            footprint_filename=str(footprint_filename),
+            nside=nside,
+        )
 
-    def test_initialization(self, basic_mask_config_generate):
+    def test_initialization(self, polar_cap_cfg):
         """Test Mask class initialization."""
-        mask_obj = mask_utils.Mask(basic_mask_config_generate)
+        mask_obj = mask_utils.Mask(polar_cap_cfg, probe='LL')
 
-        assert mask_obj.use_footprint is False
-        assert mask_obj.use_polar_cap is True
+        assert mask_obj.probe == 'LL'
+        assert mask_obj.geometry == 'polar_cap'
+        assert mask_obj.use_weight_maps is False
         assert mask_obj.nside_cfg == 32
         assert mask_obj.desired_survey_area_deg2 == 1000.0
-        assert mask_obj.apodize_func is False
+        assert mask_obj.apodize is False
         assert mask_obj.aposize == 1.0
 
-    def test_generate_polar_cap(self, basic_mask_config_generate):
+    def test_generate_polar_cap(self, polar_cap_cfg):
         """Test polar cap mask generation through Mask class."""
-        mask_obj = mask_utils.Mask(basic_mask_config_generate)
+        mask_obj = mask_utils.Mask(polar_cap_cfg, probe='LL')
         mask_obj.process()
 
-        assert hasattr(mask_obj, 'mask')
         assert hasattr(mask_obj, 'footprint')
         assert len(mask_obj.footprint) == hp.nside2npix(32)
         assert hasattr(mask_obj, 'fsky_footprint')
@@ -245,162 +327,124 @@ class TestMask:
         assert mask_obj.fsky_footprint > 0
         assert mask_obj.fsky_footprint < 1
 
-    def test_use_footprint_npy(self, basic_mask_config_load):
-        """Test loading mask from .npy file."""
-        mask_obj = mask_utils.Mask(basic_mask_config_load)
+    def test_footprint_npy(self, footprint_npy_cfg):
+        """Test loading a footprint from a .npy file."""
+        mask_obj = mask_utils.Mask(footprint_npy_cfg, probe='LL')
         mask_obj.process()
         assert hasattr(mask_obj, 'footprint')
         assert len(mask_obj.footprint) == hp.nside2npix(32)
-        # Full sky mask should give fsky ~ 1
+        # Full sky footprint should give fsky ~ 1
         assert mask_obj.fsky_footprint == pytest.approx(1.0, rel=0.01)
 
-    def test_use_footprint_fits(self, tmp_path):
-        """Test loading mask from .fits file."""
+    def test_footprint_fits(self, tmp_path):
+        """Test loading a footprint from a .fits file."""
         nside = 32
         npix = hp.nside2npix(nside)
-        mask = np.ones(npix)
-        mask_filename = tmp_path / 'test_mask.fits'
-        hp.write_map(str(mask_filename), mask, overwrite=True, dtype=np.float64)
+        footprint = np.ones(npix)
+        footprint_filename = tmp_path / 'test_footprint.fits'
+        hp.write_map(
+            str(footprint_filename), footprint, overwrite=True, dtype=np.float64
+        )
 
-        config = {
-            'use_footprint': True,
-            'mask_filename': str(mask_filename),
-            'nside': nside,
-            'survey_area_deg2': 1000.0,
-            'apodize': False,
-            'aposize': 1.0,
-            'generate_polar_cap': False,
-        }
+        cfg = _make_mask_cfg(
+            probe='GG',
+            geometry='footprint_file',
+            footprint_filename=str(footprint_filename),
+            nside=nside,
+        )
 
-        mask_obj = mask_utils.Mask(config)
+        mask_obj = mask_utils.Mask(cfg, probe='GG')
         mask_obj.process()
 
         assert hasattr(mask_obj, 'footprint')
         assert len(mask_obj.footprint) == npix
 
-    def test_mask_file_not_found(self):
-        """Test that FileNotFoundError is raised for missing file."""
-        config = {
-            'use_footprint': True,
-            'mask_filename': '/nonexistent/path/mask.npy',
-            'nside': 32,
-            'survey_area_deg2': 1000.0,
-            'apodize': False,
-            'aposize': 1.0,
-            'generate_polar_cap': False,
-        }
+    def test_footprint_file_not_found(self):
+        """Test that FileNotFoundError is raised for a missing footprint file."""
+        cfg = _make_mask_cfg(
+            probe='LL',
+            geometry='footprint_file',
+            footprint_filename='/nonexistent/path/footprint.npy',
+        )
 
-        mask_obj = mask_utils.Mask(config)
+        mask_obj = mask_utils.Mask(cfg, probe='LL')
 
         with pytest.raises(FileNotFoundError):
             mask_obj.process()
 
     def test_unsupported_file_format(self, tmp_path):
-        """Test that unsupported file format raises ValueError."""
-        mask_filename = tmp_path / 'test_mask.txt'
-        mask_filename.write_text('dummy data')
+        """Test that an unsupported footprint file format raises ValueError."""
+        footprint_filename = tmp_path / 'test_footprint.txt'
+        footprint_filename.write_text('dummy data')
 
-        config = {
-            'use_footprint': True,
-            'mask_filename': str(mask_filename),
-            'nside': 32,
-            'survey_area_deg2': 1000.0,
-            'apodize': False,
-            'aposize': 1.0,
-            'generate_polar_cap': False,
-        }
+        cfg = _make_mask_cfg(
+            probe='LL',
+            geometry='footprint_file',
+            footprint_filename=str(footprint_filename),
+        )
 
-        mask_obj = mask_utils.Mask(config)
+        mask_obj = mask_utils.Mask(cfg, probe='LL')
 
         with pytest.raises(ValueError, match='Unsupported file format'):
             mask_obj.process()
 
-    def test_both_load_and_generate_fails(self):
-        """Test that both use_footprint and generate_polar_cap True raises error."""
-        config = {
-            'use_footprint': True,
-            'mask_filename': 'some_path.npy',
-            'nside': 32,
-            'survey_area_deg2': 1000.0,
-            'apodize': False,
-            'aposize': 1.0,
-            'generate_polar_cap': True,
-        }
+    def test_invalid_geometry(self):
+        """Test that an unsupported geometry raises ValueError."""
+        cfg = _make_mask_cfg(probe='LL', geometry='not_a_geometry')
 
-        mask_obj = mask_utils.Mask(config)
+        mask_obj = mask_utils.Mask(cfg, probe='LL')
 
-        with pytest.raises(AssertionError, match='choose whether to load OR generate'):
+        with pytest.raises(ValueError, match='Unsupported geometry type'):
             mask_obj.process()
 
-    def test_neither_load_nor_generate_fails(self):
-        """Test that neither use_footprint nor generate_polar_cap True raises error."""
-        config = {
-            'use_footprint': False,
-            'mask_filename': '',
-            'nside': 32,
-            'survey_area_deg2': 1000.0,
-            'apodize': False,
-            'aposize': 1.0,
-            'generate_polar_cap': False,
-        }
-
-        mask_obj = mask_utils.Mask(config)
-
-        with pytest.raises(AssertionError, match='choose whether to load OR generate'):
-            mask_obj.process()
-
-    def test_mask_upgrade_downgrade(self, tmp_path):
-        """Test changing mask resolution."""
+    def test_footprint_upgrade_downgrade(self, tmp_path):
+        """Test changing footprint resolution."""
         nside_original = 64
         nside_target = 32
         npix = hp.nside2npix(nside_original)
-        mask = np.ones(npix)
-        mask_filename = tmp_path / 'test_mask.npy'
-        np.save(mask_filename, mask)
+        footprint = np.ones(npix)
+        footprint_filename = tmp_path / 'test_footprint.npy'
+        np.save(footprint_filename, footprint)
 
-        config = {
-            'use_footprint': True,
-            'mask_filename': str(mask_filename),
-            'nside': nside_target,
-            'survey_area_deg2': 1000.0,
-            'apodize': False,
-            'aposize': 1.0,
-            'generate_polar_cap': False,
-        }
+        cfg = _make_mask_cfg(
+            probe='LL',
+            geometry='footprint_file',
+            footprint_filename=str(footprint_filename),
+            nside=nside_target,
+        )
 
-        mask_obj = mask_utils.Mask(config)
+        mask_obj = mask_utils.Mask(cfg, probe='LL')
         mask_obj.process()
 
-        # Mask should be downgraded to target nside
+        # Footprint should be downgraded to the target nside
         assert len(mask_obj.footprint) == hp.nside2npix(nside_target)
 
-    def test_apodization(self, basic_mask_config_generate):
-        """Test mask apodization."""
-        # Enable apodization
-        basic_mask_config_generate['apodize'] = True
-        basic_mask_config_generate['aposize'] = 2.0
+    def test_apodization(self, polar_cap_cfg):
+        """Test footprint apodization."""
+        polar_cap_cfg['apodize'] = True
+        polar_cap_cfg['aposize'] = 2.0
 
-        mask_obj = mask_utils.Mask(basic_mask_config_generate)
+        mask_obj = mask_utils.Mask(polar_cap_cfg, probe='LL')
         mask_obj.process()
 
-        # After apodization, mask should have non-binary values
+        # After apodization, the footprint should have non-binary values
         unique_values = np.unique(mask_obj.footprint)
         assert len(unique_values) > 2  # More than just 0 and 1
 
-    def test_mask_spectrum_attributes(self, basic_mask_config_generate):
-        """Test that mask spectrum and normalization are computed."""
-        mask_obj = mask_utils.Mask(basic_mask_config_generate)
+    def test_footprint_spectrum_attributes(self, polar_cap_cfg):
+        """Test that the footprint spectrum and normalization are computed."""
+        mask_obj = mask_utils.Mask(polar_cap_cfg, probe='LL')
         mask_obj.process()
 
-        assert hasattr(mask_obj, 'ell_mask')
-        assert hasattr(mask_obj, 'cl_mask')
-        assert hasattr(mask_obj, 'cl_mask_norm')
+        assert hasattr(mask_obj, 'ells_footprint')
+        assert hasattr(mask_obj, 'cl_footprint')
+        assert hasattr(mask_obj, 'cl_footprint_norm')
         assert len(mask_obj.ells_footprint) == len(mask_obj.cl_footprint)
         assert len(mask_obj.cl_footprint) == len(mask_obj.cl_footprint_norm)
 
-    def test_survey_area_computation(self, basic_mask_config_generate):
+    def test_survey_area_computation(self, polar_cap_cfg):
         """Test that survey area is correctly computed from fsky."""
-        mask_obj = mask_utils.Mask(basic_mask_config_generate)
+        mask_obj = mask_utils.Mask(polar_cap_cfg, probe='LL')
         mask_obj.process()
 
         # Check consistency between fsky and survey areas
@@ -410,16 +454,60 @@ class TestMask:
         expected_area_sr = mask_obj.survey_area_deg2 * constants.DEG2_TO_SR
         assert mask_obj.survey_area_sr == pytest.approx(expected_area_sr, rel=1e-10)
 
-    @pytest.mark.skip(reason='pymaster apodization causes segfault on some systems')
-    def test_mask_dtype_for_apodization(self, basic_mask_config_generate):
-        """Test that mask is converted to float64 for apodization."""
-        pytest.importorskip('pymaster')
 
-        basic_mask_config_generate['apodize'] = True
-        basic_mask_config_generate['aposize'] = 1.0  # Smaller aposize
+class TestMaskWeightMaps:
+    """Tests for per-bin weight map loading in the Mask class."""
 
-        mask_obj = mask_utils.Mask(basic_mask_config_generate)
+    @staticmethod
+    def _write_weight_maps(path, nside, zbins=3):
+        """Write a (zbins, npix) non-negative weight-map FITS file."""
+        npix = hp.nside2npix(nside)
+        weight_maps = np.abs(
+            np.random.default_rng(0).normal(1.0, 0.1, size=(zbins, npix))
+        )
+        hp.write_map(str(path), list(weight_maps), overwrite=True, dtype=np.float64)
+        return weight_maps
+
+    def test_weight_maps_loaded(self, tmp_path):
+        """Weight maps are loaded as a (zbins, npix) array at the config nside."""
+        nside = 32
+        zbins = 3
+        wmap_filename = tmp_path / 'weight_maps.fits'
+        self._write_weight_maps(wmap_filename, nside, zbins=zbins)
+
+        cfg = _make_mask_cfg(
+            probe='LL',
+            geometry='polar_cap',
+            weight_maps_filename=str(wmap_filename),
+            nside=nside,
+        )
+
+        mask_obj = mask_utils.Mask(cfg, probe='LL')
         mask_obj.process()
 
-        # Mask should be float64 after apodization
-        assert mask_obj.footprint.dtype == np.float64
+        assert mask_obj.use_weight_maps is True
+        assert mask_obj.weight_maps.shape == (zbins, hp.nside2npix(nside))
+
+    def test_weight_maps_downgrade(self, tmp_path):
+        """Weight maps stored at a higher nside are regraded to the config nside.
+
+        Guards against the in-place row-assignment broadcast error: ud_grade
+        changes the pixel count, so the array must be rebuilt.
+        """
+        nside_stored = 32
+        nside_target = 16
+        zbins = 3
+        wmap_filename = tmp_path / 'weight_maps.fits'
+        self._write_weight_maps(wmap_filename, nside_stored, zbins=zbins)
+
+        cfg = _make_mask_cfg(
+            probe='LL',
+            geometry='polar_cap',
+            weight_maps_filename=str(wmap_filename),
+            nside=nside_target,
+        )
+
+        mask_obj = mask_utils.Mask(cfg, probe='LL')
+        mask_obj.process()
+
+        assert mask_obj.weight_maps.shape == (zbins, hp.nside2npix(nside_target))

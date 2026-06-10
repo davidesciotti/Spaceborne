@@ -16,11 +16,7 @@ def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
     # non-binary/apodised mask this differs from the single mask, so the
     # auto-pairs must be squared too (W_A^2) to stay consistent with the
     # mean(W_A * W_B) effective fsky used in the normalisation downstream.
-    footp_ab_dict = {
-        'LL': m_ll * m_ll,
-        'GL': m_ll * m_gg,
-        'GG': m_gg * m_gg,
-    }
+    footp_ab_dict = {'LL': m_ll * m_ll, 'GL': m_ll * m_gg, 'GG': m_gg * m_gg}
     # NB: fsky is the mean of the product of the *single* masks, mean(W_A * W_B),
     # NOT the mean of the squared window above (which would be mean(W_A^2 W_B^2)).
     fsky_ab_dict = {
@@ -108,7 +104,6 @@ class Mask:
         self.aposize = float(mask_cfg['aposize'])
 
     def load(self):
-
         # ! 1. load footprint/weight maps or generate polar cap
         if self.geometry == 'footprint_file':
             # load
@@ -133,11 +128,12 @@ class Mask:
             self.weight_maps = io_handler.load_weight_map_fits(
                 self.weight_maps_filename
             )
-            # get nside and up/downgrade if needed
-            for zi in range(self.weight_maps.shape[0]):
-                self.weight_maps[zi] = up_downgrade_map(
-                    self.weight_maps[zi], self.nside_cfg
-                )
+            # get nside and up/downgrade if needed. Rebuild the array rather than
+            # assigning into rows: up/downgrading changes the pixel count, so the
+            # regraded maps don't fit back into the original fixed-width 2D array.
+            self.weight_maps = np.array(
+                [up_downgrade_map(wmap, self.nside_cfg) for wmap in self.weight_maps]
+            )
 
     def apodize_func(self):
         # ! 2. apodize
@@ -196,7 +192,6 @@ class Mask:
         self.get_cls_fsky()
 
     def plot_maps(self):
-
         hp.mollview(
             self.footprint,
             cmap='inferno_r',

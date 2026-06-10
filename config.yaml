@@ -10,7 +10,7 @@
 # thinkpad: /_home/davide/Documenti/Lavoro/Programmi
 # mac: /_Users/davidesciotti/Documents/Work/Code
 # melodie: /_home/cosmo/davide.sciotti/data
-# mileva: /_data/sciotti
+# mileva: /_data/sciotti/
 
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
@@ -61,7 +61,7 @@ OneCovariance:
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: False
+  compare_against_oc: False # In this case, the output cov (2D/6D) is not overwritten by OC at all!
   new_run: False
   oc_format_to_compare_against: list
   process_cov_from_mat_file: False
@@ -91,8 +91,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
-  nz_lenses_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
+  nz_sources_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
+  nz_lenses_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -128,7 +128,7 @@ binning:
   # with `ell` the ell bin center, `delta_ell` its width,
   # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
   # The file can be in .txt, .dat or .ascii format.
-  ell_bins_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/ell_values_3x2pt.txt
+  ell_bins_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 5 # Type: float | int.
@@ -154,9 +154,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -173,8 +173,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
 
   # Interpolation methods for the galaxy and magnification bias tables.
   # This should be set to "linear" or "nearest" for step-like, or in general discontinuous,
@@ -214,8 +214,8 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-  cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   G_code: Spaceborne
   SSC_code: Spaceborne
@@ -419,6 +419,11 @@ precision:
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 
+  # (from CCL docs): whether a separable growth function approximation can be used to 
+  # calculate the isotropized power spectrum. 
+  # Set to True for lower accuracy and (much) faster computation
+  separable_growth: True # Type: bool
+
 misc:
   # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
   #        have to restart the kernel after changing the num_threads, and jax_platform
@@ -444,5 +449,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
+  output_path: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

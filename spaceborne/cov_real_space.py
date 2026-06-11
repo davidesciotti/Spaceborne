@@ -664,11 +664,20 @@ def proj_cov_2d_fftlog(
             mu, nu, dlntheta, dlntheta
         )
 
-        # Interpolate onto the desired theta grid (log-log 2D spline)
+        # Interpolate onto the desired theta grid (log-log 2D spline).
+        # NOTE: two_Bessel_binave's bin-averaging kernel (g_l_smooth) averages F over
+        # [y, y*exp(dlntheta)], so the output at grid point y is the bin-average for a
+        # bin whose *lower edge* is y. The bin with lower edge theta_edges[i] is the
+        # bin centred on theta_centers[i], so we must sample at the lower bin edges,
+        # NOT at the geometric centres (doing the latter shifts every value up by
+        # half a bin, producing a per-bin sawtooth bias).
         interp = RectBivariateSpline(
             np.log(theta1_out), np.log(theta2_out), integral, kx=3, ky=3
         )
-        result_3d[:, :, tomo_ix] = interp(np.log(theta_centers), np.log(theta_centers))
+        theta_lower_edges = theta_edges[:-1]
+        result_3d[:, :, tomo_ix] = interp(
+            np.log(theta_lower_edges), np.log(theta_lower_edges)
+        )
 
     return result_3d.reshape(nbt, nbt, *tomo_shape)
 
@@ -922,21 +931,40 @@ class CovRealSpace(CovarianceProjector):
         return cov_sva_rs_6d
 
     def proj_sva_mix_fftlog_wrapper(self, integrand_5d, mu, nu):
-        # expand the first 2 axis and create an ell1, ell2 diagonal matrix
-        # (as needed by the twobessel module)
-        # Also, in the G case, the delta function collapses two integrals into one,
-        # but TwoBessel still sees a 2D array and applies both ell-measures — leaving
-        # one ell too many that I must cancel manually by dividing by ell when
-        # building the diagonal.
+        # Gaussian (SVA/MIX) covariance via the 2D-FFTLog diagonal trick.
+        #
+        # Fang et al. 2020 (2D-FFTLog, arXiv:2004.04833, Sec. 2.2.1): the Gaussian cov is
+        # the special case where the input contains a Dirac delta delta_D(l1-l2), so the
+        # double integral collapses to a single one. We want TwoBessel (which computes
+        #     F = int dl1/l1 int dl2/l2 f(l1,l2) J_mu(l1 th1) J_nu(l2 th2) )
+        # to return the single integral  int dl l C(l) J_mu(l th1) J_nu(l th2), which
+        # requires  f = delta_D(l1-l2) l^3 C(l).  Discretizing the delta on a log grid,
+        #     delta_D(l1-l2) = (1/l) delta_D(ln l1 - ln l2) -> (1/l) * delta^K_ij / dln l,
+        # gives the DIAGONAL value  l^2 C / dln l  (note: l^2, not l^3, and the 1/dln l
+        # discretized-delta factor). proj_cov_2d_fftlog multiplies the input by l^4 (the
+        # l1^2 l2^2 measure it applies for the NG case), so the cov_hs we pass must be
+        #     C / (l^2 * dln l).
+        # Validated against the simps path (which matches OneCovariance) to <=0.3% for
+        # mu=0 and exactly for mu=2,4. The previous code used integrand_5d / l (effective
+        # diagonal l^3 C, missing one power of l AND the 1/dln l), which produced a theta-
+        # and Bessel-order-dependent error. See [[onecov-realspace-comparison]].
         nbl = integrand_5d.shape[0]
+        dlnell = np.log(self.ells_proj_g[1] / self.ells_proj_g[0])
         integrand_6d = np.zeros((nbl, nbl) + integrand_5d.shape[1:])
         for i in range(nbl):
-            integrand_6d[i, i, ...] = integrand_5d[i, ...] / self.ells_proj_g[i]
+            integrand_6d[i, i, ...] = integrand_5d[i, ...] / (
+                self.ells_proj_g[i] ** 2 * dlnell
+            )
 
         # prefactors
         integrand_6d /= 2.0 * np.pi * self.amax
 
         # integrate
+        # N_pad is essential for high-order Bessels (mu/nu >= 2, i.e. gt/xim): the
+        # integrand ell^2 C(ell) does not decay at the ell grid boundary, so without
+        # zero-padding the FFTLog rings and overestimates the small-theta result. 
+        # Padding converges by ~nbl points (extrapolation cannot be
+        # used here because the diagonal-only input has off-diagonal zeros).
         integral_6d = proj_cov_2d_fftlog(
             cov_hs_ell1ell2_in=integrand_6d,
             ells_proj=self.ells_proj_g,
@@ -944,6 +972,7 @@ class CovRealSpace(CovarianceProjector):
             theta_centers=self.theta_centers_fine,
             mu=mu,
             nu=nu,
+            N_pad=nbl,
         )
 
         return integral_6d
@@ -1331,6 +1360,7 @@ class CovRealSpace(CovarianceProjector):
                     theta_centers=self.theta_centers_fine,
                     mu=mu,
                     nu=nu,
+                    N_pad=len(self.ells_proj_ng),
                 )
 
             # reshape to 6d and symmetrize if needed

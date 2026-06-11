@@ -1782,14 +1782,28 @@ if cfg['OneCovariance']['compare_against_oc']:
         )
 
     for term in _cov_dict:
-        if term in ['ssc', 'cng']:
-            int_method = cfg['precision']['proj_nongauss_integration_method']
+        # Skip integration method reporting for harmonic space (no projection)
+        if obs_space == 'harmonic':
+            title = f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]} -'
         else:
-            int_method = cfg['precision']['proj_gauss_integration_method']
+            if term in ['ssc', 'cng']:
+                int_method = cfg['precision']['proj_nongauss_integration_method']
+            elif term == 'tot':
+                int_method = (
+                    cfg['precision']['proj_nongauss_integration_method']
+                    if (
+                        cfg['precision']['proj_nongauss_integration_method']
+                        == cfg['precision']['proj_gauss_integration_method']
+                    )
+                    else 'mixed'
+                )
+            else:
+                int_method = cfg['precision']['proj_gauss_integration_method']
 
-        title = (
-            f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, int {int_method} -'
-        )
+            title = (
+                f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, '
+                f'int {int_method} -'
+            )
 
         # ! sanity check: mat and list formats must coincide for OC
         # * THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)

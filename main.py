@@ -1769,96 +1769,14 @@ if obs_space != 'harmonic':
                     probe_pair
                 ][dim]
 
-
-# ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
-# ! to HS, solve it)
-# ! moreover, some of the sub-blocks are transposed.
-
-if cfg['OneCovariance']['compare_against_oc']:
-    oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
-    if 'OneCovariance' in cov_terms_and_codes.values():
-        warnings.warn(
-            'You are likely comparing OneCovariance against itself', stacklevel=2
-        )
-
-    for term in _cov_dict:
-        title = (
-            f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, '
-            f'int {cfg["precision"]["proj_nongauss_integration_method"]} -'
-        )
-
-        # ! sanity check: mat and list formats must coincide for OC
-        # * THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
-        if obs_space != 'real':
-            if term not in ['sva', 'sn', 'mix']:
-                np.testing.assert_allclose(
-                    cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d'],
-                    cov_oc_obj.cov_dict[term]['3x2pt']['2d'],
-                    atol=0,
-                    rtol=1e-3,
-                    err_msg=(
-                        'mat and list formats for OC do not coincide'
-                        f' for term {term} in 3x2pt 2d block'
-                    ),
-                )
-
-            # for good measure, also check that the sum of the split Gaussian terms
-            # coincides with G
-            if (
-                'sva' in cov_oc_obj.cov_dict
-                and 'sn' in cov_oc_obj.cov_dict
-                and 'mix' in cov_oc_obj.cov_dict
-            ):
-                np.testing.assert_allclose(
-                    cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d'],
-                    cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
-                    + cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
-                    + cov_oc_obj.cov_dict['mix']['3x2pt']['2d'],
-                    atol=0,
-                    rtol=1e-3,
-                )
-
-        # ! now compare SB and OC
-        if oc_fmt == 'list':
-            cov_a = _cov_dict[term]['3x2pt']['2d']
-            cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
-            sl.compare_2d_covs(
-                cov_a,
-                cov_b,
-                'SB',
-                'OC',
-                title=title,
-                diff_threshold=10,
-                compare_cov_2d=True,
-                compare_corr_2d=False,
-                compare_diag=True,
-                compare_flat=True,
-                compare_spectrum=False,
-            )
-
-        elif oc_fmt == 'mat':
-            if term not in ['sva', 'sn', 'mix']:
-                cov_a = _cov_dict[term]['3x2pt']['2d']
-                cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
-                sl.compare_2d_covs(
-                    cov_a,
-                    cov_b,
-                    'SB',
-                    'OC mat fmt',
-                    title=title,
-                    diff_threshold=10,
-                    compare_cov_2d=True,
-                    compare_corr_2d=False,
-                    compare_diag=True,
-                    compare_flat=True,
-                    compare_spectrum=True,
-                )
-
-        else:
-            raise ValueError(
-                f'Unknown oc_format_to_compare_against: {oc_fmt}. '
-                'Should be either "list" or "mat".'
-            )
+# ! compare SB and OC, if requested
+oc_interface.compare_sb_and_oc(
+    cov_sb_dict=_cov_dict,
+    cov_oc_obj=cov_oc_obj,
+    cfg=cfg,
+    pvt_cfg=pvt_cfg,
+    cov_terms_and_codes=cov_terms_and_codes,
+)
 
 # ! save 2D covs (for each term) in npz archive
 covs_3x2pt_2d_tosave_dict = {}

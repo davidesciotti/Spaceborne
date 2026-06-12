@@ -33,6 +33,109 @@ from spaceborne import sb_lib as sl
 _UNSET = object()
 
 
+def compare_sb_and_oc(
+    cov_sb_dict: dict,
+    cov_oc_obj: object,
+    cfg: dict,
+    pvt_cfg: dict,
+    cov_terms_and_codes: dict,
+) -> None:
+    """Compares the covariance matrices computed by Spaceborne and OneCovariance."""
+    # ! important note: for OC RS, list fmt seems to be missing some blocks (problem
+    # ! common to HS, solve it)
+    # ! moreover, some of the sub-blocks are transposed.
+
+    obs_space = cfg['probe_selection']['space']
+    oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
+
+    if not cfg['OneCovariance']['compare_against_oc']:
+        return
+
+    if 'OneCovariance' in cov_terms_and_codes.values():
+        warnings.warn(
+            'You are likely comparing OneCovariance against itself', stacklevel=2
+        )
+
+    for term in cov_sb_dict:
+        # plot title
+        title = (
+            f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, '
+            f'int {cfg["precision"]["proj_nongauss_integration_method"]} -'
+        )
+
+        # ! sanity check: mat and list formats must coincide for OC
+        # * THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
+        if obs_space != 'real' and cfg['OneCovariance']['process_cov_from_mat_file']:
+            if term not in ['sva', 'sn', 'mix']:
+                np.testing.assert_allclose(
+                    cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d'],
+                    cov_oc_obj.cov_dict[term]['3x2pt']['2d'],
+                    atol=0,
+                    rtol=1e-3,
+                    err_msg=(
+                        'mat and list formats for OC do not coincide'
+                        f' for term {term} in 3x2pt 2d block'
+                    ),
+                )
+
+            # ! sanity check: cov_dict_matfmt "g" == list_fmt "sva" + "sn" + "mix"
+            if (
+                'sva' in cov_oc_obj.cov_dict
+                and 'sn' in cov_oc_obj.cov_dict
+                and 'mix' in cov_oc_obj.cov_dict
+            ) and cfg['OneCovariance']['process_cov_from_mat_file']:
+                np.testing.assert_allclose(
+                    cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d'],
+                    cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
+                    + cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
+                    + cov_oc_obj.cov_dict['mix']['3x2pt']['2d'],
+                    atol=0,
+                    rtol=1e-3,
+                )
+
+        # ! now compare SB and OC
+        if oc_fmt == 'list':
+            cov_a = cov_sb_dict[term]['3x2pt']['2d']
+            cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+            sl.compare_2d_covs(
+                cov_a,
+                cov_b,
+                'SB',
+                'OC',
+                title=title,
+                diff_threshold=10,
+                compare_cov_2d=True,
+                compare_corr_2d=False,
+                compare_diag=True,
+                compare_flat=True,
+                compare_spectrum=False,
+            )
+
+        elif oc_fmt == 'mat':
+            if term not in ['sva', 'sn', 'mix']:
+                cov_a = cov_sb_dict[term]['3x2pt']['2d']
+                cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
+                sl.compare_2d_covs(
+                    cov_a,
+                    cov_b,
+                    'SB',
+                    'OC mat fmt',
+                    title=title,
+                    diff_threshold=10,
+                    compare_cov_2d=True,
+                    compare_corr_2d=False,
+                    compare_diag=True,
+                    compare_flat=True,
+                    compare_spectrum=True,
+                )
+
+        else:
+            raise ValueError(
+                f'Unknown oc_format_to_compare_against: {oc_fmt}. '
+                'Should be either "list" or "mat".'
+            )
+
+
 def reorder_block_cov(
     cov: np.ndarray, block_sizes: dict, from_order, to_order
 ) -> np.ndarray:

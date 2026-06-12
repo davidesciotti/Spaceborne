@@ -130,7 +130,7 @@ class TwoSphBessel:
         c_window_array1 = c_window(m, int(self.c_window_width * self.N1 // 2.0))
         c_window_array2 = c_window(n, int(self.c_window_width * self.N2 // 2.0))
         c_mn_filter = ((c_mn * c_window_array2).T * c_window_array1).T
-        return m, n, c_mn
+        return m, n, c_mn_filter
 
     def two_sph_bessel(self, ell1, ell2):
         r"""

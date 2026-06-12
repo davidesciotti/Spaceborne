@@ -123,7 +123,6 @@ class CCLInterface:
             'pocinofit': wf_cl_lib.b_of_z_fs1_pocinofit,
             'fs2_fit': wf_cl_lib.b_of_z_fs2_fit,
         }
-        # self.check_specs()   # prolly I don't need these ingredients at all!
 
         # initialize halo model
         self.mass_def = getattr(ccl.halos, halo_model_dict['mass_def'])
@@ -161,15 +160,8 @@ class CCLInterface:
         self.cl_gl_3d: np.ndarray = _UNSET
         self.cl_gg_3d: np.ndarray = _UNSET
         self.cl_3x2pt_5d: np.ndarray = _UNSET
-
-    def check_specs(self):
-        assert self.probe in ['LL', 'GG', '3x2pt'], (
-            'probe must be either LL, GG, or 3x2pt'
-        )
-        assert self.which_ng_cov in ['SSC', 'cNG'], (
-            'which_ng_cov must be either SSC or cNG'
-        )
-        assert self.has_rsd is False, 'RSD not validated yet...'
+        self.sigma2_b_tuple: tuple = _UNSET
+        self.separable_growth: bool = _UNSET
 
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):
         k_grid_Pk, z_grid_Pk, pk_mm_2d = sl.pk_vinc_file_to_2d_npy(
@@ -635,7 +627,7 @@ class CCLInterface:
                 'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
                 'lk_arr': self.logn_k_grid_tkka_cNG,
                 'a_arr': self.a_grid_tkka_cNG,
-                'separable_growth': False,
+                'separable_growth': self.separable_growth,
             }
 
         else:

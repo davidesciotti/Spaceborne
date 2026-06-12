@@ -90,8 +90,6 @@ def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
     plt.suptitle('Galaxy kernels\n(w/o galaxy bias)')
     plt.tight_layout()
     plt.legend()
-    plt.show()
-    
 
     wf_ia_contribution_arr = ccl_obj.wf_ia_contribution_arr
 
@@ -125,10 +123,17 @@ def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
     plt.ylabel(r'$W_i^{SHE}(z)$')
     plt.suptitle('Lensing kernels')
     plt.tight_layout()
-    plt.show()
 
 
-def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None, cov_6d=None):
+def cls_triangle_plot(
+    ells_dict: dict,
+    cls_dict: dict,
+    is_auto: bool,
+    zbins: int,
+    twoellplusone: bool,
+    suptitle=None,
+    cov_6d=None,
+):
     fig, ax = plt.subplots(zbins, zbins, figsize=(7, 7), sharex=True, sharey=True)
 
     for zi in range(zbins):
@@ -138,12 +143,16 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None, cov_6d
                 continue
 
             for label, (ells, cls) in zip(
-                ells_dict.keys(), zip(ells_dict.values(), cls_dict.values())
+                ells_dict.keys(),
+                zip(ells_dict.values(), cls_dict.values(), strict=True),
+                strict=True,
             ):
+                prefac = 2 * ells + 1 if twoellplusone else 1.0
+
                 if cov_6d is None:
                     ax[zi, zj].plot(
                         ells,
-                        cls[:, zi, zj],
+                        prefac * cls[:, zi, zj],
                         label=label if (zi == zbins - 1 and zj == zbins - 1) else None,
                         alpha=1,
                         ls='--' if label == 'input' else '-',
@@ -153,7 +162,7 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None, cov_6d
                 else:
                     ax[zi, zj].errorbar(
                         ells,
-                        cls[:, zi, zj],
+                        prefac * cls[:, zi, zj],
                         yerr=np.sqrt(np.diag(cov_6d[:, :, zi, zj, zi, zj])),
                         label=label if (zi == zbins - 1 and zj == zbins - 1) else None,
                         alpha=1,
@@ -181,16 +190,49 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None, cov_6d
     )
 
     # Axis limits
-    max_cl = np.max([cls_dict[key] for key in cls_dict])
-    min_cl = np.min([cls_dict[key] for key in cls_dict])
-    max_ell = np.max([ells_dict[key] for key in ells_dict])
-    min_ell = (
-        5
-        if np.min([ells_dict[key] for key in ells_dict]) > 5
-        else np.min([ells_dict[key] for key in cls_dict])
-    )  # this is admittedly a bit arbitrary
-    ax[0, 0].set_ylim(min_cl - np.abs(5 * min_cl), 5 * max_cl)
-    ax[0, 0].set_xlim(min_ell, 2 * max_ell)
+    # max_cl = np.max([cls_dict[key] for key in cls_dict])
+    # min_cl = np.min([cls_dict[key] for key in cls_dict])
+    # max_ell = np.max([ells_dict[key] for key in ells_dict])
+    # min_ell = (
+    #     5
+    #     if np.min([ells_dict[key] for key in ells_dict]) > 5
+    #     else np.min([ells_dict[key] for key in cls_dict])
+    # )  # this is admittedly a bit arbitrary
+    # ax[0, 0].set_ylim(min_cl - np.abs(5 * min_cl), 5 * max_cl)
+    # ax[0, 0].set_xlim(min_ell, 2 * max_ell)
+
+    all_plotted = []
+    for label in ells_dict.keys():
+        ells = ells_dict[label]
+        cls = cls_dict[label]
+        prefac = 2 * ells + 1 if twoellplusone else 1.0
+        # Loop over all zi, zj (including only visible panels if is_auto)
+        for zi in range(zbins):
+            for zj in range(zbins):
+                if is_auto and zj > zi:
+                    continue
+                all_plotted.append(prefac * cls[:, zi, zj])
+    all_plotted = np.concatenate([arr.flatten() for arr in all_plotted])
+    max_cl = np.max(all_plotted)
+    min_cl = np.min(all_plotted)
+    ax[0, 0].set_ylim(
+        min_cl - 0.1 * (max_cl - min_cl), max_cl + 0.1 * (max_cl - min_cl)
+    )
+
+    for zi in range(zbins):
+        for zj in range(zbins):
+            if not (is_auto and zj > zi):
+                ax[zi, zj].autoscale(False)
+
+    for zi in range(zbins):
+        for zj in range(zbins):
+            if not (is_auto and zj > zi):
+                ax[zi, zj].set_yscale(
+                    'symlog',
+                    linthresh=1e-10,
+                    linscale=0.45,
+                    subs=np.arange(0.1, 1.0, 0.1),
+                )
 
     fig.subplots_adjust(
         left=0.0, bottom=0.0, right=1.0, top=1.0, wspace=0.0, hspace=0.0
@@ -206,6 +248,70 @@ def cls_triangle_plot(ells_dict, cls_dict, is_auto, zbins, suptitle=None, cov_6d
         fig.suptitle(suptitle)
 
     return fig, ax
+
+
+def cls_triangle_plot_v2(cl_dict, zbins, is_auto, weights=None):
+    """
+    Function adapted from https://heracles.readthedocs.io/stable/examples/example.html
+    """
+
+    # Find max y value across all cls for setting y-axis limits
+    cl_list = [cl_dict[key]['cls'] for key in cl_dict]
+    max_y = 1.5 * np.max([np.max(cl) for cl in cl_list])
+
+    # Find min and max y values across all ells for setting x-axis limits
+    ell_list = [cl_dict[key]['ells'] for key in cl_dict]
+    max_x = 3 * np.max([np.max(ell) for ell in ell_list])
+    min_x = 1 / 3 * np.min([np.min(ell) for ell in ell_list])
+
+    fig, ax = plt.subplots(
+        zbins, zbins, figsize=(zbins, zbins), sharex=True, sharey=True
+    )
+
+    for key in cl_dict:
+        ells = cl_dict[key]['ells']
+        cl_3d = cl_dict[key]['cls']
+        ls = cl_dict[key]['ls']
+
+        prefactor = 2 * ells + 1 if weights == 'twoellplusone' else 1.0
+
+        if is_auto:
+            for zi in range(zbins):
+                for zj in range(zi):
+                    ax[zj, zi].axis('off')
+                for zj in range(zi, zbins):
+                    ax[zj, zi].plot(
+                        ells, prefactor * cl_3d[:, zi, zj], label=key, ls=ls
+                    )
+                    ax[zj, zi].axhline(0.0, c='k', zorder=-1)
+                    ax[zj, zi].tick_params(axis='both', which='both', direction='in')
+        else:
+            for zi in range(zbins):
+                for zj in range(zbins):
+                    ax[zj, zi].plot(
+                        ells, prefactor * cl_3d[:, zi, zj], label=key, ls=ls
+                    )
+                    ax[zj, zi].axhline(0.0, c='k', zorder=-1)
+                    ax[zj, zi].tick_params(axis='both', which='both', direction='in')
+
+    ax[0, 0].set_xscale('log')
+    ax[0, 0].set_xlim(min_x, max_x)
+    ax[0, 0].xaxis.get_major_locator().set_params(numticks=99)
+    ax[0, 0].xaxis.get_minor_locator().set_params(
+        numticks=99, subs=np.arange(0.1, 1.0, 0.1)
+    )
+    # ax[0, 0].set_yscale(
+    # 'symlog', linthresh=1e-7, linscale=0.45, subs=np.arange(0.1, 1.0, 0.1)
+    # )
+    # ax[0, 0].set_ylim(-2e-7, max_y)
+    # ax[0, 0].set_yscale('log')
+    ax[-1, -1].legend(loc='lower right', bbox_to_anchor=(1, -1))
+
+    fig.subplots_adjust(
+        left=0.0, bottom=0.0, right=1.0, top=1.0, wspace=0.0, hspace=0.0
+    )
+    fig.supxlabel(r'$\ell$', y=-0.05, va='top')
+    fig.supylabel(r'$C_\ell$ diff [%]', x=-0.1, ha='right')
 
 
 def bar_plot(

@@ -57,19 +57,20 @@ halo_model:
 OneCovariance:
   # Path to Python executable in OneCovariance conda environment
   # Update this to match your system's conda installation
-  path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
+  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: True
-  new_run: True
+  compare_against_oc: False # In this case, the output cov (2D/6D) is not overwritten by OC at all!
+  new_run: False
   oc_format_to_compare_against: list
+  process_cov_from_mat_file: True
   process_cov_from_mat_file: True
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: harmonic # Type: str.
+  space: real # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -231,7 +232,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -398,8 +399,8 @@ precision:
   # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
   # performed with simpson integration.
-  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin']
-  proj_nongauss_integration_method: simps # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
+  proj_gauss_integration_method: FFTLog # Type: str. Options: ['simps', 'levin', 'FFTLog']
+  proj_nongauss_integration_method: FFTLog # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.
@@ -432,6 +433,11 @@ precision:
     # Type: dict | None
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
+
+  # (from CCL docs): whether a separable growth function approximation can be used to 
+  # calculate the isotropized power spectrum. 
+  # Set to True for lower accuracy and (much) faster computation
+  separable_growth: True # Type: bool
 
 misc:
   # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might

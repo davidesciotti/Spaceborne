@@ -27,6 +27,7 @@ dependencies:
   - gsl
 
   - pip:
+      - pytest # required to run the test suite (CI and local)
       - jax
       - euclidlib>=2026.4
         # optional dependency, only used to read the n(z) and C(l)
@@ -39,6 +40,7 @@ dependencies:
       - joblib
       - tqdm
       - pyfiglet # optional dependency, for the ASCII art
+
 
 # COSEBIs covariance needs cloelib as an additional dependency, which in turn uses pylevin.
 # The installation of pylevin is included in this env file, but

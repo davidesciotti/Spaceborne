@@ -261,7 +261,6 @@ def plot_cls():
             + axi.get_yticklabels()
         ):
             item.set_fontsize(16)
-    plt.show()
 
 
 # ! ====================================================================================
@@ -332,12 +331,22 @@ if 'cNG_code' not in cfg['covariance']:
 
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
-    cfg['OneCovariance']['path_to_oc_executable'] = (
-        '/home/cosmo/davide.sciotti/data/OneCovariance/covariance.py'
-    )
-    cfg['OneCovariance']['consistency_checks'] = False
-    cfg['OneCovariance']['oc_output_filename'] = 'cov_oc'
-    cfg['OneCovariance']['compare_against_oc'] = False
+
+cfg['OneCovariance']['path_to_oc_env'] = cfg['OneCovariance'].get(
+    'path_to_oc_env', os.environ.get('SPACEBORNE_OC_PYTHON', sys.executable)
+)
+cfg['OneCovariance']['path_to_oc_executable'] = cfg['OneCovariance'].get(
+    'path_to_oc_executable', os.environ.get('SPACEBORNE_OC_EXECUTABLE', '')
+)
+cfg['OneCovariance']['consistency_checks'] = cfg['OneCovariance'].get(
+    'consistency_checks', False
+)
+cfg['OneCovariance']['oc_output_filename'] = cfg['OneCovariance'].get(
+    'oc_output_filename', 'cov_oc'
+)
+cfg['OneCovariance']['compare_against_oc'] = cfg['OneCovariance'].get(
+    'compare_against_oc', False
+)
 
 if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
     cfg['misc']['save_output_as_benchmark'] = False
@@ -509,12 +518,6 @@ if 'cng' in req_terms or 'ssc' in req_terms:
 if req_terms == []:
     raise ValueError('No covariance terms have been selected!')
 
-_req_probe_combs_2d = [
-    sl.split_probe_name(probe, space=obs_space) for probe in req_probe_combs_2d
-]
-_req_probe_combs_2d.append('3x2pt')
-dims = ['6d', '4d', '2d']
-cov_dict = cd.create_cov_dict(req_terms, _req_probe_combs_2d, dims=dims)
 
 # TODO I can probably delete these?
 compute_oc_g, compute_oc_ssc, compute_oc_cng = False, False, False
@@ -612,6 +615,7 @@ ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.output_path = output_path
 ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+ccl_obj.separable_growth = cfg['precision']['separable_growth']
 
 # get ccl default a and k grids
 a_default_grid_ccl = ccl_obj.cosmo_ccl.get_pk_spline_a()
@@ -1553,7 +1557,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             f' Got {cfg["covariance"]["which_pk_responses"]}.'
         )
 
-    # ! prepare integrands (d2CAB_dVddeltab) and volume element
+    # ! prepare integrands (d2Cxx_dVddeltab)
     # the finer grid is needed for the non-Gaussian covariance projection
     if obs_space == 'harmonic':
         ell_grid = ell_obj.ells_3x2pt
@@ -1561,6 +1565,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     elif obs_space in ['real', 'cosebis']:
         ell_grid = ell_obj.ells_3x2pt_proj_ng
 
+    # compute responses on k_limber and the finer z_grid
     dPmm_ddeltab_klimb, dPgm_ddeltab_klimb, dPgg_ddeltab_klimb = (
         resp_obj.dPxx_ddeltab_klimber(
             dPmm_ddeltab=dPmm_ddeltab,
@@ -1710,7 +1715,6 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
 
         print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
-            print(f'Computing term {_term}...')
             cov_rs_obj.compute_rs_cov_term_probe_6d(
                 cov_hs_ng_dict=cov_hs_ng_dict,
                 probe_abcd=_probe,
@@ -1869,94 +1873,14 @@ if obs_space != 'harmonic':
                     probe_pair
                 ][dim]
 
-
-# ! important note: for OC RS, list fmt seems to be missing some blocks (problem common
-# ! to HS, solve it)
-# ! moreover, some of the sub-blocks are transposed.
-
-if cfg['OneCovariance']['compare_against_oc']:
-    oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
-    if 'OneCovariance' in cov_terms_and_codes.values():
-        warnings.warn(
-            'You are likely comparing OneCovariance against itself', stacklevel=2
-        )
-
-    for term in _cov_dict:
-        title = (
-            f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, '
-            f'int {cfg["precision"]["proj_nongauss_integration_method"]} -'
-        )
-
-        # ! sanity check: mat and list formats must coincide for OC
-        # * THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
-        if obs_space != 'real':
-            if term not in ['sva', 'sn', 'mix']:
-                np.testing.assert_allclose(
-                    cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d'],
-                    cov_oc_obj.cov_dict[term]['3x2pt']['2d'],
-                    atol=0,
-                    rtol=1e-4,
-                )
-
-            # for good measure, also check that the sum of the split Gaussian terms
-            # coincides with G
-            if (
-                'sva' in cov_oc_obj.cov_dict
-                and 'sn' in cov_oc_obj.cov_dict
-                and 'mix' in cov_oc_obj.cov_dict
-            ):
-                np.testing.assert_allclose(
-                    cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d'],
-                    cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
-                    + cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
-                    + cov_oc_obj.cov_dict['mix']['3x2pt']['2d'],
-                    atol=0,
-                    rtol=1e-4,
-                )
-
-        # ! now compare SB and OC
-        if oc_fmt == 'list':
-            cov_a = _cov_dict[term]['3x2pt']['2d']
-            cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
-
-            sl.compare_2d_covs(
-                cov_a,
-                cov_b,
-                'SB',
-                'OC',
-                title=title,
-                diff_threshold=10,
-                compare_cov_2d=True,
-                compare_corr_2d=False,
-                compare_diag=True,
-                compare_flat=True,
-                compare_spectrum=False,
-            )
-
-        elif oc_fmt == 'mat':
-            if term not in ['sva', 'sn', 'mix']:
-                cov_a = _cov_dict[term]['3x2pt']['2d']
-                cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
-
-                sl.compare_2d_covs(
-                    cov_a,
-                    cov_b,
-                    'SB',
-                    'OC mat fmt',
-                    title=title,
-                    diff_threshold=10,
-                    compare_cov_2d=True,
-                    compare_corr_2d=False,
-                    compare_diag=True,
-                    compare_flat=True,
-                    compare_spectrum=True,
-                )
-
-        else:
-            raise ValueError(
-                f'Unknown oc_format_to_compare_against: {oc_fmt}. '
-                'Should be either "list" or "mat".'
-            )
+# ! compare SB and OC, if requested
+oc_interface.compare_sb_and_oc(
+    cov_sb_dict=_cov_dict,
+    cov_oc_obj=cov_oc_obj,
+    cfg=cfg,
+    pvt_cfg=pvt_cfg,
+    cov_terms_and_codes=cov_terms_and_codes,
+)
 
 # ! save 2D covs (for each term) in npz archive
 covs_3x2pt_2d_tosave_dict = {}
@@ -2118,8 +2042,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
 # save cfg file
 run_cfg = deepcopy(cfg)
 for key in ['OneCovariance']:
-    if key in run_cfg['covariance']:
-        del run_cfg['covariance'][key]
+    if key in run_cfg:
+        del run_cfg[key]
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.safe_dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
 

@@ -41,13 +41,34 @@ def save_configs_to_yaml(configs: list, filenames: list) -> None:
             yaml.dump(config, f, default_flow_style=False)
 
 
-def run_spaceborne(yaml_files: list[str], sb_root_path: str) -> None:
-    """Run Spaceborne for a list of YAML config paths."""
+def run_spaceborne(
+    yaml_files: list[str], sb_root_path: str, continue_on_error: bool
+) -> None:
+    """Run Spaceborne for a list of YAML config paths.
+
+    If continue_on_error is True, a failing job won't stop the run; the
+    failed configs are collected and printed together at the end.
+    """
     original_dir = os.getcwd()
     os.chdir(sb_root_path)
+    failed: list[str] = []
+
     try:
         for path in yaml_files:
             print(f'\n🧮🧮🧮 Running job with config:\n{path}')
-            subprocess.run(['python', 'main.py', '--config', path], check=True)
+            try:
+                subprocess.run(['python', 'main.py', '--config', path], check=True)
+            except subprocess.CalledProcessError as exc:
+                if not continue_on_error:
+                    raise
+                print(
+                    f'\n❌ Job failed (exit code {exc.returncode}) for config:\n{path}'
+                )
+                failed.append(path)
     finally:
         os.chdir(original_dir)
+
+    if failed:
+        print(f'\n❌❌❌ {len(failed)} config(s) failed:')
+        for path in failed:
+            print(f'  - {path}')

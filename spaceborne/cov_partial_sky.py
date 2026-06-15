@@ -1657,7 +1657,24 @@ class CovNaMaster:
         if self.cfg['precision']['use_iNKA']:
             # TODO XXX this could be made more efficient by only looping over the auto-combs
             # TODO XXX for ll and gg
+            # The iNKA approximates the true Cl as couple_cell(Cl) / fsky. The fsky
+            # here must be the *effective* sky fraction of the mask pair that actually
+            # produced the coupling, i.e. mean(w_a * w_b) of the masks used to build
+            # the workspaces. For a binary footprint w^2 = w, so this equals mean(w)
+            # (= fsky_ab_dict); but for fractional weight maps mean(w^2) != mean(w),
+            # so the footprint-based fsky_ab_dict mis-normalises every weight-map field
+            # leg by mean(w_a w_b) / mean(footprint^2). We therefore use the per-bin-pair
+            # mean(w_a * w_b) of the actual weight maps. Field pairing (see build_wsp):
+            # w00 = gg(zi) x gg(zj), w02 = gg(zi) x ll(zj), w22 = ll(zi) x ll(zj).
             for zi, zj in self.zij_cross_combs:
+                w_gg_zi = _weight_per_bin(self.weight_maps_gg, zi)
+                w_gg_zj = _weight_per_bin(self.weight_maps_gg, zj)
+                w_ll_zi = _weight_per_bin(self.weight_maps_ll, zi)
+                w_ll_zj = _weight_per_bin(self.weight_maps_ll, zj)
+                fsky_gg_zij = float(np.mean(w_gg_zi * w_gg_zj))
+                fsky_gl_zij = float(np.mean(w_gg_zi * w_ll_zj))
+                fsky_ll_zij = float(np.mean(w_ll_zi * w_ll_zj))
+
                 list_gg = [self.cl_3x2pt_unb_5d[1, 1, :, zi, zj]]
                 list_gl = [
                     self.cl_3x2pt_unb_5d[1, 0, :, zi, zj],
@@ -1670,16 +1687,13 @@ class CovNaMaster:
                     np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
                 ]
                 cl_gg_4covnmt[:, zi, zj] = (
-                    self.w00_dict[zi, zj].couple_cell(list_gg)[0]
-                    / self.fsky_ab_dict['GG']
+                    self.w00_dict[zi, zj].couple_cell(list_gg)[0] / fsky_gg_zij
                 )
                 cl_gl_4covnmt[:, zi, zj] = (
-                    self.w02_dict[zi, zj].couple_cell(list_gl)[0]
-                    / self.fsky_ab_dict['GL']
+                    self.w02_dict[zi, zj].couple_cell(list_gl)[0] / fsky_gl_zij
                 )
                 cl_ll_4covnmt[:, zi, zj] = (
-                    self.w22_dict[zi, zj].couple_cell(list_ll)[0]
-                    / self.fsky_ab_dict['LL']
+                    self.w22_dict[zi, zj].couple_cell(list_ll)[0] / fsky_ll_zij
                 )
 
         # add noise to spectra to compute NMT cov

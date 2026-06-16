@@ -10,7 +10,10 @@
 # thinkpad: /_home/davide/Documenti/Lavoro/Programmi
 # mac: /_Users/davidesciotti/Documents/Work/Code
 # melodie: /_home/cosmo/davide.sciotti/data
-# mileva: /_data/sciotti
+# mileva: /_data/sciotti/DATA
+
+# mac: path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+# mileva: path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
 
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
@@ -57,20 +60,19 @@ halo_model:
 OneCovariance:
   # Path to Python executable in OneCovariance conda environment
   # Update this to match your system's conda installation
-  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+  path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: False # In this case, the output cov (2D/6D) is not overwritten by OC at all!
-  new_run: False
+  compare_against_oc: True # In this case, the output cov (2D/6D) is not overwritten by OC at all!
+  new_run: True
   oc_format_to_compare_against: list
-  process_cov_from_mat_file: True
   process_cov_from_mat_file: True
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: real # Type: str.
+  space: harmonic # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -92,8 +94,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
-  nz_lenses_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
+  nz_sources_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
+  nz_lenses_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -129,7 +131,7 @@ binning:
   # with `ell` the ell bin center, `delta_ell` its width,
   # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
   # The file can be in .txt, .dat or .ascii format.
-  ell_bins_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/ell_values_3x2pt.txt
+  ell_bins_filename: ../DATA/Spaceborne_jobs_IO/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 5 # Type: float | int.
@@ -155,9 +157,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -174,8 +176,8 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
 
   # Interpolation methods for the galaxy and magnification bias tables.
   # This should be set to 'linear' or 'nearest' for step-like, or in general discontinuous,
@@ -215,11 +217,11 @@ mask:
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
   LL:
     geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
-    footprint_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/mask_polar_cap_nside2048.fits # Type: str.
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
   GG:
     geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
-    footprint_filename: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/input/mask_polar_cap_nside2048.fits # Type: str.
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_polar_cap_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
 
   # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
@@ -250,7 +252,7 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: Knox # Type: str
+  partial_sky_method: NaMaster # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
@@ -258,7 +260,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: True # Type: bool
+  split_gaussian_cov: False # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -464,5 +466,5 @@ misc:
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: /data/sciotti/DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

@@ -2327,9 +2327,10 @@ if cfg['misc']['save_figs']:
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(
-            os.path.join(output_path_figs, f'fig_{i:03d}.pdf'),
+            os.path.join(output_path_figs, f'fig_{i:03d}.png'),
             bbox_inches='tight',
             pad_inches=0.1,
+            dpi=300,
         )
     print(f'Figures saved in {output_path_figs}\n')
 

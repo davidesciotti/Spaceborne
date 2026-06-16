@@ -778,39 +778,15 @@ def compute_ensemble_covariance_parallel(
 def sim_cls_to_ensemble_cov(cov_dict, sim_cl_GG, sim_cl_GL, sim_cl_LL, nbl, zbins):
 
     zijkl_combinations = list(itertools.product(range(zbins), repeat=4))
+    sim_cl_map = {'LL': sim_cl_LL, 'GL': sim_cl_GL, 'GG': sim_cl_GG}
+    kwargs = {'rowvar': False, 'bias': False}
 
-    # TODO only loop over required probes!
-    for zi, zj, zk, zl in zijkl_combinations:
-        # you could also cut the mixed cov terms,
-        # but for cross-redshifts it becomes a bit tricky
-        kwargs = {'rowvar': False, 'bias': False}
-        cov_dict['g']['LL', 'LL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_LL[:, :, zi, zj], sim_cl_LL[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
-        cov_dict['g']['LL', 'GL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_LL[:, :, zi, zj], sim_cl_GL[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
-        cov_dict['g']['LL', 'GG']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_LL[:, :, zi, zj], sim_cl_GG[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
-        cov_dict['g']['GL', 'LL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_GL[:, :, zi, zj], sim_cl_LL[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
-        cov_dict['g']['GL', 'GL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_GL[:, :, zi, zj], sim_cl_GL[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
-        cov_dict['g']['GL', 'GG']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_GL[:, :, zi, zj], sim_cl_GG[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
-        cov_dict['g']['GG', 'LL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_GG[:, :, zi, zj], sim_cl_LL[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
-        cov_dict['g']['GG', 'GL']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_GG[:, :, zi, zj], sim_cl_GL[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
-        cov_dict['g']['GG', 'GG']['6d'][:, :, zi, zj, zk, zl] = np.cov(
-            sim_cl_GG[:, :, zi, zj], sim_cl_GG[:, :, zk, zl], **kwargs
-        )[:nbl, nbl:]
+    for probe_ab, probe_cd in cov_dict['g']:
+        cl_ab, cl_cd = sim_cl_map[probe_ab], sim_cl_map[probe_cd]
+        for zi, zj, zk, zl in zijkl_combinations:
+            cov_dict['g'][probe_ab, probe_cd]['6d'][:, :, zi, zj, zk, zl] = np.cov(
+                cl_ab[:, :, zi, zj], cl_cd[:, :, zk, zl], **kwargs
+            )[:nbl, nbl:]
 
 
 def _compute_one_realization(
@@ -1767,6 +1743,15 @@ class CovNaMaster:
                 self.cov_dict['g'][probe_2tpl]['4d'] = None
 
         elif self.cfg['covariance']['partial_sky_method'] == 'ensemble':
+            len_dv = (
+                self.zbins**2 + (self.zbins + 1) // 2 * 2
+            ) * self.ell_obj.nbl_3x2pt
+            print(
+                'Computing ensemble covariance from '
+                f'{self.cfg["ensemble_covariance"]["nreal"]} healpy Gaussian '
+                f'realizations. The datevector length is {len_dv}'
+            )
+
             cl_tt_4covsim = (
                 self.cl_3x2pt_unb_5d[1, 1, :, :, :]
                 + self.noise_3x2pt_unb_5d[1, 1, :, :, :]

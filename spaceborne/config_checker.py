@@ -640,22 +640,26 @@ class SpaceborneConfigChecker:
                 'Namaster and ensemble covariances'
             )
 
+        if self.cfg['covariance']['partial_sky_method'] == 'ensemble':
+            assert self.cfg['covariance']['G'], (
+                'The ensemble method for the partial-sky Gaussian covariance '
+                'requires the Gaussian term to be computed'
+            )
+            assert self.cfg['probe_selection']['space'] == 'harmonic', (
+                'The ensemble Gaussian covariance '
+                'is only implemented for harmonic space'
+            )
+            assert (
+                self.cfg['probe_selection']['LL']
+                and self.cfg['probe_selection']['GL']
+                and self.cfg['probe_selection']['GG']
+            ), 'The ensemble Gaussian covariance is only implemented for the 3x2pt case'
+
     def check_probe_selection(self) -> None:
         allowed_keys = [
-            'space',
-            'LL',
-            'GL',
-            'GG',
-            'xip',
-            'xim',
-            'gt',
-            'w',
-            'En',
-            'Bn',
-            'Psigl',
-            'Psigg',
-            'cross_cov',
-        ]
+            'space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gt', 'w', 
+            'En', 'Bn', 'Psigl', 'Psigg', 'cross_cov',
+        ]  # fmt: skip
 
         for key in self.cfg['probe_selection']:
             assert key in allowed_keys, f'Probe selection key {key} is not valid. '

@@ -160,7 +160,6 @@ class CCLInterface:
         self.cl_gl_3d: np.ndarray = _UNSET
         self.cl_gg_3d: np.ndarray = _UNSET
         self.cl_3x2pt_5d: np.ndarray = _UNSET
-        self.sigma2_b_tuple: tuple = _UNSET
         self.separable_growth: bool = _UNSET
 
     def pk_obj_from_file(self, pk_filename, plot_pk_z0):

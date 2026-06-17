@@ -15,6 +15,7 @@ mix = mixed term
 import itertools
 import warnings
 from functools import partial
+from warnings import deprecated
 
 import numpy as np
 import pyccl as ccl
@@ -1031,6 +1032,7 @@ class CovRealSpace(CovarianceProjector):
 
         return cov_mix_rs_6d
 
+    @deprecated
     def cov_mix_fftlog(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, amax_abcd

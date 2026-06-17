@@ -16,7 +16,8 @@ def load_weight_map_fits(path: str) -> np.ndarray:
         raise FileNotFoundError(f'{path} does not exist.')
 
     extension = Path(path).suffix.lower()
-    assert extension == '.fits', 'Weight map file must be a .fits file'
+    if extension != '.fits':
+        raise ValueError(f'Weight map file must be a .fits file, got {extension}')
 
     print(f'\nLoading weight map file from {path}\n')
 

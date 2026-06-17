@@ -1053,7 +1053,6 @@ class OneCovarianceInterface:
         Cons:
             - Less maintainable than the bash call
         """
-        import sys
 
         sys.path.append(os.path.dirname(self.path_to_oc_executable))
         import platform

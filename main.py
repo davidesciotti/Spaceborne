@@ -841,6 +841,7 @@ mask_obj_gg.process()
 mask_obj_ll.plot_maps()
 mask_obj_gg.plot_maps()
 
+# TODO branch this should be moved somewhere else??
 import healpy as hp
 
 footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
@@ -2247,12 +2248,11 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
         # keys must be plain strings, not tuples
-        sigma2_b=sigma2_b_dict['LL', 'LL'] if compute_sb_ssc else np.array([]),
         **{f's2b_{"".join(k)}': v for k, v in sigma2_b_dict.items()},
         **_ell_dict,
-        **covs_totest_dict,
-        **covs_3x2pt_2d_tosave_dict,
-        **covs_6d_tosave_dict,  # TODO BRANCH prepend dict name as done above
+        **{f'covs_totest_{"".join(k)}': v for k, v in covs_totest_dict.items()},
+        **{f'cov_3x2pt_2d_{"".join(k)}': v for k, v in covs_3x2pt_2d_tosave_dict.items()},
+        **{f'cov_6d_{"".join(k)}': v for k, v in covs_6d_tosave_dict.items()},
         **misc_dict,
         metadata=metadata,
     )

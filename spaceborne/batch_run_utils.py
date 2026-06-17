@@ -5,6 +5,41 @@ from copy import deepcopy
 import yaml
 
 
+def create_paths(ROOT, job_name):
+    sb_root_path = f'{ROOT}/Spaceborne'
+    configs_path = f'{ROOT}/Spaceborne_jobs_src/{job_name}/generated_configs'
+    io_path = f'{ROOT}/DATA/Spaceborne_jobs_IO/{job_name}'
+    return {
+        'sb_root_path': sb_root_path,
+        'configs_path': configs_path,
+        'io_path': io_path,
+    }
+
+
+def assert_repo_branch(repo_path: str, expected_branch: str) -> None:
+    is_git_repo = subprocess.run(
+        ['git', '-C', repo_path, 'rev-parse', '--is-inside-work-tree'],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    if is_git_repo != 'true':
+        raise RuntimeError(f'{repo_path} is not a git repository')
+
+    current_branch = subprocess.run(
+        ['git', '-C', repo_path, 'rev-parse', '--abbrev-ref', 'HEAD'],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    if current_branch != expected_branch:
+        raise RuntimeError(
+            f'Repo at {repo_path} is on branch "{current_branch}", expected "{expected_branch}".'
+        )
+
+
 def generate_zipped_configs(base_config: dict, changes_list: list[dict]) -> list:
     """Apply changes to a base config and return the list of resulting configs."""
     configs = []

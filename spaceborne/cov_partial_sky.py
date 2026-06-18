@@ -1609,6 +1609,7 @@ class CovNaMaster:
         # )
         # assert np.all(delta_ells_bpw == ells_per_band), 'delta_ell from bpw does not match ells_per_band'
 
+        # note: the .copy() is needed, keep it!
         cl_gg_4covnmt = self.cl_3x2pt_unb_5d[1, 1, :, :, :].copy()
         cl_gl_4covnmt = self.cl_3x2pt_unb_5d[1, 0, :, :, :].copy()
         cl_ll_4covnmt = self.cl_3x2pt_unb_5d[0, 0, :, :, :].copy()

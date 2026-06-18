@@ -228,8 +228,6 @@ mask:
   nside: 2048 # Type: int
 
   survey_area_deg2: 13245 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
-  apodize: False # Type: bool. Whether to apodize the footprints
-  aposize: 0.1 # Type: float. Apodization scale in deg
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.

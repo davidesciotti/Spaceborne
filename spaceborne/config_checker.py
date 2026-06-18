@@ -243,8 +243,6 @@ class SpaceborneConfigChecker:
         assert isinstance(mask_cfg['survey_area_deg2'], (int, float)), (
             'mask: survey_area_deg2 must be an int or float'
         )
-        assert isinstance(mask_cfg['apodize'], bool), 'mask: apodize must be a boolean'
-        assert isinstance(mask_cfg['aposize'], float), 'mask: aposize must be a float'
 
         # Ensemble Covariance
         ensemble_cov_cfg = self.cfg['ensemble_covariance']

@@ -19,8 +19,6 @@ def _make_mask_cfg(
     weight_maps_filename=None,
     nside=32,
     survey_area_deg2=1000.0,
-    apodize=False,
-    aposize=1.0,
 ):
     """Build a ``mask`` config dict in the new per-probe layout expected by Mask."""
     return {
@@ -31,8 +29,6 @@ def _make_mask_cfg(
         },
         'nside': nside,
         'survey_area_deg2': survey_area_deg2,
-        'apodize': apodize,
-        'aposize': aposize,
     }
 
 
@@ -311,8 +307,6 @@ class TestMask:
         assert mask_obj.use_weight_maps is False
         assert mask_obj.nside_cfg == 32
         assert mask_obj.desired_survey_area_deg2 == 1000.0
-        assert mask_obj.apodize is False
-        assert mask_obj.aposize == 1.0
 
     def test_generate_polar_cap(self, polar_cap_cfg):
         """Test polar cap mask generation through Mask class."""
@@ -418,18 +412,6 @@ class TestMask:
 
         # Footprint should be downgraded to the target nside
         assert len(mask_obj.footprint) == hp.nside2npix(nside_target)
-
-    def test_apodization(self, polar_cap_cfg):
-        """Test footprint apodization."""
-        polar_cap_cfg['apodize'] = True
-        polar_cap_cfg['aposize'] = 2.0
-
-        mask_obj = mask_utils.Mask(polar_cap_cfg, probe='LL')
-        mask_obj.process()
-
-        # After apodization, the footprint should have non-binary values
-        unique_values = np.unique(mask_obj.footprint)
-        assert len(unique_values) > 2  # More than just 0 and 1
 
     def test_footprint_spectrum_attributes(self, polar_cap_cfg):
         """Test that the footprint spectrum and normalization are computed."""

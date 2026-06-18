@@ -13,7 +13,7 @@ def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
 
     # The SSC window of a probe pair AB is the *product* of the two fields'
     # masks, W_A * W_B (TJPCov convention, see covariance_fourier_ssc.py). For a
-    # non-binary/apodised mask this differs from the single mask, so the
+    # non-binary mask (e.g. a fractional weight map) this differs from the single mask, so the
     # auto-pairs must be squared too (W_A^2) to stay consistent with the
     # mean(W_A * W_B) effective fsky used in the normalisation downstream.
     footp_ab_dict = {'LL': m_ll * m_ll, 'GL': m_ll * m_gg, 'GG': m_gg * m_gg}
@@ -100,8 +100,6 @@ class Mask:
 
         self.nside_cfg = mask_cfg['nside']
         self.desired_survey_area_deg2 = mask_cfg['survey_area_deg2']
-        self.apodize = mask_cfg['apodize']
-        self.aposize = float(mask_cfg['aposize'])
 
     def load(self):
         # ! 1. load footprint/weight maps or generate polar cap
@@ -135,27 +133,6 @@ class Mask:
                 [up_downgrade_map(wmap, self.nside_cfg) for wmap in self.weight_maps]
             )
 
-    def apodize_func(self):
-        # ! 2. apodize
-        if not self.apodize:
-            return
-
-        print(f'Apodizing footprints with aposize = {self.aposize} deg')
-        import pymaster as nmt
-
-        # Ensure the mask is float64 before apodization
-        self.footprint = self.footprint.astype('float64', copy=False)
-        self.footprint = nmt.mask_apodization(self.footprint, aposize=self.aposize)
-
-        if self.use_weight_maps:
-            for zi in range(self.weight_maps.shape[0]):
-                self.weight_maps[zi] = self.weight_maps[zi].astype(
-                    'float64', copy=False
-                )
-                self.weight_maps[zi] = nmt.mask_apodization(
-                    self.weight_maps[zi], aposize=self.aposize
-                )
-
     def get_cls_fsky(self):
         """get footprint angular power spectrum and effective fsky"""
         self.ells_footprint, self.cl_footprint = get_maps_cl(
@@ -188,7 +165,6 @@ class Mask:
 
     def process(self):
         self.load()
-        self.apodize_func()
         self.get_cls_fsky()
 
     def plot_maps(self):

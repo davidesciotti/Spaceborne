@@ -356,8 +356,6 @@ base_cfg = {
         'generate_polar_cap': True,
         'nside': 1024,
         'survey_area_deg2': 13245,
-        'apodize': False,
-        'aposize': 0.1,
     },
     'OneCovariance': {
         'path_to_oc_env': f'{CONDA_ENV_ROOT}/cov20_env/bin/python',

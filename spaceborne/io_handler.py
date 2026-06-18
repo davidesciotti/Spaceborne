@@ -23,12 +23,13 @@ def load_weight_map_fits(path: str) -> np.ndarray:
 
     weight_map_arr = hp.read_map(path, field=None)
 
-    # sanity checks 
-    # (note that in principle hp.read_map(field=None) returns 1D for a single-bin 
+    # sanity checks
+    # (note that in principle hp.read_map(field=None) returns 1D for a single-bin
     # (zbins=1) file)
-    assert weight_map_arr.ndim == 2, (
-        'Weight map FITS file should contain a 2D array with shape (zbins, npix)'
-    )
+    if weight_map_arr.ndim != 2:
+        raise ValueError(
+            'Weight map FITS file should contain a 2D array with shape (zbins, npix)'
+        )
     if np.any(weight_map_arr < 0):
         raise ValueError('Weight maps contain negative values')
 

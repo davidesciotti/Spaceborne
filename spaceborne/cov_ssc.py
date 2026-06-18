@@ -20,9 +20,7 @@ def sigma2_z1z2_fft(
     k_grid_sigma2: np.ndarray,
     cosmo_ccl: ccl.Cosmology,
     which_sigma2_b: str,
-    ell_mask: np.ndarray,
-    cl_mask: np.ndarray,
-    fsky_mask: float,
+    cl_footp_norm_abcd: np.ndarray,
     *,
     nk_fft: int = 2**21,
 ):
@@ -70,12 +68,17 @@ def sigma2_z1z2_fft(
         return (g1[:, None] * g2[None, :]) * integral / (2.0 * np.pi**2)
 
     elif which_sigma2_b in {'polar_cap_on_the_fly', 'from_input_mask'}:
-        part_result = np.sum((2 * ell_mask + 1) * cl_mask) * 2.0 / np.pi
-        return (part_result * g1[:, None] * g2[None, :] * integral) / (
-            4.0 * np.pi * fsky_mask
-        ) ** 2
+        # old version, with unnormalised footprint Cl
+        # part_result = np.sum((2 * ells_footp_abcd + 1) * cl_footp_abcd) * 2.0 / np.pi
+        # denominator = (4.0 * np.pi) ** 2 * fsky_footp_ab * fsky_footp_cd
+        part_result = np.sum(cl_footp_norm_abcd) * 2.0 / np.pi
+        return part_result * g1[:, None] * g2[None, :] * integral
 
-    raise ValueError('Invalid which_sigma2_b option.')
+    raise ValueError(
+        f'Invalid which_sigma2_b option: got {which_sigma2_b}, '
+        'expected one of ["full_curved_sky", "polar_cap_on_the_fly", '
+        '"from_input_mask"]'
+    )
 
 
 def plot_sigma2(sigma2_arr, z_grid_sigma2):
@@ -194,16 +197,27 @@ class SpaceborneSSC:
         dims = ['4d']
         self.cov_dict = cd.create_cov_dict(req_terms, _req_probe_combs_2d, dims=dims)
 
-    def set_sigma2_b(self, ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b):
+    def sigma2_b_func(
+        self,
+        ccl_obj,
+        cl_footp_norm_abcd: np.ndarray,
+        fsky_max_abcd: float,
+        k_grid_s2b: np.ndarray,
+        which_sigma2_b: str,
+    ):
         """Wrapper function for setting sigma2_b in 1 or 2 dimensions (depending on
         whether the KE approximation is used or not).
         """
+
         if self.use_ke_approx:
             # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-            ccl_obj.set_sigma2_b(
-                z_grid=self.z_grid, which_sigma2_b=which_sigma2_b, mask_obj=mask_obj
+            _sigma2_b_tpl = ccl_obj.sigma2_b_func(
+                z_grid=self.z_grid,
+                which_sigma2_b=which_sigma2_b,
+                cl_footp_norm_abcd=cl_footp_norm_abcd,
+                fsky_max_abcd=fsky_max_abcd,
             )
-            _a, sigma2_b = ccl_obj.sigma2_b_tuple
+            _a, sigma2_b = _sigma2_b_tpl
 
             # quick sanity check on the a/z grid
             sigma2_b = sigma2_b[::-1]
@@ -217,13 +231,11 @@ class SpaceborneSSC:
                 k_grid_sigma2=k_grid_s2b,
                 cosmo_ccl=ccl_obj.cosmo_ccl,
                 which_sigma2_b=which_sigma2_b,
-                ell_mask=mask_obj.ell_mask,
-                cl_mask=mask_obj.cl_mask,
-                fsky_mask=mask_obj.fsky,
+                cl_footp_norm_abcd=cl_footp_norm_abcd,
                 nk_fft=2**21,
             )
 
-        self.sigma2_b = sigma2_b
+        return sigma2_b
 
     def set_ssc_integral_prefactor(self):
         self.cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(
@@ -235,11 +247,12 @@ class SpaceborneSSC:
 
     def compute_ssc(
         self,
-        d2CLL_dVddeltab_4d,
-        d2CGL_dVddeltab_4d,
-        d2CGG_dVddeltab_4d,
-        unique_probe_combs_hs,
-        nonreq_probe_combs_hs,
+        d2CLL_dVddeltab_4d: np.ndarray,
+        d2CGL_dVddeltab_4d: np.ndarray,
+        d2CGG_dVddeltab_4d: np.ndarray,
+        sigma2_b_dict: dict,
+        unique_probe_combs_hs: list,
+        nonreq_probe_combs_hs: list,
     ):
         z_steps = len(self.z_grid)
 
@@ -311,12 +324,13 @@ class SpaceborneSSC:
             print(f'SSC cov: computing probe combination {(probe_ab, probe_cd)}')
             d2CABdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_ab)]
             d2CCDdVddeltab_3d = d2CAB_dVddeltab_dict_3d[(probe_cd)]
+            sigma2_b_ABCD = sigma2_b_dict[probe_ab, probe_cd]
 
             result = self.ssc_func(
                 jnp.array(d2CABdVddeltab_3d),
                 jnp.array(d2CCDdVddeltab_3d),
                 jnp.array(self.cl_integral_prefactor),
-                jnp.array(self.sigma2_b),
+                jnp.array(sigma2_b_ABCD),
                 delta_z,
                 jnp.array(simpson_weights),
             )

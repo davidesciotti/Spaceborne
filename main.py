@@ -7,26 +7,13 @@ import warnings
 from copy import deepcopy
 
 import yaml
+from tqdm import tqdm
 
 # TODOS BRANCH
 # - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
 # - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
 # - put markers in CPU vs time to understand portion of the code which could be parallelised
 # - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
-
-
-def get_zsteps(z_min, z_max, delta_z):
-    """
-    Compute the number of grid points for linspace given a desired step size.
-
-    Returns the count needed so that np.linspace(z_min, z_max, count) produces
-    a grid with actual spacing <= delta_z (endpoint-inclusive).
-    """
-    if delta_z <= 0:
-        raise ValueError(f'delta_z must be positive, got {delta_z}')
-    if z_max <= z_min:
-        raise ValueError(f'z_max must be greater than z_min, got {z_max=}, {z_min=}')
-    return int(np.ceil((z_max - z_min) / delta_z)) + 1
 
 
 def load_config(_config_path):
@@ -75,21 +62,30 @@ else:
         stacklevel=2,
     )
 
-# Import JAX after environment variables are set, then print device info
-import jax
-
-print(f'JAX devices: {jax.devices()}')
-print(f'JAX backend: {jax.default_backend()}')
-
 # if using the CPU, set the number of threads
 num_threads = cfg['misc']['num_threads']
 
-# Cap num_threads at logical CPU count to prevent oversubscription
+# Cap num_threads at the CPUs available to this process.
+# On Linux, this respects taskset/cgroup CPU affinity masks.
 cpu_count = os.cpu_count() or 1
-if num_threads > cpu_count:
-    print(f'WARNING: num_threads={num_threads} exceeds CPU count={cpu_count}')
-    print(f'         Capping at {cpu_count} to prevent thread oversubscription')
-    num_threads = cpu_count
+available_cpu_count = cpu_count
+affinity_source = 'logical CPU count'
+with contextlib.suppress(AttributeError, NotImplementedError):
+    affinity = os.sched_getaffinity(0)
+    if affinity:
+        available_cpu_count = len(affinity)
+        affinity_source = 'CPU affinity mask'
+
+if num_threads > available_cpu_count:
+    print(
+        f'WARNING: num_threads={num_threads} exceeds available CPUs '
+        f'({affinity_source}={available_cpu_count})'
+    )
+    print(
+        f'         Capping at {available_cpu_count} to prevent thread oversubscription'
+    )
+    num_threads = available_cpu_count
+
 
 os.environ['OMP_NUM_THREADS'] = str(num_threads)
 os.environ['OPENBLAS_NUM_THREADS'] = str(num_threads)
@@ -100,12 +96,17 @@ os.environ['XLA_FLAGS'] = (
     f'--xla_cpu_multi_thread_eigen=true intra_op_parallelism_threads={str(num_threads)}'
 )
 
+# Import JAX after environment variables are set, then print device info
+import jax
+
+print(f'JAX devices: {jax.devices()}')
+print(f'JAX backend: {jax.default_backend()}')
+
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
 import pprint
 import time
-from functools import partial
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -205,19 +206,19 @@ def plot_cls():
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
         if io_obj.need_input_cl_ll:
-            ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+            ax[0].plot(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gl:
-            ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+            ax[1].plot(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gg:
-            ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
+            ax[2].plot(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
     for zi in range(zbins):
         zj = zi
         sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-        ax[0].loglog(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
-        ax[1].loglog(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
-        ax[2].loglog(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
+        ax[0].plot(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
+        ax[1].plot(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
+        ax[2].plot(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[
@@ -229,6 +230,14 @@ def plot_cls():
             frameon=False,
         )
         ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
+
+    ax[0].set_yscale('log')
+    ax[1].set_yscale('log')
+    ax[2].set_yscale('log')
+    if cfg['binning']['binning_type'] in ['log', 'from_input']:
+        ax[0].set_xscale('log')
+        ax[1].set_xscale('log')
+        ax[2].set_xscale('log')
 
     ax[2].legend(
         [f'$z_{{{zi}}}$' for zi in range(zbins)],
@@ -594,12 +603,12 @@ cfg_check_obj.run_all_checks()
 
 # ! instantiate CCL object
 ccl_obj = ccl_interface.CCLInterface(
-    cfg['cosmology'],
-    cfg['extra_parameters'],
-    cfg['intrinsic_alignment'],
-    cfg['halo_model'],
-    cfg['precision']['spline_params'],
-    cfg['precision']['gsl_params'],
+    cosmology_dict=cfg['cosmology'],
+    extra_parameters_dict=cfg['extra_parameters'],
+    ia_dict=cfg['intrinsic_alignment'],
+    halo_model_dict=cfg['halo_model'],
+    spline_params=cfg['precision']['spline_params'],
+    gsl_params=cfg['precision']['gsl_params'],
 )
 # set other useful attributes
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
@@ -634,7 +643,7 @@ else:
 z_grid = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    get_zsteps(
+    sl.get_zsteps(
         cfg['precision']['z_min'],
         cfg['precision']['z_max'],
         cfg['precision']['delta_z'],
@@ -643,7 +652,7 @@ z_grid = np.linspace(
 z_grid_trisp_ssc = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    get_zsteps(
+    sl.get_zsteps(
         cfg['precision']['z_min'],
         cfg['precision']['z_max'],
         cfg['precision']['delta_z_trisp_SSC'],
@@ -652,7 +661,7 @@ z_grid_trisp_ssc = np.linspace(
 z_grid_trisp_cng = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
-    get_zsteps(
+    sl.get_zsteps(
         cfg['precision']['z_min'],
         cfg['precision']['z_max'],
         cfg['precision']['delta_z_trisp_cNG'],
@@ -662,7 +671,7 @@ z_grid_trisp_cng = np.linspace(
 if len(z_grid) < 1000:
     warnings.warn(
         'the number of steps in the redshift grid is small, '
-        'you may want to consider increasing it',
+        'you may want to consider decreasing delta_z',
         stacklevel=2,
     )
 
@@ -822,18 +831,84 @@ pvt_cfg['nbx'] = nbx
 # TODO rename ell_obj to bin_obj
 # TODO Parallel: Workers compute independently, results are stacked after
 # TODO add to it theta and cosebis binning
-# TODO arange(ell_max_3x2pt)? are we sure?
+# TODO arange(ell_max_3x2pt)? are we sure? it would be better to at least start from 1...
 
 # ! ===================================== Mask =========================================
-mask_obj = mask_utils.Mask(cfg['mask'])
-mask_obj.process()
-if hasattr(mask_obj, 'mask'):
-    import healpy as hp
+mask_obj_ll = mask_utils.Mask(cfg['mask'], probe='LL')
+mask_obj_gg = mask_utils.Mask(cfg['mask'], probe='GG')
+mask_obj_ll.process()
+mask_obj_gg.process()
+mask_obj_ll.plot_maps()
+mask_obj_gg.plot_maps()
 
-    hp.mollview(mask_obj.mask, cmap='inferno_r', title='Mask - Mollweide view')
+# TODO branch this should be moved somewhere else??
+import healpy as hp
 
-# add fsky to pvt_cfg
-pvt_cfg['fsky'] = mask_obj.fsky
+footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
+    mask_obj_ll=mask_obj_ll, mask_obj_gg=mask_obj_gg
+)
+
+hp.mollview(
+    footp_ab_dict['GL'], cmap='inferno_r', title='Footprint GGL - Mollweide view'
+)
+hp.graticule()
+
+footp_cl_abcd_dict = {}
+footp_cl_norm_abcd_dict = {}
+for probe_abcd in unique_probe_combs_hs:
+    probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+
+    # compute and store the footprint cross-spectrum...
+    _ells, _cls = mask_utils.get_maps_cl(
+        footp_ab_dict[probe_ab], footp_ab_dict[probe_cd]
+    )
+
+    # ...and its normalised version
+    footp_cl_abcd_dict[probe_ab, probe_cd] = (_ells, _cls)
+    denominator = (4 * np.pi) ** 2 * fsky_ab_dict[probe_ab] * fsky_ab_dict[probe_cd]
+    _cls_norm = _cls * (2 * _ells + 1) / denominator
+    footp_cl_norm_abcd_dict[probe_ab, probe_cd] = (_ells, _cls_norm)
+
+fsky_max_abcd_dict = {}
+for probe_abcd in req_probe_combs_hs_2d:
+    probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+    # compute and store max(fsky_ab, fsky_cd)
+    fsky_max_abcd_dict[probe_ab, probe_cd] = max(
+        fsky_ab_dict[probe_ab], fsky_ab_dict[probe_cd]
+    )
+
+
+# turn into A_max (in sr)
+amax_abcd_dict = {
+    k: v * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
+    for k, v in fsky_max_abcd_dict.items()
+}
+
+
+# warnings
+if not np.isclose(fsky_ab_dict['LL'], fsky_ab_dict['GG'], atol=0, rtol=1e-5):
+    warnings.warn(
+        'LL and GG footprints have different fsky. Using probe-dependent sky '
+        'fractions:\n'
+        f'LL = {fsky_ab_dict["LL"]:.4f}, '
+        f'GG = {fsky_ab_dict["GG"]:.4f}.',
+        stacklevel=2,
+    )
+
+if (
+    np.isclose(fsky_ab_dict['GL'], 0, atol=0, rtol=1e-5)
+    or np.isnan(fsky_ab_dict['GL'])
+    or np.isinf(fsky_ab_dict['GL'])
+):
+    warnings.warn(
+        "The footprints seem to have zero overlap; fsky_ab_dict['GL'] = "
+        f'{fsky_ab_dict["GL"]:.4f}',
+        stacklevel=2,
+    )
+
+
+# this will be used to normalise the SSC and cNG
+ccl_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
 
 
 # ! ===================================== n(z) =========================================
@@ -1079,8 +1154,7 @@ if cfg['misc']['cl_triangle_plot']:
 
 # ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
 if (
-    cfg['covariance']['partial_sky_method'] == 'NaMaster'
-    or cfg['sample_covariance']['compute_sample_cov']
+    cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']
     or cfg['precision']['cov_hs_g_ell_bin_average']
 ):
     # in these cases I need an unbinned ell grid
@@ -1089,21 +1163,23 @@ if (
     )
 
 
-if (
-    cfg['covariance']['partial_sky_method'] == 'NaMaster'
-    or cfg['sample_covariance']['compute_sample_cov']
-):
+if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
-    # initialize cov_nmt_obj and set a couple useful attributes
-    cov_nmt_obj = cov_partial_sky.NmtCov(
-        cfg=cfg, pvt_cfg=pvt_cfg, ell_obj=ell_obj, mask_obj=mask_obj
+    # initialize cov_nmt_obj
+    cov_nmt_obj = cov_partial_sky.CovNaMaster(
+        cfg=cfg,
+        pvt_cfg=pvt_cfg,
+        ell_obj=ell_obj,
+        mask_obj_gg=mask_obj_gg,
+        mask_obj_ll=mask_obj_ll,
     )
 
-    # set unbinned ells in cov_nmt_obj
+    # set a couple useful attributes
     cov_nmt_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
     cov_nmt_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
+    cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
 
 else:
     cov_nmt_obj = None
@@ -1115,7 +1191,7 @@ cov_rs_obj = None
 
 if obs_space == 'real':
     # initialize cov_rs_obj and set a couple useful attributes
-    cov_rs_obj = cov_real_space.CovRealSpace(cfg, pvt_cfg, mask_obj)
+    cov_rs_obj = cov_real_space.CovRealSpace(cfg=cfg, pvt_cfg=pvt_cfg)
 
     # set ell values used for projection
     ell_obj.compute_ells_3x2pt_proj()
@@ -1135,7 +1211,7 @@ if obs_space == 'real':
 # cov projector class
 cov_cs_obj = None
 if obs_space == 'cosebis':
-    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg, pvt_cfg, mask_obj)
+    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg=cfg, pvt_cfg=pvt_cfg)
     ell_obj.compute_ells_3x2pt_proj()
 
     # set ell values used for projection
@@ -1159,10 +1235,11 @@ if obs_space == 'cosebis':
 
 # !  =============================== Build Gaussian covs ===============================
 if obs_space == 'harmonic':
-    cov_hs_obj = cov_harmonic_space.SpaceborneCovariance(
+    cov_hs_obj = cov_harmonic_space.CovHarmonicSpace(
         cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
     )
     cov_hs_obj.consistency_checks()
+    cov_hs_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
 
     # set unbinned cls if needed
     if cfg['precision']['cov_hs_g_ell_bin_average']:
@@ -1188,6 +1265,10 @@ if (
     oc_path = f'{output_path}/OneCovariance'
     if not os.path.exists(oc_path):
         os.makedirs(oc_path)
+
+    # save footprints
+    for name, footp in footp_ab_dict.items():
+        hp.write_map(f'{oc_path}/sb_footprint_{name}.fits', footp, overwrite=True)
 
     nz_src_ascii_filename = cfg['nz']['nz_sources_filename'].replace(
         '.dat', f'_dzshifts{shift_nz}.ascii'
@@ -1292,6 +1373,7 @@ if (
     cov_oc_obj.oc_path = oc_path
     cov_oc_obj.path_to_config_oc_ini = f'{cov_oc_obj.oc_path}/input_configs.ini'
     cov_oc_obj.ells_sb = ell_obj.ells_3x2pt
+    cov_oc_obj.fsky_ab_dict = fsky_ab_dict
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
 
     # compute cov
@@ -1519,12 +1601,23 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     )
 
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
-    cov_ssc_obj.set_sigma2_b(ccl_obj, mask_obj, k_grid_s2b, which_sigma2_b)
+
+    sigma2_b_dict = {}
+    for probe_abcd in tqdm(unique_probe_combs_hs):
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
+            ccl_obj=ccl_obj,
+            cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+            fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+            k_grid_s2b=k_grid_s2b,
+            which_sigma2_b=which_sigma2_b,
+        )
 
     cov_ssc_obj.compute_ssc(
         d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
         d2CGL_dVddeltab_4d=d2CGL_dVddeltab,
         d2CGG_dVddeltab_4d=d2CGG_dVddeltab,
+        sigma2_b_dict=sigma2_b_dict,
         unique_probe_combs_hs=unique_probe_combs_hs,
         nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
@@ -1533,8 +1626,9 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     # TODO it would make much more sense to divide s2b directly...
     if which_sigma2_b == 'full_curved_sky':
         for probe_2tpl in cov_ssc_obj.cov_dict['ssc']:
+            fsky_abcd = fsky_max_abcd_dict[probe_2tpl]  # just make name shorter
             for dim in cov_ssc_obj.cov_dict['ssc'][probe_2tpl]:
-                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= mask_obj.fsky
+                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= fsky_abcd
     elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
         pass
     else:
@@ -1548,11 +1642,17 @@ if compute_ccl_ssc:
     # one used in the trispectrum, but from my tests is should be
     # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
-    ccl_obj.set_sigma2_b(
-        z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
-        which_sigma2_b=which_sigma2_b,
-        mask_obj=mask_obj,
-    )
+    sigma2_b_tpl_dict = {}
+    for probe_abcd in tqdm(unique_probe_combs_hs):
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
+            z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
+            which_sigma2_b=which_sigma2_b,
+            cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+            fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+        )
+    ccl_obj.sigma2_b_tpl_dict = sigma2_b_tpl_dict
+
 
 if compute_ccl_ssc or compute_ccl_cng:
     # prepare list of NG covs to compute
@@ -1578,9 +1678,8 @@ if compute_ccl_ssc or compute_ccl_cng:
             which_ng_cov, unique_probe_combs_hs, cfg['PyCCL']
         )
         ccl_obj.compute_ng_cov_3x2pt(
-            which_ng_cov,
-            ell_grid,
-            mask_obj.fsky,
+            which_ng_cov=which_ng_cov,
+            ells=ell_grid,
             integration_method=cfg['PyCCL']['cov_integration_method'],
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
@@ -1621,10 +1720,19 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     print('')
     for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
+
+        # get probe-specific max area (in sr)
+        probe_ab_hs = const.RS_DIAG_PROBES_TO_HS[probe_ab]
+        probe_cd_hs = const.RS_DIAG_PROBES_TO_HS[probe_cd]
+        amax_abcd = amax_abcd_dict[probe_ab_hs, probe_cd_hs]
+
         print(f'2PCF cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_rs_obj.terms_toloop:
             cov_rs_obj.compute_rs_cov_term_probe_6d(
-                cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
+                cov_hs_ng_dict=cov_hs_ng_dict,
+                probe_abcd=_probe,
+                term=_term,
+                amax_abcd=amax_abcd,
             )
 
     for _term in cov_rs_obj.terms_toloop:
@@ -1680,10 +1788,19 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     print('')
     for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
+
+        # get probe-specific max area (in sr)
+        probe_ab_hs = const.CS_DIAG_PROBES_TO_HS[probe_ab]
+        probe_cd_hs = const.CS_DIAG_PROBES_TO_HS[probe_cd]
+        amax_abcd = amax_abcd_dict[probe_ab_hs, probe_cd_hs]
+
         print(f'COSEBIs cov: computing probe combination {(probe_ab, probe_cd)}')
         for _term in cov_cs_obj.terms_toloop:
             cov_cs_obj.compute_cs_cov_term_probe_6d(
-                cov_hs_ng_dict=cov_hs_ng_dict, probe_abcd=_probe, term=_term
+                cov_hs_ng_dict=cov_hs_ng_dict,
+                probe_abcd=_probe,
+                term=_term,
+                amax_abcd=amax_abcd,
             )
 
     for _term in cov_cs_obj.terms_toloop:
@@ -2008,7 +2125,7 @@ if cfg['misc']['save_output_as_benchmark']:
 
     if not compute_sb_ssc:
         k_grid_s2b = np.array([])
-        sigma2_b = np.array([])
+        sigma2_b_dict = {}
         dPmm_ddeltab = np.array([])
         dPgm_ddeltab = np.array([])
         dPgg_ddeltab = np.array([])
@@ -2019,9 +2136,6 @@ if cfg['misc']['save_output_as_benchmark']:
     if compute_sb_ssc and cfg['precision']['use_KE_approximation']:
         # in this case, the k grid used is the same as the Pk one, I think
         k_grid_s2b = np.array([])
-
-    if compute_sb_ssc:
-        sigma2_b = cov_ssc_obj.sigma2_b
 
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
@@ -2053,12 +2167,15 @@ if cfg['misc']['save_output_as_benchmark']:
             misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
 
     # Mask information
-    if mask_obj is not None:
-        misc_dict['mask'] = mask_obj.mask
-        misc_dict['mask_ell'] = mask_obj.ell_mask
-        misc_dict['mask_cl'] = mask_obj.cl_mask
-        misc_dict['mask_fsky'] = np.array([mask_obj.fsky])
-        misc_dict['mask_survey_area_deg2'] = np.array([mask_obj.survey_area_deg2])
+    for mask_obj, name in zip((mask_obj_ll, mask_obj_gg), ('LL', 'GG'), strict=True):
+        if mask_obj is not None:
+            misc_dict[f'mask_{name}'] = mask_obj.footprint
+            misc_dict[f'mask_{name}_ell'] = mask_obj.ells_footprint
+            misc_dict[f'mask_{name}_cl'] = mask_obj.cl_footprint
+            misc_dict[f'mask_{name}_fsky_ftp'] = np.array([mask_obj.fsky_footprint])
+            misc_dict[f'mask_{name}_survey_area_deg2'] = np.array(
+                [mask_obj.survey_area_deg2]
+            )
 
     # save metadata
     import datetime
@@ -2138,17 +2255,21 @@ if cfg['misc']['save_output_as_benchmark']:
         wf_mu=ccl_obj.wf_mu_arr,
         wf_lensing_arr=ccl_obj.wf_lensing_arr,
         cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
-        sigma2_b=sigma2_b,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,
         dPgg_ddeltab=dPgg_ddeltab,
         d2CLL_dVddeltab=d2CLL_dVddeltab,
         d2CGL_dVddeltab=d2CGL_dVddeltab,
         d2CGG_dVddeltab=d2CGG_dVddeltab,
+        # keys must be plain strings, not tuples
+        **{f's2b_{"".join(k)}': v for k, v in sigma2_b_dict.items()},
         **_ell_dict,
-        **covs_totest_dict,
-        **covs_3x2pt_2d_tosave_dict,
-        **covs_6d_tosave_dict,
+        **{f'covs_totest_{"".join(k)}': v for k, v in covs_totest_dict.items()},
+        **{
+            f'cov_3x2pt_2d_{"".join(k)}': v
+            for k, v in covs_3x2pt_2d_tosave_dict.items()
+        },
+        **{f'cov_6d_{"".join(k)}': v for k, v in covs_6d_tosave_dict.items()},
         **misc_dict,
         metadata=metadata,
     )
@@ -2223,14 +2344,15 @@ if cfg['misc']['save_figs']:
     for i, fig_num in enumerate(plt.get_fignums()):
         fig = plt.figure(fig_num)
         fig.savefig(
-            os.path.join(output_path_figs, f'fig_{i:03d}.pdf'),
+            os.path.join(output_path_figs, f'fig_{i:03d}.png'),
             bbox_inches='tight',
             pad_inches=0.1,
+            dpi=300,
         )
     print(f'Figures saved in {output_path_figs}\n')
 
 
-print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} minutes')
+print(f'Finished in {(time.perf_counter() - script_start_time) / 60:.2f} m')
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
 # Stop monitoring

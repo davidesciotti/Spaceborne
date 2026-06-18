@@ -88,9 +88,11 @@ def run_spaceborne(
     os.chdir(sb_root_path)
     failed: list[str] = []
 
+    print(f'🚜🚜🚜 Starting Spaceborne jobs for {len(yaml_files)} configs 🚜🚜🚜')
+
     try:
         for path in yaml_files:
-            print(f'\n🧮🧮🧮 Running job with config:\n{path}')
+            print(f'\n🚜 Running job with config: 🚜\n{path}')
             try:
                 subprocess.run(['python', 'main.py', '--config', path], check=True)
             except subprocess.CalledProcessError as exc:

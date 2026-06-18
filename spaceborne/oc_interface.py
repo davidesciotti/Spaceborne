@@ -640,6 +640,8 @@ class OneCovarianceInterface:
         self.path_to_oc_executable = self.cfg['OneCovariance']['path_to_oc_executable']
 
         self.oc_path: str = _UNSET
+        self.fsky_ab_dict: dict = _UNSET
+        # OC has a single z grid for the trispectrum, so we choose the coarser one
         self.path_to_config_oc_ini: str = _UNSET
         self.ells_sb: np.ndarray = _UNSET
         self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
@@ -819,19 +821,21 @@ class OneCovarianceInterface:
             cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
 
         # ! [survey specs]
-        # commented out to avoid loading mask file by accident
-        cfg_oc_ini['survey specs']['mask_directory'] = str(
-            self.cfg['mask']['mask_filename']
-        )  # TODO test this!!
-        cfg_oc_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
-        cfg_oc_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
-        cfg_oc_ini['survey specs']['survey_area_clust_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
+        cfg_oc_ini['survey specs']['mask_directory'] = str(self.oc_path)
+
+        # Pass the 'preprocessed' footprints saved by main.py as
+        # sb_footprint_{LL,GL,GG}.fits (relative to mask_directory). Pass also fskys,
+        # as OC raises errors otherwise (why)?
+        # TODO change this after OC bufgix
+        for _probe_sb, _probe_oc in zip(
+            ['LL', 'GL', 'GG'], ['lensing', 'ggl', 'clust'], strict=True
+        ):
+            cfg_oc_ini['survey specs'][f'mask_file_{_probe_oc}'] = (
+                f'{self.oc_path}/sb_footprint_{_probe_sb}.fits'
+            )
+            cfg_oc_ini['survey specs'][f'survey_area_{_probe_oc}_in_deg2'] = str(
+                self.fsky_ab_dict[_probe_sb] * const.DEG2_IN_SPHERE
+            )
         cfg_oc_ini['survey specs']['n_eff_clust'] = ', '.join(
             map(str, n_eff_clust_list)
         )
@@ -1050,7 +1054,6 @@ class OneCovarianceInterface:
         Cons:
             - Less maintainable than the bash call
         """
-        import sys
 
         sys.path.append(os.path.dirname(self.path_to_oc_executable))
         import platform

@@ -10,7 +10,10 @@
 # thinkpad: /_home/davide/Documenti/Lavoro/Programmi
 # mac: /_Users/davidesciotti/Documents/Work/Code
 # melodie: /_home/cosmo/davide.sciotti/data
-# mileva: /_data/sciotti/
+# mileva: /_data/sciotti/DATA
+
+# mac: path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+# mileva: path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
 
 cosmology:
   Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
@@ -57,19 +60,19 @@ halo_model:
 OneCovariance:
   # Path to Python executable in OneCovariance conda environment
   # Update this to match your system's conda installation
-  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+  path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
   compare_against_oc: False # In this case, the output cov (2D/6D) is not overwritten by OC at all!
-  new_run: False
+  new_run: True
   oc_format_to_compare_against: list
   process_cov_from_mat_file: True
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: real # Type: str.
+  space: harmonic # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -91,8 +94,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
-  nz_lenses_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
+  nz_sources_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
+  nz_lenses_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -128,7 +131,7 @@ binning:
   # with `ell` the ell bin center, `delta_ell` its width,
   # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
   # The file can be in .txt, .dat or .ascii format.
-  ell_bins_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/ell_values_3x2pt.txt
+  ell_bins_filename: ../DATA/Spaceborne_jobs_IO/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 5 # Type: float | int.
@@ -154,9 +157,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -173,11 +176,11 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
 
   # Interpolation methods for the galaxy and magnification bias tables.
-  # This should be set to "linear" or "nearest" for step-like, or in general discontinuous,
+  # This should be set to 'linear' or 'nearest' for step-like, or in general discontinuous,
   # bias functions, to avoid spurious oscillations from the spline interpolation.
   # Options: ['linear', 'nearest', 'CubicSpline']
   gal_bias_table_interp_method: CubicSpline # Type: str.
@@ -198,28 +201,38 @@ C_ell:
     l_limber: -1 # Type: int
     limber_integration_method: spline # Type: str
     non_limber_integration_method: FKEM # Type: str
-
 mask:
-  load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-  mask_filename: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
-  generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
+  # Configs for the survey footprint and masks. The options outside of the 'LL' and 'GG'
+  # sections are common to both probes.
+  # The 'geometry' option determines how the footprint is defined:
+  # - If set to 'footprint_file', the footprint will be read from the file specified in
+  #   'footprint_filename'.
+  # - If set to 'polar_cap', the footprint will be generated as a polar cap with area
+  #   specified by 'survey_area_deg2'.
+  # The footprint is a single binary mask, common to all redshift bins,
+  # and it is used to compute the fsky factors.
+  # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
+  # which should contain a number of maps equal to the number of redshift bins, for the 
+  # given probe. If null, the weight maps will not be used. 
+  # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
+  LL:
+    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
+    weight_maps_filename: null # Type: str | None
+  GG:
+    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_polar_cap_nside2048.fits # Type: str.
+    weight_maps_filename: null # Type: str | None
 
-  # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
-  # If null (None), the nside of the input mask will be used, without up/downgrading.
-  nside: 1024 # Type: int | None.
+  # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
+  nside: 1024 # Type: int
 
-  survey_area_deg2: 13245 # Type: int
-  apodize: False # Type: bool
-  aposize: 0.1 # Type: float. Apodization scale in deg
+  survey_area_deg2: 13245 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
   SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
-
-  G_code: Spaceborne
-  SSC_code: Spaceborne
-  cNG_code: PyCCL
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
@@ -229,11 +242,13 @@ covariance:
   # - Knox: rescale the full-sky covariance by multiplying it by 1/fsky, where fsky is
   #         the fraction of sky observed. This approximation is commonly used, works
   #         best for large survey areas, and it's significantly faster than using NaMaster.
-  # - NaMaster: uses the NaMaster code to compute the partial-sky covariance through the
+  # - NaMaster: use the NaMaster code to compute the partial-sky covariance through the
   #             NKA or iNKA approximations. This is more accurate, especially for small
   #             survey areas, but significantly slower than the Knox approximation.
   #             It can be sped up quite significantly by setting spin0=True in the
   #             precision section (at the cost of lower precision)
+  # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
+  #             realizations
   partial_sky_method: Knox # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
@@ -242,7 +257,7 @@ covariance:
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: True # Type: bool
+  split_gaussian_cov: False # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -303,6 +318,7 @@ covariance:
   # When using NaMaster for the partial-sky Gaussian covariance, choose whether to
   # save the (binned and unbinned) mode coupling matrices (mcm)
   save_mcms: True # Type: bool.
+  load_cached_nmt_workspaces: False # Type: bool. Whether to load the NaMaster workspaces from the cache, if they have already been computed.
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
@@ -319,25 +335,22 @@ PyCCL:
   # Setting this to True will make the computation of the cNG trispectrum slower
   use_default_k_a_grids: False # Type: bool.
 
-sample_covariance:
-  # Whether to compute the sample covariance from a set of Gaussian realizations
-  compute_sample_cov: False # Type: bool.
-
+ensemble_covariance:
   # Which code to use to compute the coupled Cls on the masked maps. The results are
   # essentially equivalent, but 'namaster' is a bit faster.
-  # In case the decoupled (sample) covariance is requested, in both cases the
-  # workspace.decouple_cell() function will be used.
+  # In case the decoupled (ensemble) covariance is requested, for both options of
+  # 'which_cls', the workspace.decouple_cell() function will be used.
   # Documentation:
   # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
   # Options: ['namaster', 'healpy'].
   which_cls: healpy # Type: str.
-  nreal: 1000 # Type: int. Number of realizations for the sample covariance matrix
+  nreal: 20000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
 
 precision:
   # =============================== harmonic-space cov =================================
-  # Binning method for the Knox ("1/fsky") harmonic-space Gaussian covariance
+  # Binning method for the Knox ('1/fsky') harmonic-space Gaussian covariance
   # (which is diagonal in ell1, ell2):
   # - True:  Average over all integer multipoles within each bin (exact formula).
   #          Sum over modes and divide by N_modes², where N_modes is the number of
@@ -372,7 +385,7 @@ precision:
   delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
 
   # Whether or not to use the single-redshift integral approximation for the SSC.
-  use_KE_approximation: False # Type: bool.
+  use_KE_approximation: True # Type: bool.
 
   # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
@@ -415,7 +428,8 @@ precision:
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
-  spline_params: # Type: dict | None
+  spline_params:
+    # Type: dict | None
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 
@@ -442,12 +456,12 @@ misc:
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
   cl_triangle_plot: False # Type: bool.
 
-  # If the covariance_ordering_2D starts with "probe", setting this to True
+  # If the covariance_ordering_2D starts with 'probe', setting this to True
   # automatically displays the labels and limits for the different probe blocks.
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
   workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
-  output_path: /Users/davidesciotti/Documents/Work/Code/DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

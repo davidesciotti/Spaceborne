@@ -1159,7 +1159,8 @@ class CovNaMaster:
         _lmax = self.ell_obj.ell_max_GC
         if _lmax >= 3 * self.mask_obj_gg.nside_cfg - 1:
             warnings.warn(
-                f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.mask_obj_gg.nside_cfg - 1}\n'
+                f'lmax = {_lmax} >= 3 * NSIDE - 1 = '
+                f'{3 * self.mask_obj_gg.nside_cfg - 1}\n'
                 f'(NSIDE = {self.mask_obj_gg.nside_cfg}) for probe GC. '
                 'You should probably increase NSIDE or decrease lmax ',
                 stacklevel=2,
@@ -1167,7 +1168,8 @@ class CovNaMaster:
         _lmax = self.ell_obj.ell_max_WL
         if _lmax >= 3 * self.mask_obj_ll.nside_cfg - 1:
             warnings.warn(
-                f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.mask_obj_ll.nside_cfg - 1}\n'
+                f'lmax = {_lmax} >= 3 * NSIDE - 1 = '
+                f'{3 * self.mask_obj_ll.nside_cfg - 1}\n'
                 f'(NSIDE = {self.mask_obj_ll.nside_cfg}) for probe WL. '
                 'You should probably increase NSIDE or decrease lmax ',
                 stacklevel=2,

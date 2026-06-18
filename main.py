@@ -885,7 +885,7 @@ amax_abcd_dict = {
 }
 
 
-# warning
+# warnings
 if not np.isclose(fsky_ab_dict['LL'], fsky_ab_dict['GG'], atol=0, rtol=1e-5):
     warnings.warn(
         'LL and GG footprints have different fsky. Using probe-dependent sky '
@@ -894,6 +894,18 @@ if not np.isclose(fsky_ab_dict['LL'], fsky_ab_dict['GG'], atol=0, rtol=1e-5):
         f'GG = {fsky_ab_dict["GG"]:.4f}.',
         stacklevel=2,
     )
+
+if (
+    np.isclose(fsky_ab_dict['GL'], 0, atol=0, rtol=1e-5)
+    or np.isnan(fsky_ab_dict['GL'])
+    or np.isinf(fsky_ab_dict['GL'])
+):
+    warnings.warn(
+        "The footprints seem to have zero overlap; fsky_ab_dict['GL'] = "
+        f'{fsky_ab_dict["GL"]:.4f}',
+        stacklevel=2,
+    )
+
 
 # this will be used to normalise the SSC and cNG
 ccl_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
@@ -2155,13 +2167,15 @@ if cfg['misc']['save_output_as_benchmark']:
             misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
 
     # Mask information
-    # TODO XXX fix this after rerunning benchmarks
-    if mask_obj_ll is not None:
-        misc_dict['mask'] = mask_obj_ll.footprint
-        misc_dict['mask_ell'] = mask_obj_ll.ells_footprint
-        misc_dict['mask_cl'] = mask_obj_ll.cl_footprint
-        misc_dict['mask_fsky'] = np.array([mask_obj_ll.fsky_footprint])
-        misc_dict['mask_survey_area_deg2'] = np.array([mask_obj_ll.survey_area_deg2])
+    for mask_obj, name in zip((mask_obj_ll, mask_obj_gg), ('LL', 'GG'), strict=True):
+        if mask_obj is not None:
+            misc_dict[f'mask_{name}'] = mask_obj.footprint
+            misc_dict[f'mask_{name}_ell'] = mask_obj.ells_footprint
+            misc_dict[f'mask_{name}_cl'] = mask_obj.cl_footprint
+            misc_dict[f'mask_{name}_fsky_ftp'] = np.array([mask_obj.fsky_footprint])
+            misc_dict[f'mask_{name}_survey_area_deg2'] = np.array(
+                [mask_obj.survey_area_deg2]
+            )
 
     # save metadata
     import datetime
@@ -2251,7 +2265,10 @@ if cfg['misc']['save_output_as_benchmark']:
         **{f's2b_{"".join(k)}': v for k, v in sigma2_b_dict.items()},
         **_ell_dict,
         **{f'covs_totest_{"".join(k)}': v for k, v in covs_totest_dict.items()},
-        **{f'cov_3x2pt_2d_{"".join(k)}': v for k, v in covs_3x2pt_2d_tosave_dict.items()},
+        **{
+            f'cov_3x2pt_2d_{"".join(k)}': v
+            for k, v in covs_3x2pt_2d_tosave_dict.items()
+        },
         **{f'cov_6d_{"".join(k)}': v for k, v in covs_6d_tosave_dict.items()},
         **misc_dict,
         metadata=metadata,

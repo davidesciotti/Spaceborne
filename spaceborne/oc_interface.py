@@ -1290,7 +1290,6 @@ class OneCovarianceInterface:
         if oc_module_dir and oc_module_dir not in sys.path:
             sys.path.append(oc_module_dir)
         import platform
-        import sys
 
         from onecov.cov_ell_space import CovELLSpace
         from onecov.cov_input import FileInput, Input

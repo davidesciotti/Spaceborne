@@ -225,8 +225,7 @@ mask:
     weight_maps_filename: null # Type: str | None
 
   # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
-  # If null (None), the nside of the input masks will be used, without up/downgrading.
-  nside: 1024 # Type: int | None.
+  nside: 2048 # Type: int
 
   survey_area_deg2: 13245 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
   apodize: False # Type: bool. Whether to apodize the footprints

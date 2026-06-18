@@ -239,9 +239,7 @@ class SpaceborneConfigChecker:
                 mask_cfg[probe]['weight_maps_filename'], (str, type(None))
             ), f'mask[{probe}][weight_maps_filename] must be a string or None'
 
-        assert isinstance(mask_cfg['nside'], (int, type(None))), (
-            'mask: nside must be an int or None'
-        )
+        assert isinstance(mask_cfg['nside'], int), 'mask: nside must be an int'
         assert isinstance(mask_cfg['survey_area_deg2'], (int, float)), (
             'mask: survey_area_deg2 must be an int or float'
         )

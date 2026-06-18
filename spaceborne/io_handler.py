@@ -23,7 +23,9 @@ def load_weight_map_fits(path: str) -> np.ndarray:
 
     weight_map_arr = hp.read_map(path, field=None)
 
-    # sanity checks
+    # sanity checks 
+    # (note that in principle hp.read_map(field=None) returns 1D for a single-bin 
+    # (zbins=1) file)
     assert weight_map_arr.ndim == 2, (
         'Weight map FITS file should contain a 2D array with shape (zbins, npix)'
     )

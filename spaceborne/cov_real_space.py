@@ -8,14 +8,9 @@ sn = sampling noise
 mix = mixed term
 """
 
-# TODO the NG cov has not been re-tested against OC
-# TODO the NG cov needs a smaller number of ell bins for the simpson integration! It's
-# TODO unpractical to compute it in 1000 ell values
-
 import itertools
 import warnings
 from functools import partial
-from warnings import deprecated
 
 import numpy as np
 import pyccl as ccl
@@ -679,9 +674,8 @@ def proj_cov_2d_fftlog(
         result_3d[:, :, tomo_ix] = interp(
             np.log(theta_lower_edges), np.log(theta_lower_edges)
         )
-        # used to be 
+        # used to be
         # result_3d[:, :, tomo_ix] = interp(np.log(theta_centers), np.log(theta_centers))
-
 
     return result_3d.reshape(nbt, nbt, *tomo_shape)
 
@@ -941,7 +935,7 @@ class CovRealSpace(CovarianceProjector):
         # integrate
         # N_pad is essential for high-order Bessels (mu/nu >= 2, i.e. gt/xim): the
         # integrand ell^2 C(ell) does not decay at the ell grid boundary, so without
-        # zero-padding the FFTLog rings and overestimates the small-theta result. 
+        # zero-padding the FFTLog rings and overestimates the small-theta result.
         # Padding converges by ~nbl points (extrapolation cannot be
         # used here because the diagonal-only input has off-diagonal zeros).
         integral_6d = proj_cov_2d_fftlog(
@@ -1032,7 +1026,7 @@ class CovRealSpace(CovarianceProjector):
 
         return cov_mix_rs_6d
 
-    @deprecated
+    # deprecated
     def cov_mix_fftlog(
         self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
         zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, amax_abcd

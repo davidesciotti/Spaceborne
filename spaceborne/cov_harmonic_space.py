@@ -206,7 +206,7 @@ class CovHarmonicSpace:
             # of times (ell by ell)
             noise_3x2pt_nmt_unb_5d = np.repeat(
                 noise_3x2pt_4d[:, :, np.newaxis, :, :],
-                repeats=self.cov_nmt_obj.nbl_3x2pt_nmt_unb,
+                repeats=self.cov_nmt_obj.nbl_3x2pt_unb,
                 axis=2,
             )
             self.cov_nmt_obj.noise_3x2pt_unb_5d = noise_3x2pt_nmt_unb_5d

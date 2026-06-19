@@ -249,11 +249,11 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: Knox # Type: str
+  partial_sky_method: NaMaster # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: decoupled # Type: str.
+  cov_type: coupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
@@ -411,9 +411,6 @@ precision:
   # This is (significantly) faster, but less accurate.
   spin0: True # Type: bool.
   use_iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-  # Number of iterations when computing the alms of the input map. See
-  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-  n_iter_nmt: null # Type: None | int.
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

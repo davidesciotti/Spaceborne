@@ -425,9 +425,6 @@ class SpaceborneConfigChecker:
             "Section 'precision' must be a dictionary"
         )
         precision_cfg = self.cfg['precision']
-        assert isinstance(precision_cfg['n_iter_nmt'], (int, type(None))), (
-            'precision: n_iter_nmt must be an int or None'
-        )
         assert isinstance(precision_cfg['n_sub'], int), (
             'precision: n_sub must be an int'
         )

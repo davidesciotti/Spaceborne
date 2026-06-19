@@ -132,7 +132,6 @@ from spaceborne import (
     wf_cl_lib,
 )
 from spaceborne import constants as const
-from spaceborne import cov_dict as cd
 from spaceborne import plot_lib as sb_plt
 from spaceborne import sb_lib as sl
 
@@ -796,6 +795,7 @@ pvt_cfg = {
     'symmetrize_output_dict': const.HS_SYMMETRIZE_OUTPUT_DICT,
     'use_h_units': use_h_units,
     'z_grid': z_grid,
+    'nside': cfg['mask']['nside'],
 }
 
 # instantiate data handler class
@@ -905,6 +905,15 @@ if (
         f'{fsky_ab_dict["GL"]:.4f}',
         stacklevel=2,
     )
+
+# TODO branch use weight maps!
+ell_max_buffer = []
+for key in footp_cl_abcd_dict:
+    buffer = mask_utils.estimate_ell_cutoff(
+        footp_cl_abcd_dict[key][0], footp_cl_abcd_dict[key][1]
+    )
+    ell_max_buffer.append(buffer)
+ell_max_buffer = max(ell_max_buffer)
 
 
 # this will be used to normalise the SSC and cNG
@@ -1154,16 +1163,25 @@ if cfg['misc']['cl_triangle_plot']:
 
 # ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
 if (
-    cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']
-    or cfg['precision']['cov_hs_g_ell_bin_average']
+    cfg['covariance']['partial_sky_method'] == 'Knox'
+    and cfg['precision']['cov_hs_g_ell_bin_average']
 ):
     # in these cases I need an unbinned ell grid
     cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
         ell_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
-
+    cov_nmt_obj = None
+    
 
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
+    ell_max_nmt = ell_obj.ell_max_3x2pt + ell_max_buffer
+    ells_3x2pt_nmt_unb = np.arange(ell_max_nmt + 1)
+
+    # in these cases I need an unbinned ell grid
+    cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        ells_3x2pt_nmt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    )
+
     from spaceborne import cov_partial_sky
 
     # initialize cov_nmt_obj
@@ -1176,10 +1194,12 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     )
 
     # set a couple useful attributes
-    cov_nmt_obj.ells_3x2pt_unb = ell_obj.ells_3x2pt_unb
-    cov_nmt_obj.nbl_3x2pt_unb = ell_obj.nbl_3x2pt_unb
+    cov_nmt_obj.ells_3x2pt_unb = ells_3x2pt_nmt_unb
+    cov_nmt_obj.nbl_3x2pt_unb = len(ells_3x2pt_nmt_unb)
+    cov_nmt_obj.ell_max_nmt = ell_max_nmt
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
+    cov_nmt_obj.ell_max_buffer = ell_max_buffer
 
 else:
     cov_nmt_obj = None

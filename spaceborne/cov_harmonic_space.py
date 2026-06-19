@@ -204,12 +204,12 @@ class CovHarmonicSpace:
 
             # noise vector doesn't have to be recomputed, but repeated a larger number
             # of times (ell by ell)
-            noise_3x2pt_unb_5d = np.repeat(
+            noise_3x2pt_nmt_unb_5d = np.repeat(
                 noise_3x2pt_4d[:, :, np.newaxis, :, :],
-                repeats=self.cov_nmt_obj.nbl_3x2pt_unb,
+                repeats=self.cov_nmt_obj.nbl_3x2pt_nmt_unb,
                 axis=2,
             )
-            self.cov_nmt_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
+            self.cov_nmt_obj.noise_3x2pt_unb_5d = noise_3x2pt_nmt_unb_5d
             cov_nmt_dict = self.cov_nmt_obj.build_psky_cov()
 
             # assign the G term from namaster

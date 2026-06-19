@@ -494,8 +494,8 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['use_KE_approximation'], bool), (
             'precision: use_KE_approximation must be a boolean'
         )
-        assert isinstance(precision_cfg['use_iNKA'], bool), (
-            'precision: use_iNKA must be a boolean'
+        assert isinstance(precision_cfg['iNKA'], bool), (
+            'precision: iNKA must be a boolean'
         )
         assert isinstance(precision_cfg['spin0'], bool), (
             'precision: spin0 must be a boolean'

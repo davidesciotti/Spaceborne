@@ -410,7 +410,7 @@ precision:
   # Whether to treat all fields as having spin 0 in the NaMaster Gaussian covariance.
   # This is (significantly) faster, but less accurate.
   spin0: True # Type: bool.
-  use_iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
+  iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

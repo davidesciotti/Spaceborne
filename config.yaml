@@ -122,8 +122,8 @@ binning:
   # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
   # so ell_bins is ignored and ell_max is included in the grid.
   ell_min: 10 # Type: int | float. Minimum ell
-  ell_max: 3000 # Type: int | float. Maximum ell
-  ell_bins: 32 # Type: int. Number of ell bins.
+  ell_max: 1000 # Type: int | float. Maximum ell
+  ell_bins: 20 # Type: int. Number of ell bins.
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
   # The file should have the following columns:
@@ -318,6 +318,7 @@ covariance:
   # When using NaMaster for the partial-sky Gaussian covariance, choose whether to
   # save the (binned and unbinned) mode coupling matrices (mcm)
   save_mcms: True # Type: bool.
+  save_nmt_wsp_to_cache: False # Type: bool. Whether to save the NaMaster workspaces to the cache (the files can be heavy).
   load_cached_nmt_workspaces: False # Type: bool. Whether to load the NaMaster workspaces from the cache, if they have already been computed.
 
 PyCCL:

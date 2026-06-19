@@ -50,20 +50,11 @@ def load_footprint(path: str, nside: int) -> np.ndarray:
 
     if is_fits:
         try:
-            # function provided by VMPZ team to read very high resolution map
+            # function provided by VMPZ to read very high resolution map
             # and downgrade it on the fly
             footprint = _read_masking_map(path, nside)
-        except ValueError as ve:
-            # print(
-            #     f'ValueError raised: {ve}, \n'
-            #     'falling back on hp.read_map to read input map'
-            # )
-            footprint_raw = hp.read_map(path)
-            nside_in = hp.npix2nside(len(footprint_raw))
-            if nside_in != nside:
-                footprint = hp.ud_grade(footprint_raw, nside)
-            else:
-                footprint = footprint_raw
+        except ValueError:
+            footprint = hp.read_map(path)
 
     elif is_npy:
         footprint = np.load(path, allow_pickle=False)

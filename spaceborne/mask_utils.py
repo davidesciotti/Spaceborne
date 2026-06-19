@@ -4,6 +4,17 @@ import numpy as np
 from spaceborne import constants, cosmo_lib, io_handler
 
 
+def estimate_ell_cutoff(ells, cl: np.ndarray, threshold: float = 1e-7):
+    """Given an input power spectrum, estimates the ell at which the spectrum has
+    decayed to a fraction threshold of its peak.
+    Uses the maxima to avoid issues with oscillations close to 0"""
+    maxima = np.maximum.accumulate(cl[::-1])[::-1]
+    peak = maxima[0]
+    cross = np.where(maxima < threshold * peak)[0]
+    bandwidth = ells[cross[0]] if cross.size else ells[-1]
+    return bandwidth
+
+
 def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
     """
     Given the LL and GG mask objects, computes the AB masks and their fsky.

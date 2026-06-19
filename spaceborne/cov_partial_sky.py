@@ -1112,6 +1112,7 @@ class CovNaMaster:
         self.nonreq_probe_combs = pvt_cfg['nonreq_probe_combs_hs']
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.ind_dict = pvt_cfg['ind_dict']
+        self.nside = pvt_cfg['nside']
         self.coupled_cov = cfg['covariance']['cov_type'] == 'coupled'
         self.output_path = self.cfg['misc']['output_path']
         self.load_cached_wsp = self.cfg['covariance']['load_cached_nmt_workspaces']
@@ -1157,20 +1158,18 @@ class CovNaMaster:
 
         # check on lmax and NSIDE
         _lmax = self.ell_obj.ell_max_GC
-        if _lmax >= 3 * self.mask_obj_gg.nside_cfg - 1:
+        if _lmax >= 3 * self.nside - 1:
             warnings.warn(
-                f'lmax = {_lmax} >= 3 * NSIDE - 1 = '
-                f'{3 * self.mask_obj_gg.nside_cfg - 1}\n'
-                f'(NSIDE = {self.mask_obj_gg.nside_cfg}) for probe GC. '
+                f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.nside - 1}\n'
+                f'(NSIDE = {self.nside}) for probe GC. '
                 'You should probably increase NSIDE or decrease lmax ',
                 stacklevel=2,
             )
         _lmax = self.ell_obj.ell_max_WL
-        if _lmax >= 3 * self.mask_obj_ll.nside_cfg - 1:
+        if _lmax >= 3 * self.nside - 1:
             warnings.warn(
-                f'lmax = {_lmax} >= 3 * NSIDE - 1 = '
-                f'{3 * self.mask_obj_ll.nside_cfg - 1}\n'
-                f'(NSIDE = {self.mask_obj_ll.nside_cfg}) for probe WL. '
+                f'lmax = {_lmax} >= 3 * NSIDE - 1 = {3 * self.nside - 1}\n'
+                f'(NSIDE = {self.nside}) for probe WL. '
                 'You should probably increase NSIDE or decrease lmax ',
                 stacklevel=2,
             )
@@ -1180,7 +1179,7 @@ class CovNaMaster:
         self.nbl_3x2pt_unb = _UNSET
         self.fsky_ab_dict = _UNSET
 
-    def build_fields(self, ell_max_eff):
+    def build_fields(self, lmax: int):
         # TODO XXX make this also dependent on the selected probes!
         self.f0_dict, self.f2_dict = {}, {}
         print('\nComputing namaster fields...')
@@ -1188,11 +1187,11 @@ class CovNaMaster:
         # in case only the footprint is provided, the fields can be computed once
         if not self.use_weight_maps_gg:
             self.f0_ftp = nmt.NmtField(
-                mask=self.footprint_gg, maps=None, spin=0, lite=True, lmax=ell_max_eff
+                mask=self.footprint_gg, maps=None, spin=0, lite=True, lmax=lmax
             )
         if not self.use_weight_maps_ll:
             self.f2_ftp = nmt.NmtField(
-                mask=self.footprint_ll, maps=None, spin=2, lite=True, lmax=ell_max_eff
+                mask=self.footprint_ll, maps=None, spin=2, lite=True, lmax=lmax
             )
 
         # now, either compute per-bin fields from weight maps, or just assign the
@@ -1204,7 +1203,7 @@ class CovNaMaster:
                     maps=None,
                     spin=0,
                     lite=True,
-                    lmax=ell_max_eff,
+                    lmax=lmax,
                 )
             else:
                 self.f0_dict[zi] = self.f0_ftp
@@ -1215,7 +1214,7 @@ class CovNaMaster:
                     maps=None,
                     spin=2,
                     lite=True,
-                    lmax=ell_max_eff,
+                    lmax=lmax,
                 )
             else:
                 self.f2_dict[zi] = self.f2_ftp
@@ -1592,6 +1591,7 @@ class CovNaMaster:
         _ell_min_eff = self.ell_obj.ell_min_3x2pt
         ell_max_eff = self.ell_obj.ell_max_3x2pt
 
+
         # notice that bin_obj.get_ell_list(nbl_eff) is out of bounds
         # ells_eff_edges = np.array([b.get_ell_list(i)[0] for i in range(nbl_eff)])
         # ells_eff_edges = np.append(
@@ -1599,9 +1599,9 @@ class CovNaMaster:
         # )  # careful f the +1!
         # ell_min_eff = ells_eff_edges[0]
 
-        ells_unb = np.arange(ell_max_eff + 1)
+        ells_unb = np.arange(self.ell_max_nmt + 1)
         nbl_unb = len(ells_unb)
-        assert nbl_unb == ell_max_eff + 1, 'nbl_tot does not match lmax_eff + 1'
+        assert nbl_unb == self.ell_max_nmt + 1, 'nbl_tot does not match lmax_eff + 1'
 
         # ells_bpw = ells_unb[ell_min_eff : lmax_eff + 1]
         # delta_ells_bpw = np.diff(
@@ -1618,7 +1618,7 @@ class CovNaMaster:
         # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
 
-        self.build_fields(ell_max_eff)
+        self.build_fields(lmax=self.ell_max_nmt)
         self.build_wsp()
         self.build_cw(unique_probe_combs)
         self.save_to_cache(unique_probe_combs)
@@ -1633,7 +1633,7 @@ class CovNaMaster:
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
-        if self.cfg['precision']['use_iNKA']:
+        if self.cfg['precision']['iNKA']:
             # TODO XXX this could be made more efficient by only looping over the auto-combs
             # TODO XXX for ll and gg
             # The iNKA approximates the true Cl as couple_cell(Cl) / fsky. The fsky
@@ -1785,12 +1785,12 @@ class CovNaMaster:
                 zbins=self.zbins,
                 weight_maps_gg=self.weight_maps_gg,
                 weight_maps_ll=self.weight_maps_ll,
-                nside=self.mask_obj_ll.nside_cfg,
+                nside=self.nside,
                 nreal=self.cfg['ensemble_covariance']['nreal'],
                 coupled_cls=self.coupled_cov,
                 which_cls=self.cfg['ensemble_covariance']['which_cls'],
                 nmt_bin_obj=self.nmt_bin_obj,
-                lmax=ell_max_eff,
+                lmax=self.ell_max_nmt,
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['ensemble_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],

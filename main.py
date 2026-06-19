@@ -801,6 +801,11 @@ pvt_cfg = {
 # instantiate data handler class
 io_obj = io_handler.IOHandler(cfg, pvt_cfg)
 
+# declare covariance objects
+cov_nmt_obj = None
+cov_rs_obj = None
+cov_cs_obj = None
+
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
 # ! ====================================================================================
@@ -906,14 +911,23 @@ if (
         stacklevel=2,
     )
 
-# TODO branch use weight maps!
-ell_max_buffer = []
-for key in footp_cl_abcd_dict:
-    buffer = mask_utils.estimate_ell_cutoff(
-        footp_cl_abcd_dict[key][0], footp_cl_abcd_dict[key][1]
-    )
-    ell_max_buffer.append(buffer)
-ell_max_buffer = max(ell_max_buffer)
+ell_buffer_nmt = []
+for (ells, cls) in footp_cl_abcd_dict.values():
+    buffer = mask_utils.estimate_ell_cutoff(ells, cls)
+    ell_buffer_nmt.append(buffer)
+
+
+for mask_obj in (mask_obj_ll, mask_obj_gg):
+    if not mask_obj.use_weight_maps:
+        continue
+    for wmap in mask_obj.weight_maps:
+        ells, cls = mask_utils.get_maps_cl(wmap, wmap)
+        buffer = mask_utils.estimate_ell_cutoff(ells, cls)
+        ell_buffer_nmt.append(buffer)
+
+# take the max over all masks: the NaMaster ell-grid is shared across probes, so use
+# the largest bandwidth to avoid under-buffering any of them
+ell_buffer_nmt = max(ell_buffer_nmt)
 
 
 # this will be used to normalise the SSC and cNG
@@ -1162,23 +1176,35 @@ if cfg['misc']['cl_triangle_plot']:
 
 
 # ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
-if (
-    cfg['covariance']['partial_sky_method'] == 'Knox'
-    and cfg['precision']['cov_hs_g_ell_bin_average']
-):
+if cfg['precision']['cov_hs_g_ell_bin_average']:
     # in these cases I need an unbinned ell grid
     cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
         ell_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
-    cov_nmt_obj = None
-    
 
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
-    ell_max_nmt = ell_obj.ell_max_3x2pt + ell_max_buffer
-    ells_3x2pt_nmt_unb = np.arange(ell_max_nmt + 1)
+    # for NaMaster, we want to leave some headroom in case nside is high and ell_max is
+    # low. For this, we compute a buffer roughly corresponding to the bandwidth of the
+    # mask Cls...
+    ell_max_3x2pt_nmt = ell_obj.ell_max_3x2pt + ell_buffer_nmt
+    # and, if it overshoots the maximum allowed by the nside, we cap it there
+    ell_max_3x2pt_nmt = min(ell_max_3x2pt_nmt, 3 * cfg['mask']['nside'] - 1)
 
-    # in these cases I need an unbinned ell grid
-    cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+    print(f'{ell_max_3x2pt_nmt=}')
+
+    if ell_max_3x2pt_nmt - ell_obj.ell_max_3x2pt < ell_buffer_nmt:
+        warnings.warn(
+            f'NaMaster lmax buffer truncated by resolution: requested buffer '
+            f'{ell_buffer_nmt} (ell_max_nmt={ell_obj.ell_max_3x2pt + ell_buffer_nmt}) '
+            f'exceeds 3*nside-1={3 * cfg["mask"]["nside"] - 1}. Effective buffer is '
+            f'only {ell_max_3x2pt_nmt - ell_obj.ell_max_3x2pt}; the band-limit bias '
+            f'may not be fully removed. Increase nside (currently '
+            f'{cfg["mask"]["nside"]}) so that ell_max + buffer fits below 3*nside-1.',
+            stacklevel=2,
+        )
+
+    ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
+    cl_3x2pt_nmt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
         ells_3x2pt_nmt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
 
@@ -1196,19 +1222,13 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     # set a couple useful attributes
     cov_nmt_obj.ells_3x2pt_unb = ells_3x2pt_nmt_unb
     cov_nmt_obj.nbl_3x2pt_unb = len(ells_3x2pt_nmt_unb)
-    cov_nmt_obj.ell_max_nmt = ell_max_nmt
-    cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
+    cov_nmt_obj.ell_max_nmt = ell_max_3x2pt_nmt
+    cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_nmt_unb_5d
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
-    cov_nmt_obj.ell_max_buffer = ell_max_buffer
-
-else:
-    cov_nmt_obj = None
+    cov_nmt_obj.ell_max_buffer = ell_buffer_nmt
 
 
 # ! ============================== Init real space cov object ==========================
-# initialize object
-cov_rs_obj = None
-
 if obs_space == 'real':
     # initialize cov_rs_obj and set a couple useful attributes
     cov_rs_obj = cov_real_space.CovRealSpace(cfg=cfg, pvt_cfg=pvt_cfg)
@@ -1229,7 +1249,6 @@ if obs_space == 'real':
 
 # TODO this could probably be done with super.__init__() where super is the
 # cov projector class
-cov_cs_obj = None
 if obs_space == 'cosebis':
     cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg=cfg, pvt_cfg=pvt_cfg)
     ell_obj.compute_ells_3x2pt_proj()

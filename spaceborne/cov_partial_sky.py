@@ -660,6 +660,15 @@ def compute_ensemble_covariance( # fmt: skip
             )
 
             if len(sim_cl_GG_ij) != nbl:
+                # the simulated (coupled) pcls run up to ell_max_nmt, but we only
+                # bin the science range: the high-ell mode-coupling is already
+                # baked into the masked-map pseudo-Cls, so truncating the array to
+                # nmt_bin_obj.lmax is correct (mirrors the analytic side, which
+                # couples to ell_max_nmt then bins to science bands).
+                _ls = nmt_bin_obj.lmax + 1
+                sim_cl_GG_ij = sim_cl_GG_ij[:_ls]
+                sim_cl_GL_ij = sim_cl_GL_ij[:_ls]
+                sim_cl_LL_ij = sim_cl_LL_ij[:_ls]
                 sim_cl_GG[i, :, zi, zj] = nmt_bin_obj.bin_cell(sim_cl_GG_ij)
                 sim_cl_GL[i, :, zi, zj] = nmt_bin_obj.bin_cell(sim_cl_GL_ij)
                 sim_cl_LL[i, :, zi, zj] = nmt_bin_obj.bin_cell(sim_cl_LL_ij)
@@ -896,9 +905,15 @@ def _compute_one_realization(
             alms_B=alms_B,
         )
         if len(cl_gg_1d) != nbl:
-            cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d)
-            cl_gl_1d = nmt_bin_obj.bin_cell(cl_gl_1d)
-            cl_ll_1d = nmt_bin_obj.bin_cell(cl_ll_1d)
+            # the simulated (coupled) pcls run up to ell_max_nmt, but we only
+            # bin the science range: the high-ell mode-coupling is already
+            # baked into the masked-map pseudo-Cls, so truncating the array to
+            # nmt_bin_obj.lmax is correct (mirrors the analytic side, which
+            # couples to ell_max_nmt then bins to science bands).
+            _ls = nmt_bin_obj.lmax + 1
+            cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d[:_ls])
+            cl_gl_1d = nmt_bin_obj.bin_cell(cl_gl_1d[:_ls])
+            cl_ll_1d = nmt_bin_obj.bin_cell(cl_ll_1d[:_ls])
 
         cl_gg_3d[:, zi, zj] = cl_gg_1d
         cl_gl_3d[:, zi, zj] = cl_gl_1d
@@ -1116,6 +1131,7 @@ class CovNaMaster:
         self.coupled_cov = cfg['covariance']['cov_type'] == 'coupled'
         self.output_path = self.cfg['misc']['output_path']
         self.load_cached_wsp = self.cfg['covariance']['load_cached_nmt_workspaces']
+        self.save_wsp_to_cache = self.cfg['covariance']['save_nmt_wsp_to_cache']
 
         # just for readability
         self.footprint_gg = self.mask_obj_gg.footprint
@@ -1175,8 +1191,7 @@ class CovNaMaster:
             )
 
         self.cl_3x2pt_unb_5d = _UNSET
-        self.ells_3x2pt_unb = _UNSET
-        self.nbl_3x2pt_unb = _UNSET
+        self.ell_max_nmt = _UNSET
         self.fsky_ab_dict = _UNSET
 
     def build_fields(self, lmax: int):
@@ -1464,6 +1479,9 @@ class CovNaMaster:
         # if workspaces are already laoded from cache, do not save them again
         if self.load_cached_wsp:
             return
+        
+        if not self.save_wsp_to_cache:
+            return
 
         # else, create folder if absent and save everything
         os.makedirs(f'{self.cache_path}', exist_ok=True)
@@ -1591,13 +1609,23 @@ class CovNaMaster:
         _ell_min_eff = self.ell_obj.ell_min_3x2pt
         ell_max_eff = self.ell_obj.ell_max_3x2pt
 
-
         # notice that bin_obj.get_ell_list(nbl_eff) is out of bounds
         # ells_eff_edges = np.array([b.get_ell_list(i)[0] for i in range(nbl_eff)])
         # ells_eff_edges = np.append(
         #     ells_eff_edges, b.get_ell_list(nbl_eff - 1)[-1] + 1
         # )  # careful f the +1!
         # ell_min_eff = ells_eff_edges[0]
+
+        # TODO branch not sure at all about this...
+        # The lmax buffer (ell_max_nmt > ell_max) relies on a coupled
+        # gaussian_covariance that is binned to science bands manually below. The
+        # decoupled path bins via the workspace bandpowers, which are per-ell here, so
+        # it is not supported with a buffer; guard against silently wrong results.
+        if not self.coupled_cov and self.ell_max_nmt > ell_max_eff:
+            raise NotImplementedError(
+                'The NaMaster lmax buffer (ell_max_nmt > ell_max_3x2pt) is only '
+                'implemented for cov_type="coupled". Use coupled, or set buffer to 0.'
+            )
 
         ells_unb = np.arange(self.ell_max_nmt + 1)
         nbl_unb = len(ells_unb)
@@ -1618,11 +1646,25 @@ class CovNaMaster:
         # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
 
+        # Build the NaMaster fields, mode-coupling workspaces (w**) and covariance
+        # workspaces (cw) on the *extended* grid (0..ell_max_nmt). This is essential:
+        # nmt.gaussian_covariance requires cw.lmax == wa.lmax == wb.lmax, and the
+        # mode-coupling must reach beyond ell_max so the covariance at ell_max is not
+        # biased by the band-limit (see iNKA weight-map LL-noise note). cw inherits its
+        # lmax from the fields (ell_max_nmt); the w** workspaces inherit theirs from the
+        # bin object, so we temporarily bin per-ell up to ell_max_nmt here. The w**
+        # binning does not affect the *coupled* covariance (it is binned to science
+        # bands manually below via bin_2d), so per-ell is fine. The science bin object
+        # is restored before the MCMs, which must stay on the science grid (they couple
+        # the SSC/cNG terms, computed on the science ells).
+        nmt_bin_obj_sci = self.nmt_bin_obj  # Stash the science bin object
+        self.nmt_bin_obj = nmt.NmtBin.from_lmax_linear(self.ell_max_nmt, 1)
         self.build_fields(lmax=self.ell_max_nmt)
         self.build_wsp()
         self.build_cw(unique_probe_combs)
         self.save_to_cache(unique_probe_combs)
-        self.compute_and_save_mcms(nbl_unb=nbl_unb)
+        self.nmt_bin_obj = nmt_bin_obj_sci
+        self.compute_and_save_mcms(nbl_unb=ell_max_eff + 1)
 
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
@@ -1750,7 +1792,7 @@ class CovNaMaster:
                 self.zbins**2 + (self.zbins + 1) // 2 * 2
             ) * self.ell_obj.nbl_3x2pt
             print(
-                'Computing ensemble covariance from '
+                '\nComputing ensemble covariance from '
                 f'{self.cfg["ensemble_covariance"]["nreal"]} healpy Gaussian '
                 f'realizations. The datevector length is {len_dv}'
             )

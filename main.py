@@ -628,11 +628,9 @@ else:
     ccl_obj.lumin_ratio_2d_arr = None
 
 
-# ! define k and z grids used throughout the code (k is in 1/Mpc)
+# ! ============================== k and z grids (k is in 1/Mpc) =======================
 # TODO should zmin and zmax be inferred from the nz tables?
 # TODO -> not necessarily true for all the different zsteps
-
-
 z_grid = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
@@ -661,9 +659,11 @@ z_grid_trisp_cng = np.linspace(
     ),
 )
 
-if len(z_grid) < 1000:
+
+if len(z_grid) < 500:
     warnings.warn(
         'the number of steps in the redshift grid is small, '
+        f'(len(z_grid)={len(z_grid)}) '
         'you may want to consider decreasing delta_z',
         stacklevel=2,
     )
@@ -836,92 +836,36 @@ mask_obj_ll = mask_utils.Mask(cfg['mask'], probe='LL')
 mask_obj_gg = mask_utils.Mask(cfg['mask'], probe='GG')
 mask_obj_ll.process()
 mask_obj_gg.process()
-mask_obj_ll.plot_maps()
-mask_obj_gg.plot_maps()
+mask_obj_ll.plot_footprint()
+mask_obj_ll.plot_weight_maps()
+mask_obj_gg.plot_footprint()
+mask_obj_gg.plot_weight_maps()
 
-# TODO branch this should be moved somewhere else??
-import healpy as hp
-
+# compute footprints and fskys for all probe combinations
 footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
     mask_obj_ll=mask_obj_ll, mask_obj_gg=mask_obj_gg
 )
 
-hp.mollview(
-    footp_ab_dict['GL'], cmap='inferno_r', title='Footprint GGL - Mollweide view'
+# plot GL footprint
+mask_utils.plot_footprint(footp_ab_dict['GL'], probe='GL')
+
+# compute footprint spectra
+footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
+    footp_ab_dict=footp_ab_dict,
+    fsky_ab_dict=fsky_ab_dict,
+    unique_probe_combs_hs=unique_probe_combs_hs,
 )
-hp.graticule()
 
-footp_cl_abcd_dict = {}
-footp_cl_norm_abcd_dict = {}
-for probe_abcd in unique_probe_combs_hs:
-    probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+# compute fsky_abcd
+fsky_max_abcd_dict, amax_abcd_dict = mask_utils.get_fsky_abcd_dict(
+    fsky_ab_dict=fsky_ab_dict, req_probe_combs_hs_2d=req_probe_combs_hs_2d
+)
 
-    # compute and store the footprint cross-spectrum...
-    _ells, _cls = mask_utils.get_maps_cl(
-        footp_ab_dict[probe_ab], footp_ab_dict[probe_cd]
-    )
-
-    # ...and its normalised version
-    footp_cl_abcd_dict[probe_ab, probe_cd] = (_ells, _cls)
-    denominator = (4 * np.pi) ** 2 * fsky_ab_dict[probe_ab] * fsky_ab_dict[probe_cd]
-    _cls_norm = _cls * (2 * _ells + 1) / denominator
-    footp_cl_norm_abcd_dict[probe_ab, probe_cd] = (_ells, _cls_norm)
-
-fsky_max_abcd_dict = {}
-for probe_abcd in req_probe_combs_hs_2d:
-    probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-    # compute and store max(fsky_ab, fsky_cd)
-    fsky_max_abcd_dict[probe_ab, probe_cd] = max(
-        fsky_ab_dict[probe_ab], fsky_ab_dict[probe_cd]
-    )
-
-
-# turn into A_max (in sr)
-amax_abcd_dict = {
-    k: v * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
-    for k, v in fsky_max_abcd_dict.items()
-}
-
-
-# warnings
-if not np.isclose(fsky_ab_dict['LL'], fsky_ab_dict['GG'], atol=0, rtol=1e-5):
-    warnings.warn(
-        'LL and GG footprints have different fsky. Using probe-dependent sky '
-        'fractions:\n'
-        f'LL = {fsky_ab_dict["LL"]:.4f}, '
-        f'GG = {fsky_ab_dict["GG"]:.4f}.',
-        stacklevel=2,
-    )
-
-if (
-    np.isclose(fsky_ab_dict['GL'], 0, atol=0, rtol=1e-5)
-    or np.isnan(fsky_ab_dict['GL'])
-    or np.isinf(fsky_ab_dict['GL'])
-):
-    warnings.warn(
-        "The footprints seem to have zero overlap; fsky_ab_dict['GL'] = "
-        f'{fsky_ab_dict["GL"]:.4f}',
-        stacklevel=2,
-    )
-
-ell_buffer_nmt = []
-for ells, cls in footp_cl_abcd_dict.values():
-    buffer = mask_utils.estimate_ell_cutoff(ells, cls)
-    ell_buffer_nmt.append(buffer)
-
-
-for mask_obj in (mask_obj_ll, mask_obj_gg):
-    if not mask_obj.use_weight_maps:
-        continue
-    for wmap in mask_obj.weight_maps:
-        ells, cls = mask_utils.get_maps_cl(wmap, wmap)
-        buffer = mask_utils.estimate_ell_cutoff(ells, cls)
-        ell_buffer_nmt.append(buffer)
-
-# take the max over all masks: the NaMaster ell-grid is shared across probes, so use
-# the largest bandwidth to avoid under-buffering any of them
-ell_buffer_nmt = max(ell_buffer_nmt)
-
+ell_buffer_nmt = mask_utils.get_ell_buffer_nmt(
+    footp_cl_abcd_dict=footp_cl_abcd_dict,
+    mask_obj_ll=mask_obj_ll,
+    mask_obj_gg=mask_obj_gg,
+)
 
 # this will be used to normalise the SSC and cNG
 ccl_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
@@ -1299,6 +1243,8 @@ if (
         os.makedirs(oc_path)
 
     # save footprints
+    import healpy as hp
+
     for name, footp in footp_ab_dict.items():
         hp.write_map(f'{oc_path}/sb_footprint_{name}.fits', footp, overwrite=True)
 
@@ -1433,9 +1379,9 @@ if (
     )
 
     # TODO legacy, check that symmetrize_probe_cov_dict_6d doesn't mess up things
-    #      should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in 
+    #      should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in
     #      the load_list_fmt function?
-    
+
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
     # cov_oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=cov_oc_obj.cov_dict)
 

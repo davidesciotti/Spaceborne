@@ -19,8 +19,6 @@ def load_weight_map_fits(path: str) -> np.ndarray:
     if extension != '.fits':
         raise ValueError(f'Weight map file must be a .fits file, got {extension}')
 
-    print(f'\nLoading weight map file from {path}\n')
-
     weight_map_arr = hp.read_map(path, field=None)
 
     # sanity checks
@@ -45,8 +43,6 @@ def load_footprint(path: str, nside: int) -> np.ndarray:
     suffixes = [s.lower() for s in p.suffixes]
     is_fits = suffixes[-1:] == ['.fits'] or suffixes[-2:] == ['.fits', '.gz']
     is_npy = suffixes[-1:] == ['.npy']
-
-    print(f'\nLoading footprint file from {path}\n')
 
     if is_fits:
         try:

@@ -4,7 +4,7 @@ import numpy as np
 from spaceborne import constants, cosmo_lib, io_handler
 
 
-def estimate_ell_cutoff(ells, cl: np.ndarray, threshold: float = 1e-7):
+def estimate_ell_cutoff(ells, cl: np.ndarray, threshold: float = 1e-6) -> float:
     """Given an input power spectrum, estimates the ell at which the spectrum has
     decayed to a fraction threshold of its peak.
     Uses the maxima to avoid issues with oscillations close to 0"""
@@ -53,9 +53,6 @@ def get_maps_cl(map1: np.ndarray, map2: np.ndarray) -> tuple:
 
 def generate_polar_cap_func(area_deg2, nside):
     _fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
-    print(
-        f'\nGenerating a polar cap mask with area {area_deg2} deg^2 and nside {nside}'
-    )
 
     # Convert the area to radians squared for the angular radius calculation
     area_rad2 = area_deg2 * (np.pi / 180) ** 2
@@ -116,6 +113,11 @@ class Mask:
         # ! 1. load footprint/weight maps or generate polar cap
         if self.geometry == 'footprint_file':
             # load
+            print(
+                f'\nLoading footprint file for {self.probe} '
+                f'from {self.footprint_filename}\n'
+            )
+
             self.footprint = io_handler.load_footprint(
                 path=self.footprint_filename, nside=self.nside_cfg
             )
@@ -123,6 +125,10 @@ class Mask:
             self.footprint = up_downgrade_map(self.footprint, self.nside_cfg)
 
         elif self.geometry == 'polar_cap':
+            print(
+                f'\nGenerating a polar cap mask for {self.probe} with area '
+                f'{self.desired_survey_area_deg2} deg^2 and nside {self.nside_cfg}'
+            )
             self.footprint = generate_polar_cap_func(
                 self.desired_survey_area_deg2, self.nside_cfg
             )
@@ -134,6 +140,10 @@ class Mask:
 
         if self.use_weight_maps:
             # load
+            print(
+                f'\nLoading weight map file for {self.probe} '
+                f'from {self.weight_maps_filename}\n'
+            )
             self.weight_maps = io_handler.load_weight_map_fits(
                 self.weight_maps_filename
             )

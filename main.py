@@ -750,7 +750,6 @@ ind_auto = ind[:zpairs_auto, :].copy()
 ind_cross = ind[zpairs_auto : zpairs_cross + zpairs_auto, :].copy()
 ind_dict = {'LL': ind_auto, 'GL': ind_cross, 'GG': ind_auto}
 
-# TODO block_index must only be taken from here!
 cov_ordering_2d = cfg['covariance']['covariance_ordering_2D']
 if cov_ordering_2d in ['probe_scale_zpair', 'scale_probe_zpair']:
     block_index = 'ell'
@@ -807,10 +806,8 @@ cov_cs_obj = None
 # ! ===================================== \ells ========================================
 bin_obj = ell_utils.EllBinning(cfg)
 bin_obj.build_ell_bins()
-# not always required, but in this way it's simpler
-bin_obj.compute_ells_3x2pt_unbinned()
+bin_obj.compute_ells_3x2pt_unbinned()  # not always required, but this is simpler
 bin_obj._validate_bins()
-
 
 if obs_space == 'harmonic':
     nbx = bin_obj.nbl_3x2pt
@@ -827,8 +824,6 @@ pvt_cfg['ell_min_3x2pt'] = bin_obj.ell_min_3x2pt
 pvt_cfg['nbx'] = nbx
 
 
-# TODO Parallel: Workers compute independently, results are stacked after
-# TODO add to it theta and cosebis binning
 # TODO arange(ell_max_3x2pt)? are we sure? it would be better to at least start from 1...
 
 # ! ===================================== Mask =========================================
@@ -1473,11 +1468,12 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             )
             gal_bias_2d_trisp = np.tile(gal_bias_2d_trisp[:, None], zbins)
 
+        # random reminder: r_xx = resp_obj.r1_xx_hm
         dPmm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
         dPgm_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
         dPgg_ddeltab = np.zeros((len(k_grid), len(z_grid_trisp_ssc), zbins, zbins))
         # TODO this can be made more efficient - eg by having a
-        # TODO "if_bias_equal_all_bins" flag
+        #      "if_bias_equal_all_bins" flag
 
         if single_b_of_z:
             # compute dPAB/ddelta_b
@@ -1502,10 +1498,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             dPgg_ddeltab = np.repeat(_dPgg_ddeltab_hm, zbins, axis=2)
             dPgg_ddeltab = np.repeat(dPgg_ddeltab, zbins, axis=3)
 
-            # # TODO check these
-            # r_mm = resp_obj.r1_mm_hm
-            # r_gm = resp_obj.r1_gm_hm
-            # r_gg = resp_obj.r1_gg_hm
 
         else:
             for zi in range(zbins):
@@ -1521,10 +1513,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
                     dPmm_ddeltab[:, :, zi, zj] = resp_obj.dPmm_ddeltab_hm
                     dPgm_ddeltab[:, :, zi, zj] = resp_obj.dPgm_ddeltab_hm
                     dPgg_ddeltab[:, :, zi, zj] = resp_obj.dPgg_ddeltab_hm
-                    # # TODO check these
-                    # r_mm = resp_obj.r1_mm_hm
-                    # r_gm = resp_obj.r1_gm_hm
-                    # r_gg = resp_obj.r1_gg_hm
 
         # for mm and gm there are redundant axes: reduce dimensionality (squeeze)
         dPmm_ddeltab = dPmm_ddeltab[:, :, 0, 0]

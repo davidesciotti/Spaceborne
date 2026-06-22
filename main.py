@@ -9,12 +9,6 @@ from copy import deepcopy
 import yaml
 from tqdm import tqdm
 
-# TODOS BRANCH
-# - pylevin as a dependency should be taken care of in cloelib, so remove it from the env
-# - should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in the load_list_fmt function=? for OC, of course
-# - put markers in CPU vs time to understand portion of the code which could be parallelised
-# - maybe avoid recomputing z_min for very low ell_min? increasing k_max seems cleaner...
-
 
 def load_config(_config_path):
     # Check if we're running in a Jupyter environment (or interactive mode)
@@ -205,19 +199,19 @@ def plot_cls():
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
         if io_obj.need_input_cl_ll:
-            ax[0].plot(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+            ax[0].plot(bin_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gl:
-            ax[1].plot(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+            ax[1].plot(bin_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gg:
-            ax[2].plot(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
+            ax[2].plot(bin_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
     for zi in range(zbins):
         zj = zi
         sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-        ax[0].plot(ell_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
-        ax[1].plot(ell_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
-        ax[2].plot(ell_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
+        ax[0].plot(bin_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
+        ax[1].plot(bin_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
+        ax[2].plot(bin_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[
@@ -811,15 +805,15 @@ cov_cs_obj = None
 # ! ====================================================================================
 
 # ! ===================================== \ells ========================================
-ell_obj = ell_utils.EllBinning(cfg)
-ell_obj.build_ell_bins()
+bin_obj = ell_utils.EllBinning(cfg)
+bin_obj.build_ell_bins()
 # not always required, but in this way it's simpler
-ell_obj.compute_ells_3x2pt_unbinned()
-ell_obj._validate_bins()
+bin_obj.compute_ells_3x2pt_unbinned()
+bin_obj._validate_bins()
 
 
 if obs_space == 'harmonic':
-    nbx = ell_obj.nbl_3x2pt
+    nbx = bin_obj.nbl_3x2pt
 elif obs_space == 'real':
     nbx = cfg['binning']['theta_bins']
 elif obs_space == 'cosebis':
@@ -828,12 +822,11 @@ else:
     raise ValueError(f'Unknown observables space: {obs_space:s}')
 
 
-pvt_cfg['nbl_3x2pt'] = ell_obj.nbl_3x2pt
-pvt_cfg['ell_min_3x2pt'] = ell_obj.ell_min_3x2pt
+pvt_cfg['nbl_3x2pt'] = bin_obj.nbl_3x2pt
+pvt_cfg['ell_min_3x2pt'] = bin_obj.ell_min_3x2pt
 pvt_cfg['nbx'] = nbx
 
 
-# TODO rename ell_obj to bin_obj
 # TODO Parallel: Workers compute independently, results are stacked after
 # TODO add to it theta and cosebis binning
 # TODO arange(ell_max_3x2pt)? are we sure? it would be better to at least start from 1...
@@ -912,7 +905,7 @@ if (
     )
 
 ell_buffer_nmt = []
-for (ells, cls) in footp_cl_abcd_dict.values():
+for ells, cls in footp_cl_abcd_dict.values():
     buffer = mask_utils.estimate_ell_cutoff(ells, cls)
     ell_buffer_nmt.append(buffer)
 
@@ -1117,7 +1110,7 @@ sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 with sl.timer('\nComputing Cls...'):
     _cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
         ccl_obj,
-        ells=ell_obj.ells_3x2pt,
+        ells=bin_obj.ells_3x2pt,
         zbins=zbins,
         mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
         cl_ccl_kwargs=cl_ccl_kwargs,
@@ -1136,10 +1129,10 @@ if cfg['C_ell']['use_input_cls']:
     io_obj.load_cls()
 
     # check ells before spline interpolation
-    io_obj.check_ells_in(ell_obj)
+    io_obj.check_ells_in(bin_obj)
 
 ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-    ell_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
 )
 
 # cls plots
@@ -1149,16 +1142,16 @@ plot_cls()
 # are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
 # is True and are only plotted in that case
 _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
-_ell_dict_wl = {_key: ell_obj.ells_3x2pt}
-_ell_dict_xc = {_key: ell_obj.ells_3x2pt}
-_ell_dict_gc = {_key: ell_obj.ells_3x2pt}
+_ell_dict_wl = {_key: bin_obj.ells_3x2pt}
+_ell_dict_xc = {_key: bin_obj.ells_3x2pt}
+_ell_dict_gc = {_key: bin_obj.ells_3x2pt}
 _cl_dict_wl = {_key: ccl_obj.cl_3x2pt_5d[0, 0]}
 _cl_dict_xc = {_key: ccl_obj.cl_3x2pt_5d[1, 0]}
 _cl_dict_gc = {_key: ccl_obj.cl_3x2pt_5d[1, 1]}
 if cfg['C_ell']['use_input_cls']:
-    _ell_dict_wl['SB'] = ell_obj.ells_3x2pt
-    _ell_dict_xc['SB'] = ell_obj.ells_3x2pt
-    _ell_dict_gc['SB'] = ell_obj.ells_3x2pt
+    _ell_dict_wl['SB'] = bin_obj.ells_3x2pt
+    _ell_dict_xc['SB'] = bin_obj.ells_3x2pt
+    _ell_dict_gc['SB'] = bin_obj.ells_3x2pt
     _cl_dict_wl['SB'] = ccl_obj.cl_3x2pt_5d_sb[0, 0]
     _cl_dict_xc['SB'] = ccl_obj.cl_3x2pt_5d_sb[1, 0]
     _cl_dict_gc['SB'] = ccl_obj.cl_3x2pt_5d_sb[1, 1]
@@ -1179,25 +1172,25 @@ if cfg['misc']['cl_triangle_plot']:
 if cfg['precision']['cov_hs_g_ell_bin_average']:
     # in these cases I need an unbinned ell grid
     cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        ell_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+        bin_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
 
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     # for NaMaster, we want to leave some headroom in case nside is high and ell_max is
     # low. For this, we compute a buffer roughly corresponding to the bandwidth of the
     # mask Cls...
-    ell_max_3x2pt_nmt = ell_obj.ell_max_3x2pt + ell_buffer_nmt
+    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt + ell_buffer_nmt
     # and, if it overshoots the maximum allowed by the nside, we cap it there
     ell_max_3x2pt_nmt = min(ell_max_3x2pt_nmt, 3 * cfg['mask']['nside'] - 1)
 
     print(f'{ell_max_3x2pt_nmt=}')
 
-    if ell_max_3x2pt_nmt - ell_obj.ell_max_3x2pt < ell_buffer_nmt:
+    if ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt < ell_buffer_nmt:
         warnings.warn(
             f'NaMaster lmax buffer truncated by resolution: requested buffer '
-            f'{ell_buffer_nmt} (ell_max_nmt={ell_obj.ell_max_3x2pt + ell_buffer_nmt}) '
+            f'{ell_buffer_nmt} (ell_max_nmt={bin_obj.ell_max_3x2pt + ell_buffer_nmt}) '
             f'exceeds 3*nside-1={3 * cfg["mask"]["nside"] - 1}. Effective buffer is '
-            f'only {ell_max_3x2pt_nmt - ell_obj.ell_max_3x2pt}; the band-limit bias '
+            f'only {ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt}; the band-limit bias '
             f'may not be fully removed. Increase nside (currently '
             f'{cfg["mask"]["nside"]}) so that ell_max + buffer fits below 3*nside-1.',
             stacklevel=2,
@@ -1214,7 +1207,7 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_obj = cov_partial_sky.CovNaMaster(
         cfg=cfg,
         pvt_cfg=pvt_cfg,
-        ell_obj=ell_obj,
+        ell_obj=bin_obj,
         mask_obj_gg=mask_obj_gg,
         mask_obj_ll=mask_obj_ll,
     )
@@ -1234,11 +1227,11 @@ if obs_space == 'real':
     cov_rs_obj = cov_real_space.CovRealSpace(cfg=cfg, pvt_cfg=pvt_cfg)
 
     # set ell values used for projection
-    ell_obj.compute_ells_3x2pt_proj()
-    cov_rs_obj.ells_proj_g = ell_obj.ells_3x2pt_proj_g
-    cov_rs_obj.nbl_proj_g = len(ell_obj.ells_3x2pt_proj_g)
-    cov_rs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
-    cov_rs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
+    bin_obj.compute_ells_3x2pt_proj()
+    cov_rs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
+    cov_rs_obj.nbl_proj_g = len(bin_obj.ells_3x2pt_proj_g)
+    cov_rs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
+    cov_rs_obj.nbl_proj_ng = bin_obj.nbl_3x2pt_proj_ng
 
     # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
     # and store in the cov_rs_obj
@@ -1251,13 +1244,13 @@ if obs_space == 'real':
 # cov projector class
 if obs_space == 'cosebis':
     cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg=cfg, pvt_cfg=pvt_cfg)
-    ell_obj.compute_ells_3x2pt_proj()
+    bin_obj.compute_ells_3x2pt_proj()
 
     # set ell values used for projection
-    cov_cs_obj.ells_proj_g = ell_obj.ells_3x2pt_proj_g
-    cov_cs_obj.nbl_proj_g = ell_obj.nbl_3x2pt_proj_g
-    cov_cs_obj.ells_proj_ng = ell_obj.ells_3x2pt_proj_ng
-    cov_cs_obj.nbl_proj_ng = ell_obj.nbl_3x2pt_proj_ng
+    cov_cs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
+    cov_cs_obj.nbl_proj_g = bin_obj.nbl_3x2pt_proj_g
+    cov_cs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
+    cov_cs_obj.nbl_proj_ng = bin_obj.nbl_3x2pt_proj_ng
 
     # compute projection kernels over ell grids used for the integrals
     # of the G and NG terms
@@ -1275,7 +1268,7 @@ if obs_space == 'cosebis':
 # !  =============================== Build Gaussian covs ===============================
 if obs_space == 'harmonic':
     cov_hs_obj = cov_harmonic_space.CovHarmonicSpace(
-        cfg, pvt_cfg, ell_obj, cov_nmt_obj, bnt_matrix
+        cfg, pvt_cfg, bin_obj, cov_nmt_obj, bnt_matrix
     )
     cov_hs_obj.consistency_checks()
     cov_hs_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
@@ -1332,7 +1325,7 @@ if (
     nbl_3x2pt_oc = 500
 
     ells_3x2pt_oc = np.geomspace(
-        ell_obj.ell_min_3x2pt, ell_obj.ell_max_3x2pt, nbl_3x2pt_oc
+        bin_obj.ell_min_3x2pt, bin_obj.ell_max_3x2pt, nbl_3x2pt_oc
     )
 
     # ! new
@@ -1411,7 +1404,7 @@ if (
     )
     cov_oc_obj.oc_path = oc_path
     cov_oc_obj.path_to_config_oc_ini = f'{cov_oc_obj.oc_path}/input_configs.ini'
-    cov_oc_obj.ells_sb = ell_obj.ells_3x2pt
+    cov_oc_obj.ells_sb = bin_obj.ells_3x2pt
     cov_oc_obj.fsky_ab_dict = fsky_ab_dict
     cov_oc_obj.build_save_oc_ini(ascii_filenames_dict, h, print_ini=True)
 
@@ -1439,7 +1432,10 @@ if (
         df_chunk_size=5_000_000,
     )
 
-    # TODO legacy, check that it doesn't mess up things
+    # TODO legacy, check that symmetrize_probe_cov_dict_6d doesn't mess up things
+    #      should I remove the call to symmetrize_probe_cov_dict_6d bc I symmetrized in 
+    #      the load_list_fmt function?
+    
     # fill the missing probe combinations (ab, cd -> cd, ab) by symmetry
     # cov_oc_obj.cov_dict = sl.symmetrize_probe_cov_dict_6d(cov_dict=cov_oc_obj.cov_dict)
 
@@ -1612,10 +1608,10 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     # ! prepare integrands (d2Cxx_dVddeltab)
     # the finer grid is needed for the non-Gaussian covariance projection
     if obs_space == 'harmonic':
-        ell_grid = ell_obj.ells_3x2pt
+        ell_grid = bin_obj.ells_3x2pt
     # in these two cases, I have to recompute the SSC over a larger and finer grid
     elif obs_space in ['real', 'cosebis']:
-        ell_grid = ell_obj.ells_3x2pt_proj_ng
+        ell_grid = bin_obj.ells_3x2pt_proj_ng
 
     # compute responses on k_limber and the finer z_grid
     dPmm_ddeltab_klimb, dPgm_ddeltab_klimb, dPgg_ddeltab_klimb = (
@@ -1704,9 +1700,9 @@ if compute_ccl_ssc or compute_ccl_cng:
     # prepare ell grid: coarser if you want ell-space covariance, finer (and broader)
     # if it gets projected to real space or COSEBIs
     if obs_space == 'harmonic':
-        ell_grid = ell_obj.ells_3x2pt
+        ell_grid = bin_obj.ells_3x2pt
     elif obs_space in ['real', 'cosebis']:
-        ell_grid = ell_obj.ells_3x2pt_proj_ng
+        ell_grid = bin_obj.ells_3x2pt_proj_ng
 
     # init cov dict
     ccl_obj.set_cov_dict(pvt_cfg, ccl_ng_cov_terms_list)
@@ -2129,9 +2125,9 @@ np.savetxt(
 )
 
 # save cls
-sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_3x2pt_5d[0, 0], ell_obj.ells_WL, zbins)
-sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], ell_obj.ells_XC, zbins)
-sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], ell_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
 
 # save ell values
 # TODO do this for theta values in the real space case
@@ -2150,10 +2146,10 @@ header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
 if obs_space == 'harmonic':
     ells_2d_save = np.column_stack(
         (
-            ell_obj.ells_3x2pt,
-            ell_obj.delta_l_3x2pt,
-            ell_obj.ell_edges_3x2pt[:-1],
-            ell_obj.ell_edges_3x2pt[1:],
+            bin_obj.ells_3x2pt,
+            bin_obj.delta_l_3x2pt,
+            bin_obj.ell_edges_3x2pt[:-1],
+            bin_obj.ell_edges_3x2pt[1:],
         )
     )
     sl.savetxt_aligned(f'{output_path}/ell_values.txt', ells_2d_save, header_list)
@@ -2181,7 +2177,7 @@ if cfg['misc']['save_output_as_benchmark']:
         ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
     )
 
-    _ell_dict = {k: v for k, v in vars(ell_obj).items() if isinstance(v, np.ndarray)}
+    _ell_dict = {k: v for k, v in vars(bin_obj).items() if isinstance(v, np.ndarray)}
 
     if cfg['covariance']['partial_sky_method'] == 'NaMaster':
         import pymaster

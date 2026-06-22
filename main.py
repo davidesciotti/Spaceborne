@@ -824,8 +824,6 @@ pvt_cfg['ell_min_3x2pt'] = bin_obj.ell_min_3x2pt
 pvt_cfg['nbx'] = nbx
 
 
-# TODO arange(ell_max_3x2pt)? are we sure? it would be better to at least start from 1...
-
 # ! ===================================== Mask =========================================
 mask_obj_ll = mask_utils.Mask(cfg['mask'], probe='LL')
 mask_obj_gg = mask_utils.Mask(cfg['mask'], probe='GG')
@@ -1497,7 +1495,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             dPgm_ddeltab = np.repeat(dPgm_ddeltab, zbins, axis=3)
             dPgg_ddeltab = np.repeat(_dPgg_ddeltab_hm, zbins, axis=2)
             dPgg_ddeltab = np.repeat(dPgg_ddeltab, zbins, axis=3)
-
 
         else:
             for zi in range(zbins):

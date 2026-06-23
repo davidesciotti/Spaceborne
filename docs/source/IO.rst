@@ -110,22 +110,21 @@ configuration file.
 4. **Mask**
 
    The mask can be provided in ``.fits`` or ``.npy`` format. Additionally, the code
-   offert the possibility to generata a circular footprint covering the survey area 
-   and with the ``nside`` specified in the configuration file. The mask can also be 
-   apodized, in which case make sure you have ``NaMaster`` installed. 
-   Note that if ``nside`` is not None, it will also be used to adjust the resolution of 
+   offert the possibility to generata a circular footprint covering the survey area
+   and with the ``nside`` specified in the configuration file.
+   The footprint should normally be a binary mask; a non-binary footprint is accepted but
+   interpreted as fractional weighting (effective fsky = ``mean(W_a * W_b)``, TJPCov convention).
+   Note that if ``nside`` is not None, it will also be used to adjust the resolution of
    the input mask, either upgrading or downgrading it as needed.
  
    .. code-block:: yaml
 
       mask:
-         load_mask: False 
+         use_footprint: False 
          mask_filename: ../input/mask.fits 
          generate_polar_cap: True 
          nside: 1024 
-         survey_area_deg2: 13245 
-         apodize: False 
-         aposize: 0.1 
+         survey_area_deg2: 13245
 
 
 =======

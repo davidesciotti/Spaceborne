@@ -91,16 +91,18 @@ Naming conventions (just to ease the notation):
 """
 
 
-def zero_spline_factory(template: np.ndarray) -> callable:
-    """Factory function to create a zero spline with the same shape and dtype
-    as the template array."""
-    shape = template.shape[1:]
-    dtype = template.dtype
+def get_zsteps(z_min, z_max, delta_z):
+    """
+    Compute the number of grid points for linspace given a desired step size.
 
-    def _zero_spline(x):
-        return np.zeros((len(x), *shape), dtype=dtype)
-
-    return _zero_spline
+    Returns the count needed so that np.linspace(z_min, z_max, count) produces
+    a grid with actual spacing <= delta_z (endpoint-inclusive).
+    """
+    if delta_z <= 0:
+        raise ValueError(f'delta_z must be positive, got {delta_z}')
+    if z_max <= z_min:
+        raise ValueError(f'z_max must be greater than z_min, got {z_max=}, {z_min=}')
+    return int(np.ceil((z_max - z_min) / delta_z)) + 1
 
 
 def hartlap_factor(n_sim: int, n_data: int) -> float:
@@ -908,12 +910,12 @@ def compare_2d_covs(
         compare_funcs(
             x=None,
             y={
-                f'abs diag {name_a}': np.diag(np.abs(cov_a)),
-                f'abs diag {name_b}': np.diag(np.abs(cov_b)),
+                f'{name_a}': np.diag(np.abs(cov_a)),
+                f'{name_b}': np.diag(np.abs(cov_b)),
             },
             logscale_y=[True, False],
             ylim_diff=[-100, 100],
-            title=title + ' diag',
+            title=title + ' abs diag',
         )
 
     # compare cov flat
@@ -921,12 +923,12 @@ def compare_2d_covs(
         compare_funcs(
             x=None,
             y={
-                f'abs flat {name_a}': np.abs(cov_a).flatten(),
-                f'abs flat {name_b}': np.abs(cov_b).flatten(),
+                f'{name_a}': np.abs(cov_a).flatten(),
+                f'{name_b}': np.abs(cov_b).flatten(),
             },
             logscale_y=[True, False],
             ylim_diff=[-100, 100],
-            title=title + ' flat',
+            title=title + ' abs flat',
         )
 
     # compare SB against mat - cov spectrum
@@ -1782,7 +1784,6 @@ def plot_dominant_array_element(
         x = centers[idx]
         plt.text(x, -1.5, label, va='bottom', ha='center')
         plt.text(-1.5, x, label, va='center', ha='right', rotation='vertical')
-
 
 
 def cov_3x2pt_dict_8d_to_10d(

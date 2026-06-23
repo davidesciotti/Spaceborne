@@ -5,6 +5,17 @@ from copy import deepcopy
 import yaml
 
 
+def create_paths(ROOT, job_name):
+    sb_root_path = f'{ROOT}/Spaceborne'
+    configs_path = f'{ROOT}/Spaceborne_jobs_src/{job_name}/generated_configs'
+    io_path = f'{ROOT}/DATA/Spaceborne_jobs_IO/{job_name}'
+    return {
+        'sb_root_path': sb_root_path,
+        'configs_path': configs_path,
+        'io_path': io_path,
+    }
+
+
 def assert_repo_branch(repo_path: str, expected_branch: str) -> None:
     is_git_repo = subprocess.run(
         ['git', '-C', repo_path, 'rev-parse', '--is-inside-work-tree'],
@@ -77,9 +88,11 @@ def run_spaceborne(
     os.chdir(sb_root_path)
     failed: list[str] = []
 
+    print(f'🚜🚜🚜 Starting Spaceborne jobs for {len(yaml_files)} configs 🚜🚜🚜')
+
     try:
         for path in yaml_files:
-            print(f'\n🧮🧮🧮 Running job with config:\n{path}')
+            print(f'\n🚜 Running job with config: 🚜\n{path}')
             try:
                 subprocess.run(['python', 'main.py', '--config', path], check=True)
             except subprocess.CalledProcessError as exc:

@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 RED = '\033[31m'
@@ -226,40 +228,38 @@ class SpaceborneConfigChecker:
         # Mask
         assert isinstance(self.cfg['mask'], dict), "Section 'mask' must be a dictionary"
         mask_cfg = self.cfg['mask']
-        assert isinstance(mask_cfg['load_mask'], bool), (
-            'mask: load_mask must be a boolean'
-        )
-        assert isinstance(mask_cfg['mask_filename'], str), (
-            'mask: mask_filename must be a string'
-        )
-        assert isinstance(mask_cfg['generate_polar_cap'], bool), (
-            'mask: generate_polar_cap must be a boolean'
-        )
-        assert isinstance(mask_cfg['nside'], (int, type(None))), (
-            'mask: nside must be an int or None'
-        )
+        for probe in ['LL', 'GG']:
+            assert isinstance(mask_cfg[probe]['geometry'], str), (
+                f'mask[{probe}][geometry] must be a string'
+            )
+            assert isinstance(mask_cfg[probe]['footprint_filename'], str), (
+                f'mask[{probe}][footprint_filename] must be a string'
+            )
+            assert isinstance(
+                mask_cfg[probe]['weight_maps_filename'], (str, type(None))
+            ), f'mask[{probe}][weight_maps_filename] must be a string or None'
+
+        assert isinstance(mask_cfg['nside'], int), 'mask: nside must be an int'
         assert isinstance(mask_cfg['survey_area_deg2'], (int, float)), (
             'mask: survey_area_deg2 must be an int or float'
         )
-        assert isinstance(mask_cfg['apodize'], bool), 'mask: apodize must be a boolean'
-        assert isinstance(mask_cfg['aposize'], float), 'mask: aposize must be a float'
 
-        # Sample Covariance
-        assert isinstance(self.cfg['sample_covariance'], dict), (
-            "Section 'sample_covariance' must be a dictionary"
+        # Ensemble Covariance
+        ensemble_cov_cfg = self.cfg['ensemble_covariance']
+        assert isinstance(ensemble_cov_cfg, dict), (
+            "Section 'ensemble_covariance' must be a dictionary"
         )
-        sample_cov_cfg = self.cfg['sample_covariance']
-        assert isinstance(sample_cov_cfg['compute_sample_cov'], bool), (
-            'sample_covariance: compute_sample_cov must be a boolean'
+        assert isinstance(ensemble_cov_cfg['which_cls'], str), (
+            'ensemble_covariance: which_cls must be a string'
         )
-        assert isinstance(sample_cov_cfg['which_cls'], str), (
-            'sample_covariance: which_cls must be a string'
+        assert isinstance(ensemble_cov_cfg['nreal'], int), (
+            'ensemble_covariance: nreal must be an int'
         )
-        assert isinstance(sample_cov_cfg['nreal'], int), (
-            'sample_covariance: nreal must be an int'
+        assert isinstance(ensemble_cov_cfg['fix_seed'], bool), (
+            'ensemble_covariance: fix_seed must be a boolean'
         )
-        assert isinstance(sample_cov_cfg['fix_seed'], bool), (
-            'sample_covariance: fix_seed must be a boolean'
+        assert isinstance(ensemble_cov_cfg['save_sim_cls'], bool), (
+            'ensemble_covariance: save_sim_cls must be a boolean'
         )
 
         # OneCovariance
@@ -335,8 +335,9 @@ class SpaceborneConfigChecker:
                     "Allowed values are: 'Spaceborne', 'PyCCL', 'OneCovariance'."
                 )
 
-        assert cov_cfg['partial_sky_method'] in ['Knox', 'NaMaster'], (
-            'covariance: partial_sky_method must be either "Knox" or "NaMaster"'
+        assert cov_cfg['partial_sky_method'] in ['Knox', 'NaMaster', 'ensemble'], (
+            'covariance: partial_sky_method must be either "Knox", "NaMaster", '
+            'or "ensemble"'
         )
         assert isinstance(cov_cfg['cov_type'], str), (
             'covariance: cov_type must be a string'
@@ -624,44 +625,37 @@ class SpaceborneConfigChecker:
             'row_col_major must be either "row-major" or "col-major"'
         )
 
-        if self.cfg['sample_covariance']['compute_sample_cov']:
+        if self.cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
             assert self.cfg['probe_selection']['space'] == 'harmonic', (
-                'Sample covariance can only be computed for harmonic space for '
-                'the moment'
+                'Namaster and ensemble covariances can only be computed for '
+                'harmonic space for the moment'
             )
-
-        if self.cfg['covariance']['split_gaussian_cov'] and (
-            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-            or self.cfg['sample_covariance']['compute_sample_cov']
-        ):
-            raise ValueError(
+            assert not self.cfg['covariance']['split_gaussian_cov'], (
                 'cfg["covariance"]["split_gaussian_cov"] cannot be '
                 'set to True with either '
-                'cfg["covariance"]["partial_sky_method"] == "NaMaster" or '
-                'cfg["sample_covariance"]["compute_sample_cov"].'
+                'Namaster and ensemble covariances'
             )
-        assert not (
-            self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-            and self.cfg['sample_covariance']['compute_sample_cov']
-        ), 'Only one of `partial_sky_method == "NaMaster"` and `compute_sample_cov` '
-        'can be True — not both.'
+
+        if self.cfg['covariance']['partial_sky_method'] == 'ensemble':
+            assert self.cfg['covariance']['G'], (
+                'The ensemble method for the partial-sky Gaussian covariance '
+                'requires the Gaussian term to be computed'
+            )
+            assert self.cfg['probe_selection']['space'] == 'harmonic', (
+                'The ensemble Gaussian covariance '
+                'is only implemented for harmonic space'
+            )
+            assert (
+                self.cfg['probe_selection']['LL']
+                and self.cfg['probe_selection']['GL']
+                and self.cfg['probe_selection']['GG']
+            ), 'The ensemble Gaussian covariance is only implemented for the 3x2pt case'
 
     def check_probe_selection(self) -> None:
         allowed_keys = [
-            'space',
-            'LL',
-            'GL',
-            'GG',
-            'xip',
-            'xim',
-            'gt',
-            'w',
-            'En',
-            'Bn',
-            'Psigl',
-            'Psigg',
-            'cross_cov',
-        ]
+            'space', 'LL', 'GL', 'GG', 'xip', 'xim', 'gt', 'w', 
+            'En', 'Bn', 'Psigl', 'Psigg', 'cross_cov',
+        ]  # fmt: skip
 
         for key in self.cfg['probe_selection']:
             assert key in allowed_keys, f'Probe selection key {key} is not valid. '
@@ -711,13 +705,13 @@ class SpaceborneConfigChecker:
             self.cfg['covariance']['cov_type'] == 'coupled'
             and self.cfg['covariance']['G']
         ):
-            assert (
-                self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-                or self.cfg['sample_covariance']['compute_sample_cov']
-            ), (
+            assert self.cfg['covariance']['partial_sky_method'] in [
+                'NaMaster',
+                'ensemble',
+            ], (
                 'if the coupled Gaussian covariance is requested either '
-                'cfg["covariance"]["partial_sky_method"] must be "NaMaster" or '
-                'cfg["sample_covariance"]["compute_sample_cov"] must be True'
+                'cfg["covariance"]["partial_sky_method"] must be "NaMaster" '
+                'or "ensemble"'
             )
         if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
             assert self.cfg['binning']['binning_type'] != 'ref_cut', (
@@ -762,6 +756,20 @@ class SpaceborneConfigChecker:
                 'Results for GGL and GG might be inconsistent.'
             )
 
+    def check_mask(self) -> None:
+        for probe in ['LL', 'GG']:
+            assert self.cfg['mask'][probe]['geometry'] in [
+                'footprint_file',
+                'polar_cap',
+            ], (
+                f'cfg["mask"][{probe}]["geometry"] must be either'
+                ' "footprint_file" or "polar_cap"'
+            )
+
+            if self.cfg['mask'][probe]['geometry'] == 'footprint_file':
+                fp = self.cfg['mask'][probe]['footprint_filename']
+                assert os.path.isfile(fp), f'Footprint file for {probe} not found: {fp}'
+
     def check_options(self) -> None:
         if self.cfg['C_ell']['has_magnification_bias']:
             assert self.cfg['C_ell']['which_mag_bias'] in [
@@ -775,15 +783,16 @@ class SpaceborneConfigChecker:
         ], 'which_gal_bias should be "from_input" or "polynomial_fit"'
 
     def run_all_checks(self) -> None:
+        self.check_types()
         self.check_nmt()
         self.check_options()
+        self.check_mask()
         self.check_BNT_transform()
         self.check_onecov()
         self.check_KE_approximation()
         self.check_lists()
         # self.check_fsky()
         self.check_probe_selection()
-        self.check_types()
         self.check_misc()
         self.check_nz()
         self.check_cosmo()

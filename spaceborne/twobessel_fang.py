@@ -133,7 +133,7 @@ class TwoSphBessel:
         return m, n, c_mn_filter
 
     def two_sph_bessel(self, ell1, ell2):
-        """
+        r"""
         Calculate F(y_1,y_2) = \int_0^\infty dx_1 / x_1 \int_0^\infty dx_2 / x_2 * f(x_1,x_2) * j_{\ell_1}(x_1y_1) * j_{\ell_2}(x_2y_2),
         where j_\ell is the spherical Bessel func of order ell.
         array y is set as y[:] = 1/x[::-1]
@@ -167,7 +167,7 @@ class TwoSphBessel:
         )
 
     def two_sph_bessel_binave(self, ell1, ell2, binwidth_dlny1, binwidth_dlny2):
-        """
+        r"""
         Bin-averaging for 3D statistics: alpha_pow = D = 3
         Calculate 
         
@@ -235,7 +235,7 @@ class TwoBessel:
         )
 
     def two_Bessel_binave(self, ell1, ell2, binwidth_dlny1, binwidth_dlny2):
-        """
+        r"""
         Bin-averaging for 2D statistics: D = 2, alpha_pow = 2.5
         Calculate F(y_1,y_2) = \int_0^\infty dx_1 / x_1 \int_0^\infty dx_2 / x_2 * f(x_1,x_2) * J_{\ell_1}(x_1y_1) * J_{\ell_2}(x_2y_2),
         where J_\ell is the Bessel func of order ell.

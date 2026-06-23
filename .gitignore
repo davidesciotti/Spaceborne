@@ -20,6 +20,10 @@ output/*
 docs/build/
 node_modules
 dist/*
+
 build/
 *.egg-info/
 __pycache__/
+
+# hidden folders
+**/.*/

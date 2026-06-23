@@ -9,19 +9,21 @@ from spaceborne import constants as const
 from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 from spaceborne.ccl_interface import CCLInterface
-from spaceborne.cov_partial_sky import NmtCov
+from spaceborne.cov_partial_sky import CovNaMaster
 from spaceborne.cov_ssc import SpaceborneSSC
 from spaceborne.ell_utils import EllBinning
 from spaceborne.oc_interface import OneCovarianceInterface
 
+_UNSET = object()
 
-class SpaceborneCovariance:
+
+class CovHarmonicSpace:
     def __init__(
         self,
         cfg: dict,
         pvt_cfg: dict,
         ell_obj: EllBinning,
-        cov_nmt_obj: NmtCov | None,
+        cov_nmt_obj: CovNaMaster | None,
         bnt_matrix: np.ndarray | None,
     ):
         self.cfg = cfg
@@ -32,7 +34,7 @@ class SpaceborneCovariance:
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
 
         self.zbins = pvt_cfg['zbins']
-        self.fsky = pvt_cfg['fsky']
+        self.pvt_cfg = pvt_cfg
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
         self.unique_probe_combs = pvt_cfg['unique_probe_combs_hs']
 
@@ -70,27 +72,14 @@ class SpaceborneCovariance:
         self.ssc_code = self.cov_cfg['SSC_code']
         self.cng_code = self.cov_cfg['cNG_code']
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
-        self.use_nmt = self.cfg['covariance']['partial_sky_method'] == 'NaMaster'
-        self.do_sample_cov = self.cfg['sample_covariance']['compute_sample_cov']
+
         # other useful objects
         self.cov_nmt_obj = cov_nmt_obj
 
+        self.fsky_max_abcd_dict = _UNSET
+
     def consistency_checks(self):
         # sanity checks
-
-        assert not (self.use_nmt and self.do_sample_cov), (
-            'either cfg["covariance"]["partial_sky_method"] == "NaMaster" or '
-            'cfg["sample_covariance"]["compute_sample_cov"] should be True, '
-            'not both (but they can both be False)'
-        )
-
-        if (
-            self.ell_obj.ells_WL.max() < 15
-        ):  # very rudimental check of whether they're in lin or log scale
-            raise ValueError(
-                'looks like the ell values are in log scale. '
-                'You should use linear scale instead.'
-            )
 
         # sanity check: the last 2 columns of ind_auto should be equal to the
         # last two of ind_auto
@@ -155,7 +144,7 @@ class SpaceborneCovariance:
         (cov_3x2pt_sva_10d, cov_3x2pt_sn_10d, cov_3x2pt_mix_10d) = sl.compute_g_cov(
             cl_5d=_cl_5d,
             noise_5d=_noise_5d,
-            fsky=self.fsky,
+            fsky=1.0,  # fsky is now probe-dependent and will be applied later!
             ell_values=_ell_values,
             delta_ell=self.ell_obj.delta_l_3x2pt,
             split_terms=True,
@@ -166,12 +155,22 @@ class SpaceborneCovariance:
 
         # assign the different probes in the 10d array to the appropriate dict keys
         for probe_abcd in self.req_probe_combs_2d:
+            # 1. extract probe name and indices
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             probe_2tpl = (probe_ab, probe_cd)
             probe_ixs = tuple(const.HS_PROBE_NAME_TO_IX_DICT[p] for p in probe_abcd)
+
+            # 2. select the appropriate covariance blocks
             _cov_3x2pt_sva_6d = cov_3x2pt_sva_10d[*probe_ixs]
             _cov_3x2pt_sn_6d = cov_3x2pt_sn_10d[*probe_ixs]
             _cov_3x2pt_mix_6d = cov_3x2pt_mix_10d[*probe_ixs]
+
+            # 2. select the appropriate fsky and normalise
+            fsky_abcd = self.fsky_max_abcd_dict[probe_ab, probe_cd]
+            _cov_3x2pt_sva_6d /= fsky_abcd
+            _cov_3x2pt_sn_6d /= fsky_abcd
+            _cov_3x2pt_mix_6d /= fsky_abcd
+
             # if split_gaussian_cov is True, store them in cov_dict
             if self.cov_cfg['split_gaussian_cov']:
                 self.cov_dict['sva'][probe_2tpl]['6d'] = _cov_3x2pt_sva_6d
@@ -195,13 +194,12 @@ class SpaceborneCovariance:
 
         # ! Partial sky with nmt
         # ! this case overwrites self.cov_3x2pt_g_10d only, but the cfg checker will
-        # ! raise an error if you require to split the G cov and use_nmt or
-        # ! do_sample_cov are True
-        if self.use_nmt or self.do_sample_cov:
+        # ! raise an error if you require to split the G cov and 'NaMaster', 'ensemble'
+        if self.cov_cfg['partial_sky_method'] in ['NaMaster', 'ensemble']:
             if self.cov_nmt_obj is None:
                 raise ValueError(
                     'cov_nmt_obj is required when partial_sky_method == "NaMaster" or '
-                    'compute_sample_cov is True'
+                    '"ensemble"'
                 )
 
             # noise vector doesn't have to be recomputed, but repeated a larger number
@@ -412,7 +410,7 @@ class SpaceborneCovariance:
                 )
 
         # ! BNT transform (6/10D covs needed for this implementation)
-        if self.cfg['covariance']['BNT_transform']:
+        if self.cov_cfg['BNT_transform']:
             print('BNT-transforming the covariance matrix...')
             start = time.perf_counter()
             self.cov_dict = bnt_utils.bnt_transform_cov_dict(
@@ -460,7 +458,7 @@ class SpaceborneCovariance:
         ):
             return
 
-        if self.cfg['covariance']['BNT_transform']:
+        if self.cov_cfg['BNT_transform']:
             warnings.warn(
                 'BNT transformation has not been tested for coupled covariance '
                 'matrices.',
@@ -475,16 +473,20 @@ class SpaceborneCovariance:
         from spaceborne import cov_partial_sky
 
         with sl.timer('\nCoupling non-Gaussian covariance matrices...'):
-            # construct mcm array for better probe handling (especially for 3x2pt)
+            # per-probe mode coupling matrices, each a (zbins, zbins, nbl, nbl)
+            # array indexed by [zi, zj], since with weight maps the MCM is bin-pair
+            # dependent (see CovNaMaster.compute_and_save_mcms).
             mcm_dict = {}
             mcm_dict['LL'] = self.cov_nmt_obj.mcm_ee_binned
             mcm_dict['GL'] = self.cov_nmt_obj.mcm_te_binned
             # mcm_3x2pt_dict['LG'] = self.cov_nmt_obj.mcm_et_binned
             mcm_dict['GG'] = self.cov_nmt_obj.mcm_tt_binned
 
-            for k, v in mcm_dict.items():
-                assert v.shape == (self.ell_obj.nbl_3x2pt, self.ell_obj.nbl_3x2pt), (
-                    f'mcm {k} has wrong shape {v.shape}'
+            nbl = self.ell_obj.nbl_3x2pt
+            expected_shape = (nbl, nbl, self.zbins, self.zbins)
+            for k, mcm in mcm_dict.items():
+                assert mcm.shape == expected_shape, (
+                    f'mcm {k} has wrong shape {mcm.shape}, expected {expected_shape}'
                 )
 
             # cov_WL_ssc_6d = cov_partial_sky.couple_cov_6d(
@@ -513,10 +515,10 @@ class SpaceborneCovariance:
                 for probe_abcd in self.req_probe_combs_2d:
                     probe_ab, probe_cd = sl.split_probe_name(probe_abcd, 'harmonic')
                     self.cov_dict[ng_term][probe_ab, probe_cd]['6d'] = (
-                        cov_partial_sky.couple_cov_6d(
+                        cov_partial_sky.couple_cov_6d_tomo(
                             mcm_dict[probe_ab],
                             self.cov_dict[ng_term][probe_ab, probe_cd]['6d'],
-                            mcm_dict[probe_cd].T,
+                            mcm_dict[probe_cd],
                         )
                     )
 

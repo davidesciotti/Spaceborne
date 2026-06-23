@@ -5,6 +5,30 @@ from copy import deepcopy
 import yaml
 
 
+def assert_repo_branch(repo_path: str, expected_branch: str) -> None:
+    is_git_repo = subprocess.run(
+        ['git', '-C', repo_path, 'rev-parse', '--is-inside-work-tree'],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    if is_git_repo != 'true':
+        raise RuntimeError(f'{repo_path} is not a git repository')
+
+    current_branch = subprocess.run(
+        ['git', '-C', repo_path, 'rev-parse', '--abbrev-ref', 'HEAD'],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    if current_branch != expected_branch:
+        raise RuntimeError(
+            f'Repo at {repo_path} is on branch "{current_branch}", expected "{expected_branch}".'
+        )
+
+
 def generate_zipped_configs(base_config: dict, changes_list: list[dict]) -> list:
     """Apply changes to a base config and return the list of resulting configs."""
     configs = []

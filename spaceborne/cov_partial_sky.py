@@ -1616,17 +1616,6 @@ class CovNaMaster:
         # )  # careful f the +1!
         # ell_min_eff = ells_eff_edges[0]
 
-        # TODO branch not sure at all about this...
-        # The lmax buffer (ell_max_nmt > ell_max) relies on a coupled
-        # gaussian_covariance that is binned to science bands manually below. The
-        # decoupled path bins via the workspace bandpowers, which are per-ell here, so
-        # it is not supported with a buffer; guard against silently wrong results.
-        if not self.coupled_cov and self.ell_max_nmt > ell_max_eff:
-            raise NotImplementedError(
-                'The NaMaster lmax buffer (ell_max_nmt > ell_max_3x2pt) is only '
-                'implemented for cov_type="coupled". Use coupled, or set buffer to 0.'
-            )
-
         ells_unb = np.arange(self.ell_max_nmt + 1)
         nbl_unb = len(ells_unb)
         assert nbl_unb == self.ell_max_nmt + 1, 'nbl_tot does not match lmax_eff + 1'
@@ -1647,12 +1636,9 @@ class CovNaMaster:
         # TODO maks=None (as in the example) or maps=[mask]? I think None
 
         # Build the NaMaster fields, mode-coupling workspaces (w**) and covariance
-        # workspaces (cw) on the *extended* grid (0..ell_max_nmt). This is essential:
-        # nmt.gaussian_covariance requires cw.lmax == wa.lmax == wb.lmax, and the
-        # mode-coupling must reach beyond ell_max so the covariance at ell_max is not
-        # biased by the band-limit (see iNKA weight-map LL-noise note). cw inherits its
-        # lmax from the fields (ell_max_nmt); the w** workspaces inherit theirs from the
-        # bin object, so we temporarily bin per-ell up to ell_max_nmt here. The w**
+        # workspaces (cw) on a per-ell grid (0..ell_max_nmt). nmt.gaussian_covariance
+        # requires cw.lmax == wa.lmax == wb.lmax; the w** workspaces inherit their
+        # binning from the bin object, so we temporarily bin per-ell here. The w**
         # binning does not affect the *coupled* covariance (it is binned to science
         # bands manually below via bin_2d), so per-ell is fine. The science bin object
         # is restored before the MCMs, which must stay on the science grid (they couple

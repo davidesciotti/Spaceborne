@@ -843,7 +843,7 @@ footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
 mask_utils.plot_footprint(footp_ab_dict['GL'], probe='GL')
 
 # compute footprint spectra
-footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
+_, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
     footp_ab_dict=footp_ab_dict,
     fsky_ab_dict=fsky_ab_dict,
     unique_probe_combs_hs=unique_probe_combs_hs,
@@ -852,12 +852,6 @@ footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_d
 # compute fsky_abcd
 fsky_max_abcd_dict, amax_abcd_dict = mask_utils.get_fsky_abcd_dict(
     fsky_ab_dict=fsky_ab_dict, req_probe_combs_hs_2d=req_probe_combs_hs_2d
-)
-
-ell_buffer_nmt = mask_utils.get_ell_buffer_nmt(
-    footp_cl_abcd_dict=footp_cl_abcd_dict,
-    mask_obj_ll=mask_obj_ll,
-    mask_obj_gg=mask_obj_gg,
 )
 
 # this will be used to normalise the SSC and cNG
@@ -1113,25 +1107,9 @@ if cfg['precision']['cov_hs_g_ell_bin_average']:
     )
 
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
-    # for NaMaster, we want to leave some headroom in case nside is high and ell_max is
-    # low. For this, we compute a buffer roughly corresponding to the bandwidth of the
-    # mask Cls...
-    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt + ell_buffer_nmt
-    # and, if it overshoots the maximum allowed by the nside, we cap it there
-    ell_max_3x2pt_nmt = min(ell_max_3x2pt_nmt, 3 * cfg['mask']['nside'] - 1)
-
-    print(f'{ell_max_3x2pt_nmt=}')
-
-    if ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt < ell_buffer_nmt:
-        warnings.warn(
-            f'NaMaster lmax buffer truncated by resolution: requested buffer '
-            f'{ell_buffer_nmt} (ell_max_nmt={bin_obj.ell_max_3x2pt + ell_buffer_nmt}) '
-            f'exceeds 3*nside-1={3 * cfg["mask"]["nside"] - 1}. Effective buffer is '
-            f'only {ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt}; the band-limit bias '
-            f'may not be fully removed. Increase nside (currently '
-            f'{cfg["mask"]["nside"]}) so that ell_max + buffer fits below 3*nside-1.',
-            stacklevel=2,
-        )
+    # the NaMaster ell grid must start at 0 (for the mode coupling) and runs up to the
+    # science ell_max.
+    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
 
     ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
     cl_3x2pt_nmt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
@@ -1155,7 +1133,6 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_obj.ell_max_nmt = ell_max_3x2pt_nmt
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_nmt_unb_5d
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
-    cov_nmt_obj.ell_max_buffer = ell_buffer_nmt
 
 
 # ! ============================== Init real space cov object ==========================

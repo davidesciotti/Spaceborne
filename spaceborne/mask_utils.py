@@ -8,27 +8,6 @@ from spaceborne import constants as const
 from spaceborne import sb_lib as sl
 
 
-def get_ell_buffer_nmt(footp_cl_abcd_dict: dict, mask_obj_ll, mask_obj_gg) -> float:
-    ell_buffer_nmt = []
-    for ells, cls in footp_cl_abcd_dict.values():
-        buffer = estimate_ell_cutoff(ells, cls)
-        ell_buffer_nmt.append(buffer)
-
-    for mask_obj in (mask_obj_ll, mask_obj_gg):
-        if not mask_obj.use_weight_maps:
-            continue
-        for wmap in mask_obj.weight_maps:
-            ells, cls = get_maps_cl(wmap, wmap)
-            buffer = estimate_ell_cutoff(ells, cls)
-            ell_buffer_nmt.append(buffer)
-
-    # take the max over all masks: the NaMaster ell-grid is shared across probes, so use
-    # the largest bandwidth to avoid under-buffering any of them
-    ell_buffer_nmt = max(ell_buffer_nmt)
-
-    return ell_buffer_nmt
-
-
 def get_footprint_cl_abcd_dicts(
     footp_ab_dict: dict, fsky_ab_dict: dict, unique_probe_combs_hs: list
 ) -> tuple:
@@ -76,17 +55,6 @@ def plot_footprint(footprint: np.ndarray, probe: str):
         footprint, cmap='inferno_r', title=f'Footprint {probe} - Mollweide view'
     )
     hp.graticule()
-
-
-def estimate_ell_cutoff(ells, cl: np.ndarray, threshold: float = 1e-6) -> float:
-    """Given an input power spectrum, estimates the ell at which the spectrum has
-    decayed to a fraction threshold of its peak.
-    Uses the maxima to avoid issues with oscillations close to 0"""
-    maxima = np.maximum.accumulate(cl[::-1])[::-1]
-    peak = maxima[0]
-    cross = np.where(maxima < threshold * peak)[0]
-    bandwidth = ells[cross[0]] if cross.size else ells[-1]
-    return bandwidth
 
 
 def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):

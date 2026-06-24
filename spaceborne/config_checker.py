@@ -425,9 +425,6 @@ class SpaceborneConfigChecker:
             "Section 'precision' must be a dictionary"
         )
         precision_cfg = self.cfg['precision']
-        assert isinstance(precision_cfg['n_iter_nmt'], (int, type(None))), (
-            'precision: n_iter_nmt must be an int or None'
-        )
         assert isinstance(precision_cfg['n_sub'], int), (
             'precision: n_sub must be an int'
         )
@@ -497,8 +494,8 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['use_KE_approximation'], bool), (
             'precision: use_KE_approximation must be a boolean'
         )
-        assert isinstance(precision_cfg['use_iNKA'], bool), (
-            'precision: use_iNKA must be a boolean'
+        assert isinstance(precision_cfg['iNKA'], bool), (
+            'precision: iNKA must be a boolean'
         )
         assert isinstance(precision_cfg['spin0'], bool), (
             'precision: spin0 must be a boolean'

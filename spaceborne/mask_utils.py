@@ -177,8 +177,8 @@ class Mask:
         if self.geometry == 'footprint_file':
             # load
             print(
-                f'\nLoading footprint file for {self.probe} '
-                f'from {self.footprint_filename}\n'
+                f'Loading footprint file for {self.probe} '
+                f'from {self.footprint_filename}'
             )
 
             self.footprint = io_handler.load_footprint(
@@ -189,7 +189,7 @@ class Mask:
 
         elif self.geometry == 'polar_cap':
             print(
-                f'\nGenerating a polar cap mask for {self.probe} with area '
+                f'Generating a polar cap mask for {self.probe} with area '
                 f'{self.desired_survey_area_deg2} deg^2 and nside {self.nside_cfg}'
             )
             self.footprint = generate_polar_cap_func(
@@ -204,7 +204,7 @@ class Mask:
         if self.use_weight_maps:
             # load
             print(
-                f'\nLoading weight map file for {self.probe} '
+                f'Loading weight map file for {self.probe} '
                 f'from {self.weight_maps_filename}\n'
             )
             self.weight_maps = io_handler.load_weight_map_fits(

@@ -1059,7 +1059,6 @@ if cfg['C_ell']['use_input_cls']:
     # load input cls
     io_obj.get_cl_fmt()
     io_obj.load_cls()
-
     # check ells before spline interpolation
     io_obj.check_ells_in(bin_obj)
 

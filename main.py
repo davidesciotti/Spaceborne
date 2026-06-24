@@ -798,6 +798,7 @@ io_obj = io_handler.IOHandler(cfg, pvt_cfg)
 cov_nmt_obj = None
 cov_rs_obj = None
 cov_cs_obj = None
+cov_oc_obj = None
 
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
@@ -1100,7 +1101,9 @@ if cfg['misc']['cl_triangle_plot']:
 
 
 # ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
-if cfg['precision']['cov_hs_g_ell_bin_average']:
+if cfg['precision']['cov_hs_g_ell_bin_average'] or (
+    cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']
+):
     # in these cases I need an unbinned ell grid
     cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
         bin_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
@@ -1188,8 +1191,6 @@ else:
     cov_hs_obj = None
 
 # ! =================================== OneCovariance ==================================
-# initialize object
-cov_oc_obj = None
 if (
     'OneCovariance' in cov_terms_and_codes.values()
     or cfg['OneCovariance']['compare_against_oc']

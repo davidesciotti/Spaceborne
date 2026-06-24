@@ -59,7 +59,7 @@ implementation. Reading order to understand a run:
      `covariance.partial_sky_method`:
      - `Knox` — analytic 1/fsky rescaling (fast).
      - `NaMaster` — `cov_partial_sky.py::CovNaMaster.build_psky_cov`, using NaMaster mode-coupling +
-       `gaussian_covariance` under the NKA / **iNKA** approximation (`use_iNKA`, `spin0`,
+       `gaussian_covariance` under the NKA / **iNKA** approximation (`iNKA`, `spin0`,
        `cov_type: coupled|decoupled`).
      - `ensemble` — Monte-Carlo cov from masked healpy Gaussian realizations (`synalm`→mask→pseudo-Cl),
        parallelized with joblib in `cov_partial_sky.py` (`compute_ensemble_covariance_parallel`,
@@ -96,7 +96,7 @@ implementation. Reading order to understand a run:
 
 Single runs are launched from external config files (not the repo's `config.yaml`). Batch parameter
 sweeps use `launch_jobs.py` + `batch_run_utils.py` to clone the base config, override keys
-(`partial_sky_method`, `spin0`, `use_iNKA`, output path, …) and run them in sequence with
+(`partial_sky_method`, `spin0`, `iNKA`, output path, …) and run them in sequence with
 `continue_on_error`. Outputs (per variant): `covmats_2D.npz` (`['Gauss']`), `covmats_6D.npz`,
 `ell_values.txt`, `cl_*.txt`, `run_config.yaml`, `figs/`.
 

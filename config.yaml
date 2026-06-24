@@ -122,7 +122,7 @@ binning:
   # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
   # so ell_bins is ignored and ell_max is included in the grid.
   ell_min: 10 # Type: int | float. Minimum ell
-  ell_max: 1000 # Type: int | float. Maximum ell
+  ell_max: 1500 # Type: int | float. Maximum ell
   ell_bins: 20 # Type: int. Number of ell bins.
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
@@ -216,18 +216,18 @@ mask:
   # given probe. If null, the weight maps will not be used. 
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
   LL:
-    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
-    weight_maps_filename: null # Type: str | None
+    weight_maps_filename: /home/sciotti/code/DATA/Spaceborne_jobs_IO/develop/input/weight_map_cone_h22_vis24_nside2048_3zbins.fits # Type: str | None
   GG:
     geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
-    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_polar_cap_nside2048.fits # Type: str.
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
 
   # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
   nside: 1024 # Type: int
 
-  survey_area_deg2: 13245 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
+  survey_area_deg2: 2700 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -249,7 +249,7 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: NaMaster # Type: str
+  partial_sky_method: ensemble # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
@@ -281,7 +281,7 @@ covariance:
   which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
 
   # Whether or not to include the second-order galaxy bias in the GCph SU responses
-  include_b2g: True # Type: bool
+  include_b2g: False # Type: bool
 
   # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses
   include_terasawa_terms: False # Type: bool
@@ -330,7 +330,7 @@ PyCCL:
   cov_integration_method: spline # Type: str
 
   # Whether or not to load the previously computed trispectrum.
-  load_cached_tkka: True # Type: bool.
+  load_cached_tkka: False # Type: bool.
 
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower
@@ -345,7 +345,7 @@ ensemble_covariance:
   # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
   # Options: ['namaster', 'healpy'].
   which_cls: healpy # Type: str.
-  nreal: 20000 # Type: int. Number of realizations for the ensemble covariance matrix
+  nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
 

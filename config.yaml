@@ -280,7 +280,7 @@ covariance:
   # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
   which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
 
-  # Whether or not to include the second-order galaxy bias in the GCph SU responses
+  # Whether or not to include the second-order galaxy bias in the GG SU responses
   include_b2g: True # Type: bool
 
   # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses

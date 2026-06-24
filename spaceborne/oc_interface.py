@@ -960,6 +960,8 @@ class OneCovarianceInterface:
         cfg_oc_ini['halomodel evaluation']['disable_mass_conversion'] = str(True)
         cfg_oc_ini['halomodel evaluation']['delta_c'] = str(1.686)
         cfg_oc_ini['halomodel evaluation']['transfer_model'] = 'CAMB'
+        # Note: the small-k 1-halo damping can be disabled to get a better agreement
+        # with the SB SSC responses
         cfg_oc_ini['halomodel evaluation']['small_k_damping_for1h'] = 'damped'
 
         # ! [powspec evaluation]

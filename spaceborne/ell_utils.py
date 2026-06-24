@@ -385,7 +385,9 @@ class EllBinning:
     def compute_ells_3x2pt_unbinned(self):
         """Needed for the partial-sky covariance"""
 
-        # the lack of ell_min in np.arange() below should be correct!
+        # Note: the lack of ell_min in np.arange() below is correct!
+        # NaMaster mode-coupling couples down to ell=0, so the partial-sky
+        # grid must include it.
         self.ells_3x2pt_unb = np.arange(self.ell_max_3x2pt + 1)
         self.nbl_3x2pt_unb = len(self.ells_3x2pt_unb)
         self.ell_max_3x2pt_unb = self.ells_3x2pt_unb[-1]

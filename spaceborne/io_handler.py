@@ -19,8 +19,6 @@ def load_weight_map_fits(path: str) -> np.ndarray:
     if extension != '.fits':
         raise ValueError(f'Weight map file must be a .fits file, got {extension}')
 
-    print(f'\nLoading weight map file from {path}\n')
-
     weight_map_arr = hp.read_map(path, field=None)
 
     # sanity checks
@@ -46,24 +44,13 @@ def load_footprint(path: str, nside: int) -> np.ndarray:
     is_fits = suffixes[-1:] == ['.fits'] or suffixes[-2:] == ['.fits', '.gz']
     is_npy = suffixes[-1:] == ['.npy']
 
-    print(f'\nLoading footprint file from {path}\n')
-
     if is_fits:
         try:
-            # function provided by VMPZ team to read very high resolution map
+            # function provided by VMPZ to read very high resolution map
             # and downgrade it on the fly
             footprint = _read_masking_map(path, nside)
-        except ValueError as ve:
-            # print(
-            #     f'ValueError raised: {ve}, \n'
-            #     'falling back on hp.read_map to read input map'
-            # )
-            footprint_raw = hp.read_map(path)
-            nside_in = hp.npix2nside(len(footprint_raw))
-            if nside_in != nside:
-                footprint = hp.ud_grade(footprint_raw, nside)
-            else:
-                footprint = footprint_raw
+        except ValueError:
+            footprint = hp.read_map(path)
 
     elif is_npy:
         footprint = np.load(path, allow_pickle=False)

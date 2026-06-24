@@ -45,36 +45,28 @@ def compute_cls_or_interpolate_input_cls(
         n_probes_hs=cfg['covariance']['n_probes'],
     )
 
-    if io_obj.need_input_cl_ll and (
-        ells_out.min() < io_obj.ells_WL_in.min()
-        or ells_out.max() > io_obj.ells_WL_in.max()
+    # Warn whenever the requested grid extends beyond the input Cls' ell range, which
+    # only happens when reading input Cls (the CCL-generated branch evaluates natively at
+    # every requested ell, so no extrapolation). The partial-sky covariance deliberately
+    # requests ell=0 (NaMaster mode-coupling couples down to ell=0) and an ell_max buffer,
+    # so input files starting at ell_min>0 / ending below the buffer are cubic-extrapolated.
+    # This leaves only the lowest science band's covariance ~few-% sensitive to the
+    # (unconstrained) low-ell Cls; higher bands are unaffected. See ell-grid investigation.
+    for need_input, ells_in, label in (
+        (io_obj.need_input_cl_ll, getattr(io_obj, 'ells_WL_in', None), 'LL'),
+        (io_obj.need_input_cl_gl, getattr(io_obj, 'ells_XC_in', None), 'GL'),
+        (io_obj.need_input_cl_gg, getattr(io_obj, 'ells_GC_in', None), 'GG'),
     ):
-        warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input LL ell range '
-            f'[{io_obj.ells_WL_in.min()}, {io_obj.ells_WL_in.max()}]. '
-            'The input Cls will be extrapolated outside their original range.',
-            stacklevel=2,
-        )
-    if io_obj.need_input_cl_gl and (
-        ells_out.min() < io_obj.ells_XC_in.min()
-        or ells_out.max() > io_obj.ells_XC_in.max()
-    ):
-        warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GL ell range '
-            f'[{io_obj.ells_XC_in.min()}, {io_obj.ells_XC_in.max()}]. '
-            'The input Cls will be extrapolated outside their original range.',
-            stacklevel=2,
-        )
-    if io_obj.need_input_cl_gg and (
-        ells_out.min() < io_obj.ells_GC_in.min()
-        or ells_out.max() > io_obj.ells_GC_in.max()
-    ):
-        warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GG ell range '
-            f'[{io_obj.ells_GC_in.min()}, {io_obj.ells_GC_in.max()}]. '
-            'The input Cls will be extrapolated outside their original range.',
-            stacklevel=2,
-        )
+        if need_input and (
+            ells_out.min() < ells_in.min() or ells_out.max() > ells_in.max()
+        ):
+            warnings.warn(
+                f'Requested ell grid [{ells_out.min()}, {ells_out.max()}] exceeds '
+                f'input {label} Cl range [{ells_in.min()}, {ells_in.max()}]; Cls '
+                'outside it are cubic-spline-extrapolated. Please provide input Cls '
+                'covering the full requested ell range for more accurate results.',
+                stacklevel=2,
+            )
 
     # now, either take the input Cl splines and re-interpolate on the desired grid,
     # or use the newly-generated ones

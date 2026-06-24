@@ -1,7 +1,60 @@
+import warnings
+
 import healpy as hp
 import numpy as np
 
 from spaceborne import constants, cosmo_lib, io_handler
+from spaceborne import constants as const
+from spaceborne import sb_lib as sl
+
+
+def get_footprint_cl_abcd_dicts(
+    footp_ab_dict: dict, fsky_ab_dict: dict, unique_probe_combs_hs: list
+) -> tuple:
+    """Compute the Cls and the normalised Cls for all footprints in
+    unique_probe_combs_hs"""
+
+    footp_cl_abcd_dict = {}
+    footp_cl_norm_abcd_dict = {}
+    for probe_abcd in unique_probe_combs_hs:
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+
+        # compute and store the footprint cross-spectrum...
+        _ells, _cls = get_maps_cl(footp_ab_dict[probe_ab], footp_ab_dict[probe_cd])
+
+        # ...and its normalised version
+        footp_cl_abcd_dict[probe_ab, probe_cd] = (_ells, _cls)
+        denominator = (4 * np.pi) ** 2 * fsky_ab_dict[probe_ab] * fsky_ab_dict[probe_cd]
+        _cls_norm = _cls * (2 * _ells + 1) / denominator
+        footp_cl_norm_abcd_dict[probe_ab, probe_cd] = (_ells, _cls_norm)
+    return footp_cl_abcd_dict, footp_cl_norm_abcd_dict
+
+
+def get_fsky_abcd_dict(fsky_ab_dict: dict, req_probe_combs_hs_2d: list) -> tuple:
+    """Given the fsky for each probe pair AB, compute the max(fsky_ab, fsky_cd)
+    and convert it into steradians"""
+    fsky_max_abcd_dict = {}
+    for probe_abcd in req_probe_combs_hs_2d:
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        # compute and store max(fsky_ab, fsky_cd)
+        fsky_max_abcd_dict[probe_ab, probe_cd] = max(
+            fsky_ab_dict[probe_ab], fsky_ab_dict[probe_cd]
+        )
+
+    # turn into A_max (in sr)
+    amax_abcd_dict = {
+        k: v * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
+        for k, v in fsky_max_abcd_dict.items()
+    }
+
+    return fsky_max_abcd_dict, amax_abcd_dict
+
+
+def plot_footprint(footprint: np.ndarray, probe: str):
+    hp.mollview(
+        footprint, cmap='inferno_r', title=f'Footprint {probe} - Mollweide view'
+    )
+    hp.graticule()
 
 
 def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
@@ -24,6 +77,27 @@ def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
         'GL': combined_fsky(m_ll, m_gg),
         'GG': combined_fsky(m_gg, m_gg),
     }
+
+    if not np.isclose(fsky_ab_dict['LL'], fsky_ab_dict['GG'], atol=0, rtol=1e-5):
+        warnings.warn(
+            'LL and GG footprints have different fsky. Using probe-dependent sky '
+            'fractions:\n'
+            f'LL = {fsky_ab_dict["LL"]:.4f}, '
+            f'GG = {fsky_ab_dict["GG"]:.4f}.',
+            stacklevel=2,
+        )
+
+    if (
+        np.isclose(fsky_ab_dict['GL'], 0, atol=1e-12, rtol=0)
+        or np.isnan(fsky_ab_dict['GL'])
+        or np.isinf(fsky_ab_dict['GL'])
+    ):
+        warnings.warn(
+            "The footprints seem to have zero overlap; fsky_ab_dict['GL'] = "
+            f'{fsky_ab_dict["GL"]:.4f}',
+            stacklevel=2,
+        )
+
     return footp_ab_dict, fsky_ab_dict
 
 
@@ -42,9 +116,6 @@ def get_maps_cl(map1: np.ndarray, map2: np.ndarray) -> tuple:
 
 def generate_polar_cap_func(area_deg2, nside):
     _fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
-    print(
-        f'\nGenerating a polar cap mask with area {area_deg2} deg^2 and nside {nside}'
-    )
 
     # Convert the area to radians squared for the angular radius calculation
     area_rad2 = area_deg2 * (np.pi / 180) ** 2
@@ -105,6 +176,11 @@ class Mask:
         # ! 1. load footprint/weight maps or generate polar cap
         if self.geometry == 'footprint_file':
             # load
+            print(
+                f'Loading footprint file for {self.probe} '
+                f'from {self.footprint_filename}'
+            )
+
             self.footprint = io_handler.load_footprint(
                 path=self.footprint_filename, nside=self.nside_cfg
             )
@@ -112,6 +188,10 @@ class Mask:
             self.footprint = up_downgrade_map(self.footprint, self.nside_cfg)
 
         elif self.geometry == 'polar_cap':
+            print(
+                f'Generating a polar cap mask for {self.probe} with area '
+                f'{self.desired_survey_area_deg2} deg^2 and nside {self.nside_cfg}'
+            )
             self.footprint = generate_polar_cap_func(
                 self.desired_survey_area_deg2, self.nside_cfg
             )
@@ -123,6 +203,10 @@ class Mask:
 
         if self.use_weight_maps:
             # load
+            print(
+                f'Loading weight map file for {self.probe} '
+                f'from {self.weight_maps_filename}\n'
+            )
             self.weight_maps = io_handler.load_weight_map_fits(
                 self.weight_maps_filename
             )
@@ -167,17 +251,16 @@ class Mask:
         self.load()
         self.get_cls_fsky()
 
-    def plot_maps(self):
-        hp.mollview(
-            self.footprint,
-            cmap='inferno_r',
-            title=f'Footprint {self.probe} - Mollweide view',
-        )
-        if self.use_weight_maps:
-            for zi in range(self.weight_maps.shape[0]):
-                hp.mollview(
-                    self.weight_maps[zi],
-                    cmap='inferno_r',
-                    title=f'Weight map {self.probe}, zi={zi} - Mollweide view',
-                )
+    def plot_footprint(self):
+        plot_footprint(footprint=self.footprint, probe=self.probe)
+
+    def plot_weight_maps(self):
+        if not self.use_weight_maps:
+            return
+        for zi in range(self.weight_maps.shape[0]):
+            hp.mollview(
+                self.weight_maps[zi],
+                cmap='inferno_r',
+                title=f'Weight map {self.probe}, zi={zi} - Mollweide view',
+            )
         hp.graticule()

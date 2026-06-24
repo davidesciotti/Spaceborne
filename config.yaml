@@ -122,8 +122,8 @@ binning:
   # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
   # so ell_bins is ignored and ell_max is included in the grid.
   ell_min: 10 # Type: int | float. Minimum ell
-  ell_max: 3000 # Type: int | float. Maximum ell
-  ell_bins: 32 # Type: int. Number of ell bins.
+  ell_max: 1500 # Type: int | float. Maximum ell
+  ell_bins: 20 # Type: int. Number of ell bins.
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
   # The file should have the following columns:
@@ -216,18 +216,18 @@ mask:
   # given probe. If null, the weight maps will not be used. 
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
   LL:
-    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
-    weight_maps_filename: null # Type: str | None
+    weight_maps_filename: /home/sciotti/code/DATA/Spaceborne_jobs_IO/develop/input/weight_map_cone_h22_vis24_nside2048_3zbins.fits # Type: str | None
   GG:
     geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
-    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_polar_cap_nside2048.fits # Type: str.
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
 
   # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
   nside: 1024 # Type: int
 
-  survey_area_deg2: 13245 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
+  survey_area_deg2: 2700 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -249,11 +249,11 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: Knox # Type: str
+  partial_sky_method: ensemble # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: decoupled # Type: str.
+  cov_type: coupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
@@ -318,6 +318,7 @@ covariance:
   # When using NaMaster for the partial-sky Gaussian covariance, choose whether to
   # save the (binned and unbinned) mode coupling matrices (mcm)
   save_mcms: True # Type: bool.
+  save_nmt_wsp_to_cache: False # Type: bool. Whether to save the NaMaster workspaces to the cache (the files can be heavy).
   load_cached_nmt_workspaces: False # Type: bool. Whether to load the NaMaster workspaces from the cache, if they have already been computed.
 
 PyCCL:
@@ -329,7 +330,7 @@ PyCCL:
   cov_integration_method: spline # Type: str
 
   # Whether or not to load the previously computed trispectrum.
-  load_cached_tkka: True # Type: bool.
+  load_cached_tkka: False # Type: bool.
 
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower
@@ -344,7 +345,7 @@ ensemble_covariance:
   # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
   # Options: ['namaster', 'healpy'].
   which_cls: healpy # Type: str.
-  nreal: 20000 # Type: int. Number of realizations for the ensemble covariance matrix
+  nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
 
@@ -410,10 +411,7 @@ precision:
   # Whether to treat all fields as having spin 0 in the NaMaster Gaussian covariance.
   # This is (significantly) faster, but less accurate.
   spin0: True # Type: bool.
-  use_iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-  # Number of iterations when computing the alms of the input map. See
-  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-  n_iter_nmt: null # Type: None | int.
+  iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

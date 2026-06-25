@@ -1482,6 +1482,28 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         dPmm_ddeltab = dPmm_ddeltab[:, :, 0, 0]
         dPgm_ddeltab = dPgm_ddeltab[:, :, :, 0]
 
+        # ccl_obj.set_dicts_for_trisp() 
+
+        # a_arr_ccl, k_ccl, dPmm_ccl = responses.ccl_hm_response(
+        #     k_grid, z_grid_trisp_ssc, ccl_obj, 'LLLL'
+        # )
+        # a_arr_ccl, k_ccl, dPgm_ccl = responses.ccl_hm_response(
+        #     k_grid, z_grid_trisp_ssc, ccl_obj, 'GLGL'
+        # )
+        # a_arr_ccl, k_ccl, dPgg_ccl = responses.ccl_hm_response(
+        #     k_grid, z_grid_trisp_ssc, ccl_obj, 'GGGG'
+        # )
+
+        # np.testing.assert_allclose(k_ccl, k_grid, rtol=1e-3, atol=0)
+        # np.testing.assert_allclose(
+        #     a_arr_ccl, cosmo_lib.z_to_a(z_grid_trisp_ssc)[::-1], rtol=1e-3, atol=0
+        # )
+        # np.testing.assert_allclose(dPmm_ddeltab, dPmm_ccl.T[:, ::-1], rtol=1e-3, atol=0)
+        # np.testing.assert_allclose(dPgm_ddeltab, dPgm_ccl.T[:, ::-1], rtol=1e-3, atol=0)
+        # np.testing.assert_allclose(dPgg_ddeltab, dPgg_ccl.T[:, ::-1], rtol=1e-3, atol=0)
+
+        # assert False, 'stop here'
+
     elif cfg['covariance']['which_pk_responses'] == 'separate_universe':
         resp_obj.set_g1mm_su_resp()
         r_mm = resp_obj.compute_r1_mm()

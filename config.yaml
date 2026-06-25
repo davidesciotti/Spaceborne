@@ -218,9 +218,9 @@ mask:
   LL:
     geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
-    weight_maps_filename: /home/sciotti/code/DATA/Spaceborne_jobs_IO/develop/input/weight_map_cone_h22_vis24_nside2048_3zbins.fits # Type: str | None
+    weight_maps_filename: null # Type: str | None
   GG:
-    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
 
@@ -231,7 +231,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -249,11 +249,11 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: ensemble # Type: str
+  partial_sky_method: Knox # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: coupled # Type: str.
+  cov_type: decoupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms

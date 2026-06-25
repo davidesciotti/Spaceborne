@@ -9,6 +9,28 @@ from scipy.interpolate import RectBivariateSpline, RegularGridInterpolator
 from spaceborne import cosmo_lib
 
 
+def ccl_hm_response(k_grid, z_grid, ccl_obj, probe_abcd):
+    """Return (a_arr, k, pk1) for an SSC probe block, e.g. 'LLLL'/'GLGL'/'GGGG'.
+    pk1 is dP_{ab}/ddelta_b on the (a, k) grid."""
+    tkka_func, tkka_args = ccl_obj.get_tkka_func(*probe_abcd, 'SSC')
+
+    # overwrite with the desired k and z grids
+    tkka_args['lk_arr'] = np.log(k_grid)
+    tkka_args['a_arr'] = cosmo_lib.z_to_a(z_grid)[::-1]
+
+    tkka = tkka_func(
+        cosmo=ccl_obj.cosmo_ccl,
+        hmc=ccl_obj.hmc,
+        extrap_order_lok=1,
+        extrap_order_hik=1,
+        use_log=False,
+        p_of_k_a=None,
+        **tkka_args,
+    )
+    a_arr, lk1, _lk2, tk = tkka.get_spline_arrays()
+    return a_arr, np.exp(lk1), tk[0]
+
+
 def d2Clxx_dVddeltab(
     dPmm_ddeltab_klimb: np.ndarray,
     dPgm_ddeltab_klimb: np.ndarray,
@@ -644,8 +666,10 @@ class SpaceborneResponses:
         # shape checks
         assert dPmm_ddeltab.ndim == 2, 'dPmm_ddeltab must have shape (k, z)'
         assert dPgm_ddeltab.ndim == 3, 'dPgm_ddeltab must have shape (k, z, zbins)'
-        assert dPgg_ddeltab.ndim == 4, 'dPgg_ddeltab must have shape (k, z, zbins, zbins)'
-        
+        assert dPgg_ddeltab.ndim == 4, (
+            'dPgg_ddeltab must have shape (k, z, zbins, zbins)'
+        )
+
         assert dPgm_ddeltab.shape[2] == zbins, (
             'dPgm_ddeltab second dimension must match zbins'
         )

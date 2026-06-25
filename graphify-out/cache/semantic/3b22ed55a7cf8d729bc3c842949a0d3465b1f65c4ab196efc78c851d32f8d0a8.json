@@ -1,1 +1,0 @@
-{"nodes": [{"id": "cov_ssc_spacebornessc", "label": "SpaceborneSSC", "file_type": "code", "source_file": "spaceborne/cov_ssc.py"}], "edges": [{"source": "cov_ssc_spacebornessc", "target": "cov_dict_create_cov_dict", "relation": "calls", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "spaceborne/cov_ssc.py"}], "hyperedges": []}

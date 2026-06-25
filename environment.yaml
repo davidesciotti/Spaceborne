@@ -12,7 +12,7 @@ dependencies:
   - matplotlib
   - healpy
 
-  # PyCCL depenedencies - mandatory
+  # PyCCL dependencies - mandatory
   - swig
   - cmake
   - pyccl>=3.2.1
@@ -22,9 +22,12 @@ dependencies:
   - fftw
   - namaster
 
-  # pylevin dependencies - optional
-  - boost
-  - gsl
+  # uncommenting these may help in case of issues with the pylevin installation
+  # - c-compiler
+  # - cxx-compiler
+  # - llvm-openmp
+  # - boost
+  # - gsl
 
   - pip:
       - pytest # required to run the test suite (CI and local)
@@ -35,13 +38,13 @@ dependencies:
       - heracles>=25.1
         # optional dependency, only used to save the covariance
         # in the official Euclid LE3 format
-      - pylevin # optional dependency, only used to compute the COSEBIs covariance
+      - "cloelib[pylevin,mpmath] @ git+https://github.com/cloe-org/cloelib.git@v0.10"
+        # optional dependency, only used to compute the COSEBIs covariance
       - pyyaml
       - joblib
       - tqdm
       - pyfiglet # optional dependency, for the ASCII art
 
-
 # COSEBIs covariance needs cloelib as an additional dependency, which in turn uses pylevin.
-# The installation of pylevin is included in this env file, but
+# The installation of both is included in this env file, but
 # please refer to each package's documentation for detailed and up-to-date installation instructions

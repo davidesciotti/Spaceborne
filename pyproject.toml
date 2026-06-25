@@ -2,13 +2,16 @@
 name = "Spaceborne"
 readme = "README.md"
 version = "2026.05.0"
-license = { text = "MIT" }
+license = "MIT"
 description = "Code to compute the covariance matrix for the 3x2pt photometric survey in harmonic and real space."
 authors = [{ name = "davidesciotti", email = "84071067+davidesciotti@users.noreply.github.com" }]
 
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["spaceborne*"]
 
 [tool.ruff]
 line-length = 88

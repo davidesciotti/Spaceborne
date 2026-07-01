@@ -686,6 +686,8 @@ def compute_ensemble_covariance_parallel(
     zbins: int,
     weight_maps_gg: np.ndarray,
     weight_maps_ll: np.ndarray,
+    noise_GG_diag: np.ndarray,
+    noise_LL_diag: np.ndarray,
     nside: int,
     nreal: int,
     coupled_cls: bool,
@@ -753,6 +755,8 @@ def compute_ensemble_covariance_parallel(
                 zbins=zbins,
                 weight_maps_gg=weight_maps_gg,
                 weight_maps_ll=weight_maps_ll,
+                noise_GG_diag=noise_GG_diag,
+                noise_LL_diag=noise_LL_diag,
                 coupled_cls=coupled_cls,
                 which_cls=which_cls,
                 wsp_path_template=wsp_path_template,
@@ -797,6 +801,8 @@ def _compute_one_realization(
     zbins,
     weight_maps_gg,
     weight_maps_ll,
+    noise_GG_diag,
+    noise_LL_diag,
     coupled_cls,
     which_cls,
     wsp_path_template,
@@ -838,6 +844,22 @@ def _compute_one_realization(
     ]
     # free alms
     del corr_alms_tot, corr_alms_T, corr_alms_E_B
+
+    # ! Inject noise at the map level directly to preserve "full resolution"
+    # Before I was cutting the noise at ell_max_eff, but the mask-induced mode coupling 
+    # leaks power from high-ell into the "science band" [ell_min, ell_max_eff]. This is 
+    # important for a white spectrum, which has non-negligible power at high-ell.
+    # Note: per-pixel variance is sigma^2 = N_ell / Omega_pix.
+
+    npix = hp.nside2npix(nside)
+    omega_pix = 4.0 * np.pi / npix  # pixel solid angle (in steradians)
+    for zi, m in enumerate(corr_maps_gg):
+        sigma_pix = np.sqrt(noise_GG_diag[zi] / omega_pix)
+        m += np.random.randn(npix) * sigma_pix
+    for zi, qu in enumerate(corr_maps_ll):
+        sigma_pix = np.sqrt(noise_LL_diag[zi] / omega_pix)
+        qu[0] += np.random.randn(npix) * sigma_pix
+        qu[1] += np.random.randn(npix) * sigma_pix
 
     if which_cls == 'namaster':
         nmt_field_kw = {'n_iter': None, 'lite': True, 'lmax': lmax}
@@ -1331,6 +1353,7 @@ class CovNaMaster:
             cw_ftp.compute_coupling_coefficients(
                 self.f0_ftp, self.f0_ftp, self.f0_ftp, self.f0_ftp
             )
+            # TODO check spin0_only arg
 
         # ! Case 2: if the footprint is used for all probes, but the masks are not equal
         # ! in this case we have to loop over the probes, but not over the bins
@@ -1465,7 +1488,7 @@ class CovNaMaster:
         # if workspaces are already laoded from cache, do not save them again
         if self.load_cached_wsp:
             return
-        
+
         if not self.save_wsp_to_cache:
             return
 
@@ -1758,36 +1781,42 @@ class CovNaMaster:
                 f'realizations. The datevector length is {len_dv}'
             )
 
-            cl_tt_4covsim = (
-                self.cl_3x2pt_unb_5d[1, 1, :, :, :]
-                + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
+            # ! signal-only Cls for synalm. Shape noise is NOT included in here: doing so
+            # would band-limit it at ell_max_eff, but real shape noise is white to the
+            # pixel scale (~3*nside). I instead inject it as full-band per-pixel white
+            # noise inside each realization (see _compute_one_realization). The mask
+            # then couples its high-ell power down into the science band, as in the data.
+            cl_tt_4covens = self.cl_3x2pt_unb_5d[1, 1, :, :, :]
+            cl_te_4covens = self.cl_3x2pt_unb_5d[1, 0, :, :, :]
+            cl_ee_4covens = self.cl_3x2pt_unb_5d[0, 0, :, :, :]
+            cl_tb_4covens = np.zeros_like(cl_tt_4covens)
+            cl_eb_4covens = np.zeros_like(cl_tt_4covens)
+            cl_bb_4covens = np.zeros_like(cl_tt_4covens)
+
+            # extract relevant parts of noise arrays
+            noise_GG_diag = np.array(
+                [self.noise_3x2pt_unb_5d[1, 1, 0, zi, zi] for zi in range(self.zbins)]
             )
-            cl_te_4covsim = (
-                self.cl_3x2pt_unb_5d[1, 0, :, :, :]
-                + self.noise_3x2pt_unb_5d[1, 0, :, :, :]
+            noise_LL_diag = np.array(
+                [self.noise_3x2pt_unb_5d[0, 0, 0, zi, zi] for zi in range(self.zbins)]
             )
-            cl_ee_4covsim = (
-                self.cl_3x2pt_unb_5d[0, 0, :, :, :]
-                + self.noise_3x2pt_unb_5d[0, 0, :, :, :]
-            )
-            cl_tb_4covsim = np.zeros_like(cl_tt_4covsim)
-            cl_eb_4covsim = np.zeros_like(cl_tt_4covsim)
-            cl_bb_4covsim = np.zeros_like(cl_tt_4covsim)
 
             # ! note that self.cov_dict is mutated in-place, no need to return it
             start = time.perf_counter()
             result = compute_ensemble_covariance_parallel(
                 cov_dict=self.cov_dict,
-                cl_GG_unbinned=cl_tt_4covsim,
-                cl_LL_unbinned=cl_ee_4covsim,
-                cl_GL_unbinned=cl_te_4covsim,
-                cl_BB_unbinned=cl_bb_4covsim,
-                cl_EB_unbinned=cl_eb_4covsim,
-                cl_TB_unbinned=cl_tb_4covsim,
+                cl_GG_unbinned=cl_tt_4covens,
+                cl_LL_unbinned=cl_ee_4covens,
+                cl_GL_unbinned=cl_te_4covens,
+                cl_BB_unbinned=cl_bb_4covens,
+                cl_EB_unbinned=cl_eb_4covens,
+                cl_TB_unbinned=cl_tb_4covens,
                 nbl=nbl_eff,
                 zbins=self.zbins,
                 weight_maps_gg=self.weight_maps_gg,
                 weight_maps_ll=self.weight_maps_ll,
+                noise_GG_diag=noise_GG_diag,
+                noise_LL_diag=noise_LL_diag,
                 nside=self.nside,
                 nreal=self.cfg['ensemble_covariance']['nreal'],
                 coupled_cls=self.coupled_cov,

@@ -249,7 +249,7 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: ensemble # Type: str
+  partial_sky_method: NaMaster # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
@@ -412,6 +412,7 @@ precision:
   # This is (significantly) faster, but less accurate.
   spin0: True # Type: bool.
   iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
+  coupled_noise: True # Type: bool.
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

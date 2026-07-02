@@ -1645,9 +1645,19 @@ class CovNaMaster:
         # )  # careful f the +1!
         # ell_min_eff = ells_eff_edges[0]
 
-        ells_unb = np.arange(ell_max_eff + 1)
+        # The lmax buffer (ell_max_nmt > ell_max) relies on a coupled
+        # gaussian_covariance that is binned to science bands manually below. The
+        # decoupled path bins via the workspace bandpowers, which are per-ell here, so
+        # it is not supported with a buffer; guard against silently wrong results.
+        if not self.coupled_cov and self.ell_max_nmt > ell_max_eff:
+            raise NotImplementedError(
+                'The NaMaster lmax buffer (ell_max_nmt > ell_max_3x2pt) is only '
+                'implemented for cov_type="coupled". Use coupled, or set buffer to 0.'
+            )
+
+        ells_unb = np.arange(self.ell_max_nmt + 1)
         nbl_unb = len(ells_unb)
-        assert nbl_unb == ell_max_eff + 1, 'nbl_tot does not match lmax_eff + 1'
+        assert nbl_unb == self.ell_max_nmt + 1, 'nbl_unb does not match ell_max_nmt + 1'
 
         # ells_bpw = ells_unb[ell_min_eff : lmax_eff + 1]
         # delta_ells_bpw = np.diff(
@@ -1655,10 +1665,7 @@ class CovNaMaster:
         # )
         # assert np.all(delta_ells_bpw == ells_per_band), 'delta_ell from bpw does not match ells_per_band'
 
-        # note: the .copy() is needed, keep it!
-        cl_gg_4covnmt = self.cl_3x2pt_unb_5d[1, 1, :, :, :].copy()
-        cl_gl_4covnmt = self.cl_3x2pt_unb_5d[1, 0, :, :, :].copy()
-        cl_ll_4covnmt = self.cl_3x2pt_unb_5d[0, 0, :, :, :].copy()
+
 
         # ! 1. Create field objects
         # ! (there will be no maps associated to the fields)
@@ -1679,6 +1686,11 @@ class CovNaMaster:
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
+        
+        # note: the .copy() is needed, keep it!
+        cl_gg_4covnmt = self.cl_3x2pt_unb_5d[1, 1, :, :, :].copy()
+        cl_gl_4covnmt = self.cl_3x2pt_unb_5d[1, 0, :, :, :].copy()
+        cl_ll_4covnmt = self.cl_3x2pt_unb_5d[0, 0, :, :, :].copy()
         if self.cfg['precision']['iNKA']:
             # TODO XXX this could be made more efficient by only looping over the auto-combs
             # TODO XXX for ll and gg

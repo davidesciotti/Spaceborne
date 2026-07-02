@@ -22,14 +22,12 @@ class CovHarmonicSpace:
         self,
         cfg: dict,
         pvt_cfg: dict,
-        ell_obj: EllBinning,
-        cov_nmt_obj: CovNaMaster | None,
+        bin_obj: EllBinning,
         bnt_matrix: np.ndarray | None,
     ):
         self.cfg = cfg
         self.cov_cfg = cfg['covariance']
-        self.ell_dict = {}
-        self.ell_obj = ell_obj
+        self.bin_obj = bin_obj
         self.bnt_matrix = bnt_matrix
         self.probe_names_dict = {'LL': 'WL', 'GG': 'GC', '3x2pt': '3x2pt'}
 
@@ -73,9 +71,6 @@ class CovHarmonicSpace:
         self.cng_code = self.cov_cfg['cNG_code']
         self.cov_ordering_2d = self.cov_cfg['covariance_ordering_2D']
 
-        # other useful objects
-        self.cov_nmt_obj = cov_nmt_obj
-
         self.fsky_max_abcd_dict = _UNSET
 
     def consistency_checks(self):
@@ -94,49 +89,32 @@ class CovHarmonicSpace:
             "covariance_cfg['cNG_code'] not recognised"
         )
 
-    def set_gauss_cov(self, ccl_obj: CCLInterface):
+    def set_gauss_cov(
+        self,
+        cl_3x2pt_5d: np.ndarray,
+        nl_3x2pt_5d: np.ndarray,
+        cl_3x2pt_unb_5d: np.ndarray | None,
+        nl_3x2pt_unb_5d: np.ndarray | None,
+        cov_nmt_dict: dict | None,
+    ):
         start = time.perf_counter()
 
         print('\nComputing Gaussian harmonic-space covariance matrix...')
-
-        # signal
-        cl_3x2pt_5d = ccl_obj.cl_3x2pt_5d
-
-        # ! noise
-        sigma_eps2 = (np.array(self.cov_cfg['sigma_eps_i']) * np.sqrt(2)) ** 2
-        ng_shear = np.array(self.cfg['nz']['ngal_sources'])
-        ng_clust = np.array(self.cfg['nz']['ngal_lenses'])
-        noise_3x2pt_4d = sl.build_noise(
-            self.zbins,
-            self.n_probes,
-            sigma_eps2=sigma_eps2,
-            ng_shear=ng_shear,
-            ng_clust=ng_clust,
-            is_noiseless=self.cov_cfg['no_sampling_noise'],
-        )
-
-        # create dummy ell axis, the array is just repeated along it
-        noise_3x2pt_5d = np.repeat(
-            noise_3x2pt_4d[:, :, np.newaxis, :, :], self.ell_obj.nbl_3x2pt, axis=2
-        )
-        noise_3x2pt_unb_5d = np.repeat(
-            noise_3x2pt_4d[:, :, np.newaxis, :, :], self.ell_obj.nbl_3x2pt_unb, axis=2
-        )
 
         if self.cfg['precision']['cov_hs_g_ell_bin_average']:
             # unbinned cls and noise; need the edges to compute the number of modes
             # (after casting them to int. n_modes is equivalent to delta_ell modulo the
             # fact that for delta_ell we consider non-integer ell values)
-            _cl_5d = self.cl_3x2pt_unb_5d
-            _noise_5d = noise_3x2pt_unb_5d
-            _ell_values = self.ell_obj.ells_3x2pt_unb
-            _ell_edges = self.ell_obj.ell_edges_3x2pt
+            _cl_5d = cl_3x2pt_unb_5d
+            _noise_5d = nl_3x2pt_unb_5d
+            _ell_values = self.bin_obj.ells_3x2pt_unb
+            _ell_edges = self.bin_obj.ell_edges_3x2pt
         else:
             # evaluate the covariance at the center of the ell bin and normalise by
             # delta_ell
             _cl_5d = cl_3x2pt_5d
-            _noise_5d = noise_3x2pt_5d
-            _ell_values = self.ell_obj.ells_3x2pt
+            _noise_5d = nl_3x2pt_5d
+            _ell_values = self.bin_obj.ells_3x2pt
             _ell_edges = None
 
         # ! compute 3x2pt fsky Gaussian covariance: by default, split SVA, SN and MIX
@@ -146,7 +124,7 @@ class CovHarmonicSpace:
             noise_5d=_noise_5d,
             fsky=1.0,  # fsky is now probe-dependent and will be applied later!
             ell_values=_ell_values,
-            delta_ell=self.ell_obj.delta_l_3x2pt,
+            delta_ell=self.bin_obj.delta_l_3x2pt,
             split_terms=True,
             return_only_ell_diagonal=False,
             cov_hs_g_ell_bin_average=self.cfg['precision']['cov_hs_g_ell_bin_average'],
@@ -196,21 +174,11 @@ class CovHarmonicSpace:
         # ! this case overwrites self.cov_3x2pt_g_10d only, but the cfg checker will
         # ! raise an error if you require to split the G cov and 'NaMaster', 'ensemble'
         if self.cov_cfg['partial_sky_method'] in ['NaMaster', 'ensemble']:
-            if self.cov_nmt_obj is None:
+            if cov_nmt_dict is None:
                 raise ValueError(
-                    'cov_nmt_obj is required when partial_sky_method == "NaMaster" or '
+                    'cov_nmt_dict is required when partial_sky_method == "NaMaster" or '
                     '"ensemble"'
                 )
-
-            # noise vector doesn't have to be recomputed, but repeated a larger number
-            # of times (ell by ell)
-            noise_3x2pt_unb_5d = np.repeat(
-                noise_3x2pt_4d[:, :, np.newaxis, :, :],
-                repeats=self.cov_nmt_obj.nbl_3x2pt_unb,
-                axis=2,
-            )
-            self.cov_nmt_obj.noise_3x2pt_unb_5d = noise_3x2pt_unb_5d
-            cov_nmt_dict = self.cov_nmt_obj.build_psky_cov()
 
             # assign the G term from namaster
             for probe_abcd in self.req_probe_combs_2d:
@@ -331,7 +299,7 @@ class CovHarmonicSpace:
 
                     self.cov_dict[ng_term][probe_2tpl]['6d'] = sl.cov_4D_to_6D_blocks(
                         cov_4D=_cov_ng_dict[probe_2tpl]['4d'],
-                        nbl=self.ell_obj.nbl_3x2pt,
+                        nbl=self.bin_obj.nbl_3x2pt,
                         zbins=self.zbins,
                         ind_ab=self.ind_dict[probe_ab],
                         ind_cd=self.ind_dict[probe_cd],
@@ -425,7 +393,7 @@ class CovHarmonicSpace:
         sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
             cov_dict=self.cov_dict,
             obs_space='harmonic',
-            nbx=self.ell_obj.nbl_3x2pt,
+            nbx=self.bin_obj.nbl_3x2pt,
             ind_auto=self.ind_auto,
             ind_cross=self.ind_cross,
             zpairs_auto=self.zpairs_auto,
@@ -450,7 +418,7 @@ class CovHarmonicSpace:
             space='harmonic',
         )
 
-    def _couple_cov_ng(self):
+    def _couple_cov_ng(self, cov_nmt_obj: CovNaMaster | None):
         if (
             self.cov_cfg['cov_type'] == 'decoupled'
             or 'ssc' not in self.req_terms
@@ -465,7 +433,7 @@ class CovHarmonicSpace:
                 stacklevel=2,
             )
 
-        if self.cov_nmt_obj is None:
+        if cov_nmt_obj is None:
             raise ValueError(
                 'cov_nmt_obj is required when cov_type is "coupled". Found None.'
             )
@@ -477,12 +445,12 @@ class CovHarmonicSpace:
             # array indexed by [zi, zj], since with weight maps the MCM is bin-pair
             # dependent (see CovNaMaster.compute_and_save_mcms).
             mcm_dict = {}
-            mcm_dict['LL'] = self.cov_nmt_obj.mcm_ee_binned
-            mcm_dict['GL'] = self.cov_nmt_obj.mcm_te_binned
-            # mcm_3x2pt_dict['LG'] = self.cov_nmt_obj.mcm_et_binned
-            mcm_dict['GG'] = self.cov_nmt_obj.mcm_tt_binned
+            mcm_dict['LL'] = cov_nmt_obj.mcm_ee_binned
+            mcm_dict['GL'] = cov_nmt_obj.mcm_te_binned
+            # mcm_3x2pt_dict['LG'] = cov_nmt_obj.mcm_et_binned
+            mcm_dict['GG'] = cov_nmt_obj.mcm_tt_binned
 
-            nbl = self.ell_obj.nbl_3x2pt
+            nbl = self.bin_obj.nbl_3x2pt
             expected_shape = (nbl, nbl, self.zbins, self.zbins)
             for k, mcm in mcm_dict.items():
                 assert mcm.shape == expected_shape, (

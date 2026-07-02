@@ -686,8 +686,8 @@ def compute_ensemble_covariance_parallel(
     zbins: int,
     weight_maps_gg: np.ndarray,
     weight_maps_ll: np.ndarray,
-    noise_GG_diag: np.ndarray,
-    noise_LL_diag: np.ndarray,
+    nl_gg_diag: np.ndarray,
+    nl_ll_diag: np.ndarray,
     nside: int,
     nreal: int,
     coupled_cls: bool,
@@ -755,8 +755,8 @@ def compute_ensemble_covariance_parallel(
                 zbins=zbins,
                 weight_maps_gg=weight_maps_gg,
                 weight_maps_ll=weight_maps_ll,
-                noise_GG_diag=noise_GG_diag,
-                noise_LL_diag=noise_LL_diag,
+                nl_gg_diag=nl_gg_diag,
+                nl_ll_diag=nl_ll_diag,
                 coupled_cls=coupled_cls,
                 which_cls=which_cls,
                 wsp_path_template=wsp_path_template,
@@ -801,8 +801,8 @@ def _compute_one_realization(
     zbins,
     weight_maps_gg,
     weight_maps_ll,
-    noise_GG_diag,
-    noise_LL_diag,
+    nl_gg_diag,
+    nl_ll_diag,
     coupled_cls,
     which_cls,
     wsp_path_template,
@@ -854,10 +854,10 @@ def _compute_one_realization(
     npix = hp.nside2npix(nside)
     omega_pix = 4.0 * np.pi / npix  # pixel solid angle (in steradians)
     for zi, m in enumerate(corr_maps_gg):
-        sigma_pix = np.sqrt(noise_GG_diag[zi] / omega_pix)
+        sigma_pix = np.sqrt(nl_gg_diag[zi] / omega_pix)
         m += np.random.randn(npix) * sigma_pix
     for zi, qu in enumerate(corr_maps_ll):
-        sigma_pix = np.sqrt(noise_LL_diag[zi] / omega_pix)
+        sigma_pix = np.sqrt(nl_ll_diag[zi] / omega_pix)
         qu[0] += np.random.randn(npix) * sigma_pix
         qu[1] += np.random.randn(npix) * sigma_pix
 
@@ -1671,7 +1671,7 @@ class CovNaMaster:
         # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
 
-        self.build_fields(ell_max_eff)
+        self.build_fields(self.ell_max_nmt)
         self.build_wsp()
         self.build_cw(unique_probe_combs)
         self.save_to_cache(unique_probe_combs)
@@ -1731,9 +1731,9 @@ class CovNaMaster:
                     self.w22_dict[zi, zj].couple_cell(list_ll)[0] / fsky_ll_zij
                 )
 
-        nl_gg_4covnmt = self.noise_3x2pt_unb_5d[1, 1, :, :, :].copy()
-        nl_gl_4covnmt = self.noise_3x2pt_unb_5d[1, 0, :, :, :].copy()  # this is 0
-        nl_ll_4covnmt = self.noise_3x2pt_unb_5d[0, 0, :, :, :].copy()
+        nl_gg_4covnmt = self.nl_3x2pt_unb_5d[1, 1, :, :, :].copy()
+        nl_gl_4covnmt = self.nl_3x2pt_unb_5d[1, 0, :, :, :].copy()  # this is 0
+        nl_ll_4covnmt = self.nl_3x2pt_unb_5d[0, 0, :, :, :].copy()
         if self.cfg['precision']['coupled_noise']:
             nl_gg_4covnmt *= self.coupled_noise_factor(weight_maps=self.weight_maps_gg)
             nl_ll_4covnmt *= self.coupled_noise_factor(weight_maps=self.weight_maps_ll)
@@ -1856,14 +1856,14 @@ class CovNaMaster:
                 zbins=self.zbins,
                 weight_maps_gg=self.weight_maps_gg,
                 weight_maps_ll=self.weight_maps_ll,
-                noise_GG_diag=nl_gg_4covens,
-                noise_LL_diag=nl_ll_4covens,
+                nl_gg_diag=nl_gg_4covens,
+                nl_ll_diag=nl_ll_4covens,
                 nside=self.nside,
                 nreal=self.cfg['ensemble_covariance']['nreal'],
                 coupled_cls=self.coupled_cov,
                 which_cls=self.cfg['ensemble_covariance']['which_cls'],
                 nmt_bin_obj=self.nmt_bin_obj,
-                lmax=ell_max_eff,
+                lmax=self.ell_max_nmt,
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['ensemble_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],

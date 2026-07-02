@@ -329,6 +329,7 @@ class CovHarmonicSpace:
     def combine_and_reshape_covs(
         self,
         ccl_obj: CCLInterface,
+        cov_nmt_obj: CovNaMaster | None,
         cov_ssc_obj: SpaceborneSSC | None,
         cov_oc_obj: OneCovarianceInterface | None,
         split_gaussian_cov: bool,
@@ -387,7 +388,7 @@ class CovHarmonicSpace:
             print(f'...done in {time.perf_counter() - start:.2f} s')
 
         # ! compute coupled NG cov - the "if coupled" is inside the function
-        self._couple_cov_ng()
+        self._couple_cov_ng(cov_nmt_obj=cov_nmt_obj)
 
         # ! reshape probe-specific 6d covs to 4d and 2d
         sl.cov_dict_6d_probe_blocks_to_4d_and_2d(

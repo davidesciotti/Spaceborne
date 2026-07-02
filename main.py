@@ -189,7 +189,7 @@ script_start_time = time.perf_counter()
 # monitor_thread.start()
 
 
-def plot_cls():
+def plot_tomo_diag_cls():
     _, ax = plt.subplots(1, 3, figsize=(15, 4))
     # plt.tight_layout()
 
@@ -254,6 +254,37 @@ def plot_cls():
             + axi.get_yticklabels()
         ):
             item.set_fontsize(16)
+
+
+def triangle_plot_cls_wrapper():
+    # this is a lil' bit convoluted: the cls used by the code (wither from input or from sb)
+    # are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
+    # is True and are only plotted in that case
+    _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
+    _ell_dict_wl = {_key: bin_obj.ells_3x2pt}
+    _ell_dict_xc = {_key: bin_obj.ells_3x2pt}
+    _ell_dict_gc = {_key: bin_obj.ells_3x2pt}
+    _cl_dict_wl = {_key: cl_3x2pt_5d[0, 0]}
+    _cl_dict_xc = {_key: cl_3x2pt_5d[1, 0]}
+    _cl_dict_gc = {_key: cl_3x2pt_5d[1, 1]}
+    if cfg['C_ell']['use_input_cls']:
+        _ell_dict_wl['SB'] = bin_obj.ells_3x2pt
+        _ell_dict_xc['SB'] = bin_obj.ells_3x2pt
+        _ell_dict_gc['SB'] = bin_obj.ells_3x2pt
+        _cl_dict_wl['SB'] = _cl_3x2pt_5d_sb[0, 0]
+        _cl_dict_xc['SB'] = _cl_3x2pt_5d_sb[1, 0]
+        _cl_dict_gc['SB'] = _cl_3x2pt_5d_sb[1, 1]
+
+    if cfg['misc']['cl_triangle_plot']:
+        sb_plt.cls_triangle_plot(
+            _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
+        )
+        sb_plt.cls_triangle_plot(
+            _ell_dict_xc, _cl_dict_xc, is_auto=False, zbins=zbins, suptitle='GGL'
+        )
+        sb_plt.cls_triangle_plot(
+            _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
+        )
 
 
 # ! ====================================================================================
@@ -1044,22 +1075,18 @@ sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 
 
 # ! ======================================== Cl ========================================
-# ! note that the function below includes the multiplicative shear bias
-with sl.timer('\nComputing Cls...'):
-    _cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
-        ccl_obj,
-        ells=bin_obj.ells_3x2pt,
-        zbins=zbins,
-        mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-        cl_ccl_kwargs=cl_ccl_kwargs,
-        n_probes_hs=cfg['covariance']['n_probes'],
-    )
 
-_cl_3x2pt_5d_sb = sl.build_cl_3x2pt_5d(
-    cl_ll_3d=_cl_3x2pt_5d[0, 0],
-    cl_gl_3d=_cl_3x2pt_5d[1, 0],
-    cl_gg_3d=_cl_3x2pt_5d[1, 1],
+# Compute SB Cl regardless of the cfg, to plot against the input ones.
+# Note that in this case I can't use compute_cls_or_interpolate_input_cls, since this
+# checks whether the input cls are to be used, and if so it loads them.
+_cl_3x2pt_5d_sb = ccl_interface.compute_cl_3x2pt_5d(
+    ccl_obj,
+    ells=bin_obj.ells_3x2pt,
+    mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+    cl_ccl_kwargs=cl_ccl_kwargs,
+    n_probes_hs=cfg['covariance']['n_probes'],
 )
+
 
 if cfg['C_ell']['use_input_cls']:
     # load input cls
@@ -1073,37 +1100,9 @@ cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
     bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
 )
 
-# cls plots
-plot_cls()
-
-# this is a lil' bit convoluted: the cls used by the code (wither from input or from sb)
-# are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
-# is True and are only plotted in that case
-_key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
-_ell_dict_wl = {_key: bin_obj.ells_3x2pt}
-_ell_dict_xc = {_key: bin_obj.ells_3x2pt}
-_ell_dict_gc = {_key: bin_obj.ells_3x2pt}
-_cl_dict_wl = {_key: cl_3x2pt_5d[0, 0]}
-_cl_dict_xc = {_key: cl_3x2pt_5d[1, 0]}
-_cl_dict_gc = {_key: cl_3x2pt_5d[1, 1]}
-if cfg['C_ell']['use_input_cls']:
-    _ell_dict_wl['SB'] = bin_obj.ells_3x2pt
-    _ell_dict_xc['SB'] = bin_obj.ells_3x2pt
-    _ell_dict_gc['SB'] = bin_obj.ells_3x2pt
-    _cl_dict_wl['SB'] = _cl_3x2pt_5d_sb[0, 0]
-    _cl_dict_xc['SB'] = _cl_3x2pt_5d_sb[1, 0]
-    _cl_dict_gc['SB'] = _cl_3x2pt_5d_sb[1, 1]
-
-if cfg['misc']['cl_triangle_plot']:
-    sb_plt.cls_triangle_plot(
-        _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
-    )
-    sb_plt.cls_triangle_plot(
-        _ell_dict_xc, _cl_dict_xc, is_auto=False, zbins=zbins, suptitle='GGL'
-    )
-    sb_plt.cls_triangle_plot(
-        _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
-    )
+# Cl plots
+plot_tomo_diag_cls()
+triangle_plot_cls_wrapper()
 
 
 # ! ======================================== Nl ========================================
@@ -1695,6 +1694,7 @@ if compute_ccl_ssc or compute_ccl_cng:
 if obs_space == 'harmonic':
     cov_hs_obj.combine_and_reshape_covs(
         ccl_obj=ccl_obj,
+        cov_nmt_obj=cov_nmt_obj,
         cov_ssc_obj=cov_ssc_obj,
         cov_oc_obj=cov_oc_obj,
         split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],

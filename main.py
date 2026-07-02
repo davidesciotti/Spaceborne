@@ -199,11 +199,11 @@ def plot_cls():
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
         if io_obj.need_input_cl_ll:
-            ax[0].plot(bin_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+            ax[0].plot(bin_obj.ells_WL, cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gl:
-            ax[1].plot(bin_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+            ax[1].plot(bin_obj.ells_XC, cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gg:
-            ax[2].plot(bin_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
+            ax[2].plot(bin_obj.ells_GC, cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
     for zi in range(zbins):
@@ -1069,7 +1069,7 @@ if cfg['C_ell']['use_input_cls']:
     # check ells before spline interpolation
     io_obj.check_ells_in(bin_obj)
 
-ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
     bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
 )
 
@@ -1083,9 +1083,9 @@ _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
 _ell_dict_wl = {_key: bin_obj.ells_3x2pt}
 _ell_dict_xc = {_key: bin_obj.ells_3x2pt}
 _ell_dict_gc = {_key: bin_obj.ells_3x2pt}
-_cl_dict_wl = {_key: ccl_obj.cl_3x2pt_5d[0, 0]}
-_cl_dict_xc = {_key: ccl_obj.cl_3x2pt_5d[1, 0]}
-_cl_dict_gc = {_key: ccl_obj.cl_3x2pt_5d[1, 1]}
+_cl_dict_wl = {_key: cl_3x2pt_5d[0, 0]}
+_cl_dict_xc = {_key: cl_3x2pt_5d[1, 0]}
+_cl_dict_gc = {_key: cl_3x2pt_5d[1, 1]}
 if cfg['C_ell']['use_input_cls']:
     _ell_dict_wl['SB'] = bin_obj.ells_3x2pt
     _ell_dict_xc['SB'] = bin_obj.ells_3x2pt
@@ -1124,6 +1124,7 @@ nl_3x2pt_5d = np.repeat(nl_3x2pt_4d[:, :, np.newaxis, :, :], bin_obj.nbl_3x2pt, 
 
 
 # ! =============================== Init NaMaster cov object ===========================
+cov_nmt_dict = None
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
@@ -1138,8 +1139,8 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
 
     # for NaMaster, we want to leave some headroom in case nside is high and ell_max is
     # low. For this, we compute a buffer roughly corresponding to the bandwidth of the
-    # mask Cls, so the mode coupling reaches beyond ell_max and the covariance at ell_max
-    # is not biased by the band-limit.
+    # mask Cls, so the mode coupling reaches beyond ell_max and the covariance at
+    # ell_max is not biased by the band-limit.
     ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt + ell_buffer_nmt
     # and, if it overshoots the maximum allowed by the nside, we cap it there
     ell_max_3x2pt_nmt = min(ell_max_3x2pt_nmt, 3 * cfg['mask']['nside'] - 1)
@@ -1249,10 +1250,11 @@ if obs_space == 'harmonic':
     # compute Knox Gaussian covariance
     if 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_obj.set_gauss_cov(
-            cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
+            cl_3x2pt_5d=cl_3x2pt_5d,
             nl_3x2pt_5d=nl_3x2pt_5d,
-            cl_3x2pt_unb_5d=ccl_obj.cl_3x2pt_unb_5d,
+            cl_3x2pt_unb_5d=cl_3x2pt_unb_5d,
             nl_3x2pt_unb_5d=nl_3x2pt_unb_5d,
+            cov_nmt_dict=cov_nmt_dict,
         )
 
 
@@ -2090,9 +2092,9 @@ np.savetxt(
 )
 
 # save cls
-sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
-sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
-sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
 
 # save ell values
 # TODO do this for theta values in the real space case
@@ -2254,7 +2256,8 @@ if cfg['misc']['save_output_as_benchmark']:
         wf_ia=ccl_obj.wf_ia_arr,
         wf_mu=ccl_obj.wf_mu_arr,
         wf_lensing_arr=ccl_obj.wf_lensing_arr,
-        cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
+        cl_3x2pt_5d=cl_3x2pt_5d,
+        nl_3x2pt_5d=nl_3x2pt_5d,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,
         dPgg_ddeltab=dPgg_ddeltab,

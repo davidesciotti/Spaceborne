@@ -3649,7 +3649,7 @@ def cov_g_terms_helper_jax(a, b, prefactor, mix: bool):
 
 def compute_g_cov(
     cl_5d: np.ndarray,
-    noise_5d: np.ndarray,
+    nl_5d: np.ndarray,
     fsky: float,
     ell_values: np.ndarray,
     delta_ell: np.ndarray,
@@ -3665,7 +3665,7 @@ def compute_g_cov(
     ----------
     cl_5d : np.ndarray
         Power spectra with shape (n_probes, n_probes, nbl, zbins, zbins)
-    noise_5d : np.ndarray
+    nl_5d : np.ndarray
         Noise power spectra with shape (n_probes, n_probes, nbl, zbins, zbins)
     fsky : float
         Sky fraction
@@ -3699,9 +3699,9 @@ def compute_g_cov(
     assert cl_5d.shape[-1] == cl_5d.shape[-2], (
         'cl_5d must have shape (n_probes, n_probes, nbl, zbins, zbins)'
     )
-    assert noise_5d.shape == cl_5d.shape, (
-        'noise_5d must have the same shape as cl_5d, '
-        f'found {noise_5d.shape=}, and {cl_5d.shape=}'
+    assert nl_5d.shape == cl_5d.shape, (
+        'nl_5d must have the same shape as cl_5d, '
+        f'found {nl_5d.shape=}, and {cl_5d.shape=}'
     )
 
     if cov_hs_g_ell_bin_average and ell_edges is None:
@@ -3710,7 +3710,7 @@ def compute_g_cov(
         )
 
     # convenience variables
-    clplusn_5d = cl_5d + noise_5d
+    clplusn_5d = cl_5d + nl_5d
     prefactor = 1 / ((2 * ell_values + 1) * fsky)
 
     if not cov_hs_g_ell_bin_average:
@@ -3733,9 +3733,9 @@ def compute_g_cov(
 
     cov_sva = np.asarray(cov_g_terms_helper_jax(cl_5d, cl_5d, prefactor, mix=False))
     cov_sn = np.asarray(
-        cov_g_terms_helper_jax(noise_5d, noise_5d, prefactor, mix=False)
+        cov_g_terms_helper_jax(nl_5d, nl_5d, prefactor, mix=False)
     )
-    cov_mix = np.asarray(cov_g_terms_helper_jax(cl_5d, noise_5d, prefactor, mix=True))
+    cov_mix = np.asarray(cov_g_terms_helper_jax(cl_5d, nl_5d, prefactor, mix=True))
 
     # bin the integer ell modes
     if cov_hs_g_ell_bin_average:
@@ -5244,7 +5244,7 @@ def build_noise(
 
     Returns
     -------
-    noise_4d : np.ndarray
+    nl_4d : np.ndarray
         Noise power spectra matrices of shape (n_probes, n_probes, zbins, zbins)
 
     Notes
@@ -5287,14 +5287,14 @@ def build_noise(
     n_bar_clust = ng_clust * conversion_factor
 
     # create and fill N
-    noise_4d = np.zeros((n_probes, n_probes, zbins, zbins))
+    nl_4d = np.zeros((n_probes, n_probes, zbins, zbins))
 
     if is_noiseless:
-        return noise_4d
+        return nl_4d
 
-    np.fill_diagonal(noise_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
-    np.fill_diagonal(noise_4d[1, 1, :, :], 1 / n_bar_clust)
-    noise_4d[0, 1, :, :] = 0
-    noise_4d[1, 0, :, :] = 0
+    np.fill_diagonal(nl_4d[0, 0, :, :], sigma_eps2 / (2 * n_bar_shear))
+    np.fill_diagonal(nl_4d[1, 1, :, :], 1 / n_bar_clust)
+    nl_4d[0, 1, :, :] = 0
+    nl_4d[1, 0, :, :] = 0
 
-    return noise_4d
+    return nl_4d

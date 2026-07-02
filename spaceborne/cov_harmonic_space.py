@@ -106,14 +106,14 @@ class CovHarmonicSpace:
             # (after casting them to int. n_modes is equivalent to delta_ell modulo the
             # fact that for delta_ell we consider non-integer ell values)
             _cl_5d = cl_3x2pt_unb_5d
-            _noise_5d = nl_3x2pt_unb_5d
+            _nl_5d = nl_3x2pt_unb_5d
             _ell_values = self.bin_obj.ells_3x2pt_unb
             _ell_edges = self.bin_obj.ell_edges_3x2pt
         else:
             # evaluate the covariance at the center of the ell bin and normalise by
             # delta_ell
             _cl_5d = cl_3x2pt_5d
-            _noise_5d = nl_3x2pt_5d
+            _nl_5d = nl_3x2pt_5d
             _ell_values = self.bin_obj.ells_3x2pt
             _ell_edges = None
 
@@ -121,7 +121,7 @@ class CovHarmonicSpace:
         # the Gaussian HS cov is computed for all probes at once, still
         (cov_3x2pt_sva_10d, cov_3x2pt_sn_10d, cov_3x2pt_mix_10d) = sl.compute_g_cov(
             cl_5d=_cl_5d,
-            noise_5d=_noise_5d,
+            nl_5d=_nl_5d,
             fsky=1.0,  # fsky is now probe-dependent and will be applied later!
             ell_values=_ell_values,
             delta_ell=self.bin_obj.delta_l_3x2pt,

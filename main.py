@@ -886,11 +886,6 @@ fsky_max_abcd_dict, amax_abcd_dict = mask_utils.get_fsky_abcd_dict(
     fsky_ab_dict=fsky_ab_dict, req_probe_combs_hs_2d=req_probe_combs_hs_2d
 )
 
-ell_buffer_nmt = mask_utils.get_ell_buffer_nmt(
-    footp_cl_abcd_dict=footp_cl_abcd_dict,
-    mask_obj_ll=mask_obj_ll,
-    mask_obj_gg=mask_obj_gg,
-)
 
 # this will be used to normalise the SSC and cNG
 ccl_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
@@ -1075,13 +1070,13 @@ sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 
 
 # ! ======================================== Cl ========================================
-
 # Compute SB Cl regardless of the cfg, to plot against the input ones.
 # Note that in this case I can't use compute_cls_or_interpolate_input_cls, since this
 # checks whether the input cls are to be used, and if so it loads them.
 _cl_3x2pt_5d_sb = ccl_interface.compute_cl_3x2pt_5d(
     ccl_obj,
     ells=bin_obj.ells_3x2pt,
+    zbins=zbins,
     mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
     cl_ccl_kwargs=cl_ccl_kwargs,
     n_probes_hs=cfg['covariance']['n_probes'],
@@ -1136,15 +1131,29 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    # for NaMaster, we want to leave some headroom in case nside is high and ell_max is
+    # For NaMaster, we want to leave some headroom in case nside is high and ell_max is
     # low. For this, we compute a buffer roughly corresponding to the bandwidth of the
     # mask Cls, so the mode coupling reaches beyond ell_max and the covariance at
     # ell_max is not biased by the band-limit.
+
+    # ell_buffer_nmt = mask_utils.get_ell_buffer_nmt(
+    #     footp_cl_abcd_dict=footp_cl_abcd_dict,
+    #     mask_obj_ll=mask_obj_ll,
+    #     mask_obj_gg=mask_obj_gg,
+    # )
+    # TODO decide which one to use
+    ell_buffer_nmt = cfg['precision']['ell_max_buffer_nmt']
+
     ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt + ell_buffer_nmt
-    # and, if it overshoots the maximum allowed by the nside, we cap it there
+
+    # and, if it overshoots the maximum allowed by the nside, cap it there
     ell_max_3x2pt_nmt = min(ell_max_3x2pt_nmt, 3 * cfg['mask']['nside'] - 1)
 
-    print(f'{ell_max_3x2pt_nmt=}')
+    print(
+        'Setting lmax of the input spectra used for the '
+        'cfg["covariance"]["partial_sky_method"] '
+        f'computation to {ell_max_3x2pt_nmt}'
+    )
 
     if ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt < ell_buffer_nmt:
         warnings.warn(

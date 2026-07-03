@@ -201,6 +201,7 @@ C_ell:
     l_limber: -1 # Type: int
     limber_integration_method: spline # Type: str
     non_limber_integration_method: FKEM # Type: str
+    
 mask:
   # Configs for the survey footprint and masks. The options outside of the 'LL' and 'GG'
   # sections are common to both probes.

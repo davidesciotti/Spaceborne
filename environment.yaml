@@ -23,11 +23,11 @@ dependencies:
   - namaster
 
   # uncommenting these may help in case of issues with the pylevin installation
-  # - c-compiler
-  # - cxx-compiler
-  # - llvm-openmp
-  # - boost
-  # - gsl
+  - c-compiler
+  - cxx-compiler
+  - llvm-openmp
+  - boost
+  - gsl
 
   - pip:
       - pytest # required to run the test suite (CI and local)

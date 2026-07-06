@@ -387,7 +387,7 @@ precision:
   delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
 
   # Whether or not to use the single-redshift integral approximation for the SSC.
-  use_KE_approximation: True # Type: bool.
+  use_KE_approximation: False # Type: bool.
 
   # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
@@ -459,8 +459,6 @@ misc:
   # automatically displays the labels and limits for the different probe blocks.
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
-
-  workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
   output_path: ../DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

@@ -547,9 +547,6 @@ class SpaceborneConfigChecker:
         assert isinstance(misc_cfg['plot_probe_names'], bool), (
             'misc: plot_probe_names must be a boolean'
         )
-        assert isinstance(misc_cfg['workspace_filename'], str), (
-            'misc: workspace_filename must be a string'
-        )
 
     def check_misc(self) -> None:
         assert self.cfg['covariance']['n_probes'] == 2, (

@@ -2,6 +2,8 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import cm
+from matplotlib.colors import ListedColormap
 
 mpl_rcparams_dict = {
     'lines.linewidth': 1.5,
@@ -685,39 +687,24 @@ def triangle_plot(
     plt.show()
 
 
-def contour_plot_chainconsumer(cov, trimmed_fid_dict):
-    """Example usage:
-                # decide params to show in the triangle plot
-                cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
-                shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                params_tot_list = cosmo_param_names + shear_bias_param_names
+def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
+    assert nz_src.shape[1] == nz_lns.shape[1], 'number of zbins is not the same'
+    zbins = nz_src.shape[1]
 
-                trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
+    _, ax = plt.subplots(2, 1, sharex=True)
+    colors = cm.rainbow(np.linspace(0, 1, zbins))
+    for zi in range(zbins):
+        ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
+        # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
+        ax[0].set_xlabel('$z$')
+        ax[0].set_ylabel(r'$n_i^{\rm SHE}(z)$')
+    ax[0].legend(ncol=2)
 
-                # get the covariance matrix (careful on how you cut the FM!!)
-                fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in params_tot_list]
-                cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
-
-                plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
-    :param cov:
-    :param trimmed_fid_dict:
-    :return:
-    """
-    from chainconsumer import ChainConsumer
-
-    param_names = list(trimmed_fid_dict.keys())
-    param_means = list(trimmed_fid_dict.values())
-
-    c = ChainConsumer()
-    c.add_covariance(param_means, cov, parameters=param_names, name='Cov')
-    c.add_marker(
-        param_means,
-        parameters=param_names,
-        name='fiducial',
-        marker_style='.',
-        marker_size=50,
-        color='r',
-    )
-    c.configure(usetex=False, serif=True)
-    fig = c.plotter.plot()
-    return fig
+    for zi in range(zbins):
+        ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
+        # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
+        ax[1].set_xlabel('$z$')
+        ax[1].set_ylabel(r'$n_i^{\rm POS}(z)$')
+    ax[1].legend(ncol=2)

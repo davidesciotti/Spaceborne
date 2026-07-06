@@ -15,7 +15,6 @@ import numpy as np
 import scipy
 import yaml
 from jax import jit
-from matplotlib.colors import ListedColormap
 from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline, RectBivariateSpline, interp1d
 from scipy.special import jv

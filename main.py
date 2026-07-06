@@ -198,11 +198,11 @@ def plot_cls():
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
         if io_obj.need_input_cl_ll:
-            ax[0].plot(bin_obj.ells_WL, cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+            ax[0].plot(bin_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gl:
-            ax[1].plot(bin_obj.ells_XC, cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+            ax[1].plot(bin_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gg:
-            ax[2].plot(bin_obj.ells_GC, cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
+            ax[2].plot(bin_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
     for zi in range(zbins):
@@ -1049,7 +1049,7 @@ if cfg['C_ell']['use_input_cls']:
     # check ells before spline interpolation
     io_obj.check_ells_in(bin_obj)
 
-cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
     bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
 )
 
@@ -1063,9 +1063,9 @@ _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
 _ell_dict_wl = {_key: bin_obj.ells_3x2pt}
 _ell_dict_xc = {_key: bin_obj.ells_3x2pt}
 _ell_dict_gc = {_key: bin_obj.ells_3x2pt}
-_cl_dict_wl = {_key: cl_3x2pt_5d[0, 0]}
-_cl_dict_xc = {_key: cl_3x2pt_5d[1, 0]}
-_cl_dict_gc = {_key: cl_3x2pt_5d[1, 1]}
+_cl_dict_wl = {_key: ccl_obj.cl_3x2pt_5d[0, 0]}
+_cl_dict_xc = {_key: ccl_obj.cl_3x2pt_5d[1, 0]}
+_cl_dict_gc = {_key: ccl_obj.cl_3x2pt_5d[1, 1]}
 if cfg['C_ell']['use_input_cls']:
     _ell_dict_wl['SB'] = bin_obj.ells_3x2pt
     _ell_dict_xc['SB'] = bin_obj.ells_3x2pt
@@ -1634,7 +1634,6 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     if cfg['covariance']['cNG']:
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
-    # TODO understand a bit better how to treat real-space SSC and cNG
     print('')
     for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
@@ -1684,7 +1683,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
 # TODO this code block is almost identical to the real-space one above, probably
-# TODO can be unified
+#      can be unified
 if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     print('\nComputing COSEBIs covariance...')
     start_rs = time.perf_counter()
@@ -1702,7 +1701,6 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     if cfg['covariance']['cNG']:
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
-    # TODO understand a bit better how to treat real-space SSC and cNG
     print('')
     for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
@@ -2008,23 +2006,11 @@ np.savetxt(
 )
 
 # save cls
-sl.write_cl_tab(output_path, 'cl_ll', cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
-sl.write_cl_tab(output_path, 'cl_gl', cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
-sl.write_cl_tab(output_path, 'cl_gg', cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
 
 # save ell values
-# TODO do this for theta values in the real space case
-header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
-
-# ells_ref, probably no need to save
-# ells_2d_save = np.column_stack((
-#     ell_ref_nbl32,
-#     delta_l_ref_nbl32,
-#     ell_edges_ref_nbl32[:-1],
-#     ell_edges_ref_nbl32[1:],
-# ))
-# sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
-
 # TODO save theta
 if obs_space == 'harmonic':
     ells_2d_save = np.column_stack(

@@ -1558,31 +1558,6 @@ def flatten_dict(nested_dict):
     return flattened
 
 
-def is_increasing(arr):
-    return np.all(np.diff(arr) > 0)
-
-
-def save_pickle(filename, obj):
-    with open(f'{filename}', 'wb') as handle:
-        pickle.dump(obj, handle)
-
-
-def load_pickle(filename):
-    with open(f'{filename}', 'rb') as handle:
-        obj = pickle.load(handle)
-    return obj
-
-
-def read_yaml(filename):
-    """A function to read YAML file.
-
-    filename must include the path and the extension
-    """
-    with open(filename) as f:
-        config = yaml.safe_load(f)
-    return config
-
-
 def percent_diff(array_1, array_2, abs_value=False):
     array_1 = np.atleast_1d(array_1)  # Ensure array-like behavior
     array_2 = np.atleast_1d(array_2)
@@ -1918,21 +1893,21 @@ def build_full_ind(triu_tril, row_col_major, size):
 
     zpairs_auto, zpairs_cross, zpairs_3x2pt = get_zpairs(size)
 
-    LL_columns = np.zeros((zpairs_auto, 2))
-    GL_columns = np.hstack((np.ones((zpairs_cross, 1)), np.zeros((zpairs_cross, 1))))
-    GG_columns = np.ones((zpairs_auto, 2))
+    ll_columns = np.zeros((zpairs_auto, 2))
+    gl_columns = np.hstack((np.ones((zpairs_cross, 1)), np.zeros((zpairs_cross, 1))))
+    gg_columns = np.ones((zpairs_auto, 2))
 
-    LL_columns = np.hstack(
-        (LL_columns, generate_ind(triu_tril, row_col_major, size))
+    ll_columns = np.hstack(
+        (ll_columns, generate_ind(triu_tril, row_col_major, size))
     ).astype(int)
-    GL_columns = np.hstack(
-        (GL_columns, generate_ind('full_square', row_col_major, size))
+    gl_columns = np.hstack(
+        (gl_columns, generate_ind('full_square', row_col_major, size))
     ).astype(int)
-    GG_columns = np.hstack(
-        (GG_columns, generate_ind(triu_tril, row_col_major, size))
+    gg_columns = np.hstack(
+        (gg_columns, generate_ind(triu_tril, row_col_major, size))
     ).astype(int)
 
-    ind = np.vstack((LL_columns, GL_columns, GG_columns))
+    ind = np.vstack((ll_columns, gl_columns, gg_columns))
 
     assert ind.shape[0] == zpairs_3x2pt, 'ind has the wrong number of rows'
 
@@ -1981,7 +1956,7 @@ def compute_FoM(FM, w0wa_idxs):
 
 
 def get_zpairs(zbins):
-    zpairs_auto = int((zbins * (zbins + 1)) / 2)  # = 55 for zbins = 10, cast it as int
+    zpairs_auto = int((zbins * (zbins + 1)) / 2)
     zpairs_cross = zbins**2
     zpairs_3x2pt = 2 * zpairs_auto + zpairs_cross
     return zpairs_auto, zpairs_cross, zpairs_3x2pt

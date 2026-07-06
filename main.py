@@ -926,7 +926,7 @@ ccl_obj.set_nz(
 )
 ccl_obj.check_nz_tuple(zbins)
 
-plot_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
+plot_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns)
 
 
 # ! ========================================= IA =======================================

@@ -687,7 +687,7 @@ def triangle_plot(
     plt.show()
 
 
-def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
+def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns):
     assert nz_src.shape[1] == nz_lns.shape[1], 'number of zbins is not the same'
     zbins = nz_src.shape[1]
 
@@ -695,7 +695,8 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
     colors = cm.rainbow(np.linspace(0, 1, zbins))
     for zi in range(zbins):
         ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
-        # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', 
+        # alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
         ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
         ax[0].set_xlabel('$z$')
         ax[0].set_ylabel(r'$n_i^{\rm SHE}(z)$')
@@ -703,7 +704,8 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
 
     for zi in range(zbins):
         ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
-        # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', 
+        # alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
         ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
         ax[1].set_xlabel('$z$')
         ax[1].set_ylabel(r'$n_i^{\rm POS}(z)$')

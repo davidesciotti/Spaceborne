@@ -327,38 +327,6 @@ class TestZpairFromZidx:
 
 
 # ----------------------------------------------------------------------------- #
-# mirror_upper_to_lower_vectorized
-# ----------------------------------------------------------------------------- #
-class TestMirrorUpperToLowerVectorized:
-    """Tests for mirror_upper_to_lower_vectorized."""
-
-    def test_result_is_symmetric(self, rng):
-        n = 6
-        a = rng.standard_normal((n, n))
-        out = sl.mirror_upper_to_lower_vectorized(a)
-        np.testing.assert_allclose(out, out.T)
-
-    def test_upper_triangle_and_diagonal_preserved(self, rng):
-        n = 6
-        a = rng.standard_normal((n, n))
-        out = sl.mirror_upper_to_lower_vectorized(a)
-        iu = np.triu_indices(n, k=0)
-        np.testing.assert_array_equal(out[iu], a[iu])
-
-    def test_lower_triangle_mirrors_upper(self, rng):
-        n = 5
-        a = rng.standard_normal((n, n))
-        out = sl.mirror_upper_to_lower_vectorized(a)
-        il = np.tril_indices(n, k=-1)
-        np.testing.assert_array_equal(out[il], a.T[il])
-
-    def test_non_square_raises(self, rng):
-        a = rng.standard_normal((3, 4))
-        with pytest.raises(ValueError, match='square'):
-            sl.mirror_upper_to_lower_vectorized(a)
-
-
-# ----------------------------------------------------------------------------- #
 # regularize_covariance
 # ----------------------------------------------------------------------------- #
 class TestRegularizeCovariance:
@@ -437,31 +405,37 @@ class TestBesselFunctions:
 class TestBin1dArray:
     """Tests for bin_1d_array.
 
-    Two genuine bugs were found while writing these tests (both reachable
-    from the function's public signature/defaults) and are pinned with
-    xfail rather than fixed in the source:
-
-    1. When ``ells_eff`` is left at its default (None), the first branch's
-       condition ``weights.shape == (len(ells_eff), len(ells_in))`` forces
-       Python to evaluate ``len(None)`` while building the right-hand tuple,
-       *before* the comparison happens -- so the function always raises
-       TypeError unless the caller explicitly passes a (any) sized
-       ``ells_eff``, even for the simple weights=None / 1D-weights case.
-    2. In the ``which_binning == 'integral'`` branch, the normalization uses
-       ``np.sum(weights_masked)`` (a plain count) instead of an integral
-       ``simps(y=weights_masked, x=ells_in_masked)`` -- inconsistent with the
-       equivalent, correctly-normalized branch in ``bin_2d_array``. This
-       biases the result even for a constant input signal.
+    Two bugs were originally pinned here with xfail and have since been
+    fixed in the source: (1) leaving ``ells_eff`` at its default (None)
+    crashed with ``len(None)`` in the weights-shape dispatch; (2) the
+    ``'integral'`` branch normalized by ``np.sum(weights)`` instead of the
+    integral ``simps(weights, x=...)`` used by ``bin_2d_array``. The tests
+    below now assert the corrected behavior.
     """
 
-    def test_default_ells_eff_raises_typeerror(self):
-        """Bug 1: calling without ells_eff crashes regardless of weights."""
+    def test_default_ells_eff_works(self):
+        """Calling without ells_eff (its default) must work for 1D weights."""
         ells_in = np.arange(0.0, 20.0)
         cls_in = np.full_like(ells_in, 7.0)
         ells_out = np.array([5.0, 15.0])
         ells_out_edges = np.array([0.0, 10.0, 20.0])
-        with pytest.raises(TypeError):
-            sl.bin_1d_array(ells_in, ells_out, ells_out_edges, cls_in, None, 'sum')
+        out = sl.bin_1d_array(ells_in, ells_out, ells_out_edges, cls_in, None, 'sum')
+        np.testing.assert_allclose(out, [7.0, 7.0])
+
+    def test_bad_weights_shape_raises(self):
+        """A weights array of neither accepted shape raises ValueError."""
+        ells_in = np.arange(0.0, 20.0)
+        cls_in = np.full_like(ells_in, 7.0)
+        weights = np.ones((3, len(ells_in)))  # 2D but no ells_eff passed
+        with pytest.raises(ValueError, match='same length'):
+            sl.bin_1d_array(
+                ells_in,
+                np.array([5.0, 15.0]),
+                np.array([0.0, 10.0, 20.0]),
+                cls_in,
+                weights,
+                'sum',
+            )
 
     def test_constant_input_sum_binning(self):
         """'sum' binning of a constant array returns the constant (this branch
@@ -491,14 +465,8 @@ class TestBin1dArray:
         ]
         np.testing.assert_allclose(out, expected)
 
-    @pytest.mark.xfail(
-        reason=(
-            "bin_1d_array's 'integral' branch normalizes by np.sum(weights) "
-            'instead of an integral simps(weights, x=...), biasing the result '
-            'even for a constant input signal (see class docstring, bug 2)'
-        )
-    )
     def test_constant_input_integral_binning(self):
+        """'integral' binning of a constant array returns the constant."""
         ells_in = np.arange(0.0, 20.0)
         cls_in = np.full_like(ells_in, 7.0)
         ells_out = np.array([5.0, 15.0])

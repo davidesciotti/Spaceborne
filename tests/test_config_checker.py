@@ -190,6 +190,9 @@ class TestCheckMask:
             checker.check_mask()
 
     def test_missing_footprint_file_raises(self, valid_cfg):
+        """The file-existence check only runs for geometry='footprint_file',
+        so set it explicitly rather than relying on config.yaml's choice."""
+        valid_cfg['mask']['GG']['geometry'] = 'footprint_file'
         valid_cfg['mask']['GG']['footprint_filename'] = '/no/such/file.fits'
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError, match='not found'):

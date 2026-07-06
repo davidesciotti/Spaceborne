@@ -1,15 +1,14 @@
 """This module should be run with pyccl >= v3.2.1"""
 
-import time
+import warnings
 from functools import partial
 
-import healpy as hp
 import numpy as np
 import pyccl as ccl
 from tqdm import tqdm
 
 from spaceborne import constants as const
-from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
+from spaceborne import cosmo_lib, wf_cl_lib
 from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
@@ -452,6 +451,14 @@ class CCLInterface:
         comp_load_str = 'Loading' if pyccl_cfg['load_cached_tkka'] else 'Computing'
         tkka_path = f'{self.output_path}/cache/trispectrum/{which_ng_cov}'
         k_a_str = self._print_grid_info(which_ng_cov)
+
+        if pyccl_cfg['load_cached_tkka']:
+            warnings.warn(
+                'You are loading files from the cache. Please make '
+                'sure that the z and k grids, masks and cosmology are consistent with '
+                'the current run',
+                stacklevel=2
+            )
 
         # the default pk must be passed to the Tk3D functions as None, not as
         # 'delta_matter:delta_matter'

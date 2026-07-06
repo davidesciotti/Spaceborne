@@ -1226,6 +1226,11 @@ class CovNaMaster:
                 '\nLoading namaster workspaces and coupling matrices from\n'
                 f'{self.cache_path}...'
             )
+            warnings.warn(
+                'You are loading files from the cache. Please make '
+                'sure that,masks and cosmology are consistent with the current run',
+                stacklevel=2,
+            )
         else:
             print('\nComputing namaster workspaces and coupling matrices...')
 
@@ -1465,7 +1470,7 @@ class CovNaMaster:
         # if workspaces are already laoded from cache, do not save them again
         if self.load_cached_wsp:
             return
-        
+
         if not self.save_wsp_to_cache:
             return
 

@@ -38,7 +38,7 @@ ruff check . && ruff format .
 ```
 Style is non-default: line-length 88, **single quotes**, `skip-magic-trailing-comma = true`
 (so do not add trailing commas that force multi-line collapses). Many naming rules (N802/N803/N806…)
-are intentionally ignored because the code uses physics notation (`C_ell`, `cov_4D_to_6D`, etc.) — match
+are intentionally ignored because the code uses physics notation (`C_ell`, `compute_FoM`, etc.) — match
 the surrounding style, don't "fix" casing.
 
 ## Architecture
@@ -95,7 +95,8 @@ implementation. Reading order to understand a run:
 ## Typical workflow
 
 Single runs are launched from external config files (not the repo's `config.yaml`). Batch parameter
-sweeps use `launch_jobs.py` + `batch_run_utils.py` to clone the base config, override keys
+sweeps use `batch_run_utils.py` (driven by a `launch_jobs.py` script that lives in a separate,
+dedicated repo) to clone the base config, override keys
 (`partial_sky_method`, `spin0`, `iNKA`, output path, …) and run them in sequence with
 `continue_on_error`. Outputs (per variant): `covmats_2D.npz` (`['Gauss']`), `covmats_6D.npz`,
 `ell_values.txt`, `cl_*.txt`, `run_config.yaml`, `figs/`.

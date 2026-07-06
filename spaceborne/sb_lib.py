@@ -1098,11 +1098,16 @@ def bin_1d_array(
         ells_in_masked = ells_in[ell_masked_idxs]
         cls_masked = cls_in[ell_masked_idxs]
 
-        if weights.shape == (len(ells_eff), len(ells_in)):
+        if ells_eff is not None and weights.shape == (len(ells_eff), len(ells_in)):
             ells_eff_idx = np.argmin(np.abs(ells_eff - ells_out[ell_idx]))
             weights_masked = weights[ells_eff_idx, ell_masked_idxs]
         elif weights.shape == (len(ells_in),):
             weights_masked = weights[ell_masked_idxs]
+        else:
+            raise ValueError(
+                'weights must have shape (len(ells_in),) or, if ells_eff is '
+                'passed, (len(ells_eff), len(ells_in))'
+            )
 
         # Calculate the bin widths
         if weights_was_none:
@@ -1114,7 +1119,8 @@ def bin_1d_array(
         # Option 1: use the original grid for integration and no weights
         if which_binning == 'integral':
             integral = simps(y=cls_masked * weights_masked, x=ells_in_masked)
-            binned_cls[ell_idx] = integral / np.sum(weights_masked)
+            norm = simps(y=weights_masked, x=ells_in_masked)
+            binned_cls[ell_idx] = integral / norm
 
         elif which_binning == 'sum':
             binned_cls[ell_idx] = np.sum(cls_masked * weights_masked) / np.sum(

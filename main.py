@@ -99,7 +99,6 @@ print(f'JAX backend: {jax.default_backend()}')
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
-import pprint
 import time
 
 import matplotlib
@@ -144,7 +143,7 @@ YELLOW = '\033[33m'
 RESET = '\033[0m'
 
 
-def _clean_warning(message, category, filename, lineno, file=None, line=None):
+def _clean_warning(message, category, filename, lineno):
     return f'\n{YELLOW}{category.__name__}: {message}  \n{filename}:{lineno}{RESET}\n\n'
 
 
@@ -156,7 +155,6 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
-pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
@@ -199,11 +197,11 @@ def plot_cls():
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
         if io_obj.need_input_cl_ll:
-            ax[0].plot(bin_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+            ax[0].plot(bin_obj.ells_WL, cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gl:
-            ax[1].plot(bin_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+            ax[1].plot(bin_obj.ells_XC, cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gg:
-            ax[2].plot(bin_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
+            ax[2].plot(bin_obj.ells_GC, cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
     for zi in range(zbins):
@@ -514,7 +512,7 @@ if req_terms == []:
 
 # TODO I can probably delete these?
 compute_oc_g, compute_oc_ssc, compute_oc_cng = False, False, False
-compute_sb_ssc, compute_sb_cng = False, False
+compute_sb_ssc, _compute_sb_cng = False, False
 compute_ccl_ssc, compute_ccl_cng = False, False
 if cfg['covariance']['G'] and cfg['covariance']['G_code'] == 'OneCovariance':
     compute_oc_g = True
@@ -533,7 +531,7 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
     compute_sb_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
     raise NotImplementedError('Spaceborne cNG not implemented yet')
-    compute_sb_cng = True
+    _compute_sb_cng = True
 
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
     compute_ccl_ssc = True
@@ -574,19 +572,7 @@ else:
     cfg['probe_selection']['GG'] = False
 
 
-if cfg['precision']['use_KE_approximation']:
-    cl_integral_convention_ssc = 'Euclid_KE_approximation'
-    ssc_integration_type = 'simps_KE_approximation'
-else:
-    cl_integral_convention_ssc = 'Euclid'
-    ssc_integration_type = 'simps'
-
-if use_h_units:
-    k_txt_label = 'hoverMpc'
-    pk_txt_label = 'Mpcoverh3'
-else:
-    k_txt_label = '1overMpc'
-    pk_txt_label = 'Mpc3'
+k_txt_label = 'hoverMpc' if use_h_units else '1overMpc'
 
 
 # ! sanity checks on the configs
@@ -1019,13 +1005,13 @@ if cfg['covariance']['BNT_transform']:
     bnt_matrix = bnt.compute_bnt_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
     )
-    wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
-    z_means_ll = wf_cl_lib.get_z_means(z_grid, wf_gamma_ccl_bnt)
+    _wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
+    _z_means_ll = wf_cl_lib.get_z_means(z_grid, _wf_gamma_ccl_bnt)
 else:
     bnt_matrix = None
-    z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
+    _z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
 
-z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
+_z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 
 
 # convenience variables
@@ -1062,7 +1048,7 @@ if cfg['C_ell']['use_input_cls']:
     # check ells before spline interpolation
     io_obj.check_ells_in(bin_obj)
 
-ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
     bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
 )
 
@@ -1076,9 +1062,9 @@ _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
 _ell_dict_wl = {_key: bin_obj.ells_3x2pt}
 _ell_dict_xc = {_key: bin_obj.ells_3x2pt}
 _ell_dict_gc = {_key: bin_obj.ells_3x2pt}
-_cl_dict_wl = {_key: ccl_obj.cl_3x2pt_5d[0, 0]}
-_cl_dict_xc = {_key: ccl_obj.cl_3x2pt_5d[1, 0]}
-_cl_dict_gc = {_key: ccl_obj.cl_3x2pt_5d[1, 1]}
+_cl_dict_wl = {_key: cl_3x2pt_5d[0, 0]}
+_cl_dict_xc = {_key: cl_3x2pt_5d[1, 0]}
+_cl_dict_gc = {_key: cl_3x2pt_5d[1, 1]}
 if cfg['C_ell']['use_input_cls']:
     _ell_dict_wl['SB'] = bin_obj.ells_3x2pt
     _ell_dict_xc['SB'] = bin_obj.ells_3x2pt
@@ -1137,7 +1123,6 @@ if obs_space == 'real':
     cov_rs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
     cov_rs_obj.nbl_proj_g = len(bin_obj.ells_3x2pt_proj_g)
     cov_rs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-    cov_rs_obj.nbl_proj_ng = bin_obj.nbl_3x2pt_proj_ng
 
     # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
     # and store in the cov_rs_obj
@@ -1156,7 +1141,6 @@ if obs_space == 'cosebis':
     cov_cs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
     cov_cs_obj.nbl_proj_g = bin_obj.nbl_3x2pt_proj_g
     cov_cs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-    cov_cs_obj.nbl_proj_ng = bin_obj.nbl_3x2pt_proj_ng
 
     # compute projection kernels over ell grids used for the integrals
     # of the G and NG terms
@@ -2023,9 +2007,9 @@ np.savetxt(
 )
 
 # save cls
-sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
-sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
-sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
 
 # save ell values
 # TODO do this for theta values in the real space case
@@ -2182,12 +2166,12 @@ if cfg['misc']['save_output_as_benchmark']:
         bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
         mag_bias_2d=_mag_bias_2d,
-        wf_delta=ccl_obj.wf_delta_arr,
-        wf_gamma=ccl_obj.wf_gamma_arr,
-        wf_ia=ccl_obj.wf_ia_arr,
-        wf_mu=ccl_obj.wf_mu_arr,
-        wf_lensing_arr=ccl_obj.wf_lensing_arr,
-        cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
+        wf_delta=wf_delta,
+        wf_gamma=wf_gamma,
+        wf_ia=wf_ia,
+        wf_mu=wf_mu,
+        wf_lensing=wf_lensing,
+        cl_3x2pt_5d=cl_3x2pt_5d,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,
         dPgg_ddeltab=dPgg_ddeltab,

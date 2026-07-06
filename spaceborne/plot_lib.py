@@ -2,7 +2,6 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import gridspec
 
 mpl_rcparams_dict = {
     'lines.linewidth': 1.5,
@@ -57,6 +56,105 @@ ylabel_perc_diff_wrt_mean = mpl_other_dict['ylabel_perc_diff_wrt_mean']
 ylabel_sigma_relative_fid = mpl_other_dict['ylabel_sigma_relative_fid']
 # plt.rcParams['axes.axisbelow'] = True
 # markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
+
+
+def plot_dominant_array_element(
+    arrays_dict, tab_colors, elements_auto, elements_cross, show_zero: bool = True
+):
+    """Plot 2D arrays from a dictionary, highlighting the dominant component in
+    each element.
+
+    Colors are assigned based on the array with the dominant component
+    at each position. If no component is dominant (all are zero), the
+    color will be white.
+    """
+    centers = [
+        elements_auto // 2,
+        elements_auto + elements_cross // 2,
+        elements_auto + elements_cross + elements_auto // 2,
+    ]
+    labels = ['WL', 'GGL', 'GCph']
+
+    # Stack arrays along a new dimension and calculate the absolute values
+    stacked_abs_arrays = np.abs(np.stack(list(arrays_dict.values()), axis=-1))
+
+    # Find indices of the dominant array at each position
+    dominant_indices = np.argmax(stacked_abs_arrays, axis=-1)
+
+    # Add an extra category for non-dominant cases (where all arrays are zero)
+    non_dominant_value = (
+        -1
+    )  # Choose a value that doesn't conflict with existing indices
+    dominant_indices[np.all(stacked_abs_arrays == 0, axis=-1)] = non_dominant_value
+
+    # Prepare the colormap, including an extra color for non-dominant cases
+    # 'white' is for non-dominant cases
+    selected_colors = ['white'] + tab_colors[: len(arrays_dict)]
+    cmap = ListedColormap(selected_colors)
+
+    # Plot the dominant indices with the custom colormap
+    plt.figure(figsize=(10, 8))
+    im = plt.imshow(
+        dominant_indices,
+        cmap=cmap,
+        vmin=non_dominant_value - 0.5,  # Shifted by -0.5
+        vmax=len(arrays_dict)
+        - 0.5,  # Shifted to +0.5 (which is len(arrays_dict) - 0.5)
+    )
+
+    # Create a colorbar with labels
+    all_ticks = np.arange(non_dominant_value, len(arrays_dict))
+    all_labels = ['0'] + list(arrays_dict.keys())
+
+    if show_zero:
+        # Show everything normally
+        cbar = plt.colorbar(im, ticks=all_ticks)
+        cbar.set_ticklabels(all_labels)
+    else:
+        # We need a new mappable just for the colorbar that excludes the -1 (white) class
+        # Create a colormap with ONLY the valid colors (ignoring the first 'white' color)
+        cmap_no_zero = ListedColormap(selected_colors[1:])
+
+        # Create a dummy scalar mappable for the colorbar
+        sm = plt.cm.ScalarMappable(
+            cmap=cmap_no_zero,
+            # We want the indices to be 0, 1, 2, ..., N.
+            # So the boundaries of the colors must be at -0.5, 0.5, 1.5, ..., N+0.5
+            norm=plt.Normalize(vmin=-0.5, vmax=len(arrays_dict) - 1 + 0.5),
+        )
+        sm.set_array([])
+
+        # Draw the colorbar using the dummy mappable, explicitly attaching it to the image axes
+        cbar = plt.colorbar(sm, ax=im.axes, ticks=np.arange(0, len(arrays_dict)))
+        cbar.set_ticklabels(all_labels[1:])
+
+    # plot lines to separate the probe blocks
+    kw = {'lw': 2, 'color': 'k', 'ls': '--'}
+    plt.axvline(elements_auto - 0.5, **kw)
+    plt.axvline(elements_auto + elements_cross - 0.5, **kw)
+    plt.axhline(elements_auto - 0.5, **kw)
+    plt.axhline(elements_auto + elements_cross - 0.5, **kw)
+    plt.xticks([])
+    plt.yticks([])
+
+    for idx, label in enumerate(labels):
+        x = centers[idx]
+        plt.text(x, -1.5, label, va='bottom', ha='center')
+        plt.text(-1.5, x, label, va='center', ha='right', rotation='vertical')
+
+
+def matshow_vcenter(matrix, vcenter=0):
+    """Plots a matrix with a 0-centered, asymmetric colorbar."""
+    from matplotlib.colors import TwoSlopeNorm
+
+    plt.matshow(matrix, cmap='RdBu_r', norm=TwoSlopeNorm(vcenter=vcenter))
+    plt.colorbar()
+    plt.show()
+
+
+def plot_correlation_matrix(correlation_matrix):
+    plt.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
+    plt.colorbar()
 
 
 def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
@@ -202,7 +300,7 @@ def cls_triangle_plot(
     # ax[0, 0].set_xlim(min_ell, 2 * max_ell)
 
     all_plotted = []
-    for label in ells_dict.keys():
+    for label in ells_dict:
         ells = ells_dict[label]
         cls = cls_dict[label]
         prefac = 2 * ells + 1 if twoellplusone else 1.0

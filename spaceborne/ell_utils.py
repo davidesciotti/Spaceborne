@@ -4,56 +4,6 @@ import numpy as np
 from spaceborne import cosmo_lib
 
 
-def nmt_linear_binning(lmin, lmax, bw, w=None):
-    import pymaster as nmt
-
-    nbl = (lmax - lmin) // bw + 1
-    bins = np.linspace(lmin, lmax + 1, nbl + 1)
-    ell = np.arange(lmin, lmax + 1)
-    i = np.digitize(ell, bins) - 1
-    b = nmt.NmtBin(bpws=i, ells=ell, weights=w, lmax=lmax)
-
-    return b
-
-
-def nmt_log_binning(lmin, lmax, nbl, w=None):
-    """
-    Define a logarithmic ell binning scheme with optional weights.
-    Function written by Sylvain Gouyou Beauchamps.
-
-    Parameters
-    ----------
-    lmin : int
-        Minimum ell value for the binning.
-    lmax : int
-        Maximum ell value for the binning.
-    nbl : int
-        Number of bins.
-    w : array-like, optional
-        Weights for the ell values.
-
-    Returns
-    -------
-    b : nmt.NmtBin
-        NaMaster binning object with logarithmic bins.
-    """
-
-    import pymaster as nmt
-
-    op = np.log10
-
-    def inv(x):
-        return 10**x
-
-    bins = inv(np.linspace(op(lmin), op(lmax + 1), nbl + 1))
-    ell = np.arange(lmin, lmax + 1)
-    i = np.digitize(ell, bins) - 1
-    if w is None:
-        w = np.ones(ell.size)
-    b = nmt.NmtBin(bpws=i, ells=ell, weights=w, lmax=lmax)
-    return b
-
-
 def get_lmid(ells, k):
     """Returns the effective ell values for the k-th diagonal"""
     return 0.5 * (ells[k:] + ells[:-k])

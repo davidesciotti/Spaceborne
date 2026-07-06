@@ -521,17 +521,3 @@ class CovHarmonicSpace:
                             mcm_dict[probe_cd],
                         )
                     )
-
-    def get_ellmax_nbl(self, probe, covariance_cfg):
-        if probe == 'LL':
-            ell_max = covariance_cfg['ell_max_WL']
-            nbl = covariance_cfg['nbl_WL']
-        elif probe == 'GG':
-            ell_max = covariance_cfg['ell_max_GC']
-            nbl = covariance_cfg['nbl_GC']
-        elif probe == '3x2pt':
-            ell_max = covariance_cfg['ell_max_3x2pt']
-            nbl = covariance_cfg['nbl_3x2pt']
-        else:
-            raise ValueError('probe must be LL or GG or 3x2pt')
-        return ell_max, nbl

@@ -2,20 +2,11 @@ import os
 
 import numpy as np
 
-RED = '\033[31m'
-RESET = '\033[0m'
-
 
 class SpaceborneConfigChecker:
     def __init__(self, cfg: dict, zbins: int):
         self.cfg = cfg
         self.zbins = zbins
-
-    def check_h_units(self) -> tuple[str, str]:
-        if self.cfg['misc']['use_h_units']:
-            return 'hoverMpc', 'Mpcoverh3'
-        else:
-            return '1overMpc', 'Mpc3'
 
     def check_BNT_transform(self) -> None:
         if self.cfg['covariance']['BNT_transform']:

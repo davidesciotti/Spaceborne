@@ -760,7 +760,6 @@ class CovRealSpace(CovarianceProjector):
         self.ells_proj_g = _UNSET
         self.nbl_proj_g = _UNSET
         self.ells_proj_ng = _UNSET
-        self.nbl_proj_ng = _UNSET
 
     def _set_theta_binning(self):
         self.theta_min_arcmin = self.cfg['binning']['theta_min_arcmin']
@@ -1023,71 +1022,6 @@ class CovRealSpace(CovarianceProjector):
             raise ValueError(
                 "integration method not implemented; choose 'levin' or 'FFTLog'"
             )
-
-        return cov_mix_rs_6d
-
-    # deprecated
-    def cov_mix_fftlog(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, amax_abcd
-    ):  # fmt: skip
-        def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
-            prefac = (
-                cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
-                * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
-                / (self.n_eff_2d[probe_b_ix, zj] * const.SR_TO_ARCMIN2)
-            )
-            return prefac
-
-        prefac = np.zeros((self.n_probes_hs, self.n_probes_hs, self.zbins, self.zbins))
-        for _probe_a_ix in range(self.n_probes_hs):
-            for _probe_b_ix in range(self.n_probes_hs):
-                for _zi in range(self.zbins):
-                    for _zj in range(self.zbins):
-                        prefac[_probe_a_ix, _probe_b_ix, _zi, _zj] = _get_mix_prefac(
-                            _probe_a_ix, _probe_b_ix, _zi, _zj
-                        )
-
-        a = np.einsum(
-            'jl,Lik->Lijkl',
-            prefac[probe_b_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
-        )
-        b = np.einsum(
-            'ik,Ljl->Lijkl',
-            prefac[probe_a_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
-        )
-        c = np.einsum(
-            'jk,Lil->Lijkl',
-            prefac[probe_b_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
-        )
-        d = np.einsum(
-            'il,Ljk->Lijkl',
-            prefac[probe_a_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
-        )
-        integrand_5d = a + b + c + d
-
-        # compress integrand selecting only unique zpairs
-        assert ind_ab.shape[1] == 2, (
-            "ind_ab must have two columns, maybe you didn't cut it"
-        )
-        assert ind_cd.shape[1] == 2, (
-            "ind_cd must have two columns, maybe you didn't cut it"
-        )
-
-        cov_mix_rs_6d = self.proj_levin_wrapper(
-            integrand_5d=integrand_5d,
-            zpairs_ab=zpairs_ab,
-            zpairs_cd=zpairs_cd,
-            ind_ab=ind_ab,
-            ind_cd=ind_cd,
-            mu=mu,
-            nu=nu,
-            amax_abcd=amax_abcd,
-        )
 
         return cov_mix_rs_6d
 

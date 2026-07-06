@@ -2013,6 +2013,7 @@ sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], bin_obj.ells_GC
 # save ell values
 # TODO save theta
 if obs_space == 'harmonic':
+    header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
     ells_2d_save = np.column_stack(
         (
             bin_obj.ells_3x2pt,
@@ -2158,7 +2159,7 @@ if cfg['misc']['save_output_as_benchmark']:
         wf_ia=wf_ia,
         wf_mu=wf_mu,
         wf_lensing=wf_lensing,
-        cl_3x2pt_5d=cl_3x2pt_5d,
+        cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,
         dPgg_ddeltab=dPgg_ddeltab,

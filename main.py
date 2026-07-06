@@ -121,6 +121,7 @@ from spaceborne import (
     io_handler,
     mask_utils,
     oc_interface,
+    plot_lib,
     responses,
     wf_cl_lib,
 )
@@ -143,7 +144,7 @@ YELLOW = '\033[33m'
 RESET = '\033[0m'
 
 
-def _clean_warning(message, category, filename, lineno):
+def _clean_warning(message, category, filename, lineno, file=None, line=None):
     return f'\n{YELLOW}{category.__name__}: {message}  \n{filename}:{lineno}{RESET}\n\n'
 
 
@@ -925,7 +926,7 @@ ccl_obj.set_nz(
 )
 ccl_obj.check_nz_tuple(zbins)
 
-wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
+plot_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
 
 
 # ! ========================================= IA =======================================

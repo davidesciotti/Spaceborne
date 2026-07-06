@@ -50,7 +50,7 @@ implementation. Reading order to understand a run:
 1. **Config** (`config.yaml`) is the single source of truth. Every option is documented inline with its
    type. There is no hidden default file — the YAML *is* the API. `config_checker.py` validates it.
 2. **Cosmology & power spectra**: `ccl_interface.py` (CCL cosmology, `p_of_k`, tracers) →
-   `wf_cl_lib.py`/`cl_utils.py` (radial kernels, `C(ell)`), `responses.py` (P(k) responses for SSC).
+   `wf_cl_lib.py` (radial kernels, `C(ell)`), `responses.py` (P(k) responses for SSC).
 3. **Geometry**: `mask_utils.py` — `Mask` objects per probe. Distinguishes the **binary footprint**
    (used for `fsky` scalars) from fractional **weight maps** (per-bin, per-probe; used only by the
    NaMaster partial-sky cov). `footprint_fsky_ab` builds the probe-pair effective fskys.
@@ -66,7 +66,7 @@ implementation. Reading order to understand a run:
        `_compute_one_realization`, `sim_cls_to_ensemble_cov`).
    - **SSC / cNG**: `cov_ssc.py` + CCL trispectrum (PyCCL section of `main.py`).
    - **Real space / COSEBIs**: `cov_real_space.py`, `cov_cosebis.py`, projected from harmonic space via
-     `cov_projector.py` / `cov_transform.py` (uses `twobessel_fang.py`, optional `pylevin`).
+     `cov_projector.py` (uses `twobessel_fang.py`, optional `pylevin`).
    - **External cross-check**: `oc_interface.py` shells out to OneCovariance.
 5. **Assemble & save**: terms combined, then reshaped and written. `io_handler.py` + `sb_lib.py` hold the
    shape machinery and I/O.

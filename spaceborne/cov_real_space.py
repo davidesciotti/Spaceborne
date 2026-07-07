@@ -127,7 +127,7 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
 def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
     """
-    Returns tau^{sn}_{(ij)(mn)} as a (zbins, zbins) array over (i,j) of the FIRST pair (ij),
+    Returns t^{sn}_{(ij)(mn)} as a (zbins, zbins) array over (i,j) of the FIRST pair (ij),
     consistent with Eq. (65).
     Assumes sigma_eps_i is sigma_{epsilon1,i} (std); if it is already variance, set sig2=sigma_eps_i.
     """
@@ -137,7 +137,7 @@ def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
 
     # all-source case (e.g. xip/xip or xim/xim)
     if probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 0:
-        # tau(i,j) = 2 * sig2[i] * sig2[j]
+        # T(i,j) = 2 * sig2[i] * sig2[j]
         return 2.0 * sig2[:, None] * sig2[None, :]
 
     # all-lens case (e.g. gg/gg)
@@ -146,7 +146,7 @@ def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
 
     # mixed case: each pair contains one lens and one source (e.g. gt/gt)
     if {probe_a_ix, probe_b_ix} == {0, 1} and {probe_c_ix, probe_d_ix} == {0, 1}:
-        # Eq. (65) says tau = sigma^2_{epsilon1, source_index_in_(ij)}.
+        # Eq. (65) says T = sigma^2_{epsilon1, source_index_in_(ij)}.
         if probe_a_ix == 0:  # (ij) = (source, lens) -> source index is i
             return sig2[:, None] * np.ones((1, zbins))
         else:  # (ij) = (lens, source) -> source index is j
@@ -196,17 +196,6 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
         t_munu = np.ones(zbins)
 
     return t_munu
-
-
-def split_probe_ix(probe_ix):
-    if probe_ix in (0, 1):
-        return 0, 0
-    elif probe_ix == 2:
-        return 1, 0
-    elif probe_ix == 3:
-        return 1, 1
-    else:
-        raise ValueError(f'Invalid probe index: {probe_ix}. Expected 0, 1, 2, or 3.')
 
 
 def integrate_bessel_single_wrapper(
@@ -467,32 +456,6 @@ def levin_integrate_bessel_double_wrapper(
     )
 
     return result_levin
-
-
-def twopcf_wrapper(
-    cosmo, zi, zj, ell_grid, theta_grid, cl_3D, correlation_type, method
-):
-    return ccl.correlation(
-        cosmo=cosmo,
-        ell=ell_grid,
-        C_ell=cl_3D[:, zi, zj],
-        theta=theta_grid,
-        method=method,
-        type=correlation_type,
-    )
-
-
-def regularize_by_eigenvalue_cutoff(cov, threshold=1e-14):
-    # Eigenvalue decomposition
-    eigvals, eigvecs = np.linalg.eig(cov)
-
-    # Invert only the eigenvalues above the threshold
-    eigvals_inv = np.where(eigvals > threshold, 1.0 / eigvals, 0.0)
-
-    # Reconstruct the inverse covariance matrix
-    cov_inv = (eigvecs * eigvals_inv) @ eigvecs.T
-
-    return cov_inv
 
 
 def integrate_single_bessel_pair(
@@ -760,7 +723,6 @@ class CovRealSpace(CovarianceProjector):
         self.ells_proj_g = _UNSET
         self.nbl_proj_g = _UNSET
         self.ells_proj_ng = _UNSET
-        self.nbl_proj_ng = _UNSET
 
     def _set_theta_binning(self):
         self.theta_min_arcmin = self.cfg['binning']['theta_min_arcmin']
@@ -1023,71 +985,6 @@ class CovRealSpace(CovarianceProjector):
             raise ValueError(
                 "integration method not implemented; choose 'levin' or 'FFTLog'"
             )
-
-        return cov_mix_rs_6d
-
-    # deprecated
-    def cov_mix_fftlog(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, amax_abcd
-    ):  # fmt: skip
-        def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
-            prefac = (
-                cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
-                * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
-                / (self.n_eff_2d[probe_b_ix, zj] * const.SR_TO_ARCMIN2)
-            )
-            return prefac
-
-        prefac = np.zeros((self.n_probes_hs, self.n_probes_hs, self.zbins, self.zbins))
-        for _probe_a_ix in range(self.n_probes_hs):
-            for _probe_b_ix in range(self.n_probes_hs):
-                for _zi in range(self.zbins):
-                    for _zj in range(self.zbins):
-                        prefac[_probe_a_ix, _probe_b_ix, _zi, _zj] = _get_mix_prefac(
-                            _probe_a_ix, _probe_b_ix, _zi, _zj
-                        )
-
-        a = np.einsum(
-            'jl,Lik->Lijkl',
-            prefac[probe_b_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
-        )
-        b = np.einsum(
-            'ik,Ljl->Lijkl',
-            prefac[probe_a_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
-        )
-        c = np.einsum(
-            'jk,Lil->Lijkl',
-            prefac[probe_b_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
-        )
-        d = np.einsum(
-            'il,Ljk->Lijkl',
-            prefac[probe_a_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
-        )
-        integrand_5d = a + b + c + d
-
-        # compress integrand selecting only unique zpairs
-        assert ind_ab.shape[1] == 2, (
-            "ind_ab must have two columns, maybe you didn't cut it"
-        )
-        assert ind_cd.shape[1] == 2, (
-            "ind_cd must have two columns, maybe you didn't cut it"
-        )
-
-        cov_mix_rs_6d = self.proj_levin_wrapper(
-            integrand_5d=integrand_5d,
-            zpairs_ab=zpairs_ab,
-            zpairs_cd=zpairs_cd,
-            ind_ab=ind_ab,
-            ind_cd=ind_cd,
-            mu=mu,
-            nu=nu,
-            amax_abcd=amax_abcd,
-        )
 
         return cov_mix_rs_6d
 

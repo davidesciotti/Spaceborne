@@ -19,19 +19,13 @@ full CovRealSpace pipeline:
   like a genuine inconsistency between the production and reference
   implementations, so the mixed-case comparison is marked ``xfail`` rather
   than silently adjusted (see ``TestTSn.test_mixed_case_matches_reference``).
-* ``t_mix`` / ``split_probe_ix`` -- small standalone helpers, checked directly.
-* ``regularize_by_eigenvalue_cutoff`` -- despite the name, reading the source
-  shows it returns the *inverse* of ``cov`` with small eigenvalues clipped to
-  zero contribution (a truncated pseudo-inverse), not a regularized version of
-  ``cov`` itself. Tests pin down this actual behaviour: it agrees with
-  ``np.linalg.inv`` for a well-conditioned SPD matrix, small eigenvalues get
-  zero inverse-weight, and symmetric input stays symmetric.
+* ``t_mix`` -- small standalone helper, checked directly.
 
 Functions requiring pylevin (``integrate_bessel_single_wrapper``,
 ``dl1dl2_binavg_bessel_wrapper``, ``dl1dl2_nobinavg_bessel_wrapper``,
-``levin_integrate_bessel_double_wrapper``, ``integrate_single_bessel_pair``),
-CCL (``twopcf_wrapper``), or the full ``CovRealSpace``/``proj_cov_2d_fftlog``
-pipeline are out of scope for this module.
+``levin_integrate_bessel_double_wrapper``, ``integrate_single_bessel_pair``)
+or the full ``CovRealSpace``/``proj_cov_2d_fftlog`` pipeline are out of scope
+for this module.
 """
 
 import itertools
@@ -47,8 +41,6 @@ from spaceborne.cov_real_space import (
     k_mu,
     k_mu_nobessel,
     kmuknu_nobessel,
-    regularize_by_eigenvalue_cutoff,
-    split_probe_ix,
     t_mix,
     t_sn,
 )
@@ -227,57 +219,3 @@ class TestTMix:
         sigma_eps_i = rng.uniform(0.1, 0.5, zbins)
         out = t_mix(1, zbins, sigma_eps_i)
         np.testing.assert_allclose(out, np.ones(zbins))
-
-
-# ----------------------------------------------------------------------------- #
-# split_probe_ix
-# ----------------------------------------------------------------------------- #
-class TestSplitProbeIx:
-    @pytest.mark.parametrize(
-        'probe_ix,expected', [(0, (0, 0)), (1, (0, 0)), (2, (1, 0)), (3, (1, 1))]
-    )
-    def test_valid_indices(self, probe_ix, expected):
-        assert split_probe_ix(probe_ix) == expected
-
-    def test_invalid_index_raises(self):
-        with pytest.raises(ValueError, match='Invalid probe index'):
-            split_probe_ix(4)
-
-
-# ----------------------------------------------------------------------------- #
-# regularize_by_eigenvalue_cutoff
-# ----------------------------------------------------------------------------- #
-class TestRegularizeByEigenvalueCutoff:
-    """Despite its name, this function returns the eigenvalue-truncated
-    (pseudo-)inverse of cov, not a regularized version of cov itself -- see
-    the module docstring above."""
-
-    def test_matches_inverse_for_well_conditioned_spd(self, rng):
-        a = rng.standard_normal((5, 5))
-        spd = a @ a.T + 5.0 * np.eye(5)  # well-conditioned, no small eigenvalues
-        out = regularize_by_eigenvalue_cutoff(spd, threshold=1e-14)
-        np.testing.assert_allclose(out, np.linalg.inv(spd), rtol=1e-8)
-
-    def test_symmetric_input_stays_symmetric(self, rng):
-        a = rng.standard_normal((6, 6))
-        sym = 0.5 * (a + a.T)
-        out = regularize_by_eigenvalue_cutoff(sym, threshold=1e-14)
-        np.testing.assert_allclose(out, out.T)
-
-    def test_small_eigenvalues_get_zero_weight(self, rng):
-        """Eigen-directions with eigenvalue below the threshold contribute 0
-        to the reconstructed (pseudo-)inverse, instead of blowing up."""
-        q, _ = np.linalg.qr(rng.standard_normal((4, 4)))
-        true_eigvals = np.array([1e-16, 1e-15, 2.0, 5.0])
-        cov = q @ np.diag(true_eigvals) @ q.T
-
-        out = regularize_by_eigenvalue_cutoff(cov, threshold=1e-14)
-        expected = q @ np.diag([0.0, 0.0, 0.5, 0.2]) @ q.T
-        np.testing.assert_allclose(out, expected, atol=1e-8)
-
-    def test_no_cutoff_below_all_eigenvalues(self, rng):
-        """With a threshold below every eigenvalue, this is a plain inverse."""
-        a = rng.standard_normal((4, 4))
-        spd = a @ a.T + 2.0 * np.eye(4)
-        out = regularize_by_eigenvalue_cutoff(spd, threshold=-np.inf)
-        np.testing.assert_allclose(out, np.linalg.inv(spd), rtol=1e-8)

@@ -59,7 +59,6 @@ class CovCOSEBIs(CovarianceProjector):
         self.ells_proj_g = _UNSET
         self.ells_proj_ng = _UNSET
         self.nbl_proj_g = _UNSET
-        self.nbl_proj_ng = _UNSET
         self.w_ells_arr_g = _UNSET
         self.w_ells_arr_ng = _UNSET
 

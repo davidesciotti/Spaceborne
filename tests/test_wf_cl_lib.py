@@ -3,10 +3,9 @@
 Strategy: these are mostly pure numerical functions, so we pin down analytic
 invariants rather than golden numbers:
 
-* ``normalize_nz`` -- the normalized n(z) integrates to 1 (Simpson's rule).
-  A pre-existing bug is documented and pinned with ``xfail``: the function
-  hardcodes the default ``simpson`` axis (-1), so it silently breaks for the
-  2D ``(z, zbins)`` arrays used everywhere else in the codebase.
+* ``normalize_nz`` -- the normalized n(z) integrates to 1 (Simpson's rule),
+  both for 1D input and per-column for the 2D ``(z, zbins)`` arrays used
+  everywhere else in the codebase.
 * ``nz_smail`` -- positivity and the analytic peak location
   (``z_peak = z_0 * (4/3)**(2/3)``, from setting d/dz[log n(z)] = 0).
 * ``p_ph`` -- for fixed ``z_p`` it is a properly normalized density in ``z``
@@ -64,15 +63,6 @@ class TestNormalizeNz:
         n_z_norm = wl.normalize_nz(n_z, z)
         np.testing.assert_allclose(simps(y=n_z_norm, x=z), 1.0, rtol=1e-10)
 
-    @pytest.mark.xfail(
-        reason=(
-            'normalize_nz calls simps(y=n_z, x=z) without axis=0; scipy'
-            " simpson's default axis is -1, so for a (len(z), zbins) 2D"
-            ' array (the shape used everywhere else in the codebase, e.g. '
-            'get_z_means) x is checked against the wrong axis and a '
-            'ValueError is raised instead of a per-column normalization.'
-        )
-    )
     def test_integrates_to_one_2d_per_bin(self):
         """Each column of a 2D n(z) should integrate to 1 independently."""
         z = np.linspace(0.001, 4, 2000)

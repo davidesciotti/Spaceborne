@@ -99,7 +99,6 @@ print(f'JAX backend: {jax.default_backend()}')
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
-import pprint
 import time
 
 import matplotlib
@@ -122,6 +121,7 @@ from spaceborne import (
     io_handler,
     mask_utils,
     oc_interface,
+    plot_lib,
     responses,
     wf_cl_lib,
 )
@@ -156,7 +156,6 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
-pp = pprint.PrettyPrinter(indent=4)
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
@@ -514,7 +513,7 @@ if req_terms == []:
 
 # TODO I can probably delete these?
 compute_oc_g, compute_oc_ssc, compute_oc_cng = False, False, False
-compute_sb_ssc, compute_sb_cng = False, False
+compute_sb_ssc, _compute_sb_cng = False, False
 compute_ccl_ssc, compute_ccl_cng = False, False
 if cfg['covariance']['G'] and cfg['covariance']['G_code'] == 'OneCovariance':
     compute_oc_g = True
@@ -533,7 +532,7 @@ if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'Spaceborne':
     compute_sb_ssc = True
 if cfg['covariance']['cNG'] and cfg['covariance']['cNG_code'] == 'Spaceborne':
     raise NotImplementedError('Spaceborne cNG not implemented yet')
-    compute_sb_cng = True
+    _compute_sb_cng = True
 
 if cfg['covariance']['SSC'] and cfg['covariance']['SSC_code'] == 'PyCCL':
     compute_ccl_ssc = True
@@ -574,19 +573,7 @@ else:
     cfg['probe_selection']['GG'] = False
 
 
-if cfg['precision']['use_KE_approximation']:
-    cl_integral_convention_ssc = 'Euclid_KE_approximation'
-    ssc_integration_type = 'simps_KE_approximation'
-else:
-    cl_integral_convention_ssc = 'Euclid'
-    ssc_integration_type = 'simps'
-
-if use_h_units:
-    k_txt_label = 'hoverMpc'
-    pk_txt_label = 'Mpcoverh3'
-else:
-    k_txt_label = '1overMpc'
-    pk_txt_label = 'Mpc3'
+k_txt_label = 'hoverMpc' if use_h_units else '1overMpc'
 
 
 # ! sanity checks on the configs
@@ -939,7 +926,7 @@ ccl_obj.set_nz(
 )
 ccl_obj.check_nz_tuple(zbins)
 
-wf_cl_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors=clr)
+plot_lib.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns)
 
 
 # ! ========================================= IA =======================================
@@ -1019,13 +1006,13 @@ if cfg['covariance']['BNT_transform']:
     bnt_matrix = bnt.compute_bnt_matrix(
         zbins, zgrid_nz_src, nz_src, cosmo_ccl=ccl_obj.cosmo_ccl, plot_nz=False
     )
-    wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
-    z_means_ll = wf_cl_lib.get_z_means(z_grid, wf_gamma_ccl_bnt)
+    _wf_gamma_ccl_bnt = (bnt_matrix @ ccl_obj.wf_gamma_arr.T).T
+    _z_means_ll = wf_cl_lib.get_z_means(z_grid, _wf_gamma_ccl_bnt)
 else:
     bnt_matrix = None
-    z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
+    _z_means_ll = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_gamma_arr)
 
-z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
+_z_means_gg = wf_cl_lib.get_z_means(z_grid, ccl_obj.wf_galaxy_arr)
 
 
 # convenience variables
@@ -1137,7 +1124,6 @@ if obs_space == 'real':
     cov_rs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
     cov_rs_obj.nbl_proj_g = len(bin_obj.ells_3x2pt_proj_g)
     cov_rs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-    cov_rs_obj.nbl_proj_ng = bin_obj.nbl_3x2pt_proj_ng
 
     # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
     # and store in the cov_rs_obj
@@ -1156,7 +1142,6 @@ if obs_space == 'cosebis':
     cov_cs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
     cov_cs_obj.nbl_proj_g = bin_obj.nbl_3x2pt_proj_g
     cov_cs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-    cov_cs_obj.nbl_proj_ng = bin_obj.nbl_3x2pt_proj_ng
 
     # compute projection kernels over ell grids used for the integrals
     # of the G and NG terms
@@ -1649,7 +1634,6 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     if cfg['covariance']['cNG']:
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
-    # TODO understand a bit better how to treat real-space SSC and cNG
     print('')
     for _probe in unique_probe_combs_rs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='real')
@@ -1699,7 +1683,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     print(f'...done in {time.perf_counter() - start_rs:.2f} s')
 
 # TODO this code block is almost identical to the real-space one above, probably
-# TODO can be unified
+#      can be unified
 if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     print('\nComputing COSEBIs covariance...')
     start_rs = time.perf_counter()
@@ -1717,7 +1701,6 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     if cfg['covariance']['cNG']:
         cov_hs_ng_dict['cng'] = ccl_obj.cov_dict['cng']
 
-    # TODO understand a bit better how to treat real-space SSC and cNG
     print('')
     for _probe in unique_probe_combs_cs:
         probe_ab, probe_cd = sl.split_probe_name(_probe, space='cosebis')
@@ -2028,20 +2011,9 @@ sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], bin_obj.ells_XC
 sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
 
 # save ell values
-# TODO do this for theta values in the real space case
-header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
-
-# ells_ref, probably no need to save
-# ells_2d_save = np.column_stack((
-#     ell_ref_nbl32,
-#     delta_l_ref_nbl32,
-#     ell_edges_ref_nbl32[:-1],
-#     ell_edges_ref_nbl32[1:],
-# ))
-# sl.savetxt_aligned(f'{output_path}/ell_values_ref.txt', ells_2d_save, header_list)
-
 # TODO save theta
 if obs_space == 'harmonic':
+    header_list = ['ell', 'delta_ell', 'ell_lower_edges', 'ell_upper_edges']
     ells_2d_save = np.column_stack(
         (
             bin_obj.ells_3x2pt,
@@ -2182,11 +2154,11 @@ if cfg['misc']['save_output_as_benchmark']:
         bnt_matrix=_bnt_matrix,
         gal_bias_2d=ccl_obj.gal_bias_2d,
         mag_bias_2d=_mag_bias_2d,
-        wf_delta=ccl_obj.wf_delta_arr,
-        wf_gamma=ccl_obj.wf_gamma_arr,
-        wf_ia=ccl_obj.wf_ia_arr,
-        wf_mu=ccl_obj.wf_mu_arr,
-        wf_lensing_arr=ccl_obj.wf_lensing_arr,
+        wf_delta=wf_delta,
+        wf_gamma=wf_gamma,
+        wf_ia=wf_ia,
+        wf_mu=wf_mu,
+        wf_lensing=wf_lensing,
         cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,

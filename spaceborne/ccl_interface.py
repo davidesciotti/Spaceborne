@@ -161,20 +161,6 @@ class CCLInterface:
         self.cl_3x2pt_5d: np.ndarray = _UNSET
         self.separable_growth: bool = _UNSET
 
-    def pk_obj_from_file(self, pk_filename, plot_pk_z0):
-        k_grid_Pk, z_grid_Pk, pk_mm_2d = sl.pk_vinc_file_to_2d_npy(
-            pk_filename, plot_pk_z0=plot_pk_z0
-        )
-        pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
-        scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
-        p_of_k_a = ccl.pk2d.Pk2D(
-            a_arr=scale_factor_grid_pk,
-            lk_arr=np.log(k_grid_Pk),
-            pk_arr=pk_flipped_in_z.T,
-            is_logp=False,
-        )
-        return p_of_k_a
-
     def set_nz(self, nz_full_src, nz_full_lns):
         # unpack the array
         self.zgrid_nz_src = nz_full_src[:, 0]
@@ -226,35 +212,6 @@ class CCLInterface:
         # (each column)
         gal_bias_1d = self.gal_bias_func(z_grid_lns)
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
-        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
-
-    def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
-        self.gal_bias_func = self.gal_bias_func_dict[bias_function_str]
-        # TODO it's probably better to pass directly the zbin(_lns) centers and edges,
-        # TODO rather than nesting them in a cfg file...
-        z_means_lns = np.array(
-            [
-                self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo']
-                for zbin in range(1, self.zbins + 1)
-            ]
-        )
-        gal_bias_1d = self.gal_bias_func(z_means_lns)
-
-        z_edges_lns = np.array(
-            [
-                self.flat_fid_pars_dict[f'zedge{zbin:02d}_photo']
-                for zbin in range(1, self.zbins + 2)
-            ]
-        )
-        self.gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
-            gal_bias_1d,
-            z_means_lns,
-            z_edges_lns,
-            self.zbins,
-            z_grid_lns,
-            bias_model=bias_model,
-            plot_bias=True,
-        )
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
     def save_gal_bias_table_ascii(self, z_grid_lns, filename):
@@ -457,12 +414,12 @@ class CCLInterface:
                 'You are loading files from the cache. Please make '
                 'sure that the z and k grids, masks and cosmology are consistent with '
                 'the current run',
-                stacklevel=2
+                stacklevel=2,
             )
 
         # the default pk must be passed to the Tk3D functions as None, not as
         # 'delta_matter:delta_matter'
-        __builtins__p_of_k_a = (
+        p_of_k_a = (
             None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
         )
 
@@ -499,7 +456,7 @@ class CCLInterface:
 
                 if tkka_abcd is None:
                     tkka_abcd = self._compute_and_save_tkka(
-                        which_ng_cov, tkka_path, k_a_str, probe_abcd, p_of_k_a=None
+                        which_ng_cov, tkka_path, k_a_str, probe_abcd, p_of_k_a=p_of_k_a
                     )
 
                 self.tkka_dict[probe_ab, probe_cd] = tkka_abcd

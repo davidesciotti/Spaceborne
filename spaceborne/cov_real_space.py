@@ -1178,7 +1178,7 @@ class CovRealSpace(CovarianceProjector):
                     amax_abcd=amax_abcd,
                 )
 
-        elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
+        elif term == 'mix' and probe_abcd not in ['wxim', 'wxip']:
             if self.proj_g_int_method == 'simps':
                 cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
                     zpairs_ab=zpairs_ab,
@@ -1204,12 +1204,12 @@ class CovRealSpace(CovarianceProjector):
                     amax_abcd=amax_abcd,
                 )
 
-        elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
+        elif term == 'mix' and probe_abcd in ['wxim', 'wxip']:
             cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term == 'sn':
             # this is 0 for
-            # ['xipxim', 'gtxim', 'gtxip', 'ggxim', 'gggt', 'ggxip']
+            # ['xipxim', 'gtxim', 'gtxip', 'wxim', 'wgt', 'wxip']
             # but is very fast to compute so I don't skip these terms
             cov_out_6d = self.cov_sn_rs(
                 probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd

@@ -126,10 +126,8 @@ def nmt_gaussian_cov(
     nell = cl_tt.shape[0] if coupled else nbl
 
     def cl_gg_list(zi, zj, spin0):
-        if spin0:
-            return [cl_tt[:, zi, zj]]
-        else:
-            return [cl_tt[:, zi, zj]]
+        # gg is always spin0!
+        return [cl_tt[:, zi, zj]]
 
     def cl_gl_list(zi, zj, spin0):
         if spin0:
@@ -1186,9 +1184,7 @@ class CovNaMaster:
         # 1. ell binning
         # shorten names for brevity
 
-        assert np.array_equal(
-            self.ell_obj.ell_edges_WL, self.ell_obj.ell_edges_GC
-        ), (
+        assert np.array_equal(self.ell_obj.ell_edges_WL, self.ell_obj.ell_edges_GC), (
             'The NaMaster partial-sky covariance assumes identical WL and GC binning, '
             'but ell_edges_WL != ell_edges_GC. Per-probe NaMaster binning is not yet '
             'implemented.'

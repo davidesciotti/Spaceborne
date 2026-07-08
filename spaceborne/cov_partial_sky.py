@@ -1168,15 +1168,20 @@ class CovNaMaster:
         self.mcm_ee_binned = np.zeros(mcm_shape)
 
         for zi, zj in tqdm(self.zij_cross_combs):
-            # extract only the relevant blocks (w*_dict are keyed by (zi, zj))
+            # from nmt docs: 
+            # Mode-coupling matrix. The matrix will have shape (nrows,nrows), 
+            # with nrows = n_cls * n_ells, where n_cls is the number of power spectra 
+            # (1, 2 or 4 for spin 0-0, spin 0-2 and spin 2-2 correlations), and 
+            # n_ells = lmax + 1, [...]. The L-th element of the i-th power spectrum 
+            # is stored with index L * n_cls + i.
             mcm_tt_unb[:, :, zi, zj] = self.w00_dict[zi, zj].get_coupling_matrix()[
-                :nbl_unb, :nbl_unb
+                0::1, 0::1
             ]
             mcm_te_unb[:, :, zi, zj] = self.w02_dict[zi, zj].get_coupling_matrix()[
-                :nbl_unb, :nbl_unb
+                0::2, 0::2
             ]
             mcm_ee_unb[:, :, zi, zj] = self.w22_dict[zi, zj].get_coupling_matrix()[
-                :nbl_unb, :nbl_unb
+                0::4, 0::4
             ]
 
             # bin (and store in self)

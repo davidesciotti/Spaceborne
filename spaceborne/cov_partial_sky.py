@@ -1168,11 +1168,11 @@ class CovNaMaster:
         self.mcm_ee_binned = np.zeros(mcm_shape)
 
         for zi, zj in tqdm(self.zij_cross_combs):
-            # from nmt docs: 
-            # Mode-coupling matrix. The matrix will have shape (nrows,nrows), 
-            # with nrows = n_cls * n_ells, where n_cls is the number of power spectra 
-            # (1, 2 or 4 for spin 0-0, spin 0-2 and spin 2-2 correlations), and 
-            # n_ells = lmax + 1, [...]. The L-th element of the i-th power spectrum 
+            # from nmt docs:
+            # Mode-coupling matrix. The matrix will have shape (nrows,nrows),
+            # with nrows = n_cls * n_ells, where n_cls is the number of power spectra
+            # (1, 2 or 4 for spin 0-0, spin 0-2 and spin 2-2 correlations), and
+            # n_ells = lmax + 1, [...]. The L-th element of the i-th power spectrum
             # is stored with index L * n_cls + i.
             mcm_tt_unb[:, :, zi, zj] = self.w00_dict[zi, zj].get_coupling_matrix()[
                 0::1, 0::1
@@ -1308,12 +1308,17 @@ class CovNaMaster:
                 )
 
         # add noise to spectra to compute NMT cov
-        cl_tt_4covnmt = cl_gg_4covnmt + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
-        cl_te_4covnmt = cl_gl_4covnmt + self.noise_3x2pt_unb_5d[1, 0, :, :, :]
-        cl_ee_4covnmt = cl_ll_4covnmt + self.noise_3x2pt_unb_5d[0, 0, :, :, :]
+        nl_ll = self.noise_3x2pt_unb_5d[0, 0, :, :, :].copy()
+        nl_gl = self.noise_3x2pt_unb_5d[1, 0, :, :, :].copy()
+        nl_gg = self.noise_3x2pt_unb_5d[1, 1, :, :, :].copy()
+        nl_ll[:2] = 0.0  # a spin-2 field has no monopole or dipole!
+
+        cl_tt_4covnmt = cl_gg_4covnmt + nl_gg
+        cl_te_4covnmt = cl_gl_4covnmt + nl_gl
+        cl_ee_4covnmt = cl_ll_4covnmt + nl_ll
         cl_tb_4covnmt = np.zeros_like(cl_tt_4covnmt)
         cl_eb_4covnmt = np.zeros_like(cl_tt_4covnmt)
-        cl_bb_4covnmt = np.zeros_like(cl_tt_4covnmt)
+        cl_bb_4covnmt = nl_ll
 
         # ! Finally, compute covariance
         if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':
@@ -1387,21 +1392,12 @@ class CovNaMaster:
                 f'realizations. The datevector length is {len_dv}'
             )
 
-            cl_tt_4covsim = (
-                self.cl_3x2pt_unb_5d[1, 1, :, :, :]
-                + self.noise_3x2pt_unb_5d[1, 1, :, :, :]
-            )
-            cl_te_4covsim = (
-                self.cl_3x2pt_unb_5d[1, 0, :, :, :]
-                + self.noise_3x2pt_unb_5d[1, 0, :, :, :]
-            )
-            cl_ee_4covsim = (
-                self.cl_3x2pt_unb_5d[0, 0, :, :, :]
-                + self.noise_3x2pt_unb_5d[0, 0, :, :, :]
-            )
+            cl_tt_4covsim = self.cl_3x2pt_unb_5d[1, 1, :, :, :] + nl_gg
+            cl_te_4covsim = self.cl_3x2pt_unb_5d[1, 0, :, :, :] + nl_gl
+            cl_ee_4covsim = self.cl_3x2pt_unb_5d[0, 0, :, :, :] + nl_ll
             cl_tb_4covsim = np.zeros_like(cl_tt_4covsim)
             cl_eb_4covsim = np.zeros_like(cl_tt_4covsim)
-            cl_bb_4covsim = np.zeros_like(cl_tt_4covsim)
+            cl_bb_4covsim = nl_ll
 
             # ! note that self.cov_dict is mutated in-place, no need to return it
             start = time.perf_counter()

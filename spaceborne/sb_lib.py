@@ -1914,7 +1914,6 @@ def build_full_ind(triu_tril, row_col_major, size):
     return ind
 
 
-# @njit
 def symmetrize_2d_array(array_2d):
     """Mirror the lower/upper triangle."""
     # if already symmetric, do nothing
@@ -1929,7 +1928,7 @@ def symmetrize_2d_array(array_2d):
     # check that either the upper or lower triangle (not including the diagonal) is null
     triu_elements = array_2d[np.triu_indices(size, k=+1)]
     tril_elements = array_2d[np.tril_indices(size, k=-1)]
-    assert np.all(triu_elements) == 0 or np.all(tril_elements) == 0, (
+    assert np.all(triu_elements == 0) or np.all(tril_elements == 0), (
         'neither the upper nor the lower triangle (excluding the diagonal) are null'
     )
 

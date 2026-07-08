@@ -190,7 +190,6 @@ script_start_time = time.perf_counter()
 
 def plot_cls():
     _, ax = plt.subplots(1, 3, figsize=(15, 4))
-    # plt.tight_layout()
 
     # cls are (for the moment) in the ccl obj, whether they are imported from input
     # files or not

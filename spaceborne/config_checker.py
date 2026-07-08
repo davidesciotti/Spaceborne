@@ -240,9 +240,6 @@ class SpaceborneConfigChecker:
         assert isinstance(ensemble_cov_cfg, dict), (
             "Section 'ensemble_covariance' must be a dictionary"
         )
-        assert isinstance(ensemble_cov_cfg['which_cls'], str), (
-            'ensemble_covariance: which_cls must be a string'
-        )
         assert isinstance(ensemble_cov_cfg['nreal'], int), (
             'ensemble_covariance: nreal must be an int'
         )

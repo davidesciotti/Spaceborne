@@ -451,11 +451,9 @@ class CovHarmonicSpace:
         )
 
     def _couple_cov_ng(self):
-        if (
-            self.cov_cfg['cov_type'] == 'decoupled'
-            or 'ssc' not in self.req_terms
-            or 'cng' not in self.req_terms
-        ):
+        if self.cov_cfg['cov_type'] == 'decoupled':
+            return
+        if 'ssc' not in self.req_terms and 'cng' not in self.req_terms:
             return
 
         if self.cov_cfg['BNT_transform']:

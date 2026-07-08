@@ -230,7 +230,7 @@ def cls_triangle_plot(
     cls_dict: dict,
     is_auto: bool,
     zbins: int,
-    twoellplusone: bool,
+    twoellplusone: bool = False,
     suptitle=None,
     cov_6d=None,
 ):
@@ -695,7 +695,7 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns):
     colors = cm.rainbow(np.linspace(0, 1, zbins))
     for zi in range(zbins):
         ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
-        # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', 
+        # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--',
         # alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
         ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
         ax[0].set_xlabel('$z$')
@@ -704,7 +704,7 @@ def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns):
 
     for zi in range(zbins):
         ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
-        # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', 
+        # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--',
         # alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
         ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
         ax[1].set_xlabel('$z$')

@@ -232,7 +232,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -250,11 +250,11 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: Knox # Type: str
+  partial_sky_method: NaMaster # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: decoupled # Type: str.
+  cov_type: coupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
@@ -338,14 +338,6 @@ PyCCL:
   use_default_k_a_grids: False # Type: bool.
 
 ensemble_covariance:
-  # Which code to use to compute the coupled Cls on the masked maps. The results are
-  # essentially equivalent, but 'namaster' is a bit faster.
-  # In case the decoupled (ensemble) covariance is requested, for both options of
-  # 'which_cls', the workspace.decouple_cell() function will be used.
-  # Documentation:
-  # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
-  # Options: ['namaster', 'healpy'].
-  which_cls: healpy # Type: str.
   nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra

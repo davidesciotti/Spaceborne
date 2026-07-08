@@ -182,6 +182,29 @@ class TestEllBinning:
         expected = np.arange(10, 21)
         np.testing.assert_array_equal(ell_obj.ells_WL, expected)
 
+    def test_namaster_binning_rounds_edges(self, basic_config):
+        """NaMaster path: bin edges are rounded (not truncated) to strictly
+        increasing ints, and the NmtBin objects are built."""
+        basic_config['covariance']['partial_sky_method'] = 'NaMaster'
+        ell_obj = ell_utils.EllBinning(basic_config)
+        ell_obj.build_ell_bins()
+
+        for edges in (ell_obj.ell_edges_WL, ell_obj.ell_edges_GC):
+            assert np.issubdtype(edges.dtype, np.integer)
+            assert np.all(np.diff(edges) > 0), 'edges must be strictly increasing'
+        assert ell_obj.nmt_bin_obj_WL is not None
+        assert ell_obj.nmt_bin_obj_GC is not None
+
+    def test_namaster_binning_raises_on_colliding_edges(self, basic_config):
+        """NaMaster path: a fine/low-ell binning whose edges collide after
+        rounding to int raises a clear ValueError instead of the opaque
+        ZeroDivisionError that NmtBin.from_edges would throw on a zero-width bin."""
+        basic_config['covariance']['partial_sky_method'] = 'NaMaster'
+        basic_config['binning'].update(ell_min=2, ell_max=12, ell_bins=13)
+        ell_obj = ell_utils.EllBinning(basic_config)
+        with pytest.raises(ValueError, match='not strictly increasing'):
+            ell_obj.build_ell_bins()
+
     def test_3x2pt_follows_gc(self, basic_config):
         """Test that 3x2pt binning follows GC."""
         ell_obj = ell_utils.EllBinning(basic_config)

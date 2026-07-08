@@ -271,13 +271,26 @@ class EllBinning:
 
             warnings.warn(
                 'Instantiating namaster bin object from the provided bin edges. '
-                'Please make note that in order to do this, these are cast to int.',
+                'Please make note that in order to do this, these are rounded to int.',
                 stacklevel=2,
             )
 
-            # this function requires int edges!
-            self.ell_edges_WL = self.ell_edges_WL.astype(int)
-            self.ell_edges_GC = self.ell_edges_GC.astype(int)
+            # NmtBin.from_edges requires int edges. Rounding and casting is more
+            # accurate than casting directly to int, which truncates the values.
+            self.ell_edges_WL = np.round(self.ell_edges_WL).astype(int)
+            self.ell_edges_GC = np.round(self.ell_edges_GC).astype(int)
+
+            for _probe, _edges in (
+                ('WL', self.ell_edges_WL),
+                ('GC', self.ell_edges_GC),
+            ):
+                if np.any(np.diff(_edges) <= 0):
+                    raise ValueError(
+                        f'{_probe} ell bin edges are not strictly increasing after '
+                        f'rounding to int (required by NmtBin.from_edges): {_edges}. '
+                        'This usually means the binning is too fine at low ell for '
+                        'integer edges; use fewer / coarser bins or a higher ell_min.'
+                    )
 
             self.nmt_bin_obj_WL = nmt.NmtBin.from_edges(
                 self.ell_edges_WL[:-1],

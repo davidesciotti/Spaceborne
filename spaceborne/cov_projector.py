@@ -15,7 +15,7 @@ import numpy as np
 from joblib import Parallel, delayed
 from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
-from scipy.interpolate import RegularGridInterpolator, make_interp_spline
+from scipy.interpolate import make_interp_spline
 from tqdm import tqdm
 
 from spaceborne import constants as const
@@ -455,8 +455,8 @@ class CovarianceProjector:
 
         if obs_space == 'real':
             # in this case the kernel function is also probe-dependent (through mu)
-            theta_l = self.theta_edges_fine[scale_ix]
-            theta_u = self.theta_edges_fine[scale_ix + 1]
+            theta_l = self.theta_edges[scale_ix]
+            theta_u = self.theta_edges[scale_ix + 1]
             kernel_func_of_ell = partial(
                 self.k_mu, thetal=theta_l, thetau=theta_u, mu=mu
             )

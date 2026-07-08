@@ -59,7 +59,6 @@ class CovCOSEBIs(CovarianceProjector):
         self.ells_proj_g = _UNSET
         self.ells_proj_ng = _UNSET
         self.nbl_proj_g = _UNSET
-        self.nbl_proj_ng = _UNSET
         self.w_ells_arr_g = _UNSET
         self.w_ells_arr_ng = _UNSET
 
@@ -113,9 +112,10 @@ class CovCOSEBIs(CovarianceProjector):
                 ells=ells,
                 N_thread=self.n_jobs,
             )
-
-        # turn to array of shape (n_modes, n_ells) and assign to self
-        w_ells_arr = np.array(list(w_ells_dict.values()))
+            
+        # add a guard against non-int keys
+        mode_keys = sorted(k for k in w_ells_dict if isinstance(k, (int, np.integer)))
+        w_ells_arr = np.array([w_ells_dict[k] for k in mode_keys])
         return w_ells_arr
 
     def cov_sn_cs(self, amax_abcd: float) -> np.ndarray:

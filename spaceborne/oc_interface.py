@@ -24,7 +24,6 @@ import warnings
 from collections import defaultdict
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
@@ -230,149 +229,6 @@ def cov_ggglll_to_llglgg(
 
     return reorder_block_cov(
         cov_ggglll_2d, block_sizes=block_sizes, from_order=from_order, to_order=to_order
-    )
-
-
-# old version kept for reference
-def _cov_ggglll_to_llglgg(
-    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
-) -> np.ndarray:
-    """Transforms a covariance matrix from gg-gl-ll format to llglgg format.
-
-    Parameters
-    ----------
-    cov_ggglll_2d : np.ndarray
-        Input covariance matrix in gg-gl-ll format.
-    elem_auto : int
-        Number of auto elements in the covariance matrix.
-    elem_cross : int
-        Number of cross elements in the covariance matrix.
-
-    Returns
-    -------
-    np.ndarray
-        Transformed covariance matrix in mm-gm-gg format.
-
-    """
-    elem_apc = elem_auto + elem_cross
-
-    cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
-    cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
-    cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
-    cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
-    cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
-    cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
-    cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
-    cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
-    cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
-
-    row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
-    row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
-    row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
-
-    cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
-
-    return cov_llglgg_2d
-
-
-def compare_sb_cov_to_oc_list(
-    cov_rs_obj,
-    cov_oc_dict_6d: dict,
-    probe_sb: str,
-    term: str,
-    ind_auto: np.ndarray,
-    ind_cross: np.ndarray,
-    zpairs_auto: int,
-    zpairs_cross: int,
-    scale_bins: int,
-    title: str | None = None,
-):
-    # gt is gm in OneCov
-    probe_oc = probe_sb.replace('gt', 'gm')
-
-    # get probe names, ind and zpairs for 2D conversion
-    probe_ab, probe_cd = sl.split_probe_name(probe_sb)  # TODO space?
-    probe_ab_ix, probe_cd_ix = (
-        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
-        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],
-    )
-    zpairs_ab = zpairs_cross if probe_ab_ix == 1 else zpairs_auto
-    zpairs_cd = zpairs_cross if probe_cd_ix == 1 else zpairs_auto
-    ind_ab = ind_cross if probe_ab_ix == 1 else ind_auto
-    ind_cd = ind_cross if probe_cd_ix == 1 else ind_auto
-
-    # get 6D covs
-    cov_sb_6d = getattr(cov_rs_obj, f'cov_{probe_sb}_{term}_6d')
-
-    # for cov OC, some blocks may be transposed
-    try:
-        cov_oc_6d = cov_oc_dict_6d[f'{probe_oc}_{term}']
-    except KeyError:
-        _probe_sb_inv = probe_cd + probe_ab
-        _probe_oc_inv = _probe_sb_inv.replace('gt', 'gm')
-        cov_oc_6d = cov_oc_dict_6d[f'{_probe_oc_inv}_{term}'].transpose(
-            1, 0, 4, 5, 2, 3
-        )
-
-    # if both covs are null, exit the function
-    if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
-        print(f'OC and SB covs for {term = } {probe_sb = } are both identically 0')
-        return
-
-    # convert to 2D to compare
-    cov_sb_4d = sl.cov_6D_to_4D_blocks(
-        cov_sb_6d, scale_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-    )
-    cov_oc_4d = sl.cov_6D_to_4D_blocks(
-        cov_oc_6d, scale_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-    )
-
-    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
-    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
-
-    sl.compare_arrays(
-        cov_sb_2d,
-        cov_oc_2d,
-        'SB',
-        'OC',
-        log_array=True,
-        log_diff=True,
-        abs_val=True,
-        plot_diff_threshold=10,
-        title=title,
-    )
-
-    fig, axs = plt.subplots(
-        2,
-        2,
-        figsize=(15, 6),
-        sharex='col',
-        height_ratios=[2, 1],
-        gridspec_kw={'hspace': 0, 'wspace': 0.3},
-    )
-
-    # flatten to (2,2) shape
-    axs = axs.reshape(2, 2)
-
-    sl.compare_funcs(
-        None,
-        {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
-        logscale_y=[True, False],
-        title=title,
-        ylim_diff=[-100, 100],
-        ax=axs[:, 0],
-    )
-
-    sl.compare_funcs(
-        None,
-        {
-            'SB flat': np.abs(cov_sb_2d).flatten(),
-            'OC flat': np.abs(cov_oc_2d).flatten(),
-        },
-        logscale_y=[True, False],
-        title=title,
-        ylim_diff=[-100, 100],
-        ax=axs[:, 1],
     )
 
 
@@ -960,6 +816,8 @@ class OneCovarianceInterface:
         cfg_oc_ini['halomodel evaluation']['disable_mass_conversion'] = str(True)
         cfg_oc_ini['halomodel evaluation']['delta_c'] = str(1.686)
         cfg_oc_ini['halomodel evaluation']['transfer_model'] = 'CAMB'
+        # Note: the small-k 1-halo damping can be disabled to get a better agreement
+        # with the SB SSC responses
         cfg_oc_ini['halomodel evaluation']['small_k_damping_for1h'] = 'damped'
 
         # ! [powspec evaluation]
@@ -970,10 +828,10 @@ class OneCovarianceInterface:
             self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
         )
         cfg_oc_ini['powspec evaluation']['log10k_min'] = str(
-            self.cfg['precision']['log10_k_min'] * h
+            self.cfg['precision']['log10_k_min'] - np.log10(h)
         )
         cfg_oc_ini['powspec evaluation']['log10k_max'] = str(
-            self.cfg['precision']['log10_k_max'] * h
+            self.cfg['precision']['log10_k_max'] - np.log10(h)
         )
         cfg_oc_ini['powspec evaluation']['log10k_bins'] = str(
             self.cfg['precision']['k_steps']
@@ -981,10 +839,10 @@ class OneCovarianceInterface:
 
         # ! [trispec evaluation]
         cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
-            self.cfg['precision']['log10_k_min'] * h
+            self.cfg['precision']['log10_k_min'] - np.log10(h)
         )
         cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
-            self.cfg['precision']['log10_k_max'] * h
+            self.cfg['precision']['log10_k_max'] - np.log10(h)
         )
         cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
             self.cfg['precision']['k_steps']

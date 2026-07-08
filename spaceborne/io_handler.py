@@ -85,8 +85,7 @@ def _read_masking_map(path, nside, *, nest=False):
     ipix, wht = data['PIXEL'], data['WEIGHT']
     order = header['ORDERING']
     if order == 'RING':
-        ipix = hp.ring2nest(nside, ipix)
-        # ipix = hp.ring2nest(nside_in, ipix)
+        ipix = hp.ring2nest(nside_in, ipix)
     elif order != 'NESTED':
         raise ValueError(f'unknown pixel ordering {order} in map')
     ipix = ipix // fact

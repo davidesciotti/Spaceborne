@@ -201,6 +201,7 @@ C_ell:
     l_limber: -1 # Type: int
     limber_integration_method: spline # Type: str
     non_limber_integration_method: FKEM # Type: str
+    
 mask:
   # Configs for the survey footprint and masks. The options outside of the 'LL' and 'GG'
   # sections are common to both probes.
@@ -218,9 +219,9 @@ mask:
   LL:
     geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
-    weight_maps_filename: /home/sciotti/code/DATA/Spaceborne_jobs_IO/develop/input/weight_map_cone_h22_vis24_nside2048_3zbins.fits # Type: str | None
+    weight_maps_filename: null # Type: str | None
   GG:
-    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
 
@@ -231,7 +232,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -280,7 +281,7 @@ covariance:
   # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
   which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
 
-  # Whether or not to include the second-order galaxy bias in the GCph SU responses
+  # Whether or not to include the second-order galaxy bias in the GG SU responses
   include_b2g: True # Type: bool
 
   # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses
@@ -337,14 +338,6 @@ PyCCL:
   use_default_k_a_grids: False # Type: bool.
 
 ensemble_covariance:
-  # Which code to use to compute the coupled Cls on the masked maps. The results are
-  # essentially equivalent, but 'namaster' is a bit faster.
-  # In case the decoupled (ensemble) covariance is requested, for both options of
-  # 'which_cls', the workspace.decouple_cell() function will be used.
-  # Documentation:
-  # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
-  # Options: ['namaster', 'healpy'].
-  which_cls: healpy # Type: str.
   nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
@@ -386,7 +379,7 @@ precision:
   delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
 
   # Whether or not to use the single-redshift integral approximation for the SSC.
-  use_KE_approximation: True # Type: bool.
+  use_KE_approximation: False # Type: bool.
 
   # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
@@ -460,8 +453,6 @@ misc:
   # automatically displays the labels and limits for the different probe blocks.
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
-
-  workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
 
   output_path: ../DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

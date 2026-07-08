@@ -1,7 +1,6 @@
 from . import (  # noqa: F401
     bnt,
     ccl_interface,
-    cl_utils,
     config_checker,
     cosmo_lib,
     cov_harmonic_space,

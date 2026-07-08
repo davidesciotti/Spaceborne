@@ -419,12 +419,10 @@ class CovHarmonicSpace:
             space='harmonic',
         )
 
-    def _couple_cov_ng(self, cov_nmt_obj: CovNaMaster | None):
-        if (
-            self.cov_cfg['cov_type'] == 'decoupled'
-            or 'ssc' not in self.req_terms
-            or 'cng' not in self.req_terms
-        ):
+    def _couple_cov_ng(self, cov_nmt_obj):
+        if self.cov_cfg['cov_type'] == 'decoupled':
+            return
+        if 'ssc' not in self.req_terms and 'cng' not in self.req_terms:
             return
 
         if self.cov_cfg['BNT_transform']:
@@ -490,17 +488,3 @@ class CovHarmonicSpace:
                             mcm_dict[probe_cd],
                         )
                     )
-
-    def get_ellmax_nbl(self, probe, covariance_cfg):
-        if probe == 'LL':
-            ell_max = covariance_cfg['ell_max_WL']
-            nbl = covariance_cfg['nbl_WL']
-        elif probe == 'GG':
-            ell_max = covariance_cfg['ell_max_GC']
-            nbl = covariance_cfg['nbl_GC']
-        elif probe == '3x2pt':
-            ell_max = covariance_cfg['ell_max_3x2pt']
-            nbl = covariance_cfg['nbl_3x2pt']
-        else:
-            raise ValueError('probe must be LL or GG or 3x2pt')
-        return ell_max, nbl

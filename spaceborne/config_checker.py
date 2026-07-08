@@ -2,20 +2,11 @@ import os
 
 import numpy as np
 
-RED = '\033[31m'
-RESET = '\033[0m'
-
 
 class SpaceborneConfigChecker:
     def __init__(self, cfg: dict, zbins: int):
         self.cfg = cfg
         self.zbins = zbins
-
-    def check_h_units(self) -> tuple[str, str]:
-        if self.cfg['misc']['use_h_units']:
-            return 'hoverMpc', 'Mpcoverh3'
-        else:
-            return '1overMpc', 'Mpc3'
 
     def check_BNT_transform(self) -> None:
         if self.cfg['covariance']['BNT_transform']:
@@ -248,9 +239,6 @@ class SpaceborneConfigChecker:
         ensemble_cov_cfg = self.cfg['ensemble_covariance']
         assert isinstance(ensemble_cov_cfg, dict), (
             "Section 'ensemble_covariance' must be a dictionary"
-        )
-        assert isinstance(ensemble_cov_cfg['which_cls'], str), (
-            'ensemble_covariance: which_cls must be a string'
         )
         assert isinstance(ensemble_cov_cfg['nreal'], int), (
             'ensemble_covariance: nreal must be an int'
@@ -546,9 +534,6 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(misc_cfg['plot_probe_names'], bool), (
             'misc: plot_probe_names must be a boolean'
-        )
-        assert isinstance(misc_cfg['workspace_filename'], str), (
-            'misc: workspace_filename must be a string'
         )
 
     def check_misc(self) -> None:

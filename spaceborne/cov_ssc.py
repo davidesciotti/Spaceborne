@@ -46,7 +46,10 @@ def sigma2_z1z2_fft(
     # real FFT -> cosine coefficients on linear grid
     fft_coeffs = rfft(Pk0) * dk  # \sum f(k) cos -> Re{FFT} * dk
     r_grid = np.arange(fft_coeffs.size) * 2 * np.pi / (k_max - k_min)
-    c_r = fft_coeffs.real
+    # the grid starts at k_min != 0, so the cosine transform C(r) = int P(k) cos(kr) dk
+    # picks up a phase exp(-i r k_min) that rfft (which assumes a grid starting at 0)
+    # omits. Without it, C(r) is biased by O(r k_min), growing with r.
+    c_r = (np.exp(-1j * r_grid * k_min) * fft_coeffs).real
 
     # interpolate C(r)
     c_0 = simps(y=Pk0, x=k_grid)
@@ -79,30 +82,6 @@ def sigma2_z1z2_fft(
         'expected one of ["full_curved_sky", "polar_cap_on_the_fly", '
         '"from_input_mask"]'
     )
-
-
-def plot_sigma2(sigma2_arr, z_grid_sigma2):
-    font_size = 28
-    plt.rcParams.update({'font.size': font_size})
-    plt.rcParams['legend.fontsize'] = font_size
-
-    plt.figure()
-    pad = 0.4  # I don't want to plot sigma at the edges of the grid, it's too noisy
-    for z_test in np.linspace(z_grid_sigma2.min() + pad, z_grid_sigma2.max() - pad, 4):
-        z1_idx = np.argmin(np.abs(z_grid_sigma2 - z_test))
-        z_1 = z_grid_sigma2[z1_idx]
-
-        plt.plot(z_grid_sigma2, sigma2_arr[z1_idx, :], label=f'$z_1={z_1:.2f}$ ')
-        plt.axvline(z_1, color='k', ls='--', label='$z_1$')
-    plt.xlabel('$z_2$')
-    plt.ylabel('$\\sigma^2(z_1, z_2)$')  # sigma2 is dimensionless!
-    plt.legend()
-    plt.show()
-
-    font_size = 18
-    plt.rcParams.update({'font.size': font_size})
-    plt.rcParams['legend.fontsize'] = font_size
-    sl.matshow(sigma2_arr, log=True, abs_val=True, title='$\\sigma^2(z_1, z_2)$')
 
 
 @jit

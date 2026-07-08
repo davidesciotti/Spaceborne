@@ -1185,6 +1185,14 @@ class CovNaMaster:
         # TODO again, here I'm using 3x2pt = GC
         # 1. ell binning
         # shorten names for brevity
+
+        assert np.array_equal(
+            self.ell_obj.ell_edges_WL, self.ell_obj.ell_edges_GC
+        ), (
+            'The NaMaster partial-sky covariance assumes identical WL and GC binning, '
+            'but ell_edges_WL != ell_edges_GC. Per-probe NaMaster binning is not yet '
+            'implemented.'
+        )
         self.nmt_bin_obj = self.ell_obj.nmt_bin_obj_GC
         unique_probe_combs = self.pvt_cfg['unique_probe_combs_hs']
 
@@ -1395,6 +1403,7 @@ class CovNaMaster:
                 nside=self.nside,
                 nreal=self.cfg['ensemble_covariance']['nreal'],
                 coupled_cls=self.coupled_cov,
+                spin0=self.spin0,
                 nmt_bin_obj=self.nmt_bin_obj,
                 lmax=ell_max_eff,
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,

@@ -413,6 +413,7 @@ precision:
   spin0: True # Type: bool.
   iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
   coupled_noise: True # Type: bool.
+  ell_max_buffer_nmt: 1000
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

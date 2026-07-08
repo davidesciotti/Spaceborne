@@ -446,6 +446,7 @@ def mask_maps_and_compute_alms(
 def pcls_from_maps(
     zi: int,
     zj: int,
+    lmax: int | float,
     f0: list | None,
     f2: list | None,
     coupled_cls: bool,
@@ -494,13 +495,13 @@ def pcls_from_maps(
     # ! compute (coupled) Cls with healpy
     elif which_cls == 'healpy':
         # Fast branch: use pre-computed alms to compute cls
-        pcl_tt = hp.alm2cl(alms_T[zi], alms_T[zj])
-        pcl_te = hp.alm2cl(alms_T[zi], alms_E[zj])
-        pcl_tb = hp.alm2cl(alms_T[zi], alms_B[zj])
-        pcl_ee = hp.alm2cl(alms_E[zi], alms_E[zj])
-        pcl_eb = hp.alm2cl(alms_E[zi], alms_B[zj])
-        pcl_be = hp.alm2cl(alms_B[zi], alms_E[zj])
-        pcl_bb = hp.alm2cl(alms_B[zi], alms_B[zj])
+        pcl_tt = hp.alm2cl(alms_T[zi], alms_T[zj], lmax_out=lmax)
+        pcl_te = hp.alm2cl(alms_T[zi], alms_E[zj], lmax_out=lmax)
+        pcl_tb = hp.alm2cl(alms_T[zi], alms_B[zj], lmax_out=lmax)
+        pcl_ee = hp.alm2cl(alms_E[zi], alms_E[zj], lmax_out=lmax)
+        pcl_eb = hp.alm2cl(alms_E[zi], alms_B[zj], lmax_out=lmax)
+        pcl_be = hp.alm2cl(alms_B[zi], alms_E[zj], lmax_out=lmax)
+        pcl_bb = hp.alm2cl(alms_B[zi], alms_B[zj], lmax_out=lmax)
 
         if coupled_cls:
             cl_tt_out = pcl_tt
@@ -918,9 +919,15 @@ def _compute_one_realization(
             alms_B=alms_B,
         )
         if len(cl_gg_1d) != nbl:
-            cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d)
-            cl_gl_1d = nmt_bin_obj.bin_cell(cl_gl_1d)
-            cl_ll_1d = nmt_bin_obj.bin_cell(cl_ll_1d)
+            # With an lmax buffer the coupled pcls span [0, ell_max_nmt], but the
+            # science bandpowers only reach ell_max_3x2pt; bin_cell requires the input
+            # length to match its lmax, so bin only the science range. The buffer ells
+            # sit above the last science band, so this matches the analytic path (which
+            # bins the per-ell coupled cov over the same science edges).
+            n_sci = nmt_bin_obj.lmax + 1
+            cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d[:n_sci])
+            cl_gl_1d = nmt_bin_obj.bin_cell(cl_gl_1d[:n_sci])
+            cl_ll_1d = nmt_bin_obj.bin_cell(cl_ll_1d[:n_sci])
 
         cl_gg_3d[:, zi, zj] = cl_gg_1d
         cl_gl_3d[:, zi, zj] = cl_gl_1d
@@ -1273,22 +1280,36 @@ class CovNaMaster:
 
         self.w00_dict, self.w02_dict, self.w22_dict = {}, {}, {}
 
+        # NaMaster requires the workspace bin object's lmax to equal the fields' lmax,
+        # which are built at ell_max_nmt (the buffered range). With a buffer,
+        # self.nmt_bin_obj (science binning, lmax=ell_max_3x2pt) is smaller, so use a
+        # per-ell bin object spanning [0, ell_max_nmt] instead. This is only reached in
+        # the coupled path (buffer is guarded to coupled in build_psky_cov), where the
+        # workspace bandpowers are unused: the per-ell coupled cov is binned to science
+        # bands manually afterwards, and couple_cell/gaussian_covariance return per-ell.
+        if self.ell_max_nmt > self.ell_obj.ell_max_3x2pt:
+            wsp_bin_obj = nmt.NmtBin.from_edges(
+                np.arange(self.ell_max_nmt + 1), np.arange(1, self.ell_max_nmt + 2)
+            )
+        else:
+            wsp_bin_obj = self.nmt_bin_obj
+
         # ! 1. If no weight maps are passed, one wsp is sufficient
         if not self.load_cached_wsp:
             if not self.use_weight_maps_gg:
                 self.w00_ftp = nmt.NmtWorkspace()
                 self.w00_ftp.compute_coupling_matrix(
-                    self.f0_ftp, self.f0_ftp, self.nmt_bin_obj
+                    self.f0_ftp, self.f0_ftp, wsp_bin_obj
                 )
             if (not self.use_weight_maps_ll) and (not self.use_weight_maps_gg):
                 self.w02_ftp = nmt.NmtWorkspace()
                 self.w02_ftp.compute_coupling_matrix(
-                    self.f0_ftp, self.f2_ftp, self.nmt_bin_obj
+                    self.f0_ftp, self.f2_ftp, wsp_bin_obj
                 )
             if not self.use_weight_maps_ll:
                 self.w22_ftp = nmt.NmtWorkspace()
                 self.w22_ftp.compute_coupling_matrix(
-                    self.f2_ftp, self.f2_ftp, self.nmt_bin_obj
+                    self.f2_ftp, self.f2_ftp, wsp_bin_obj
                 )
 
         # ! Regardless of the presence of weight maps, build wsp dictionaries
@@ -1313,7 +1334,7 @@ class CovNaMaster:
                 if self.use_weight_maps_gg:
                     self.w00_dict[zi, zj] = nmt.NmtWorkspace()
                     self.w00_dict[zi, zj].compute_coupling_matrix(
-                        self.f0_dict[zi], self.f0_dict[zj], self.nmt_bin_obj
+                        self.f0_dict[zi], self.f0_dict[zj], wsp_bin_obj
                     )
                 else:
                     self.w00_dict[zi, zj] = self.w00_ftp
@@ -1321,7 +1342,7 @@ class CovNaMaster:
                 if self.use_weight_maps_gg or self.use_weight_maps_ll:
                     self.w02_dict[zi, zj] = nmt.NmtWorkspace()
                     self.w02_dict[zi, zj].compute_coupling_matrix(
-                        self.f0_dict[zi], self.f2_dict[zj], self.nmt_bin_obj
+                        self.f0_dict[zi], self.f2_dict[zj], wsp_bin_obj
                     )
                 else:
                     self.w02_dict[zi, zj] = self.w02_ftp
@@ -1329,7 +1350,7 @@ class CovNaMaster:
                 if self.use_weight_maps_ll:
                     self.w22_dict[zi, zj] = nmt.NmtWorkspace()
                     self.w22_dict[zi, zj].compute_coupling_matrix(
-                        self.f2_dict[zi], self.f2_dict[zj], self.nmt_bin_obj
+                        self.f2_dict[zi], self.f2_dict[zj], wsp_bin_obj
                     )
                 else:
                     self.w22_dict[zi, zj] = self.w22_ftp
@@ -1371,7 +1392,11 @@ class CovNaMaster:
         if use_footprint_allprobes and footprint_is_equal and not self.load_cached_wsp:
             cw_ftp = nmt.NmtCovarianceWorkspace()
             cw_ftp.compute_coupling_coefficients(
-                self.f0_ftp, self.f0_ftp, self.f0_ftp, self.f0_ftp
+                self.f0_ftp,
+                self.f0_ftp,
+                self.f0_ftp,
+                self.f0_ftp,
+                spin0_only=self.cfg['precision']['spin0'],
             )
             # TODO check spin0_only arg
 
@@ -1390,7 +1415,7 @@ class CovNaMaster:
                 _f4 = self.f0_ftp if probe_cd[1] == 'G' else self.f2_ftp
                 cw_dict_ftp[probe_ab, probe_cd] = nmt.NmtCovarianceWorkspace()
                 cw_dict_ftp[probe_ab, probe_cd].compute_coupling_coefficients(
-                    _f1, _f2, _f3, _f4
+                    _f1, _f2, _f3, _f4, spin0_only=self.cfg['precision']['spin0']
                 )
             elif (
                 use_footprint_allprobes
@@ -1405,12 +1430,20 @@ class CovNaMaster:
         if self.use_footprint_gg and not self.load_cached_wsp:
             cw_dict_ftp['GG', 'GG'] = nmt.NmtCovarianceWorkspace()
             cw_dict_ftp['GG', 'GG'].compute_coupling_coefficients(
-                self.f0_ftp, self.f0_ftp, self.f0_ftp, self.f0_ftp
+                self.f0_ftp,
+                self.f0_ftp,
+                self.f0_ftp,
+                self.f0_ftp,
+                spin0_only=self.cfg['precision']['spin0'],
             )
         if self.use_footprint_ll and not self.load_cached_wsp:
             cw_dict_ftp['LL', 'LL'] = nmt.NmtCovarianceWorkspace()
             cw_dict_ftp['LL', 'LL'].compute_coupling_coefficients(
-                self.f2_ftp, self.f2_ftp, self.f2_ftp, self.f2_ftp
+                self.f2_ftp,
+                self.f2_ftp,
+                self.f2_ftp,
+                self.f2_ftp,
+                spin0_only=self.cfg['precision']['spin0'],
             )
 
         # ! Case 3: some probes require weight maps, and/or
@@ -1471,7 +1504,13 @@ class CovNaMaster:
                         )
                         self.cw_dict[probe_ab, probe_cd][
                             zi, zj, zk, zl
-                        ].compute_coupling_coefficients(_f1, _f2, _f3, _f4)
+                        ].compute_coupling_coefficients(
+                            _f1,
+                            _f2,
+                            _f3,
+                            _f4,
+                            spin0_only=self.cfg['precision']['spin0'],
+                        )
 
                     # ! Case 1-2: get from previous computation
                     elif (not use_weight_maps) and (not self.load_cached_wsp):
@@ -1598,15 +1637,20 @@ class CovNaMaster:
                 :nbl_unb, :nbl_unb
             ]
 
-            # bin (and store in self)
+            # bin (and store in self). With an lmax buffer the unbinned MCM spans
+            # [0, ell_max_nmt], but the science bandpowers (self.nmt_bin_obj) live in
+            # [0, ell_max_3x2pt]; bin_cell requires the input length to match its lmax,
+            # so bin only the science sub-block. (These binned MCMs are used only to
+            # convolve the NG terms; unused when SSC/cNG off, saved for diagnostics.)
+            n_sci = self.nmt_bin_obj.lmax + 1
             self.mcm_tt_binned[:, :, zi, zj] = bin_mcm(
-                mcm_tt_unb[:, :, zi, zj], self.nmt_bin_obj
+                mcm_tt_unb[:n_sci, :n_sci, zi, zj], self.nmt_bin_obj
             )
             self.mcm_te_binned[:, :, zi, zj] = bin_mcm(
-                mcm_te_unb[:, :, zi, zj], self.nmt_bin_obj
+                mcm_te_unb[:n_sci, :n_sci, zi, zj], self.nmt_bin_obj
             )
             self.mcm_ee_binned[:, :, zi, zj] = bin_mcm(
-                mcm_ee_unb[:, :, zi, zj], self.nmt_bin_obj
+                mcm_ee_unb[:n_sci, :n_sci, zi, zj], self.nmt_bin_obj
             )
 
         if save_mcms:
@@ -1665,8 +1709,6 @@ class CovNaMaster:
         # )
         # assert np.all(delta_ells_bpw == ells_per_band), 'delta_ell from bpw does not match ells_per_band'
 
-
-
         # ! 1. Create field objects
         # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
@@ -1686,7 +1728,7 @@ class CovNaMaster:
 
         # if you want to use the iNKA, the cls to be passed are the coupled ones
         # divided by fsky
-        
+
         # note: the .copy() is needed, keep it!
         cl_gg_4covnmt = self.cl_3x2pt_unb_5d[1, 1, :, :, :].copy()
         cl_gl_4covnmt = self.cl_3x2pt_unb_5d[1, 0, :, :, :].copy()

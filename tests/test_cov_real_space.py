@@ -11,14 +11,16 @@ full CovRealSpace pipeline:
   functions, for the three supported multipole orders mu in {0, 2, 4}.
 * ``kmuknu_nobessel`` -- the product of two decomposed kernels; checked the
   same way, by reconstructing K_mu(ell1) * K_nu(ell2) from the product terms.
-* ``t_sn`` vs ``_t_sn`` -- ``_t_sn`` is an explicit nested-loop reference
-  implementation of ``t_sn`` living in the same module. They agree for the
-  "pure" cases (all-source, all-lens, incompatible probe types) but *disagree*
-  for the mixed source/lens case: ``t_sn`` returns an outer-product-like
-  (zbins, zbins) matrix while ``_t_sn`` only fills the diagonal. This looks
-  like a genuine inconsistency between the production and reference
-  implementations, so the mixed-case comparison is marked ``xfail`` rather
-  than silently adjusted (see ``TestTSn.test_mixed_case_matches_reference``).
+* ``t_sn`` -- checked case by case against explicitly constructed expected
+  matrices. In particular, the mixed source/lens case (e.g. gt/gt) is pinned
+  as a regression test: the source-bin variance sigma_eps_i**2 must be
+  broadcast over *all* (lens, source) tomographic pairs, not only the
+  diagonal. The tomographic Kronecker deltas are applied separately in
+  ``cov_sn_rs`` (via ``get_delta_tomo``), and the harmonic-space analog
+  Cov_SN(C^GL_ij, C^GL_kl) = delta_ik delta_jl N^gg_i N^ee_j is nonzero for
+  i != j (same convention as OneCovariance's gmgm shot-noise term). A
+  diagonal-only variant (the former ``_t_sn``) was confirmed wrong and
+  removed in 2026-07.
 * ``t_mix`` -- small standalone helper, checked directly.
 
 Functions requiring pylevin (``integrate_bessel_single_wrapper``,
@@ -35,7 +37,6 @@ import pytest
 from scipy.special import jv
 
 from spaceborne.cov_real_space import (
-    _t_sn,
     b_mu,
     b_mu_nobessel,
     k_mu,
@@ -53,6 +54,7 @@ def _is_mixed_mixed(combo):
 
 
 _ALL_PROBE_COMBOS = list(itertools.product((0, 1), repeat=4))
+_MIXED_COMBOS = [c for c in _ALL_PROBE_COMBOS if _is_mixed_mixed(c)]
 _NON_MIXED_COMBOS = [c for c in _ALL_PROBE_COMBOS if not _is_mixed_mixed(c)]
 
 
@@ -143,45 +145,52 @@ class TestKMuKNuNobessel:
 
 
 # ----------------------------------------------------------------------------- #
-# t_sn vs _t_sn
+# t_sn
 # ----------------------------------------------------------------------------- #
 class TestTSn:
-    """t_sn (production) vs _t_sn (nested-loop reference), for all 16 probe
-    index combinations. probe_ix 0 = source (shear), 1 = lens (clustering)."""
+    """t_sn checked against explicitly constructed expected matrices, for all
+    16 probe index combinations. probe_ix 0 = source (shear), 1 = lens
+    (clustering)."""
 
     @pytest.fixture
     def sigma_eps_i(self, rng):
         zbins = 4
         return rng.uniform(0.1, 0.5, zbins)
 
-    @pytest.mark.parametrize('combo', _NON_MIXED_COMBOS)
-    def test_matches_reference_non_mixed(self, combo, sigma_eps_i):
-        """For all-source, all-lens, and probe-type-mismatched combos, the
-        production and reference implementations agree exactly."""
+    @pytest.mark.parametrize('combo', _MIXED_COMBOS)
+    def test_mixed_case_broadcasts_source_variance(self, combo, sigma_eps_i):
+        """Regression test (2026-07 review): for the mixed source/lens case
+        (e.g. gt/gt), the source-bin variance must be broadcast over all
+        (zbins, zbins) tomographic pairs of the first probe pair -- shape
+        noise is present for lens != source bins too. The tomographic
+        Kronecker deltas are applied separately in cov_sn_rs, so a
+        diagonal-only t_sn (the former _t_sn) would wrongly zero the shape
+        noise for every cross lens-source gt pair."""
+        a, b, c, d = combo
+        zbins = sigma_eps_i.size
+        sig2 = sigma_eps_i**2
+        out = t_sn(a, b, c, d, zbins, sigma_eps_i)
+
+        # the source index within the first pair (ij) is i if a is the
+        # source (a == 0), j otherwise
+        if a == 0:
+            expected = np.tile(sig2[:, None], (1, zbins))
+        else:
+            expected = np.tile(sig2[None, :], (zbins, 1))
+
+        np.testing.assert_allclose(out, expected)
+        # explicitly pin the off-diagonal behavior
+        assert np.all(out != 0.0)
+
+    @pytest.mark.parametrize('combo', [c for c in _NON_MIXED_COMBOS if len(set(c)) > 1])
+    def test_probe_type_mismatch_is_zero(self, combo, sigma_eps_i):
+        """Every non-mixed combo other than all-source/all-lens (e.g. one
+        pure-source pair with one pure-lens pair) contributes no shot/shape
+        noise."""
         a, b, c, d = combo
         zbins = sigma_eps_i.size
         out = t_sn(a, b, c, d, zbins, sigma_eps_i)
-        ref = _t_sn(a, b, c, d, zbins, sigma_eps_i)
-        np.testing.assert_allclose(out, ref)
-
-    @pytest.mark.xfail(
-        reason=(
-            't_sn and _t_sn disagree in the mixed source/lens case (e.g. '
-            'probe_ix combo (0,1,0,1), GL/GL): t_sn broadcasts the source '
-            'variance sigma_eps_i[i]**2 across the full (zbins, zbins) '
-            'output (an outer product with a ones vector), while the '
-            'nested-loop reference _t_sn only ever fills the diagonal '
-            't_munu[zi, zi], leaving all off-diagonal entries at 0. This '
-            'looks like a genuine inconsistency between the production '
-            'function and its own reference implementation.'
-        ),
-        strict=True,
-    )
-    def test_mixed_case_matches_reference(self, sigma_eps_i):
-        zbins = sigma_eps_i.size
-        out = t_sn(0, 1, 0, 1, zbins, sigma_eps_i)
-        ref = _t_sn(0, 1, 0, 1, zbins, sigma_eps_i)
-        np.testing.assert_allclose(out, ref)
+        np.testing.assert_allclose(out, np.zeros((zbins, zbins)))
 
     def test_all_source_formula(self, sigma_eps_i):
         """xipxip/ximxim case: tau(i,j) = 2 * sig2[i] * sig2[j]."""

@@ -1025,15 +1025,14 @@ sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 
 # ! ======================================== Cls =======================================
 # ! note that the function below includes the multiplicative shear bias
-with sl.timer('\nComputing Cls...'):
-    _cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
-        ccl_obj,
-        ells=bin_obj.ells_3x2pt,
-        zbins=zbins,
-        mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
-        cl_ccl_kwargs=cl_ccl_kwargs,
-        n_probes_hs=cfg['covariance']['n_probes'],
-    )
+_cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
+    ccl_obj,
+    ells=bin_obj.ells_3x2pt,
+    zbins=zbins,
+    mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+    cl_ccl_kwargs=cl_ccl_kwargs,
+    n_probes_hs=cfg['covariance']['n_probes'],
+)
 
 ccl_obj.cl_3x2pt_5d_sb = sl.build_cl_3x2pt_5d(
     cl_ll_3d=_cl_3x2pt_5d[0, 0],

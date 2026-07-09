@@ -445,7 +445,7 @@ misc:
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
-  cl_triangle_plot: False # Type: bool.
+  cl_triangle_plot: True # Type: bool.
 
   # If the covariance_ordering_2D starts with 'probe', setting this to True
   # automatically displays the labels and limits for the different probe blocks.

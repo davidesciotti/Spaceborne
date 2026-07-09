@@ -77,12 +77,19 @@ def save_configs_to_yaml(configs: list, filenames: list) -> None:
 
 
 def run_spaceborne(
-    yaml_files: list[str], sb_root_path: str, continue_on_error: bool
+    yaml_files: list[str],
+    sb_root_path: str,
+    continue_on_error: bool,
+    skip_existing: bool = False,
 ) -> None:
     """Run Spaceborne for a list of YAML config paths.
 
     If continue_on_error is True, a failing job won't stop the run; the
     failed configs are collected and printed together at the end.
+
+    If skip_existing is True, a config whose benchmark output (the sibling
+    `.npz`, i.e. the yaml path with the extension swapped) already exists is
+    skipped instead of re-run.
     """
     original_dir = os.getcwd()
     os.chdir(sb_root_path)
@@ -92,6 +99,9 @@ def run_spaceborne(
 
     try:
         for path in yaml_files:
+            if skip_existing and os.path.exists(os.path.splitext(path)[0] + '.npz'):
+                print(f'\n⏭️  Output exists, skipping config:\n{path}')
+                continue
             print(f'\n🚜 Running job with config: 🚜\n{path}')
             try:
                 subprocess.run(['python', 'main.py', '--config', path], check=True)

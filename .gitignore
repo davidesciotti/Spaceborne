@@ -8,10 +8,8 @@
 **/.DS_Store
 *.xml
 *.iml
-*.iml
 /.vscode/
 /.idea/
-*.xml
 *.xml
 tmp/*
 tmp*/

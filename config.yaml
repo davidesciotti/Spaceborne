@@ -294,7 +294,7 @@ covariance:
 
   # Within the upper or lower triangle, count indices in
   # a row-major or column-major order.
-  row_col_major: row-major # Type: str. Options: ['row-major', 'column-major']
+  row_col_major: row-major # Type: str. Options: ['row-major', 'col-major']
 
   # Determines the ordering of the covariance matrix in 2D, with the outermost
   # loop corresponding to the leftmost index.

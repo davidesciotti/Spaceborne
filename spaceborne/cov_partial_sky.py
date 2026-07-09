@@ -1056,7 +1056,15 @@ class CovNaMaster:
         if self.load_cached_wsp:
             return
 
-        if not self.save_wsp_to_cache:
+        # the decoupled ensemble cov workers read the workspaces from disk
+        # (NmtWorkspace objects are not picklable), so in that case saving
+        # is mandatory, regardless of save_nmt_wsp_to_cache
+        ensemble_decoupled = (
+            self.cfg['covariance']['partial_sky_method'] == 'ensemble'
+            and not self.coupled_cov
+        )
+
+        if not (self.save_wsp_to_cache or ensemble_decoupled):
             return
 
         # else, create folder if absent and save everything

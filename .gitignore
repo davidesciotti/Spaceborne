@@ -27,3 +27,6 @@ __pycache__/
 
 # hidden folders
 **/.*/
+
+# graphify knowledge-graph output (generated, never commit)
+graphify-out/

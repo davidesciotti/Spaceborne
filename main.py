@@ -1048,7 +1048,7 @@ if cfg['C_ell']['use_input_cls']:
     io_obj.check_ells_in(bin_obj)
 
 ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-    bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs, show_warnings=True
 )
 
 # cls plots

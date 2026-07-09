@@ -548,7 +548,7 @@ def _compute_one_realization(
 
     # ! 3. Inject noise at the map level directly to preserve "full resolution"
     # Before I was cutting the noise at ell_max_eff, but the mask-induced mode coupling
-    # leaks power from high-ell into the "science band" [ell_min, ell_max_eff]. This is
+    # leaks power from high-ell into the "nmt band" [ell_min, ell_max_eff]. This is
     # important for a white spectrum, which has non-negligible power at high-ell.
     # Note: per-pixel variance is sigma^2 = N_ell / Omega_pix.
 
@@ -604,10 +604,10 @@ def _compute_one_realization(
             # length to match its lmax, so bin only the science range. The buffer ells
             # sit above the last science band, so this matches the analytic path (which
             # bins the per-ell coupled cov over the same science edges).
-            n_sci = nmt_bin_obj.lmax + 1
-            cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d[:n_sci])
-            cl_gl_1d = nmt_bin_obj.bin_cell(cl_gl_1d[:n_sci])
-            cl_ll_1d = nmt_bin_obj.bin_cell(cl_ll_1d[:n_sci])
+            nbl_nmt = nmt_bin_obj.lmax + 1
+            cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d[:nbl_nmt])
+            cl_gl_1d = nmt_bin_obj.bin_cell(cl_gl_1d[:nbl_nmt])
+            cl_ll_1d = nmt_bin_obj.bin_cell(cl_ll_1d[:nbl_nmt])
 
         cl_gg_3d[:, zi, zj] = cl_gg_1d
         cl_gl_3d[:, zi, zj] = cl_gl_1d
@@ -868,20 +868,6 @@ class CovNaMaster:
             print('\nComputing namaster workspaces and coupling matrices...')
 
         self.wgg_dict, self.wgl_dict, self.wll_dict = {}, {}, {}
-
-        # NaMaster requires the workspace bin object's lmax to equal the fields' lmax,
-        # which are built at ell_max_nmt (the buffered range). With a buffer,
-        # self.nmt_bin_obj (science binning, lmax=ell_max_3x2pt) is smaller, so use a
-        # per-ell bin object spanning [0, ell_max_nmt] instead. This is only reached in
-        # the coupled path (buffer is guarded to coupled in build_psky_cov), where the
-        # workspace bandpowers are unused: the per-ell coupled cov is binned to science
-        # bands manually afterwards, and couple_cell/gaussian_covariance return per-ell.
-        if self.ell_max_nmt > self.ell_obj.ell_max_3x2pt:
-            wsp_bin_obj = nmt.NmtBin.from_edges(
-                np.arange(self.ell_max_nmt + 1), np.arange(1, self.ell_max_nmt + 2)
-            )
-        else:
-            wsp_bin_obj = self.nmt_bin_obj
 
         # NaMaster requires the workspace bin object's lmax to equal the fields' lmax,
         # which are built at ell_max_nmt (the buffered range). With a buffer,
@@ -1240,15 +1226,15 @@ class CovNaMaster:
             # [0, ell_max_3x2pt]; bin_cell requires the input length to match its lmax,
             # so bin only the science sub-block. (These binned MCMs are used only to
             # convolve the NG terms; unused when SSC/cNG off, saved for diagnostics.)
-            n_sci = self.nmt_bin_obj.lmax + 1
+            nbl_ext = self.nmt_bin_obj.lmax + 1
             self.mcm_tt_binned[:, :, zi, zj] = bin_mcm(
-                mcm_tt_unb[:n_sci, :n_sci, zi, zj], self.nmt_bin_obj
+                mcm_tt_unb[:nbl_ext, :nbl_ext, zi, zj], self.nmt_bin_obj
             )
             self.mcm_te_binned[:, :, zi, zj] = bin_mcm(
-                mcm_te_unb[:n_sci, :n_sci, zi, zj], self.nmt_bin_obj
+                mcm_te_unb[:nbl_ext, :nbl_ext, zi, zj], self.nmt_bin_obj
             )
             self.mcm_ee_binned[:, :, zi, zj] = bin_mcm(
-                mcm_ee_unb[:n_sci, :n_sci, zi, zj], self.nmt_bin_obj
+                mcm_ee_unb[:nbl_ext, :nbl_ext, zi, zj], self.nmt_bin_obj
             )
 
         if save_mcms:
@@ -1293,10 +1279,12 @@ class CovNaMaster:
         # )  # careful f the +1!
         # ell_min_eff = ells_eff_edges[0]
 
-        # The lmax buffer (ell_max_nmt > ell_max) relies on a coupled
-        # gaussian_covariance that is binned to science bands manually below. The
-        # decoupled path bins via the workspace bandpowers, which are per-ell here, so
-        # it is not supported with a buffer; guard against silently wrong results.
+        # In the decoupled path the decoupling happens inside NaMaster, 
+        # through the workspace: supporting it would need 
+        # a second, science-band set of workspaces threaded through just for the 
+        # covariance. Rather than silently returning the wrong object, it raises. 
+        # If you ever need decoupled+buffer, that's the route; until then the 
+        # guard is the honest option.
         if not self.coupled_cov and self.ell_max_nmt > ell_max_eff:
             raise NotImplementedError(
                 'The NaMaster lmax buffer (ell_max_nmt > ell_max_3x2pt) is only '
@@ -1388,7 +1376,7 @@ class CovNaMaster:
         if self.cfg['precision']['coupled_noise']:
             nl_gg_4covnmt *= self.coupled_noise_factor(weight_maps=self.weight_maps_gg)
             nl_ll_4covnmt *= self.coupled_noise_factor(weight_maps=self.weight_maps_ll)
-            
+
         nl_ll_4covnmt[:2] = 0  # a spin-2 field has no monopole or dipole!
 
         # add noise to spectra to compute NMT cov
@@ -1471,7 +1459,7 @@ class CovNaMaster:
                 f'realizations. The datevector length is {len_dv}'
             )
 
-            # ! signal-only Cls for synalm. Shape noise is NOT included in here: doing so
+            # ! signal-only Cls for synalm. Noise is NOT included in here: doing so
             # would band-limit it at ell_max_eff, but real shape noise is white to the
             # pixel scale (~3*nside). I instead inject it as full-band per-pixel white
             # noise inside each realization (see _compute_one_realization). The mask
@@ -1481,19 +1469,19 @@ class CovNaMaster:
             cl_ee_4covens = self.cl_3x2pt_unb_5d[0, 0, :, :, :]
             cl_tb_4covens = np.zeros_like(cl_tt_4covens)
             cl_eb_4covens = np.zeros_like(cl_tt_4covens)
-            cl_bb_4covens = nl_ll_4covnmt.copy()  # the B-mode power is pure noise
+            cl_bb_4covens = np.zeros_like(cl_tt_4covens)
 
             # check that the noise spectra are white
             for nl, name in [(nl_gg_4covnmt, 'GG'), (nl_ll_4covnmt, 'LL')]:
-                if not np.allclose(nl[2:], nl[0], rtol=1e-5, atol=0.0):
+                if not np.allclose(nl[2:], nl[2], rtol=1e-5, atol=0.0):
                     raise ValueError(
                         f'The {name} noise spectra are not white; the ensemble '
                         'covariance assumes white noise.'
                     )
 
-            # extract the 0-the ell index and the zi-zj diagonal of noise arrays
+            # extract the zi-zj diagonal of noise arrays
             nl_gg_4covens = np.diagonal(nl_gg_4covnmt[0]).copy()
-            nl_ll_4covens = np.diagonal(nl_ll_4covnmt[0]).copy()
+            nl_ll_4covens = np.diagonal(nl_ll_4covnmt[2]).copy()
 
             # ! note that self.cov_dict is mutated in-place, no need to return it
             start = time.perf_counter()

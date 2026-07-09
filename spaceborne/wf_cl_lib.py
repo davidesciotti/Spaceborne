@@ -26,7 +26,7 @@ dav_to_vinc_par_names = {
 
 
 def compute_cls_or_interpolate_input_cls(
-    ells_out, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    ells_out, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs, show_warnings: bool = True
 ):
     # First off, make sure ells are sorted and unique for spline interpolation
     # (if some input cls are not requested the corresponding ells_in will be None,
@@ -57,8 +57,10 @@ def compute_cls_or_interpolate_input_cls(
         (io_obj.need_input_cl_gl, getattr(io_obj, 'ells_XC_in', None), 'GL'),
         (io_obj.need_input_cl_gg, getattr(io_obj, 'ells_GC_in', None), 'GG'),
     ):
-        if need_input and (
-            ells_out.min() < ells_in.min() or ells_out.max() > ells_in.max()
+        if (
+            need_input
+            and (ells_out.min() < ells_in.min() or ells_out.max() > ells_in.max())
+            and show_warnings
         ):
             warnings.warn(
                 f'Requested ell grid [{ells_out.min()}, {ells_out.max()}] exceeds '

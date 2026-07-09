@@ -1321,10 +1321,6 @@ class CovNaMaster:
         nl_gg_4covnmt = self.nl_3x2pt_unb_5d[1, 1, :, :, :].copy()
         nl_gl_4covnmt = self.nl_3x2pt_unb_5d[1, 0, :, :, :].copy()  # this is 0
         nl_ll_4covnmt = self.nl_3x2pt_unb_5d[0, 0, :, :, :].copy()
-        if self.cfg['precision']['coupled_noise']:
-            nl_gg_4covnmt *= self.coupled_noise_factor(weight_maps=self.weight_maps_gg)
-            nl_ll_4covnmt *= self.coupled_noise_factor(weight_maps=self.weight_maps_ll)
-
         nl_ll_4covnmt[:2] = 0  # a spin-2 field has no monopole or dipole!
 
         # add noise to spectra to compute NMT cov

@@ -1076,7 +1076,7 @@ if cfg['C_ell']['use_input_cls']:
     # check ells before spline interpolation
     io_obj.check_ells_in(bin_obj)
 
-ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
     bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs, show_warnings=True
 )
 
@@ -1116,42 +1116,9 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    # For NaMaster, we want to leave some headroom in case nside is high and ell_max is
-    # low. For this, we compute a buffer roughly corresponding to the bandwidth of the
-    # mask Cls, so the mode coupling reaches beyond ell_max and the covariance at
-    # ell_max is not biased by the band-limit.
+    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
 
-    # ell_buffer_nmt = mask_utils.get_ell_buffer_nmt(
-    #     footp_cl_abcd_dict=footp_cl_abcd_dict,
-    #     mask_obj_ll=mask_obj_ll,
-    #     mask_obj_gg=mask_obj_gg,
-    # )
-    # TODO decide which one to use
-    ell_buffer_nmt = cfg['precision']['ell_max_buffer_nmt']
-
-    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt + ell_buffer_nmt
-
-    # and, if it overshoots the maximum allowed by the nside, cap it there
-    ell_max_3x2pt_nmt = min(ell_max_3x2pt_nmt, 3 * cfg['mask']['nside'] - 1)
-
-    print(
-        'Setting lmax of the input spectra used for the '
-        'cfg["covariance"]["partial_sky_method"] '
-        f'computation to {ell_max_3x2pt_nmt}'
-    )
-
-    if ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt < ell_buffer_nmt:
-        warnings.warn(
-            f'NaMaster lmax buffer truncated by resolution: requested buffer '
-            f'{ell_buffer_nmt} (ell_max_nmt={bin_obj.ell_max_3x2pt + ell_buffer_nmt}) '
-            f'exceeds 3*nside-1={3 * cfg["mask"]["nside"] - 1}. Effective buffer is '
-            f'only {ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt}; the band-limit bias '
-            f'may not be fully removed. Increase nside (currently '
-            f'{cfg["mask"]["nside"]}) so that ell_max + buffer fits below 3*nside-1.',
-            stacklevel=2,
-        )
-
-    # unbinned Cls on the *extended* NaMaster grid (0..ell_max_nmt)
+    # unbinned Cls on the NaMaster grid (0..ell_max_nmt)
     ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
     nbl_3x2pt_nmt_unb = len(ells_3x2pt_nmt_unb)
 
@@ -1169,8 +1136,6 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_obj.nl_3x2pt_unb_5d = nl_3x2pt_nmt_unb_5d
     # and additional useful ones
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
-    cov_nmt_obj.ell_max_nmt = ell_max_3x2pt_nmt
-    cov_nmt_obj.ell_max_buffer = ell_buffer_nmt
 
     # compute partial-sky covariance
     cov_nmt_dict = cov_nmt_obj.build_psky_cov()

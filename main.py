@@ -188,7 +188,7 @@ script_start_time = time.perf_counter()
 # monitor_thread.start()
 
 
-def plot_cls():
+def plot_tomo_diag_cls():
     _, ax = plt.subplots(1, 3, figsize=(15, 4))
 
     # cls are (for the moment) in the ccl obj, whether they are imported from input
@@ -197,19 +197,19 @@ def plot_cls():
         zj = zi
         kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
         if io_obj.need_input_cl_ll:
-            ax[0].plot(bin_obj.ells_WL, ccl_obj.cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
+            ax[0].plot(bin_obj.ells_WL, cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gl:
-            ax[1].plot(bin_obj.ells_XC, ccl_obj.cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
+            ax[1].plot(bin_obj.ells_XC, cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
         if io_obj.need_input_cl_gg:
-            ax[2].plot(bin_obj.ells_GC, ccl_obj.cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
+            ax[2].plot(bin_obj.ells_GC, cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
 
     # if input cls are used, then overplot the sb predictions on top
     for zi in range(zbins):
         zj = zi
         sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-        ax[0].plot(bin_obj.ells_WL, ccl_obj.cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
-        ax[1].plot(bin_obj.ells_XC, ccl_obj.cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
-        ax[2].plot(bin_obj.ells_GC, ccl_obj.cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
+        ax[0].plot(bin_obj.ells_WL, _cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
+        ax[1].plot(bin_obj.ells_XC, _cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
+        ax[2].plot(bin_obj.ells_GC, _cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
         # Add style legend only to middle plot
         style_legend = ax[1].legend(
             handles=[
@@ -252,6 +252,37 @@ def plot_cls():
             + axi.get_yticklabels()
         ):
             item.set_fontsize(16)
+
+
+def triangle_plot_cls_wrapper():
+    # this is a lil' bit convoluted: the cls used by the code (wither from input or from sb)
+    # are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
+    # is True and are only plotted in that case
+    _key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
+    _ell_dict_wl = {_key: bin_obj.ells_3x2pt}
+    _ell_dict_xc = {_key: bin_obj.ells_3x2pt}
+    _ell_dict_gc = {_key: bin_obj.ells_3x2pt}
+    _cl_dict_wl = {_key: cl_3x2pt_5d[0, 0]}
+    _cl_dict_xc = {_key: cl_3x2pt_5d[1, 0]}
+    _cl_dict_gc = {_key: cl_3x2pt_5d[1, 1]}
+    if cfg['C_ell']['use_input_cls']:
+        _ell_dict_wl['SB'] = bin_obj.ells_3x2pt
+        _ell_dict_xc['SB'] = bin_obj.ells_3x2pt
+        _ell_dict_gc['SB'] = bin_obj.ells_3x2pt
+        _cl_dict_wl['SB'] = _cl_3x2pt_5d_sb[0, 0]
+        _cl_dict_xc['SB'] = _cl_3x2pt_5d_sb[1, 0]
+        _cl_dict_gc['SB'] = _cl_3x2pt_5d_sb[1, 1]
+
+    if cfg['misc']['cl_triangle_plot']:
+        sb_plt.cls_triangle_plot(
+            _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
+        )
+        sb_plt.cls_triangle_plot(
+            _ell_dict_xc, _cl_dict_xc, is_auto=False, zbins=zbins, suptitle='GGL'
+        )
+        sb_plt.cls_triangle_plot(
+            _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
+        )
 
 
 # ! ====================================================================================
@@ -781,6 +812,7 @@ pvt_cfg = {
 io_obj = io_handler.IOHandler(cfg, pvt_cfg)
 
 # declare covariance objects
+cov_hs_obj = None
 cov_nmt_obj = None
 cov_rs_obj = None
 cov_cs_obj = None
@@ -804,7 +836,6 @@ elif obs_space == 'cosebis':
     nbx = cfg['binning']['n_modes_cosebis']
 else:
     raise ValueError(f'Unknown observables space: {obs_space:s}')
-
 
 pvt_cfg['nbl_3x2pt'] = bin_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = bin_obj.ell_min_3x2pt
@@ -830,7 +861,7 @@ footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
 mask_utils.plot_footprint(footp_ab_dict['GL'], probe='GL')
 
 # compute footprint spectra
-_, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
+footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
     footp_ab_dict=footp_ab_dict,
     fsky_ab_dict=fsky_ab_dict,
     unique_probe_combs_hs=unique_probe_combs_hs,
@@ -840,6 +871,7 @@ _, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
 fsky_max_abcd_dict, amax_abcd_dict = mask_utils.get_fsky_abcd_dict(
     fsky_ab_dict=fsky_ab_dict, req_probe_combs_hs_2d=req_probe_combs_hs_2d
 )
+
 
 # this will be used to normalise the SSC and cNG
 ccl_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
@@ -996,7 +1028,6 @@ ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['precision']['n_samples_wf']
 ccl_obj.set_kernel_arr(
     z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
 )
-
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 
@@ -1023,9 +1054,12 @@ wf_lensing = ccl_obj.wf_lensing_arr
 
 sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 
-# ! ======================================== Cls =======================================
-# ! note that the function below includes the multiplicative shear bias
-_cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
+
+# ! ======================================== Cl ========================================
+# Compute SB Cl regardless of the cfg, to plot against the input ones.
+# Note that in this case I can't use compute_cls_or_interpolate_input_cls, since this
+# checks whether the input cls are to be used, and if so it loads them.
+_cl_3x2pt_5d_sb = ccl_interface.compute_cl_3x2pt_5d(
     ccl_obj,
     ells=bin_obj.ells_3x2pt,
     zbins=zbins,
@@ -1034,11 +1068,6 @@ _cl_3x2pt_5d = ccl_interface.compute_cl_3x2pt_5d(
     n_probes_hs=cfg['covariance']['n_probes'],
 )
 
-ccl_obj.cl_3x2pt_5d_sb = sl.build_cl_3x2pt_5d(
-    cl_ll_3d=_cl_3x2pt_5d[0, 0],
-    cl_gl_3d=_cl_3x2pt_5d[1, 0],
-    cl_gg_3d=_cl_3x2pt_5d[1, 1],
-)
 
 if cfg['C_ell']['use_input_cls']:
     # load input cls
@@ -1051,48 +1080,30 @@ ccl_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
     bin_obj.ells_3x2pt, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs, show_warnings=True
 )
 
-# cls plots
-plot_cls()
-
-# this is a lil' bit convoluted: the cls used by the code (wither from input or from sb)
-# are stored in ccl_obj.cl_xx_3d. The cl_xx_3d_sb are only computed if 'use_input_cls'
-# is True and are only plotted in that case
-_key = 'input' if cfg['C_ell']['use_input_cls'] else 'SB'
-_ell_dict_wl = {_key: bin_obj.ells_3x2pt}
-_ell_dict_xc = {_key: bin_obj.ells_3x2pt}
-_ell_dict_gc = {_key: bin_obj.ells_3x2pt}
-_cl_dict_wl = {_key: ccl_obj.cl_3x2pt_5d[0, 0]}
-_cl_dict_xc = {_key: ccl_obj.cl_3x2pt_5d[1, 0]}
-_cl_dict_gc = {_key: ccl_obj.cl_3x2pt_5d[1, 1]}
-if cfg['C_ell']['use_input_cls']:
-    _ell_dict_wl['SB'] = bin_obj.ells_3x2pt
-    _ell_dict_xc['SB'] = bin_obj.ells_3x2pt
-    _ell_dict_gc['SB'] = bin_obj.ells_3x2pt
-    _cl_dict_wl['SB'] = ccl_obj.cl_3x2pt_5d_sb[0, 0]
-    _cl_dict_xc['SB'] = ccl_obj.cl_3x2pt_5d_sb[1, 0]
-    _cl_dict_gc['SB'] = ccl_obj.cl_3x2pt_5d_sb[1, 1]
-
-if cfg['misc']['cl_triangle_plot']:
-    sb_plt.cls_triangle_plot(
-        _ell_dict_wl, _cl_dict_wl, is_auto=True, zbins=zbins, suptitle='WL'
-    )
-    sb_plt.cls_triangle_plot(
-        _ell_dict_xc, _cl_dict_xc, is_auto=False, zbins=zbins, suptitle='GGL'
-    )
-    sb_plt.cls_triangle_plot(
-        _ell_dict_gc, _cl_dict_gc, is_auto=True, zbins=zbins, suptitle='GCph'
-    )
+# Cl plots
+plot_tomo_diag_cls()
+triangle_plot_cls_wrapper()
 
 
-# ! ======================= Unbinned Cls for nmt/sample/HS bin avg cov =================
-if cfg['precision']['cov_hs_g_ell_bin_average'] or (
-    cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']
-):
-    # in these cases I need an unbinned ell grid
-    cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        bin_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
-    )
+# ! ======================================== Nl ========================================
+sigma_eps2 = (np.array(cfg['covariance']['sigma_eps_i']) * np.sqrt(2)) ** 2
+ng_shear = np.array(cfg['nz']['ngal_sources'])
+ng_clust = np.array(cfg['nz']['ngal_lenses'])
+nl_3x2pt_4d = sl.build_noise(
+    zbins,
+    n_probes,
+    sigma_eps2=sigma_eps2,
+    ng_shear=ng_shear,
+    ng_clust=ng_clust,
+    is_noiseless=cfg['covariance']['no_sampling_noise'],
+)
 
+# create dummy ell axis, the array is just repeated along it
+nl_3x2pt_5d = np.repeat(nl_3x2pt_4d[:, :, np.newaxis, :, :], bin_obj.nbl_3x2pt, axis=2)
+
+
+# ! =============================== Init NaMaster cov object ===========================
+cov_nmt_dict = None
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
@@ -1105,11 +1116,64 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    # set a couple useful attributes
-    cov_nmt_obj.ells_3x2pt_unb = bin_obj.ells_3x2pt_unb
-    cov_nmt_obj.nbl_3x2pt_unb = bin_obj.nbl_3x2pt_unb
-    cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
+    # For NaMaster, we want to leave some headroom in case nside is high and ell_max is
+    # low. For this, we compute a buffer roughly corresponding to the bandwidth of the
+    # mask Cls, so the mode coupling reaches beyond ell_max and the covariance at
+    # ell_max is not biased by the band-limit.
+
+    # ell_buffer_nmt = mask_utils.get_ell_buffer_nmt(
+    #     footp_cl_abcd_dict=footp_cl_abcd_dict,
+    #     mask_obj_ll=mask_obj_ll,
+    #     mask_obj_gg=mask_obj_gg,
+    # )
+    # TODO decide which one to use
+    ell_buffer_nmt = cfg['precision']['ell_max_buffer_nmt']
+
+    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt + ell_buffer_nmt
+
+    # and, if it overshoots the maximum allowed by the nside, cap it there
+    ell_max_3x2pt_nmt = min(ell_max_3x2pt_nmt, 3 * cfg['mask']['nside'] - 1)
+
+    print(
+        'Setting lmax of the input spectra used for the '
+        'cfg["covariance"]["partial_sky_method"] '
+        f'computation to {ell_max_3x2pt_nmt}'
+    )
+
+    if ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt < ell_buffer_nmt:
+        warnings.warn(
+            f'NaMaster lmax buffer truncated by resolution: requested buffer '
+            f'{ell_buffer_nmt} (ell_max_nmt={bin_obj.ell_max_3x2pt + ell_buffer_nmt}) '
+            f'exceeds 3*nside-1={3 * cfg["mask"]["nside"] - 1}. Effective buffer is '
+            f'only {ell_max_3x2pt_nmt - bin_obj.ell_max_3x2pt}; the band-limit bias '
+            f'may not be fully removed. Increase nside (currently '
+            f'{cfg["mask"]["nside"]}) so that ell_max + buffer fits below 3*nside-1.',
+            stacklevel=2,
+        )
+
+    # unbinned Cls on the *extended* NaMaster grid (0..ell_max_nmt)
+    ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
+    nbl_3x2pt_nmt_unb = len(ells_3x2pt_nmt_unb)
+
+    cl_3x2pt_nmt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        ells_3x2pt_nmt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    )
+    nl_3x2pt_nmt_unb_5d = np.repeat(
+        nl_3x2pt_4d[:, :, np.newaxis, :, :], nbl_3x2pt_nmt_unb, axis=2
+    )
+
+    # set a couple core attributes
+    cov_nmt_obj.ells_3x2pt_unb = ells_3x2pt_nmt_unb
+    cov_nmt_obj.nbl_3x2pt_unb = nbl_3x2pt_nmt_unb
+    cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_nmt_unb_5d
+    cov_nmt_obj.nl_3x2pt_unb_5d = nl_3x2pt_nmt_unb_5d
+    # and additional useful ones
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
+    cov_nmt_obj.ell_max_nmt = ell_max_3x2pt_nmt
+    cov_nmt_obj.ell_max_buffer = ell_buffer_nmt
+
+    # compute partial-sky covariance
+    cov_nmt_dict = cov_nmt_obj.build_psky_cov()
 
 
 # ! ============================== Init real space cov object ==========================
@@ -1156,21 +1220,34 @@ if obs_space == 'cosebis':
 
 # !  =============================== Build Gaussian covs ===============================
 if obs_space == 'harmonic':
+    # init object + some housekeeping
     cov_hs_obj = cov_harmonic_space.CovHarmonicSpace(
-        cfg, pvt_cfg, bin_obj, cov_nmt_obj, bnt_matrix
+        cfg=cfg, pvt_cfg=pvt_cfg, bin_obj=bin_obj, bnt_matrix=bnt_matrix
     )
     cov_hs_obj.consistency_checks()
     cov_hs_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
 
-    # set unbinned cls if needed
+    # set unbinned Cl and Nl if needed
+    cl_3x2pt_unb_5d = None
+    nl_3x2pt_unb_5d = None
     if cfg['precision']['cov_hs_g_ell_bin_average']:
-        cov_hs_obj.cl_3x2pt_unb_5d = cl_3x2pt_unb_5d
+        cl_3x2pt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+            bin_obj.ells_3x2pt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+        )
+        nl_3x2pt_unb_5d = np.repeat(
+            nl_3x2pt_4d[:, :, np.newaxis, :, :], bin_obj.nbl_3x2pt_unb, axis=2
+        )
 
+    # compute Knox Gaussian covariance
     if 'Spaceborne' in cov_terms_and_codes.values():
-        cov_hs_obj.set_gauss_cov(ccl_obj=ccl_obj)
+        cov_hs_obj.set_gauss_cov(
+            cl_3x2pt_5d=cl_3x2pt_5d,
+            nl_3x2pt_5d=nl_3x2pt_5d,
+            cl_3x2pt_unb_5d=cl_3x2pt_unb_5d,
+            nl_3x2pt_unb_5d=nl_3x2pt_unb_5d,
+            cov_nmt_dict=cov_nmt_dict,
+        )
 
-else:
-    cov_hs_obj = None
 
 # ! =================================== OneCovariance ==================================
 if (
@@ -1609,6 +1686,7 @@ if compute_ccl_ssc or compute_ccl_cng:
 if obs_space == 'harmonic':
     cov_hs_obj.combine_and_reshape_covs(
         ccl_obj=ccl_obj,
+        cov_nmt_obj=cov_nmt_obj,
         cov_ssc_obj=cov_ssc_obj,
         cov_oc_obj=cov_oc_obj,
         split_gaussian_cov=cfg['covariance']['split_gaussian_cov'],
@@ -2004,9 +2082,9 @@ np.savetxt(
 )
 
 # save cls
-sl.write_cl_tab(output_path, 'cl_ll', ccl_obj.cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
-sl.write_cl_tab(output_path, 'cl_gl', ccl_obj.cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
-sl.write_cl_tab(output_path, 'cl_gg', ccl_obj.cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
+sl.write_cl_tab(output_path, 'cl_ll', cl_3x2pt_5d[0, 0], bin_obj.ells_WL, zbins)
+sl.write_cl_tab(output_path, 'cl_gl', cl_3x2pt_5d[1, 0], bin_obj.ells_XC, zbins)
+sl.write_cl_tab(output_path, 'cl_gg', cl_3x2pt_5d[1, 1], bin_obj.ells_GC, zbins)
 
 # save ell values
 # TODO save theta
@@ -2157,7 +2235,8 @@ if cfg['misc']['save_output_as_benchmark']:
         wf_ia=wf_ia,
         wf_mu=wf_mu,
         wf_lensing=wf_lensing,
-        cl_3x2pt_5d=ccl_obj.cl_3x2pt_5d,
+        cl_3x2pt_5d=cl_3x2pt_5d,
+        nl_3x2pt_5d=nl_3x2pt_5d,
         dPmm_ddeltab=dPmm_ddeltab,
         dPgm_ddeltab=dPgm_ddeltab,
         dPgg_ddeltab=dPgg_ddeltab,

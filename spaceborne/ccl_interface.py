@@ -47,8 +47,8 @@ def compute_cl_3x2pt_5d(
     cl_ccl_kwargs: dict,
     n_probes_hs: int = 2,
 ) -> np.ndarray:
-    """Just a wrapper to quickly compute the CCL cls,
-    including the multiplicative shear bias"""
+    """Just a wrapper to quickly compute the CCL cls, including the multiplicative
+    shear bias"""
 
     nbl = len(ells)
 

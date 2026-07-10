@@ -1231,7 +1231,12 @@ if (
     import healpy as hp
 
     for name, footp in footp_ab_dict.items():
-        hp.write_map(f'{oc_path}/sb_footprint_{name}.fits', footp, overwrite=True)
+        hp.write_map(
+            f'{oc_path}/sb_footprint_{name}.fits',
+            footp,
+            overwrite=True,
+            dtype=np.float64,
+        )
 
     nz_src_ascii_filename = cfg['nz']['nz_sources_filename'].replace(
         '.dat', f'_dzshifts{shift_nz}.ascii'

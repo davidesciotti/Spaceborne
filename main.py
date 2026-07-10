@@ -937,7 +937,7 @@ if cfg['nz']['normalize_nz']:
             'Proceeding to normalize them',
             stacklevel=2,
         )
-        nz_lns /= nz_lns_integral
+        nz_lns = wf_cl_lib.normalise_nz(nz_lns, zgrid_nz_lns)
     else:
         print('Lens n(z) are normalized')
 
@@ -947,7 +947,7 @@ if cfg['nz']['normalize_nz']:
             'Proceeding to normalize them',
             stacklevel=2,
         )
-        nz_src /= nz_src_integral
+        nz_src = wf_cl_lib.normalise_nz(nz_src, zgrid_nz_src)
     else:
         print('Source n(z) are normalized')
 
@@ -959,6 +959,7 @@ ccl_obj.check_nz_tuple(zbins)
 
 sb_plt.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns)
 
+assert False, 'stop here'
 
 # ! ========================================= IA =======================================
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])

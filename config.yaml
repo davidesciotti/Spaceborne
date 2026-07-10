@@ -398,8 +398,7 @@ precision:
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
-  spline_params:
-    # Type: dict | None
+  spline_params: # Type: dict | None
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 

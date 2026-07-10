@@ -1,0 +1,230 @@
+"""Unit tests for the pure numerical helpers in spaceborne.cov_real_space.
+
+This module only exercises functions that do not require pylevin, CCL, or the
+full CovRealSpace pipeline:
+
+* ``b_mu`` / ``b_mu_nobessel`` and ``k_mu`` / ``k_mu_nobessel`` -- the
+  ``_nobessel`` variants decompose the closed-form Bessel expressions into
+  ``(coefficient, bessel_order[, theta])`` terms (used to build Levin
+  integrands). We reconstruct the Bessel sums from the decomposed terms with
+  ``scipy.special.jv`` and check they reproduce the direct (bessel-evaluated)
+  functions, for the three supported multipole orders mu in {0, 2, 4}.
+* ``kmuknu_nobessel`` -- the product of two decomposed kernels; checked the
+  same way, by reconstructing K_mu(ell1) * K_nu(ell2) from the product terms.
+* ``t_sn`` -- checked case by case against explicitly constructed expected
+  matrices. In particular, the mixed source/lens case (e.g. gt/gt) is pinned
+  as a regression test: the source-bin variance sigma_eps_i**2 must be
+  broadcast over *all* (lens, source) tomographic pairs, not only the
+  diagonal. The tomographic Kronecker deltas are applied separately in
+  ``cov_sn_rs`` (via ``get_delta_tomo``), and the harmonic-space analog
+  Cov_SN(C^GL_ij, C^GL_kl) = delta_ik delta_jl N^gg_i N^ee_j is nonzero for
+  i != j (same convention as OneCovariance's gmgm shot-noise term). A
+  diagonal-only variant (the former ``_t_sn``) was confirmed wrong and
+  removed in 2026-07.
+* ``t_mix`` -- small standalone helper, checked directly.
+
+Functions requiring pylevin (``integrate_bessel_single_wrapper``,
+``dl1dl2_binavg_bessel_wrapper``, ``dl1dl2_nobinavg_bessel_wrapper``,
+``levin_integrate_bessel_double_wrapper``, ``integrate_single_bessel_pair``)
+or the full ``CovRealSpace``/``proj_cov_2d_fftlog`` pipeline are out of scope
+for this module.
+"""
+
+import itertools
+
+import numpy as np
+import pytest
+from scipy.special import jv
+
+from spaceborne.cov_real_space import (
+    b_mu,
+    b_mu_nobessel,
+    k_mu,
+    k_mu_nobessel,
+    kmuknu_nobessel,
+    t_mix,
+    t_sn,
+)
+
+
+def _is_mixed_mixed(combo):
+    """Both pairs are one source + one lens, e.g. probe combo (GL, GL)."""
+    a, b, c, d = combo
+    return {a, b} == {0, 1} and {c, d} == {0, 1}
+
+
+_ALL_PROBE_COMBOS = list(itertools.product((0, 1), repeat=4))
+_MIXED_COMBOS = [c for c in _ALL_PROBE_COMBOS if _is_mixed_mixed(c)]
+_NON_MIXED_COMBOS = [c for c in _ALL_PROBE_COMBOS if not _is_mixed_mixed(c)]
+
+
+@pytest.fixture
+def rng():
+    """Deterministic random generator so tests are reproducible."""
+    return np.random.default_rng(seed=2024)
+
+
+MU_VALUES = (0, 2, 4)
+
+
+# ----------------------------------------------------------------------------- #
+# b_mu / b_mu_nobessel
+# ----------------------------------------------------------------------------- #
+class TestBMu:
+    """b_mu_nobessel decomposes b_mu into explicit (coeff, bessel_order) terms."""
+
+    @pytest.mark.parametrize('mu', MU_VALUES)
+    def test_nobessel_reconstructs_b_mu(self, mu, rng):
+        xs = rng.uniform(0.1, 20.0, 8)
+        for x in xs:
+            direct = b_mu(x, mu)
+            terms = b_mu_nobessel(x, mu)
+            recon = sum(coeff * jv(order, x) for coeff, order in terms)
+            np.testing.assert_allclose(recon, direct, rtol=1e-10)
+
+    def test_invalid_mu_raises(self):
+        with pytest.raises(ValueError, match='mu must be one of'):
+            b_mu(1.0, mu=1)
+
+    def test_nobessel_invalid_mu_raises(self):
+        with pytest.raises(ValueError, match='mu must be one of'):
+            b_mu_nobessel(1.0, mu=3)
+
+
+# ----------------------------------------------------------------------------- #
+# k_mu / k_mu_nobessel
+# ----------------------------------------------------------------------------- #
+class TestKMu:
+    """k_mu_nobessel decomposes k_mu into (coeff, bessel_order, theta) terms."""
+
+    @pytest.mark.parametrize('mu', MU_VALUES)
+    def test_nobessel_reconstructs_k_mu(self, mu, rng):
+        ells = rng.uniform(10.0, 5000.0, 6)
+        thetal_arr = rng.uniform(1e-3, 1e-2, 6)
+        thetau_arr = thetal_arr + rng.uniform(1e-3, 1e-2, 6)
+
+        for ell, thetal, thetau in zip(ells, thetal_arr, thetau_arr, strict=True):
+            direct = k_mu(ell, thetal=thetal, thetau=thetau, mu=mu)
+            terms = k_mu_nobessel(ell, thetal=thetal, thetau=thetau, mu=mu)
+            recon = sum(coeff * jv(order, ell * theta) for coeff, order, theta in terms)
+            np.testing.assert_allclose(recon, direct, rtol=1e-10)
+
+
+# ----------------------------------------------------------------------------- #
+# kmuknu_nobessel
+# ----------------------------------------------------------------------------- #
+class TestKMuKNuNobessel:
+    """kmuknu_nobessel expands the product K_mu(ell1) * K_nu(ell2)."""
+
+    @pytest.mark.parametrize('mu', MU_VALUES)
+    @pytest.mark.parametrize('nu', MU_VALUES)
+    def test_product_matches_direct(self, mu, nu, rng):
+        ell1, ell2 = rng.uniform(10.0, 5000.0, 2)
+        thetal1, thetau1 = 0.001, 0.003
+        thetal2, thetau2 = 0.002, 0.005
+
+        k_mu_terms = k_mu_nobessel(ell1, thetal=thetal1, thetau=thetau1, mu=mu)
+        k_nu_terms = k_mu_nobessel(ell2, thetal=thetal2, thetau=thetau2, mu=nu)
+        product_terms = kmuknu_nobessel(k_mu_terms, k_nu_terms)
+
+        direct = k_mu(ell1, thetal=thetal1, thetau=thetau1, mu=mu) * k_mu(
+            ell2, thetal=thetal2, thetau=thetau2, mu=nu
+        )
+        recon = sum(
+            coeff * jv(n1, ell1 * t1) * jv(n2, ell2 * t2)
+            for coeff, n1, t1, n2, t2 in product_terms
+        )
+        np.testing.assert_allclose(recon, direct, rtol=1e-10)
+
+    def test_number_of_terms_is_product(self):
+        """kmuknu_nobessel returns the cartesian product of the input term lists."""
+        k_mu_terms = k_mu_nobessel(100.0, thetal=0.001, thetau=0.002, mu=4)
+        k_nu_terms = k_mu_nobessel(200.0, thetal=0.001, thetau=0.002, mu=2)
+        product_terms = kmuknu_nobessel(k_mu_terms, k_nu_terms)
+        assert len(product_terms) == len(k_mu_terms) * len(k_nu_terms)
+
+
+# ----------------------------------------------------------------------------- #
+# t_sn
+# ----------------------------------------------------------------------------- #
+class TestTSn:
+    """t_sn checked against explicitly constructed expected matrices, for all
+    16 probe index combinations. probe_ix 0 = source (shear), 1 = lens
+    (clustering)."""
+
+    @pytest.fixture
+    def sigma_eps_i(self, rng):
+        zbins = 4
+        return rng.uniform(0.1, 0.5, zbins)
+
+    @pytest.mark.parametrize('combo', _MIXED_COMBOS)
+    def test_mixed_case_broadcasts_source_variance(self, combo, sigma_eps_i):
+        """Regression test (2026-07 review): for the mixed source/lens case
+        (e.g. gt/gt), the source-bin variance must be broadcast over all
+        (zbins, zbins) tomographic pairs of the first probe pair -- shape
+        noise is present for lens != source bins too. The tomographic
+        Kronecker deltas are applied separately in cov_sn_rs, so a
+        diagonal-only t_sn (the former _t_sn) would wrongly zero the shape
+        noise for every cross lens-source gt pair."""
+        a, b, c, d = combo
+        zbins = sigma_eps_i.size
+        sig2 = sigma_eps_i**2
+        out = t_sn(a, b, c, d, zbins, sigma_eps_i)
+
+        # the source index within the first pair (ij) is i if a is the
+        # source (a == 0), j otherwise
+        if a == 0:
+            expected = np.tile(sig2[:, None], (1, zbins))
+        else:
+            expected = np.tile(sig2[None, :], (zbins, 1))
+
+        np.testing.assert_allclose(out, expected)
+        # explicitly pin the off-diagonal behavior
+        assert np.all(out != 0.0)
+
+    @pytest.mark.parametrize('combo', [c for c in _NON_MIXED_COMBOS if len(set(c)) > 1])
+    def test_probe_type_mismatch_is_zero(self, combo, sigma_eps_i):
+        """Every non-mixed combo other than all-source/all-lens (e.g. one
+        pure-source pair with one pure-lens pair) contributes no shot/shape
+        noise."""
+        a, b, c, d = combo
+        zbins = sigma_eps_i.size
+        out = t_sn(a, b, c, d, zbins, sigma_eps_i)
+        np.testing.assert_allclose(out, np.zeros((zbins, zbins)))
+
+    def test_all_source_formula(self, sigma_eps_i):
+        """xipxip/ximxim case: tau(i,j) = 2 * sig2[i] * sig2[j]."""
+        zbins = sigma_eps_i.size
+        out = t_sn(0, 0, 0, 0, zbins, sigma_eps_i)
+        sig2 = sigma_eps_i**2
+        expected = 2.0 * np.outer(sig2, sig2)
+        np.testing.assert_allclose(out, expected)
+
+    def test_all_lens_is_ones(self, sigma_eps_i):
+        """gggg case: tau(i,j) = 1 for all i, j."""
+        zbins = sigma_eps_i.size
+        out = t_sn(1, 1, 1, 1, zbins, sigma_eps_i)
+        np.testing.assert_allclose(out, np.ones((zbins, zbins)))
+
+    def test_incompatible_types_are_zero(self, sigma_eps_i):
+        """A pure-source pair combined with a pure-lens pair contributes 0."""
+        zbins = sigma_eps_i.size
+        out = t_sn(0, 0, 1, 1, zbins, sigma_eps_i)
+        np.testing.assert_allclose(out, np.zeros((zbins, zbins)))
+
+
+# ----------------------------------------------------------------------------- #
+# t_mix
+# ----------------------------------------------------------------------------- #
+class TestTMix:
+    def test_source_case(self, rng):
+        zbins = 5
+        sigma_eps_i = rng.uniform(0.1, 0.5, zbins)
+        out = t_mix(0, zbins, sigma_eps_i)
+        np.testing.assert_allclose(out, sigma_eps_i**2)
+
+    def test_lens_case(self, rng):
+        zbins = 5
+        sigma_eps_i = rng.uniform(0.1, 0.5, zbins)
+        out = t_mix(1, zbins, sigma_eps_i)
+        np.testing.assert_allclose(out, np.ones(zbins))

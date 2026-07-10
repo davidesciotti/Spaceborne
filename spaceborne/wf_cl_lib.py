@@ -26,7 +26,7 @@ dav_to_vinc_par_names = {
 
 
 def compute_cls_or_interpolate_input_cls(
-    ells_out, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    ells_out, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs, show_warnings: bool = True
 ):
     # First off, make sure ells are sorted and unique for spline interpolation
     # (if some input cls are not requested the corresponding ells_in will be None,
@@ -45,36 +45,30 @@ def compute_cls_or_interpolate_input_cls(
         n_probes_hs=cfg['covariance']['n_probes'],
     )
 
-    if io_obj.need_input_cl_ll and (
-        ells_out.min() < io_obj.ells_WL_in.min()
-        or ells_out.max() > io_obj.ells_WL_in.max()
+    # Warn whenever the requested grid extends beyond the input Cls' ell range, which
+    # only happens when reading input Cls (the CCL-generated branch evaluates natively at
+    # every requested ell, so no extrapolation). The partial-sky covariance deliberately
+    # requests ell=0 (NaMaster mode-coupling couples down to ell=0) and an ell_max buffer,
+    # so input files starting at ell_min>0 / ending below the buffer are cubic-extrapolated.
+    # This leaves only the lowest science band's covariance ~few-% sensitive to the
+    # (unconstrained) low-ell Cls; higher bands are unaffected. See ell-grid investigation.
+    for need_input, ells_in, label in (
+        (io_obj.need_input_cl_ll, getattr(io_obj, 'ells_WL_in', None), 'LL'),
+        (io_obj.need_input_cl_gl, getattr(io_obj, 'ells_XC_in', None), 'GL'),
+        (io_obj.need_input_cl_gg, getattr(io_obj, 'ells_GC_in', None), 'GG'),
     ):
-        warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input LL ell range '
-            f'[{io_obj.ells_WL_in.min()}, {io_obj.ells_WL_in.max()}]. '
-            'The input Cls will be extrapolated outside their original range.',
-            stacklevel=2,
-        )
-    if io_obj.need_input_cl_gl and (
-        ells_out.min() < io_obj.ells_XC_in.min()
-        or ells_out.max() > io_obj.ells_XC_in.max()
-    ):
-        warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GL ell range '
-            f'[{io_obj.ells_XC_in.min()}, {io_obj.ells_XC_in.max()}]. '
-            'The input Cls will be extrapolated outside their original range.',
-            stacklevel=2,
-        )
-    if io_obj.need_input_cl_gg and (
-        ells_out.min() < io_obj.ells_GC_in.min()
-        or ells_out.max() > io_obj.ells_GC_in.max()
-    ):
-        warnings.warn(
-            f'ells_out [{ells_out.min()}, {ells_out.max()}] exceeds input GG ell range '
-            f'[{io_obj.ells_GC_in.min()}, {io_obj.ells_GC_in.max()}]. '
-            'The input Cls will be extrapolated outside their original range.',
-            stacklevel=2,
-        )
+        if (
+            need_input
+            and (ells_out.min() < ells_in.min() or ells_out.max() > ells_in.max())
+            and show_warnings
+        ):
+            warnings.warn(
+                f'Requested ell grid [{ells_out.min()}, {ells_out.max()}] exceeds '
+                f'input {label} Cl range [{ells_in.min()}, {ells_in.max()}]; Cls '
+                'outside it are cubic-spline-extrapolated. Please provide input Cls '
+                'covering the full requested ell range for more accurate results.',
+                stacklevel=2,
+            )
 
     # now, either take the input Cl splines and re-interpolate on the desired grid,
     # or use the newly-generated ones
@@ -104,32 +98,8 @@ def compute_cls_or_interpolate_input_cls(
     return cl_3x2pt_5d
 
 
-def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns, colors):
-    assert nz_src.shape[1] == nz_lns.shape[1], 'number of zbins is not the same'
-    zbins = nz_src.shape[1]
-
-    _, ax = plt.subplots(2, 1, sharex=True)
-    colors = cm.rainbow(np.linspace(0, 1, zbins))
-    for zi in range(zbins):
-        ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
-        # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
-        ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
-        ax[0].set_xlabel('$z$')
-        ax[0].set_ylabel(r'$n_i(z) \; {\rm sources}$')
-    ax[0].legend(ncol=2)
-
-    for zi in range(zbins):
-        ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
-        # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--', alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
-        ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
-        ax[1].set_xlabel('$z$')
-        ax[1].set_ylabel(r'$n_i(z) \; {\rm lenses}$')
-    ax[1].legend(ncol=2)
-
-
 def normalize_nz(n_z, z):
-
-    integral = simps(y=n_z, x=z)
+    integral = simps(y=n_z, x=z, axis=0)
     n_z_norm = n_z / integral
     return n_z_norm
 

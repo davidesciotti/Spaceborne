@@ -73,8 +73,8 @@ nz:
   # redshift values over which the n(z) is measured, and format .txt, .dat or .ascii
   # OR
   # as .fits files, following the LE3/Heracles/euclidlib format
-  nz_sources_filename: ../../data/DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
-  nz_lenses_filename: ../../data/DATA/Spaceborne_jobs/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.dat # Type: str
+  nz_sources_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
+  nz_lenses_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
@@ -99,7 +99,7 @@ binning:
 
   # ell binning for the harmonic-space covariance matrix (not used in the 'from_input' case)
   # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
-  # so ell_bins is ignored and ell_max is included in the grid. 
+  # so ell_bins is ignored and ell_max is included in the grid.
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
   ell_bins: 30 # Type: int. Number of ell bins. Not used in the 'unbinned' case
@@ -110,7 +110,7 @@ binning:
   # with `ell` the ell bin center, `delta_ell` its width,
   # `ell_lower_edges` its lower edge, and `ell_upper_edges` its upper edge.
   # The file can be in .txt, .dat or .ascii format.
-  ell_bins_filename: ../../data/DATA/Spaceborne_jobs/develop/input/ell_values_3x2pt.txt
+  ell_bins_filename: ../DATA/Spaceborne_jobs_IO/develop/input/ell_values_3x2pt.txt
 
   # theta binning for the real-space covariance matrix
   theta_min_arcmin: 5 # Type: float | int.
@@ -136,9 +136,9 @@ C_ell:
   # section of this cfg file.
   use_input_cls: False # Type: bool
 
-  cl_LL_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
-  cl_GL_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
-  cl_GG_filename: ../../data/DATA/Spaceborne_jobs/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
+  cl_LL_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_ll.txt # Type: str. Path to the shear-shear angular PS.
+  cl_GL_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
+  cl_GG_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use. Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
@@ -155,11 +155,11 @@ C_ell:
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
-  gal_bias_table_filename: ../../data/DATA/Spaceborne_jobs/develop/input/gal_bias.txt # Type: str
-  mag_bias_table_filename: ../../data/DATA/Spaceborne_jobs/develop/input/mag_bias.txt # Type: str
+  gal_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
+  mag_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
 
   # Interpolation methods for the galaxy and magnification bias tables.
-  # This should be set to "linear" or "nearest" for step-like, or in general discontinuous, 
+  # This should be set to 'linear' or 'nearest' for step-like, or in general discontinuous,
   # bias functions, to avoid spurious oscillations from the spline interpolation.
   # Options: ['linear', 'nearest', 'CubicSpline']
   gal_bias_table_interp_method: CubicSpline # Type: str.
@@ -180,20 +180,34 @@ C_ell:
     l_limber: -1 # Type: int
     limber_integration_method: spline # Type: str
     non_limber_integration_method: FKEM # Type: str
-
+    
 mask:
-  load_mask: False # Type: bool. Whether to load the mask from a fits or npy file
-  mask_filename: ../input/mask.fits # Type: str. Path to the mask file (.FITS or .npy)
-  generate_polar_cap: True # Type: bool. Whether to generate a polar cap mask on the fly.
+  # Configs for the survey footprint and masks. The options outside of the 'LL' and 'GG'
+  # sections are common to both probes.
+  # The 'geometry' option determines how the footprint is defined:
+  # - If set to 'footprint_file', the footprint will be read from the file specified in
+  #   'footprint_filename'.
+  # - If set to 'polar_cap', the footprint will be generated as a polar cap with area
+  #   specified by 'survey_area_deg2'.
+  # The footprint is a single binary mask, common to all redshift bins,
+  # and it is used to compute the fsky factors.
+  # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
+  # which should contain a number of maps equal to the number of redshift bins, for the 
+  # given probe. If null, the weight maps will not be used. 
+  # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
+  LL:
+    geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
+    weight_maps_filename: null # Type: str | None
+  GG:
+    geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
+    weight_maps_filename: null # Type: str | None
 
-  # Desired nside of the polar cap, or nside to which up/downgrade the reslution of the input mask.
-  # If null (None), the nside of the input mask will be used, without up/downgrading.
-  nside: 1024 # Type: int | None.
+  # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
+  nside: 1024 # Type: int
 
-  survey_area_deg2: 13245 # Type: int
-  apodize: False # Type: bool
-  aposize: 0.1 # Type: float. Apodization scale in deg
-
+  survey_area_deg2: 2700 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -208,20 +222,22 @@ covariance:
   # - Knox: rescale the full-sky covariance by multiplying it by 1/fsky, where fsky is
   #         the fraction of sky observed. This approximation is commonly used, works
   #         best for large survey areas, and it's significantly faster than using NaMaster.
-  # - NaMaster: uses the NaMaster code to compute the partial-sky covariance through the
+  # - NaMaster: use the NaMaster code to compute the partial-sky covariance through the
   #             NKA or iNKA approximations. This is more accurate, especially for small
   #             survey areas, but significantly slower than the Knox approximation.
   #             It can be sped up quite significantly by setting spin0=True in the
   #             precision section (at the cost of lower precision)
-  partial_sky_method: Knox # Type: str
+  # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
+  #             realizations
+  partial_sky_method: NaMaster # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: decoupled # Type: str.
+  cov_type: coupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: True # Type: bool
+  split_gaussian_cov: False # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -244,7 +260,7 @@ covariance:
   # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
   which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
 
-  # Whether or not to include the second-order galaxy bias in the GCph SU responses
+  # Whether or not to include the second-order galaxy bias in the GG SU responses
   include_b2g: True # Type: bool
 
   # Whether or not to include the additional terms of Terasawa et al [arXiv:2310.13330] in the halo model responses
@@ -257,7 +273,7 @@ covariance:
 
   # Within the upper or lower triangle, count indices in
   # a row-major or column-major order.
-  row_col_major: row-major # Type: str. Options: ['row-major', 'column-major']
+  row_col_major: row-major # Type: str. Options: ['row-major', 'col-major']
 
   # Determines the ordering of the covariance matrix in 2D, with the outermost
   # loop corresponding to the leftmost index.
@@ -267,7 +283,6 @@ covariance:
   # - probe_scale_zpair: Ordered by probe type, then scale (ell/theta/n), then redshift pair.
   # - scale_probe_zpair: Ordered by scale index (ell/theta/n), then probe type, then redshift pair.
   covariance_ordering_2D: probe_zpair_scale # Type: str.
-
 
   # =================================== output =======================================
   # Whether to save the full 6D covariance matrix, without to any index compression or reshaping.
@@ -280,9 +295,11 @@ covariance:
   cov_filename: covmats # Type: str.
   save_cov_fits: False # Type: bool. Whether to save the covariance as a .fits file in the official Euclid format. Needs the heracles module.
 
-  # When using NaMaster for the partial-sky Gaussian covariance, choose whether to 
-  # save the (binned and unbinned) mode coupling matrices (mcm) 
-  save_mcms: True # Type: bool. 
+  # When using NaMaster for the partial-sky Gaussian covariance, choose whether to
+  # save the (binned and unbinned) mode coupling matrices (mcm)
+  save_mcms: True # Type: bool.
+  save_nmt_wsp_to_cache: False # Type: bool. Whether to save the NaMaster workspaces to the cache (the files can be heavy).
+  load_cached_nmt_workspaces: False # Type: bool. Whether to load the NaMaster workspaces from the cache, if they have already been computed.
 
 PyCCL:
   # (from CCL docs): integration method to be used for the Limber integrals.
@@ -293,31 +310,20 @@ PyCCL:
   cov_integration_method: spline # Type: str
 
   # Whether or not to load the previously computed trispectrum.
-  load_cached_tkka: True # Type: bool.
+  load_cached_tkka: False # Type: bool.
 
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower
   use_default_k_a_grids: False # Type: bool.
 
-sample_covariance:
-  # Whether to compute the sample covariance from a set of Gaussian realizations
-  compute_sample_cov: False # Type: bool.
-
-  # Which code to use to compute the coupled Cls on the masked maps. The results are
-  # essentially equivalent, but 'namaster' is a bit faster.
-  # In case the decoupled (sample) covariance is requested, in both cases the
-  # workspace.decouple_cell() function will be used.
-  # Documentation:
-  # https://namaster.readthedocs.io/en/latest/api/pymaster.workspaces.html#pymaster.workspaces.NmtWorkspaceFlat.decouple_cell
-  # Options: ['namaster', 'healpy'].
-  which_cls: healpy # Type: str.
-  nreal: 1000 # Type: int. Number of realizations for the sample covariance matrix
+ensemble_covariance:
+  nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
 
 precision:
   # =============================== harmonic-space cov =================================
-  # Binning method for the Knox ("1/fsky") harmonic-space Gaussian covariance
+  # Binning method for the Knox ('1/fsky') harmonic-space Gaussian covariance
   # (which is diagonal in ell1, ell2):
   # - True:  Average over all integer multipoles within each bin (exact formula).
   #          Sum over modes and divide by N_modes², where N_modes is the number of
@@ -334,19 +340,19 @@ precision:
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc
   k_steps: 250 # Type: int. Around 250 should be enough
 
-  # z range used across the code. The grid includes the endpoints, as it's computed with 
+  # z range used across the code. The grid includes the endpoints, as it's computed with
   # z_steps = int(np.ceil((z_max - z_min) / delta_z)) + 1
   # np.linspace(z_min, z_max, z_steps)
   # so the actual delta_z may be slightly smaller (but not larger) than the input delta_z
   z_min: 0.01 # Type: float
   z_max: 3.0 # Type: float
 
-  # Precision for the P(k) projection to get the Cls, the computation of sigma2_b, 
-  # and SSC projection. Should be quite high, mostly to trace the rapid variation of 
+  # Precision for the P(k) projection to get the Cls, the computation of sigma2_b,
+  # and SSC projection. Should be quite high, mostly to trace the rapid variation of
   # the sigma2_b function, especially when not using the KE approximation
   delta_z: 3.e-4 # Type: float. Around 3.e-4 should be enough.
 
-  # Precision for the computation of SSC and cNG trispectra. 
+  # Precision for the computation of SSC and cNG trispectra.
   # The cNG computation slows quite significantly when decreasing delta_z_trisp_cNG.
   delta_z_trisp_SSC: 1.e-2 # Type: float. Around 1.e-2 should be enough.
   delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
@@ -360,13 +366,13 @@ precision:
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
   ell_bins_proj_gauss: 500 # Type: int.
-  ell_bins_proj_nongauss: 200 # Type: int. 
+  ell_bins_proj_nongauss: 200 # Type: int.
 
-  # integration method for the projection of the Gaussian and non-Gaussian covariance 
+  # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
   # performed with simpson integration.
-  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin']
-  proj_nongauss_integration_method: simps # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
+  proj_gauss_integration_method: FFTLog # Type: str. Options: ['simps', 'levin', 'FFTLog']
+  proj_nongauss_integration_method: FFTLog # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.
@@ -377,10 +383,7 @@ precision:
   # Whether to treat all fields as having spin 0 in the NaMaster Gaussian covariance.
   # This is (significantly) faster, but less accurate.
   spin0: True # Type: bool.
-  use_iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-  # Number of iterations when computing the alms of the input map. See
-  # see https://namaster.readthedocs.io/en/latest/api/pymaster.field.html#pymaster.field.NmtField
-  n_iter_nmt: null # Type: None | int.
+  iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result
@@ -395,9 +398,15 @@ precision:
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
-  spline_params: # Type: dict | None
+  spline_params:
+    # Type: dict | None
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
+
+  # (from CCL docs): whether a separable growth function approximation can be used to 
+  # calculate the isotropized power spectrum. 
+  # Set to True for lower accuracy and (much) faster computation
+  separable_growth: True # Type: bool
 
 misc:
   # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
@@ -415,14 +424,12 @@ misc:
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
-  cl_triangle_plot: False # Type: bool.
+  cl_triangle_plot: True # Type: bool.
 
-  # If the covariance_ordering_2D starts with "probe", setting this to True
+  # If the covariance_ordering_2D starts with 'probe', setting this to True
   # automatically displays the labels and limits for the different probe blocks.
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  workspace_filename: path/to/workspace.fits # Type: str. Path to the NaMaster workspace, if already computed
-
-  output_path: ../../data/DATA/Spaceborne_jobs/develop/output # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

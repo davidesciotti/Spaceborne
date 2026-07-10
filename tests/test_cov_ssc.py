@@ -66,16 +66,14 @@ class TestSigma2Z1Z2Fft:
     def test_shape(self, cosmo, z_grid, k_grid):
         """Output is a (len(z1), len(z2)) matrix."""
         out = cov_ssc.sigma2_z1z2_fft(
-            z_grid, z_grid, k_grid, cosmo, 'full_curved_sky',
-            None, None, None, nk_fft=NK_FFT_TEST,
+            z_grid, z_grid, k_grid, cosmo, 'full_curved_sky', None, nk_fft=NK_FFT_TEST
         )
         assert out.shape == (z_grid.size, z_grid.size)
 
     def test_symmetric_full_sky(self, cosmo, z_grid, k_grid):
         """sigma^2(z1, z2) == sigma^2(z2, z1): the kernel is symmetric in z."""
         out = cov_ssc.sigma2_z1z2_fft(
-            z_grid, z_grid, k_grid, cosmo, 'full_curved_sky',
-            None, None, None, nk_fft=NK_FFT_TEST,
+            z_grid, z_grid, k_grid, cosmo, 'full_curved_sky', None, nk_fft=NK_FFT_TEST
         )
         np.testing.assert_allclose(out, out.T, rtol=0, atol=0)
 
@@ -83,17 +81,17 @@ class TestSigma2Z1Z2Fft:
         """The masked branch is symmetric in z as well."""
         ell_mask = np.arange(50.0)
         cl_mask = np.full(50, 1e-3)
+        cl_footp_norm = (2 * ell_mask + 1) * cl_mask / ((4 * np.pi) ** 2 * 0.3**2)
         out = cov_ssc.sigma2_z1z2_fft(
-            z_grid, z_grid, k_grid, cosmo, 'from_input_mask',
-            ell_mask, cl_mask, 0.3, nk_fft=NK_FFT_TEST,
+            z_grid, z_grid, k_grid, cosmo, 'from_input_mask', cl_footp_norm,
+            nk_fft=NK_FFT_TEST,
         )
         np.testing.assert_allclose(out, out.T)
 
     def test_diagonal_positive(self, cosmo, z_grid, k_grid):
         """The variance sigma^2(z, z) on the diagonal must be positive."""
         out = cov_ssc.sigma2_z1z2_fft(
-            z_grid, z_grid, k_grid, cosmo, 'full_curved_sky',
-            None, None, None, nk_fft=NK_FFT_TEST,
+            z_grid, z_grid, k_grid, cosmo, 'full_curved_sky', None, nk_fft=NK_FFT_TEST
         )
         assert np.all(np.diag(out) > 0)
 
@@ -107,14 +105,14 @@ class TestSigma2Z1Z2Fft:
         ell_mask = np.arange(50.0)
         cl_mask = np.full(50, 1e-3)
         fsky = 0.3
+        cl_footp_norm = (2 * ell_mask + 1) * cl_mask / ((4 * np.pi) ** 2 * fsky**2)
 
         full = cov_ssc.sigma2_z1z2_fft(
-            z_grid, z_grid, k_grid, cosmo, 'full_curved_sky',
-            None, None, None, nk_fft=NK_FFT_TEST,
+            z_grid, z_grid, k_grid, cosmo, 'full_curved_sky', None, nk_fft=NK_FFT_TEST
         )
         masked = cov_ssc.sigma2_z1z2_fft(
-            z_grid, z_grid, k_grid, cosmo, 'from_input_mask',
-            ell_mask, cl_mask, fsky, nk_fft=NK_FFT_TEST,
+            z_grid, z_grid, k_grid, cosmo, 'from_input_mask', cl_footp_norm,
+            nk_fft=NK_FFT_TEST,
         )
 
         part_result = np.sum((2 * ell_mask + 1) * cl_mask) * 2.0 / np.pi
@@ -126,9 +124,8 @@ class TestSigma2Z1Z2Fft:
         """'polar_cap_on_the_fly' and 'from_input_mask' share the same branch."""
         ell_mask = np.arange(50.0)
         cl_mask = np.full(50, 1e-3)
-        kwargs = dict(
-            ell_mask=ell_mask, cl_mask=cl_mask, fsky_mask=0.3, nk_fft=NK_FFT_TEST
-        )
+        cl_footp_norm = (2 * ell_mask + 1) * cl_mask / ((4 * np.pi) ** 2 * 0.3**2)
+        kwargs = dict(cl_footp_norm_abcd=cl_footp_norm, nk_fft=NK_FFT_TEST)
         polar = cov_ssc.sigma2_z1z2_fft(
             z_grid, z_grid, k_grid, cosmo, 'polar_cap_on_the_fly', **kwargs
         )
@@ -141,23 +138,22 @@ class TestSigma2Z1Z2Fft:
         """An unknown which_sigma2_b option is rejected."""
         with pytest.raises(ValueError, match='Invalid which_sigma2_b'):
             cov_ssc.sigma2_z1z2_fft(
-                z_grid, z_grid, k_grid, cosmo, 'not_a_real_option',
-                None, None, None, nk_fft=NK_FFT_TEST,
+                z_grid, z_grid, k_grid, cosmo, 'not_a_real_option', None,
+                nk_fft=NK_FFT_TEST,
             )
 
     def test_mismatched_z_arrays_raise(self, cosmo, z_grid, k_grid):
         """z1_arr and z2_arr must be equal (the code asserts this)."""
         with pytest.raises(AssertionError):
             cov_ssc.sigma2_z1z2_fft(
-                z_grid, z_grid + 0.01, k_grid, cosmo, 'full_curved_sky',
-                None, None, None, nk_fft=NK_FFT_TEST,
+                z_grid, z_grid + 0.01, k_grid, cosmo, 'full_curved_sky', None,
+                nk_fft=NK_FFT_TEST,
             )
 
     def test_scalar_z_is_promoted(self, cosmo, k_grid):
         """A scalar z is promoted to 1d, giving a (1, 1) result."""
         out = cov_ssc.sigma2_z1z2_fft(
-            0.5, 0.5, k_grid, cosmo, 'full_curved_sky',
-            None, None, None, nk_fft=NK_FFT_TEST,
+            0.5, 0.5, k_grid, cosmo, 'full_curved_sky', None, nk_fft=NK_FFT_TEST
         )
         assert out.shape == (1, 1)
 

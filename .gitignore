@@ -8,10 +8,8 @@
 **/.DS_Store
 *.xml
 *.iml
-*.iml
 /.vscode/
 /.idea/
-*.xml
 *.xml
 tmp/*
 tmp*/
@@ -20,3 +18,13 @@ output/*
 docs/build/
 node_modules
 dist/*
+
+build/
+*.egg-info/
+__pycache__/
+
+# hidden folders
+**/.*/
+
+# graphify knowledge-graph output (generated, never commit)
+graphify-out/

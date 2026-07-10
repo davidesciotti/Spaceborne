@@ -1,24 +1,121 @@
-import os
+import warnings
 
 import healpy as hp
 import numpy as np
 
-from spaceborne import cosmo_lib
-from spaceborne import constants
+from spaceborne import constants, cosmo_lib, io_handler
+from spaceborne import constants as const
+from spaceborne import sb_lib as sl
 
 
-def get_mask_cl(mask: np.ndarray) -> tuple:
-    cl_mask = hp.anafast(mask)
-    ell_mask = np.arange(len(cl_mask))
-    fsky_mask = np.mean(mask**2)  # TODO 2 different masks
-    return ell_mask, cl_mask, fsky_mask
+def get_footprint_cl_abcd_dicts(
+    footp_ab_dict: dict, fsky_ab_dict: dict, unique_probe_combs_hs: list
+) -> tuple:
+    """Compute the Cls and the normalised Cls for all footprints in
+    unique_probe_combs_hs"""
+
+    footp_cl_abcd_dict = {}
+    footp_cl_norm_abcd_dict = {}
+    for probe_abcd in unique_probe_combs_hs:
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+
+        # compute and store the footprint cross-spectrum...
+        _ells, _cls = get_maps_cl(footp_ab_dict[probe_ab], footp_ab_dict[probe_cd])
+
+        # ...and its normalised version
+        footp_cl_abcd_dict[probe_ab, probe_cd] = (_ells, _cls)
+        denominator = (4 * np.pi) ** 2 * fsky_ab_dict[probe_ab] * fsky_ab_dict[probe_cd]
+        _cls_norm = _cls * (2 * _ells + 1) / denominator
+        footp_cl_norm_abcd_dict[probe_ab, probe_cd] = (_ells, _cls_norm)
+    return footp_cl_abcd_dict, footp_cl_norm_abcd_dict
+
+
+def get_fsky_abcd_dict(fsky_ab_dict: dict, req_probe_combs_hs_2d: list) -> tuple:
+    """Given the fsky for each probe pair AB, compute the max(fsky_ab, fsky_cd)
+    and convert it into steradians"""
+    fsky_max_abcd_dict = {}
+    for probe_abcd in req_probe_combs_hs_2d:
+        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        # compute and store max(fsky_ab, fsky_cd)
+        fsky_max_abcd_dict[probe_ab, probe_cd] = max(
+            fsky_ab_dict[probe_ab], fsky_ab_dict[probe_cd]
+        )
+
+    # turn into A_max (in sr)
+    amax_abcd_dict = {
+        k: v * const.DEG2_IN_SPHERE * const.DEG2_TO_SR
+        for k, v in fsky_max_abcd_dict.items()
+    }
+
+    return fsky_max_abcd_dict, amax_abcd_dict
+
+
+def plot_footprint(footprint: np.ndarray, probe: str):
+    hp.mollview(
+        footprint, cmap='inferno_r', title=f'Footprint {probe} - Mollweide view'
+    )
+    hp.graticule()
+
+
+def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
+    """
+    Given the LL and GG mask objects, computes the AB masks and their fsky.
+    """
+    m_ll = mask_obj_ll.footprint
+    m_gg = mask_obj_gg.footprint
+
+    # The SSC window of a probe pair AB is the *product* of the two fields'
+    # masks, W_A * W_B (TJPCov convention, see covariance_fourier_ssc.py). For a
+    # non-binary mask (e.g. a fractional weight map) this differs from the single mask, so the
+    # auto-pairs must be squared too (W_A^2) to stay consistent with the
+    # mean(W_A * W_B) effective fsky used in the normalisation downstream.
+    footp_ab_dict = {'LL': m_ll * m_ll, 'GL': m_ll * m_gg, 'GG': m_gg * m_gg}
+    # NB: fsky is the mean of the product of the *single* masks, mean(W_A * W_B),
+    # NOT the mean of the squared window above (which would be mean(W_A^2 W_B^2)).
+    fsky_ab_dict = {
+        'LL': combined_fsky(m_ll, m_ll),
+        'GL': combined_fsky(m_ll, m_gg),
+        'GG': combined_fsky(m_gg, m_gg),
+    }
+
+    if not np.isclose(fsky_ab_dict['LL'], fsky_ab_dict['GG'], atol=0, rtol=1e-5):
+        warnings.warn(
+            'LL and GG footprints have different fsky. Using probe-dependent sky '
+            'fractions:\n'
+            f'LL = {fsky_ab_dict["LL"]:.4f}, '
+            f'GG = {fsky_ab_dict["GG"]:.4f}.',
+            stacklevel=2,
+        )
+
+    if (
+        np.isclose(fsky_ab_dict['GL'], 0, atol=1e-12, rtol=0)
+        or np.isnan(fsky_ab_dict['GL'])
+        or np.isinf(fsky_ab_dict['GL'])
+    ):
+        warnings.warn(
+            "The footprints seem to have zero overlap; fsky_ab_dict['GL'] = "
+            f'{fsky_ab_dict["GL"]:.4f}',
+            stacklevel=2,
+        )
+
+    return footp_ab_dict, fsky_ab_dict
+
+
+def combined_fsky(map1: np.ndarray, map2: np.ndarray) -> float:
+    """Combine two masks (e.g. footprint and weight map) by multiplying them
+    and compute the resulting fsky."""
+    fsky_combined = np.mean(map1 * map2)
+    return float(fsky_combined)
+
+
+def get_maps_cl(map1: np.ndarray, map2: np.ndarray) -> tuple:
+    cl = hp.anafast(map1, map2)
+    ells = np.arange(len(cl))
+    return ells, cl
 
 
 def generate_polar_cap_func(area_deg2, nside):
     _fsky_expected = cosmo_lib.deg2_to_fsky(area_deg2)
-    print(
-        f'\nGenerating a polar cap mask with area {area_deg2} deg^2 and nside {nside}'
-    )
 
     # Convert the area to radians squared for the angular radius calculation
     area_rad2 = area_deg2 * (np.pi / 180) ** 2
@@ -29,7 +126,7 @@ def generate_polar_cap_func(area_deg2, nside):
 
     # Convert the angular radius to degrees for visualization
     theta_cap_deg = np.degrees(theta_cap_rad)
-    print(f'Angular radius of the cap: {theta_cap_deg:.4f} deg')
+    print(f'Angle subtended by the cap: {theta_cap_deg:.4f} deg')
 
     # Vector pointing to the North Pole (θ=0); φ can take any value
     vec = hp.ang2vec(0, 0)
@@ -46,115 +143,95 @@ def generate_polar_cap_func(area_deg2, nside):
     return mask
 
 
-def _read_masking_map(path, nside, *, nest=False):
-    """
-    Read a HEALPix map in "partial" format from *path* and return it at
-    resolution *nside*.
+def up_downgrade_map(map_in, nside_out):
+    """Very simple wrapper, basically gets nside_in and prints a message
+    if up/downgrading is needed"""
 
-    The returned NSIDE cannot be larger than the NSIDE of the stored
-    map.
-
-    If *nest* is true, returns the map in NESTED ordering.
-    """
-    import fitsio
-
-    data, header = fitsio.read(path, header=True)
-    nside_in = header['NSIDE']
-    fact = (nside_in // nside) ** 2
-    if fact == 0:
-        raise ValueError(f'requested NSIDE={nside} greater than map NSIDE={nside_in}')
-    out = np.zeros(12 * nside**2)
-    ipix, wht = data['PIXEL'], data['WEIGHT']
-    order = header['ORDERING']
-    if order == 'RING':
-        ipix = hp.ring2nest(nside, ipix)
-    elif order != 'NESTED':
-        raise ValueError(f'unknown pixel ordering {order} in map')
-    ipix = ipix // fact
-    if not nest:
-        ipix = hp.nest2ring(nside, ipix)
-    np.add.at(out, ipix, wht / fact)
-    return out
+    nside_in = hp.get_nside(map_in)
+    if nside_out is not None and nside_out != nside_in:
+        print(f'Changing map resolution from nside = {nside_in} to nside = {nside_out}')
+        map_out = hp.ud_grade(map_in=map_in, nside_out=nside_out)
+        return map_out
+    else:
+        return map_in
 
 
 class Mask:
-    def __init__(self, mask_cfg):
-        self.load_mask = mask_cfg['load_mask']
-        self.mask_filename = mask_cfg['mask_filename']
-        self.nside = mask_cfg['nside']
+    def __init__(self, mask_cfg, probe):
+        self.probe = probe
+        self.geometry = mask_cfg[probe]['geometry']
+
+        self.use_weight_maps = mask_cfg[probe]['weight_maps_filename'] is not None
+
+        self.footprint_filename = mask_cfg[probe]['footprint_filename']
+        self.weight_maps_filename = mask_cfg[probe]['weight_maps_filename']
+
+        self.footprint = None
+        self.weight_maps = None
+
+        self.nside_cfg = mask_cfg['nside']
         self.desired_survey_area_deg2 = mask_cfg['survey_area_deg2']
-        self.apodize = mask_cfg['apodize']
-        self.aposize = float(mask_cfg['aposize'])
-        self.generate_polar_cap = mask_cfg['generate_polar_cap']
 
-    def load_mask_func(self):
-        if not os.path.exists(self.mask_filename):
-            raise FileNotFoundError(f'{self.mask_filename} does not exist.')
+    def load(self):
+        # ! 1. load footprint/weight maps or generate polar cap
+        if self.geometry == 'footprint_file':
+            # load
+            print(
+                f'Loading footprint file for {self.probe} '
+                f'from {self.footprint_filename}'
+            )
 
-        print(f'\nLoading mask file from {self.mask_filename}\n')
+            self.footprint = io_handler.load_footprint(
+                path=self.footprint_filename, nside=self.nside_cfg
+            )
+            # get nside and up/downgrade if needed
+            self.footprint = up_downgrade_map(self.footprint, self.nside_cfg)
 
-        if self.mask_filename.endswith('.fits') or self.mask_filename.endswith('.fits.gz'):
-            try:
-                # function provided by VMPZ team to read very high resolution map
-                # and downgrade it on the fly
-                self.mask = _read_masking_map(self.mask_filename, self.nside)
-            except ValueError as ve:
-                self.mask = hp.read_map(self.mask_filename)
-                print(
-                    f'ValueError raised: {ve}, \n'
-                    'falling back on hp.read_map to read input map'
-                )
-
-        elif self.mask_filename.endswith('.npy'):
-            self.mask = np.load(self.mask_filename)
-
+        elif self.geometry == 'polar_cap':
+            print(
+                f'Generating a polar cap mask for {self.probe} with area '
+                f'{self.desired_survey_area_deg2} deg^2 and nside {self.nside_cfg}'
+            )
+            self.footprint = generate_polar_cap_func(
+                self.desired_survey_area_deg2, self.nside_cfg
+            )
         else:
             raise ValueError(
-                f'Unsupported file format for mask file: {self.mask_filename}'
-                'Supported formats are .fits, .fits.gz and .npy'
+                f'Unsupported geometry type: {self.geometry} for probe {self.probe}. '
+                'Supported types are: footprint_file and polar_cap'
             )
 
-    def process(self):
-        # 1. load or generate mask
-
-        # check that one and only one of load_mask and generate_polar_cap is True
-        assert self.load_mask != self.generate_polar_cap, (
-            'Please choose whether to load OR generate the mask, not neither or both.'
-        )
-
-        if self.load_mask:
-            self.load_mask_func()
-            self.nside_mask = hp.get_nside(self.mask)
-
-        elif self.generate_polar_cap:
-            self.mask = generate_polar_cap_func(
-                self.desired_survey_area_deg2, self.nside
-            )
-
-        if self.load_mask and self.nside is not None and self.nside != self.nside_mask:
+        if self.use_weight_maps:
+            # load
             print(
-                f'Changing mask resolution from nside = '
-                f'{self.nside_mask} to nside = {self.nside}'
+                f'Loading weight map file for {self.probe} '
+                f'from {self.weight_maps_filename}\n'
             )
-            self.mask = hp.ud_grade(map_in=self.mask, nside_out=self.nside)
+            self.weight_maps = io_handler.load_weight_map_fits(
+                self.weight_maps_filename
+            )
+            # get nside and up/downgrade if needed. Rebuild the array rather than
+            # assigning into rows: up/downgrading changes the pixel count, so the
+            # regraded maps don't fit back into the original fixed-width 2D array.
+            self.weight_maps = np.array(
+                [up_downgrade_map(wmap, self.nside_cfg) for wmap in self.weight_maps]
+            )
 
-        # 2. apodize
-        if hasattr(self, 'mask') and self.apodize:
-            print(f'Apodizing mask with aposize = {self.aposize} deg')
-            import pymaster as nmt
+    def get_cls_fsky(self):
+        """get footprint angular power spectrum and effective fsky"""
+        self.ells_footprint, self.cl_footprint = get_maps_cl(
+            self.footprint, self.footprint
+        )
+        self.fsky_footprint = combined_fsky(self.footprint, self.footprint)
 
-            # Ensure the mask is float64 before apodization
-            self.mask = self.mask.astype('float64', copy=False)
-            self.mask = nmt.mask_apodization(self.mask, aposize=self.aposize)
-
-        # 3. get mask spectrum and fsky (the latter is from the healpix mask!!)
-        self.ell_mask, self.cl_mask, self.fsky = get_mask_cl(self.mask)
-        self.cl_mask_norm = (
-            self.cl_mask * (2 * self.ell_mask + 1) / (4 * np.pi * self.fsky) ** 2
+        self.cl_footprint_norm = (
+            self.cl_footprint
+            * (2 * self.ells_footprint + 1)
+            / (4 * np.pi * self.fsky_footprint) ** 2
         )
 
         # 4. finally, set survey area in steradians and other useful quantities
-        self.survey_area_deg2 = self.fsky * constants.DEG2_IN_SPHERE
+        self.survey_area_deg2 = self.fsky_footprint * constants.DEG2_IN_SPHERE
         self.survey_area_sr = self.survey_area_deg2 * constants.DEG2_TO_SR
 
         # else:
@@ -166,6 +243,24 @@ class Mask:
         #     self.cl_mask = None
         #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
-        print(f'fsky = {self.fsky:.4f}')
+        print(f'fsky = {self.fsky_footprint:.4f}')
         print(f'survey_area_sr = {self.survey_area_sr:.4f}')
         print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}\n')
+
+    def process(self):
+        self.load()
+        self.get_cls_fsky()
+
+    def plot_footprint(self):
+        plot_footprint(footprint=self.footprint, probe=self.probe)
+
+    def plot_weight_maps(self):
+        if not self.use_weight_maps:
+            return
+        for zi in range(self.weight_maps.shape[0]):
+            hp.mollview(
+                self.weight_maps[zi],
+                cmap='inferno_r',
+                title=f'Weight map {self.probe}, zi={zi} - Mollweide view',
+            )
+        hp.graticule()

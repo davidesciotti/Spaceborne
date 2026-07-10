@@ -1,15 +1,14 @@
 """This module should be run with pyccl >= v3.2.1"""
 
-import time
+import warnings
 from functools import partial
 
-import healpy as hp
 import numpy as np
 import pyccl as ccl
 from tqdm import tqdm
 
 from spaceborne import constants as const
-from spaceborne import cosmo_lib, mask_utils, wf_cl_lib
+from spaceborne import cosmo_lib, wf_cl_lib
 from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
@@ -48,8 +47,8 @@ def compute_cl_3x2pt_5d(
     cl_ccl_kwargs: dict,
     n_probes_hs: int = 2,
 ) -> np.ndarray:
-    """Just a wrapper to quickly compute the CCL cls,
-    including the multiplicative shear bias"""
+    """Just a wrapper to quickly compute the CCL cls, including the multiplicative
+    shear bias"""
 
     nbl = len(ells)
 
@@ -123,7 +122,6 @@ class CCLInterface:
             'pocinofit': wf_cl_lib.b_of_z_fs1_pocinofit,
             'fs2_fit': wf_cl_lib.b_of_z_fs2_fit,
         }
-        # self.check_specs()   # prolly I don't need these ingredients at all!
 
         # initialize halo model
         self.mass_def = getattr(ccl.halos, halo_model_dict['mass_def'])
@@ -161,30 +159,7 @@ class CCLInterface:
         self.cl_gl_3d: np.ndarray = _UNSET
         self.cl_gg_3d: np.ndarray = _UNSET
         self.cl_3x2pt_5d: np.ndarray = _UNSET
-        self.sigma2_b_tuple: tuple = _UNSET
-
-    def check_specs(self):
-        assert self.probe in ['LL', 'GG', '3x2pt'], (
-            'probe must be either LL, GG, or 3x2pt'
-        )
-        assert self.which_ng_cov in ['SSC', 'cNG'], (
-            'which_ng_cov must be either SSC or cNG'
-        )
-        assert self.has_rsd is False, 'RSD not validated yet...'
-
-    def pk_obj_from_file(self, pk_filename, plot_pk_z0):
-        k_grid_Pk, z_grid_Pk, pk_mm_2d = sl.pk_vinc_file_to_2d_npy(
-            pk_filename, plot_pk_z0=plot_pk_z0
-        )
-        pk_flipped_in_z = np.flip(pk_mm_2d, axis=1)
-        scale_factor_grid_pk = cosmo_lib.z_to_a(z_grid_Pk)[::-1]  # flip it
-        p_of_k_a = ccl.pk2d.Pk2D(
-            a_arr=scale_factor_grid_pk,
-            lk_arr=np.log(k_grid_Pk),
-            pk_arr=pk_flipped_in_z.T,
-            is_logp=False,
-        )
-        return p_of_k_a
+        self.separable_growth: bool = _UNSET
 
     def set_nz(self, nz_full_src, nz_full_lns):
         # unpack the array
@@ -239,35 +214,6 @@ class CCLInterface:
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
-    def set_gal_bias_tuple_istf(self, z_grid_lns, bias_function_str, bias_model):
-        self.gal_bias_func = self.gal_bias_func_dict[bias_function_str]
-        # TODO it's probably better to pass directly the zbin(_lns) centers and edges,
-        # TODO rather than nesting them in a cfg file...
-        z_means_lns = np.array(
-            [
-                self.flat_fid_pars_dict[f'zmean{zbin:02d}_photo']
-                for zbin in range(1, self.zbins + 1)
-            ]
-        )
-        gal_bias_1d = self.gal_bias_func(z_means_lns)
-
-        z_edges_lns = np.array(
-            [
-                self.flat_fid_pars_dict[f'zedge{zbin:02d}_photo']
-                for zbin in range(1, self.zbins + 2)
-            ]
-        )
-        self.gal_bias_2d = wf_cl_lib.build_galaxy_bias_2d_arr(
-            gal_bias_1d,
-            z_means_lns,
-            z_edges_lns,
-            self.zbins,
-            z_grid_lns,
-            bias_model=bias_model,
-            plot_bias=True,
-        )
-        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
-
     def save_gal_bias_table_ascii(self, z_grid_lns, filename):
         assert filename.endswith('.ascii'), 'filename must end with.ascii'
         gal_bias_table = np.hstack((z_grid_lns.reshape(-1, 1), self.gal_bias_2d))
@@ -279,10 +225,10 @@ class CCLInterface:
         """
         Set the magnification bias values and store in a tuple. In this function,
         we call "mag_bias" the usual s(z).
-        
-        Note: In the cases handled by this function (no magnification bias, 
-        polinomial fit), the magnification bias is the same for all redshift bins, 
-        thus the use of np.repeat to construct the 2d array. 
+
+        Note: In the cases handled by this function (no magnification bias,
+        polinomial fit), the magnification bias is the same for all redshift bins,
+        thus the use of np.repeat to construct the 2d array.
         """
 
         if has_magnification_bias:
@@ -338,7 +284,6 @@ class CCLInterface:
                 )
             )
 
-
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(
             wf_a=kernel_a,
@@ -375,7 +320,9 @@ class CCLInterface:
         self.wf_gamma_arr = wf_lensing_tot_arr[:, 0, :].T
         if self.has_ia:
             self.wf_ia_arr = wf_lensing_tot_arr[:, 1, :].T
-            self.wf_ia_contribution_arr = self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+            self.wf_ia_contribution_arr = (
+                self.ia_bias_tuple[1][:, None] * self.wf_ia_arr
+            )
             self.wf_lensing_arr = self.wf_gamma_arr + self.wf_ia_contribution_arr
         else:
             self.wf_ia_arr = np.zeros_like(self.wf_gamma_arr)
@@ -422,7 +369,13 @@ class CCLInterface:
 
         self.cov_dict = cd.create_cov_dict(_req_terms, _req_probe_combs_2d, dims=_dims)
 
-    def set_sigma2_b(self, z_grid, which_sigma2_b, mask_obj):
+    def sigma2_b_func(
+        self,
+        z_grid: np.ndarray,
+        which_sigma2_b: str,
+        cl_footp_norm_abcd: np.ndarray | None,
+        fsky_max_abcd: float,
+    ) -> tuple | None:
         self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
 
         # normalize the mask and pass it to sigma2_B_from_mask
@@ -430,24 +383,25 @@ class CCLInterface:
             sigma2_b = ccl.covariances.sigma2_B_from_mask(
                 cosmo=self.cosmo_ccl,
                 a_arr=self.a_grid_sigma2_b,
-                mask_wl=mask_obj.cl_mask_norm,
+                mask_wl=cl_footp_norm_abcd,
             )
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+            sigma2_b_tpl = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b == 'flat_sky':
             sigma2_b = ccl.covariances.sigma2_B_disc(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=mask_obj.fsky
+                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky_max_abcd
             )
-            self.sigma2_b_tuple = (self.a_grid_sigma2_b, sigma2_b)
+            sigma2_b_tpl = (self.a_grid_sigma2_b, sigma2_b)
 
         elif which_sigma2_b is None:
-            self.sigma2_b_tuple = None
+            sigma2_b_tpl = None
 
         else:
             raise ValueError(
                 'which_sigma2_b must be either "from_input_mask", '
                 '"polar_cap_on_the_fly" or None'
             )
+        return sigma2_b_tpl
 
     def initialize_trispectrum(self, which_ng_cov, unique_probe_combs, pyccl_cfg):
         # some setup
@@ -455,9 +409,17 @@ class CCLInterface:
         tkka_path = f'{self.output_path}/cache/trispectrum/{which_ng_cov}'
         k_a_str = self._print_grid_info(which_ng_cov)
 
+        if pyccl_cfg['load_cached_tkka']:
+            warnings.warn(
+                'You are loading files from the cache. Please make '
+                'sure that the z and k grids, masks and cosmology are consistent with '
+                'the current run',
+                stacklevel=2,
+            )
+
         # the default pk must be passed to the Tk3D functions as None, not as
         # 'delta_matter:delta_matter'
-        __builtins__p_of_k_a = (
+        p_of_k_a = (
             None if self.p_of_k_a == 'delta_matter:delta_matter' else self.p_of_k_a
         )
 
@@ -494,7 +456,7 @@ class CCLInterface:
 
                 if tkka_abcd is None:
                     tkka_abcd = self._compute_and_save_tkka(
-                        which_ng_cov, tkka_path, k_a_str, probe_abcd, p_of_k_a=None
+                        which_ng_cov, tkka_path, k_a_str, probe_abcd, p_of_k_a=p_of_k_a
                     )
 
                 self.tkka_dict[probe_ab, probe_cd] = tkka_abcd
@@ -628,7 +590,7 @@ class CCLInterface:
                 'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
                 'lk_arr': self.logn_k_grid_tkka_cNG,
                 'a_arr': self.a_grid_tkka_cNG,
-                'separable_growth': False,
+                'separable_growth': self.separable_growth,
             }
 
         else:
@@ -667,6 +629,7 @@ class CCLInterface:
         ell: np.ndarray,
         tkka,
         fsky: float,
+        sigma2_b_tpl: tuple | None,
         ind_AB: np.ndarray,
         ind_CD: np.ndarray,
         integration_method: str,
@@ -680,7 +643,7 @@ class CCLInterface:
         # sigma2_b argument
         if which_ng_cov == 'SSC':
             ccl_ng_cov_func = ccl.covariances.angular_cl_cov_SSC
-            sigma2_b_arg = {'sigma2_B': self.sigma2_b_tuple}
+            sigma2_b_arg = {'sigma2_B': sigma2_b_tpl}
         elif which_ng_cov == 'cNG':
             ccl_ng_cov_func = ccl.covariances.angular_cl_cov_cNG
             sigma2_b_arg = {}
@@ -734,7 +697,6 @@ class CCLInterface:
         self,
         which_ng_cov,
         ells,
-        fsky,
         integration_method,
         unique_probe_combs,
         nonreq_probe_combs,
@@ -772,6 +734,12 @@ class CCLInterface:
                 f'{which_ng_cov} cov: computing probe combination {(probe_ab, probe_cd)}'
             )
 
+            _sigma2_b_tpl = (
+                self.sigma2_b_tpl_dict[probe_ab, probe_cd]
+                if which_ng_cov == 'SSC'
+                else None
+            )
+
             self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
                 which_ng_cov=which_ng_cov,
                 kernel_A=kernel_dict[probe_a],
@@ -780,7 +748,8 @@ class CCLInterface:
                 kernel_D=kernel_dict[probe_d],
                 ell=ells,
                 tkka=self.tkka_dict[probe_ab, probe_cd],
-                fsky=fsky,
+                fsky=self.fsky_max_abcd_dict[probe_ab, probe_cd],
+                sigma2_b_tpl=_sigma2_b_tpl,
                 ind_AB=ind_dict[probe_ab],
                 ind_CD=ind_dict[probe_cd],
                 integration_method=integration_method,

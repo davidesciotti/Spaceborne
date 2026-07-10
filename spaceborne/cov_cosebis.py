@@ -28,8 +28,8 @@ _UNSET = object()
 
 
 class CovCOSEBIs(CovarianceProjector):
-    def __init__(self, cfg, pvt_cfg, mask_obj):
-        super().__init__(cfg, pvt_cfg, mask_obj)
+    def __init__(self, cfg, pvt_cfg):
+        super().__init__(cfg, pvt_cfg)
 
         self.obs_space = 'cosebis'
         self._ch = None
@@ -59,7 +59,6 @@ class CovCOSEBIs(CovarianceProjector):
         self.ells_proj_g = _UNSET
         self.ells_proj_ng = _UNSET
         self.nbl_proj_g = _UNSET
-        self.nbl_proj_ng = _UNSET
         self.w_ells_arr_g = _UNSET
         self.w_ells_arr_ng = _UNSET
 
@@ -113,12 +112,13 @@ class CovCOSEBIs(CovarianceProjector):
                 ells=ells,
                 N_thread=self.n_jobs,
             )
-
-        # turn to array of shape (n_modes, n_ells) and assign to self
-        w_ells_arr = np.array(list(w_ells_dict.values()))
+            
+        # add a guard against non-int keys
+        mode_keys = sorted(k for k in w_ells_dict if isinstance(k, (int, np.integer)))
+        w_ells_arr = np.array([w_ells_dict[k] for k in mode_keys])
         return w_ells_arr
 
-    def cov_sn_cs(self):
+    def cov_sn_cs(self, amax_abcd: float) -> np.ndarray:
         """Compute the COSEBIs shape noise covariance term."""
 
         # firstly, construct the prefactor outside of the \theta integral
@@ -165,7 +165,7 @@ class CovCOSEBIs(CovarianceProjector):
         ):
             npair_arr[theta_ix, zi, zj] = cp.get_dnpair(
                 theta=self.theta_grid_rad[theta_ix],
-                survey_area_sr=self.survey_area_sr,
+                survey_area_sr=amax_abcd,
                 n_eff_i=self.n_eff_src[zi],
                 n_eff_j=self.n_eff_src[zj],
             )
@@ -177,7 +177,7 @@ class CovCOSEBIs(CovarianceProjector):
         #     npair_arr[theta_ix, zi, zj] = cp.get_npair(
         #         theta_1_u=self.theta_edges_rad[theta_ix],
         #         theta_1_l=self.theta_edges_rad[theta_ix + 1],
-        #         survey_area_sr=self.survey_area_sr,
+        #         survey_area_sr=amax_abcd,
         #         n_eff_i=self.n_eff_src[zi],
         #         n_eff_j=self.n_eff_src[zj],
         #     )
@@ -197,7 +197,7 @@ class CovCOSEBIs(CovarianceProjector):
         return integral[:, :, :, :, None, None] * prefactor[None, None, :, :, :, :]
 
     def compute_cs_cov_term_probe_6d(
-        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str
+        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str, amax_abcd: float
     ) -> None:
         """
         Computes the COSEBIs covariance matrix for the specified term and probe combination.
@@ -240,6 +240,7 @@ class CovCOSEBIs(CovarianceProjector):
             'probe_b_ix': probe_b_ix,
             'probe_c_ix': probe_c_ix,
             'probe_d_ix': probe_d_ix,
+            'amax_abcd': amax_abcd,
         }
 
         # Arguments for the kernel builder
@@ -279,7 +280,7 @@ class CovCOSEBIs(CovarianceProjector):
 
         elif term == 'sn':
             if probe_ab == probe_cd:
-                cov_out_6d = self.cov_sn_cs()
+                cov_out_6d = self.cov_sn_cs(amax_abcd=amax_abcd)
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 

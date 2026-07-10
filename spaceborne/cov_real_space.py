@@ -8,16 +8,10 @@ sn = sampling noise
 mix = mixed term
 """
 
-# TODO the NG cov has not been re-tested against OC
-# TODO the NG cov needs a smaller number of ell bins for the simpson integration! It's
-# TODO unpractical to compute it in 1000 ell values
-
-import itertools
 import warnings
 from functools import partial
 
 import numpy as np
-import pyccl as ccl
 import pylevin as levin
 from joblib import Parallel, delayed
 from scipy.interpolate import RectBivariateSpline
@@ -131,61 +125,31 @@ def kmuknu_nobessel(k_mu_terms, k_nu_terms):
 
 def t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
     """
-    Returns tau^{sn}_{(ij)(mn)} as a (zbins, zbins) array over (i,j) of the FIRST pair (ij),
+    Returns t^{sn}_{(ij)(mn)} as a (zbins, zbins) array over (i,j) of the FIRST pair (ij),
     consistent with Eq. (65).
     Assumes sigma_eps_i is sigma_{epsilon1,i} (std); if it is already variance, set sig2=sigma_eps_i.
     """
-    sig2 = (
-        sigma_eps_i**2
-    )  # change to: sig2 = sigma_eps_i  if sigma_eps_i is already variance
 
-    # all-source case (e.g. xip/xip or xim/xim)
+    # shorten the name for clarity
+    sig2 = sigma_eps_i**2
+
+    # auto-source case (e.g. xip/xip or xim/xim)
     if probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 0:
-        # tau(i,j) = 2 * sig2[i] * sig2[j]
+        # T(i,j) = 2 * sig2[i] * sig2[j]
         return 2.0 * sig2[:, None] * sig2[None, :]
 
-    # all-lens case (e.g. gg/gg)
+    # auto-lens case (e.g. gg/gg)
     if probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 1:
-        return np.ones((zbins, zbins), dtype=float)
+        return np.ones((zbins, zbins))
 
     # mixed case: each pair contains one lens and one source (e.g. gt/gt)
     if {probe_a_ix, probe_b_ix} == {0, 1} and {probe_c_ix, probe_d_ix} == {0, 1}:
-        # Eq. (65) says tau = sigma^2_{epsilon1, source_index_in_(ij)}.
-        if probe_a_ix == 0:  # (ij) = (source, lens) -> source index is i
+        if probe_a_ix == 0:
             return sig2[:, None] * np.ones((1, zbins))
-        else:  # (ij) = (lens, source) -> source index is j
+        else:
             return np.ones((zbins, 1)) * sig2[None, :]
 
-    return np.zeros((zbins, zbins), dtype=float)
-
-
-def _t_sn(probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, zbins, sigma_eps_i):
-    # TODO move from probe indices to probe names!
-    t_munu = np.zeros((zbins, zbins))
-
-    for zi in range(zbins):
-        for zj in range(zbins):
-            # xipxip or ximxim
-            if probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 0:
-                t_munu[zi, zj] = 2 * sigma_eps_i[zi] ** 2 * sigma_eps_i[zj] ** 2
-
-            # gggg
-            elif probe_a_ix == probe_b_ix == probe_c_ix == probe_d_ix == 1:
-                t_munu[zi, zj] = 1
-
-            elif (
-                (probe_a_ix == 0 and probe_b_ix == 1)
-                or (probe_b_ix == 0 and probe_a_ix == 1)
-            ) and (
-                (probe_c_ix == 0 and probe_d_ix == 1)
-                or (probe_d_ix == 0 and probe_c_ix == 1)
-            ):
-                t_munu[zi, zi] = sigma_eps_i[zi] ** 2
-
-            else:
-                t_munu[zi, zj] = 0
-
-    return t_munu
+    return np.zeros((zbins, zbins))
 
 
 def t_mix(probe_a_ix, zbins, sigma_eps_i):
@@ -200,17 +164,6 @@ def t_mix(probe_a_ix, zbins, sigma_eps_i):
         t_munu = np.ones(zbins)
 
     return t_munu
-
-
-def split_probe_ix(probe_ix):
-    if probe_ix in (0, 1):
-        return 0, 0
-    elif probe_ix == 2:
-        return 1, 0
-    elif probe_ix == 3:
-        return 1, 1
-    else:
-        raise ValueError(f'Invalid probe index: {probe_ix}. Expected 0, 1, 2, or 3.')
 
 
 def integrate_bessel_single_wrapper(
@@ -473,32 +426,6 @@ def levin_integrate_bessel_double_wrapper(
     return result_levin
 
 
-def twopcf_wrapper(
-    cosmo, zi, zj, ell_grid, theta_grid, cl_3D, correlation_type, method
-):
-    return ccl.correlation(
-        cosmo=cosmo,
-        ell=ell_grid,
-        C_ell=cl_3D[:, zi, zj],
-        theta=theta_grid,
-        method=method,
-        type=correlation_type,
-    )
-
-
-def regularize_by_eigenvalue_cutoff(cov, threshold=1e-14):
-    # Eigenvalue decomposition
-    eigvals, eigvecs = np.linalg.eig(cov)
-
-    # Invert only the eigenvalues above the threshold
-    eigvals_inv = np.where(eigvals > threshold, 1.0 / eigvals, 0.0)
-
-    # Reconstruct the inverse covariance matrix
-    cov_inv = (eigvecs * eigvals_inv) @ eigvecs.T
-
-    return cov_inv
-
-
 def integrate_single_bessel_pair(
     integrand, x_values, ord_bes_1, theta1, ord_bes_2, theta2,
     bessel_type, n_jobs, logx, logy, n_sub, n_bisec_max,
@@ -552,8 +479,8 @@ def proj_cov_2d_fftlog(
     ells_proj,
     theta_edges,
     theta_centers,
-    mu,
-    nu,
+    mu: int,
+    nu: int,
     nu1=1.01,  # for accuracy issues, play witin ~ [0.5, 1.5]
     nu2=1.01,  # for accuracy issues, play witin ~ [0.5, 1.5]
     N_extrap_low=0,  # number of extrapolation points at low ell (default 0, no extrapolation)
@@ -664,11 +591,22 @@ def proj_cov_2d_fftlog(
             mu, nu, dlntheta, dlntheta
         )
 
-        # Interpolate onto the desired theta grid (log-log 2D spline)
+        # Interpolate onto the desired theta grid (log-log 2D spline).
+        # NOTE: two_Bessel_binave's bin-averaging kernel (g_l_smooth) averages F over
+        # [y, y*exp(dlntheta)], so the output at grid point y is the bin-average for a
+        # bin whose *lower edge* is y. The bin with lower edge theta_edges[i] is the
+        # bin centred on theta_centers[i], so we must sample at the lower bin edges,
+        # NOT at the geometric centres (doing the latter shifts every value up by
+        # half a bin, producing a per-bin sawtooth bias).
         interp = RectBivariateSpline(
             np.log(theta1_out), np.log(theta2_out), integral, kx=3, ky=3
         )
-        result_3d[:, :, tomo_ix] = interp(np.log(theta_centers), np.log(theta_centers))
+        theta_lower_edges = theta_edges[:-1]
+        result_3d[:, :, tomo_ix] = interp(
+            np.log(theta_lower_edges), np.log(theta_lower_edges)
+        )
+        # used to be
+        # result_3d[:, :, tomo_ix] = interp(np.log(theta_centers), np.log(theta_centers))
 
     return result_3d.reshape(nbt, nbt, *tomo_shape)
 
@@ -676,7 +614,7 @@ def proj_cov_2d_fftlog(
 def proj_cov_2d_parallel_helper(
     s1: int,
     s2: int,
-    theta_edges_fine: np.ndarray,
+    theta_edges: np.ndarray,
     mu: int,
     nu: int,
     integration_method: str,
@@ -686,10 +624,10 @@ def proj_cov_2d_parallel_helper(
     # TODO make kernel agnostic using kernel builder
     # TODO move to covariance_projector.py
     kernel_1 = partial(
-        k_mu, thetal=theta_edges_fine[s1], thetau=theta_edges_fine[s1 + 1], mu=mu
+        k_mu, thetal=theta_edges[s1], thetau=theta_edges[s1 + 1], mu=mu
     )
     kernel_2 = partial(
-        k_mu, thetal=theta_edges_fine[s2], thetau=theta_edges_fine[s2 + 1], mu=nu
+        k_mu, thetal=theta_edges[s2], thetau=theta_edges[s2 + 1], mu=nu
     )
 
     block = cp.proj_cov_2d(
@@ -709,8 +647,8 @@ def proj_cov_2d_parallel_helper(
 
 
 class CovRealSpace(CovarianceProjector):
-    def __init__(self, cfg, pvt_cfg, mask_obj):
-        super().__init__(cfg, pvt_cfg, mask_obj)
+    def __init__(self, cfg, pvt_cfg):
+        super().__init__(cfg, pvt_cfg)
 
         self.obs_space = 'real'
 
@@ -753,13 +691,11 @@ class CovRealSpace(CovarianceProjector):
         self.ells_proj_g = _UNSET
         self.nbl_proj_g = _UNSET
         self.ells_proj_ng = _UNSET
-        self.nbl_proj_ng = _UNSET
 
     def _set_theta_binning(self):
         self.theta_min_arcmin = self.cfg['binning']['theta_min_arcmin']
         self.theta_max_arcmin = self.cfg['binning']['theta_max_arcmin']
-        self.nbt_coarse = self.cfg['binning']['theta_bins']
-        self.nbt_fine = self.nbt_coarse
+        self.nbt = self.cfg['binning']['theta_bins']
 
         # TODO this should probably go in the ell_binning class (which should be
         # TODO renamed)
@@ -773,24 +709,22 @@ class CovRealSpace(CovarianceProjector):
                 'not supported for real-space covariance'
             )
 
-        # Use a loop to set up fine and coarse theta binning
-        for bin_type in ['fine', 'coarse']:
-            nbt = getattr(self, f'nbt_{bin_type}')
-            theta_edges_deg = _binning_func(
-                self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, nbt + 1
-            )
-            theta_edges = np.deg2rad(theta_edges_deg)  # in radians
+        # Use a loop to set up theta binning
+        theta_edges_deg = _binning_func(
+            self.theta_min_arcmin / 60, self.theta_max_arcmin / 60, self.nbt + 1
+        )
+        theta_edges = np.deg2rad(theta_edges_deg)  # in radians
 
-            if self.cfg['binning']['binning_type'] == 'log':
-                theta_centers = np.sqrt(theta_edges[:-1] * theta_edges[1:])
-            elif self.cfg['binning']['binning_type'] == 'lin':
-                theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
+        if self.cfg['binning']['binning_type'] == 'log':
+            theta_centers = np.sqrt(theta_edges[:-1] * theta_edges[1:])
+        elif self.cfg['binning']['binning_type'] == 'lin':
+            theta_centers = (theta_edges[:-1] + theta_edges[1:]) / 2.0
 
-            # ! the theta values used throughout the code are in radians!
-            setattr(self, f'theta_edges_{bin_type}', theta_edges)
-            setattr(self, f'theta_centers_{bin_type}', theta_centers)
+        # ! the theta values used throughout the code are in radians!
+        self.theta_edges = theta_edges
+        self.theta_centers = theta_centers
 
-            assert len(theta_centers) == nbt, 'theta_centers length mismatch'
+        assert len(theta_centers) == self.nbt, 'theta_centers length mismatch'
 
     def _set_levin_bessel_precision(self):
         self.levin_prec_kw = {
@@ -806,23 +740,25 @@ class CovRealSpace(CovarianceProjector):
             'boost_bessel': self.cfg['precision']['boost_bessel'],
         }
 
-    def cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
-        npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
-        for theta_ix in range(self.nbt_fine):
-            theta_l = self.theta_edges_fine[theta_ix]
-            theta_u = self.theta_edges_fine[theta_ix + 1]
+    def cov_sn_rs(
+        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd
+    ):
+        npair_arr = np.zeros((self.nbt, self.zbins, self.zbins))
+        for theta_ix in range(self.nbt):
+            theta_l = self.theta_edges[theta_ix]
+            theta_u = self.theta_edges[theta_ix + 1]
             for zi in range(self.zbins):
                 for zj in range(self.zbins):
                     npair_arr[theta_ix, zi, zj] = cp.get_npair(
                         theta_u,
                         theta_l,
-                        self.survey_area_sr,
+                        amax_abcd,
                         self.n_eff_2d[probe_a_ix, zi],
                         self.n_eff_2d[probe_b_ix, zj],
                     )
 
         delta_mu_nu = 1.0 if (mu == nu) else 0.0
-        delta_theta = np.eye(self.nbt_fine)
+        delta_theta = np.eye(self.nbt)
 
         t_arr = t_sn(
             probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, self.zbins, self.sigma_eps_i
@@ -852,55 +788,20 @@ class CovRealSpace(CovarianceProjector):
         )
         return cov_sn_rs_6d
 
-    def _cov_sn_rs(self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu):
-        npair_arr = np.zeros((self.nbt_fine, self.zbins, self.zbins))
-        for theta_ix in range(self.nbt_fine):
-            for zi in range(self.zbins):
-                for zj in range(self.zbins):
-                    theta_1_l = self.theta_edges_fine[theta_ix]
-                    theta_1_u = self.theta_edges_fine[theta_ix + 1]
-                    npair_arr[theta_ix, zi, zj] = cp.get_npair(
-                        theta_1_u,
-                        theta_1_l,
-                        self.survey_area_sr,
-                        self.n_eff_2d[probe_a_ix, zi],
-                        self.n_eff_2d[probe_b_ix, zj],
-                    )
-
-        delta_mu_nu = 1.0 if (mu == nu) else 0.0
-        delta_theta = np.eye(self.nbt_fine)
-        t_arr = t_sn(
-            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, self.zbins, self.sigma_eps_i
-        )
-
-        cov_sn_rs_6d = (
-            delta_mu_nu
-            * delta_theta[:, :, None, None, None, None]
-            * (
-                cp.get_delta_tomo(probe_a_ix, probe_c_ix, self.zbins)[
-                    None, None, :, None, :, None
-                ]
-                * cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[
-                    None, None, None, :, None, :
-                ]
-                + cp.get_delta_tomo(probe_a_ix, probe_d_ix, self.zbins)[
-                    None, None, :, None, None, :
-                ]
-                * cp.get_delta_tomo(probe_b_ix, probe_c_ix, self.zbins)[
-                    None, None, None, :, :, None
-                ]
-            )
-            # * t_arr[None, None, :, None, :, None]
-            * t_arr[None, None, :, :, None, None]
-            / npair_arr[None, :, :, :, None, None]
-        )
-
-        return cov_sn_rs_6d
-
     def proj_sva_levin_fftlog(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-    ):  # fmt: skip
+        self,
+        probe_a_ix: int,
+        probe_b_ix: int,
+        probe_c_ix: int,
+        probe_d_ix: int,
+        zpairs_ab: int,
+        zpairs_cd: int,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        mu: int,
+        nu: int,
+        amax_abcd: float,
+    ):
         # Use parent method to build the universal SVA integrand
         integrand_5d = cp.build_cov_sva_integrand_5d(
             cl_5d=self.cl_3x2pt_5d,
@@ -911,52 +812,90 @@ class CovRealSpace(CovarianceProjector):
         )
 
         # Child-specific: project with Levin + Bessel kernels
-
         if self.proj_g_int_method == 'levin':
             cov_sva_rs_6d = self.proj_levin_wrapper(
-                integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+                integrand_5d=integrand_5d,
+                zpairs_ab=zpairs_ab,
+                zpairs_cd=zpairs_cd,
+                ind_ab=ind_ab,
+                ind_cd=ind_cd,
+                mu=mu,
+                nu=nu,
+                amax_abcd=amax_abcd,
             )
         elif self.proj_g_int_method == 'FFTLog':
-            cov_sva_rs_6d = self.proj_sva_mix_fftlog_wrapper(integrand_5d, mu, nu)
+            cov_sva_rs_6d = self.proj_sva_mix_fftlog_wrapper(
+                integrand_5d=integrand_5d, mu=mu, nu=nu, amax_abcd=amax_abcd
+            )
 
         return cov_sva_rs_6d
 
-    def proj_sva_mix_fftlog_wrapper(self, integrand_5d, mu, nu):
-        # expand the first 2 axis and create an ell1, ell2 diagonal matrix
-        # (as needed by the twobessel module)
-        # Also, in the G case, the delta function collapses two integrals into one,
-        # but TwoBessel still sees a 2D array and applies both ell-measures — leaving
-        # one ell too many that I must cancel manually by dividing by ell when
-        # building the diagonal.
+    def proj_sva_mix_fftlog_wrapper(self, integrand_5d, mu, nu, amax_abcd):
+        # Gaussian (SVA/MIX) covariance via the 2D-FFTLog diagonal trick.
+        #
+        # Fang et al. 2020 (2D-FFTLog, arXiv:2004.04833, Sec. 2.2.1): the Gaussian cov is
+        # the special case where the input contains a Dirac delta delta_D(l1-l2), so the
+        # double integral collapses to a single one. We want TwoBessel (which computes
+        #     F = int dl1/l1 int dl2/l2 f(l1,l2) J_mu(l1 th1) J_nu(l2 th2) )
+        # to return the single integral  int dl l C(l) J_mu(l th1) J_nu(l th2), which
+        # requires  f = delta_D(l1-l2) l^3 C(l).  Discretizing the delta on a log grid,
+        #     delta_D(l1-l2) = (1/l) delta_D(ln l1 - ln l2) -> (1/l) * delta^K_ij / dln l,
+        # gives the DIAGONAL value  l^2 C / dln l  (note: l^2, not l^3, and the 1/dln l
+        # discretized-delta factor). proj_cov_2d_fftlog multiplies the input by l^4 (the
+        # l1^2 l2^2 measure it applies for the NG case), so the cov_hs we pass must be
+        #     C / (l^2 * dln l).
+        # Validated against the simps path (which matches OneCovariance) to <=0.3% for
+        # mu=0 and exactly for mu=2,4. The previous code used integrand_5d / l (effective
+        # diagonal l^3 C, missing one power of l AND the 1/dln l), which produced a theta-
+        # and Bessel-order-dependent error. See [[onecov-realspace-comparison]].
         nbl = integrand_5d.shape[0]
+        dlnell = np.log(self.ells_proj_g[1] / self.ells_proj_g[0])
         integrand_6d = np.zeros((nbl, nbl) + integrand_5d.shape[1:])
         for i in range(nbl):
-            integrand_6d[i, i, ...] = integrand_5d[i, ...] / self.ells_proj_g[i]
+            integrand_6d[i, i, ...] = integrand_5d[i, ...] / (
+                self.ells_proj_g[i] ** 2 * dlnell
+            )
 
         # prefactors
-        integrand_6d /= 2.0 * np.pi * self.amax
+        integrand_6d /= 2.0 * np.pi * amax_abcd
 
         # integrate
+        # N_pad is essential for high-order Bessels (mu/nu >= 2, i.e. gt/xim): the
+        # integrand ell^2 C(ell) does not decay at the ell grid boundary, so without
+        # zero-padding the FFTLog rings and overestimates the small-theta result.
+        # Padding converges by ~nbl points (extrapolation cannot be
+        # used here because the diagonal-only input has off-diagonal zeros).
         integral_6d = proj_cov_2d_fftlog(
             cov_hs_ell1ell2_in=integrand_6d,
             ells_proj=self.ells_proj_g,
-            theta_edges=self.theta_edges_fine,
-            theta_centers=self.theta_centers_fine,
+            theta_edges=self.theta_edges,
+            theta_centers=self.theta_centers,
             mu=mu,
             nu=nu,
+            N_pad=nbl,
         )
 
         return integral_6d
 
-    def proj_mix_levin_fftlog(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-    ):  # fmt: skip
+    def proj_mix_levin_or_fftlog(
+        self,
+        probe_a_ix: int,
+        probe_b_ix: int,
+        probe_c_ix: int,
+        probe_d_ix: int,
+        zpairs_ab: int,
+        zpairs_cd: int,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        mu: int,
+        nu: int,
+        amax_abcd: float,
+    ):
         def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
             prefac = (
                 cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
                 * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
-                / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
+                / (self.n_eff_2d[probe_b_ix, zj] * const.SR_TO_ARCMIN2)
             )
             return prefac
 
@@ -1001,76 +940,34 @@ class CovRealSpace(CovarianceProjector):
 
         if self.proj_g_int_method == 'levin':
             cov_mix_rs_6d = self.proj_levin_wrapper(
-                integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+                integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu, amax_abcd
             )
         elif self.proj_g_int_method == 'FFTLog':
-            cov_mix_rs_6d = self.proj_sva_mix_fftlog_wrapper(integrand_5d, mu, nu)
-
-        return cov_mix_rs_6d
-
-    def cov_mix_fftlog(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-        zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-    ):  # fmt: skip
-        def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
-            prefac = (
-                cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
-                * t_mix(probe_b_ix, self.zbins, self.sigma_eps_i)[zj]
-                / (self.n_eff_2d[probe_b_ix, zj] * self.srtoarcmin2)
+            cov_mix_rs_6d = self.proj_sva_mix_fftlog_wrapper(
+                integrand_5d, mu, nu, amax_abcd
             )
-            return prefac
-
-        prefac = np.zeros((self.n_probes_hs, self.n_probes_hs, self.zbins, self.zbins))
-        for _probe_a_ix in range(self.n_probes_hs):
-            for _probe_b_ix in range(self.n_probes_hs):
-                for _zi in range(self.zbins):
-                    for _zj in range(self.zbins):
-                        prefac[_probe_a_ix, _probe_b_ix, _zi, _zj] = _get_mix_prefac(
-                            _probe_a_ix, _probe_b_ix, _zi, _zj
-                        )
-
-        a = np.einsum(
-            'jl,Lik->Lijkl',
-            prefac[probe_b_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix],
-        )
-        b = np.einsum(
-            'ik,Ljl->Lijkl',
-            prefac[probe_a_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_d_ix],
-        )
-        c = np.einsum(
-            'jk,Lil->Lijkl',
-            prefac[probe_b_ix, probe_c_ix],
-            self.cl_3x2pt_5d[probe_a_ix, probe_d_ix],
-        )
-        d = np.einsum(
-            'il,Ljk->Lijkl',
-            prefac[probe_a_ix, probe_d_ix],
-            self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
-        )
-        integrand_5d = a + b + c + d
-
-        # compress integrand selecting only unique zpairs
-        assert ind_ab.shape[1] == 2, (
-            "ind_ab must have two columns, maybe you didn't cut it"
-        )
-        assert ind_cd.shape[1] == 2, (
-            "ind_cd must have two columns, maybe you didn't cut it"
-        )
-
-        cov_mix_rs_6d = self.proj_levin_wrapper(
-            integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-        )
+        else:
+            raise ValueError(
+                "integration method not implemented; choose 'levin' or 'FFTLog'"
+            )
 
         return cov_mix_rs_6d
 
     def proj_levin_wrapper(
-        self, integrand_5d, zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
+        self,
+        integrand_5d: np.ndarray,
+        zpairs_ab: int,
+        zpairs_cd: int,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        mu: int,
+        nu: int,
+        amax_abcd: float,
     ):
         """This function abstracts the reshaping of the integral before and after the
         integration, as well as encapsulating the two different functions to call
         depending on the levin_bin_avg value"""
+
         integrand_3d = sl.cov_6D_to_4D_blocks(
             cov_6D=integrand_5d,
             nbl=self.nbl_proj_g,
@@ -1083,7 +980,7 @@ class CovRealSpace(CovarianceProjector):
 
         integrand_2d = integrand_3d.reshape(self.nbl_proj_g, -1)
         integrand_2d *= self.ells_proj_g[:, None]
-        integrand_2d /= 2.0 * np.pi * self.amax
+        integrand_2d /= 2.0 * np.pi * amax_abcd
 
         if self.levin_bin_avg:
             cov_rs_4d = self.levin_binavg_helper(
@@ -1093,7 +990,7 @@ class CovRealSpace(CovarianceProjector):
             result_levin = levin_integrate_bessel_double_wrapper(
                 integrand_2d,
                 x_values=self.ells_proj_g,
-                bessel_args=self.theta_centers_fine,
+                bessel_args=self.theta_centers,
                 bessel_type=3,
                 ell_1=mu,
                 ell_2=nu,
@@ -1102,12 +999,12 @@ class CovRealSpace(CovarianceProjector):
             )
 
             cov_rs_4d = result_levin.reshape(
-                self.nbt_fine, self.nbt_fine, zpairs_ab, zpairs_cd
+                self.nbt, self.nbt, zpairs_ab, zpairs_cd
             )
 
         cov_rs_6d = sl.cov_4D_to_6D_blocks(
             cov_rs_4d,
-            nbl=self.nbt_fine,
+            nbl=self.nbt,
             zbins=self.zbins,
             ind_ab=ind_ab,
             ind_cd=ind_cd,
@@ -1122,14 +1019,14 @@ class CovRealSpace(CovarianceProjector):
         the bin-averaged Levin integral. This is used both in the SVA and MIX terms
         """
         result_shape = (zpairs_ab, zpairs_cd)
-        cov_rs_4d = np.zeros((self.nbt_fine, self.nbt_fine, *result_shape))
+        cov_rs_4d = np.zeros((self.nbt, self.nbt, *result_shape))
 
-        for p in tqdm(range(self.nbt_fine), desc='theta'):
-            for q in range(self.nbt_fine):
-                theta_p_lower = self.theta_edges_fine[p]
-                theta_p_upper = self.theta_edges_fine[p + 1]
-                theta_q_lower = self.theta_edges_fine[q]
-                theta_q_upper = self.theta_edges_fine[q + 1]
+        for p in tqdm(range(self.nbt), desc='theta'):
+            for q in range(self.nbt):
+                theta_p_lower = self.theta_edges[p]
+                theta_p_upper = self.theta_edges[p + 1]
+                theta_q_lower = self.theta_edges[q]
+                theta_q_upper = self.theta_edges[q + 1]
 
                 k_mu_terms = k_mu_nobessel(
                     self.ells_proj_g, thetal=theta_p_lower, thetau=theta_p_upper, mu=mu
@@ -1168,7 +1065,7 @@ class CovRealSpace(CovarianceProjector):
         return cov_rs_4d
 
     def compute_rs_cov_term_probe_6d(
-        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str
+        self, cov_hs_ng_dict: dict | None, probe_abcd: str, term: str, amax_abcd: float
     ) -> None:
         """
         Computes the real space covariance matrix for the specified term
@@ -1208,6 +1105,7 @@ class CovRealSpace(CovarianceProjector):
             'probe_b_ix': probe_b_ix,
             'probe_c_ix': probe_c_ix,
             'probe_d_ix': probe_d_ix,
+            'amax_abcd': amax_abcd,
         }
 
         # arguments for the covariance projector kernel functions
@@ -1232,11 +1130,20 @@ class CovRealSpace(CovarianceProjector):
                 )
             elif self.proj_g_int_method in ['levin', 'FFTLog']:
                 cov_out_6d = self.proj_sva_levin_fftlog(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-                )  # fmt: skip
+                    probe_a_ix=probe_a_ix,
+                    probe_b_ix=probe_b_ix,
+                    probe_c_ix=probe_c_ix,
+                    probe_d_ix=probe_d_ix,
+                    zpairs_ab=zpairs_ab,
+                    zpairs_cd=zpairs_cd,
+                    ind_ab=ind_ab,
+                    ind_cd=ind_cd,
+                    mu=mu,
+                    nu=nu,
+                    amax_abcd=amax_abcd,
+                )
 
-        elif term == 'mix' and probe_abcd not in ['ggxim', 'ggxip']:
+        elif term == 'mix' and probe_abcd not in ['wxim', 'wxip']:
             if self.proj_g_int_method == 'simps':
                 cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
                     zpairs_ab=zpairs_ab,
@@ -1248,20 +1155,29 @@ class CovRealSpace(CovarianceProjector):
                     kernel_builder_func_kw=kernel_builder_func_kw,
                 )
             elif self.proj_g_int_method in ['levin', 'FFTLog']:
-                cov_out_6d = self.proj_mix_levin_fftlog(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix,
-                    zpairs_ab, zpairs_cd, ind_ab, ind_cd, mu, nu
-                )  # fmt: skip
+                cov_out_6d = self.proj_mix_levin_or_fftlog(
+                    probe_a_ix=probe_a_ix,
+                    probe_b_ix=probe_b_ix,
+                    probe_c_ix=probe_c_ix,
+                    probe_d_ix=probe_d_ix,
+                    zpairs_ab=zpairs_ab,
+                    zpairs_cd=zpairs_cd,
+                    ind_ab=ind_ab,
+                    ind_cd=ind_cd,
+                    mu=mu,
+                    nu=nu,
+                    amax_abcd=amax_abcd,
+                )
 
-        elif term == 'mix' and probe_abcd in ['ggxim', 'ggxip']:
+        elif term == 'mix' and probe_abcd in ['wxim', 'wxip']:
             cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term == 'sn':
             # this is 0 for
-            # ['xipxim', 'gtxim', 'gtxip', 'ggxim', 'gggt', 'ggxip']
+            # ['xipxim', 'gtxim', 'gtxip', 'wxim', 'wgt', 'wxip']
             # but is very fast to compute so I don't skip these terms
             cov_out_6d = self.cov_sn_rs(
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu
+                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd
             )
 
         elif term in ['ssc', 'cng']:
@@ -1294,7 +1210,7 @@ class CovRealSpace(CovarianceProjector):
                     delayed(proj_cov_2d_parallel_helper)(
                         s1=s1,
                         s2=s2,
-                        theta_edges_fine=self.theta_edges_fine,
+                        theta_edges=self.theta_edges,
                         mu=mu,
                         nu=nu,
                         integration_method=self.proj_ng_int_method,
@@ -1314,7 +1230,7 @@ class CovRealSpace(CovarianceProjector):
                     mu=mu,
                     nu=nu,
                     ells=self.ells_proj_ng,
-                    theta_edges=self.theta_edges_fine,
+                    theta_edges=self.theta_edges,
                     n_jobs=self.n_jobs,
                     levin_prec_kw=self.levin_prec_kw,
                 )
@@ -1327,10 +1243,11 @@ class CovRealSpace(CovarianceProjector):
                 cov_rs_ng_4d = proj_cov_2d_fftlog(
                     cov_hs_ell1ell2_in=cov_hs_ng_4d,
                     ells_proj=self.ells_proj_ng,
-                    theta_edges=self.theta_edges_fine,
-                    theta_centers=self.theta_centers_fine,
+                    theta_edges=self.theta_edges,
+                    theta_centers=self.theta_centers,
                     mu=mu,
                     nu=nu,
+                    N_pad=len(self.ells_proj_ng),
                 )
 
             # reshape to 6d and symmetrize if needed
@@ -1349,42 +1266,6 @@ class CovRealSpace(CovarianceProjector):
             cov_rs_ng_6d /= norm
 
             cov_out_6d = cov_rs_ng_6d
-
-        # ! bin sb cov 2d
-        if self.nbt_coarse != self.nbt_fine:
-            print(
-                f'Re-binning real space covariance from {self.nbt_fine} to '
-                f'{self.nbt_coarse} theta bins'
-            )
-
-            cov_rs_6d_unbinned = getattr(self, f'cov_{term}_rs_6d')
-            cov_rs_6d_binned = np.zeros(
-                (self.nbt_coarse, self.nbt_coarse,
-                 self.zbins, self.zbins, self.zbins, self.zbins)
-            )  # fmt: skip
-
-            # cast to list to avoid problems due do "recycling" the generator
-            zijkl_comb = list(itertools.product(range(self.zbins), repeat=4))
-
-            bin_2d_array_kw = {
-                'ells_in': self.theta_centers_fine,
-                'ells_out': self.theta_centers_coarse,
-                'ells_out_edges': self.theta_edges_coarse,
-                'weights_in': None,
-                'which_binning': 'sum',
-                'interpolate': True,
-            }
-
-            results = Parallel(n_jobs=self.n_jobs, backend='loky')(
-                delayed(sl.bin_2d_array)(
-                    cov_rs_6d_unbinned[:, :, zi, zj, zk, zl], **bin_2d_array_kw
-                )
-                for zi, zj, zk, zl in zijkl_comb
-            )
-            for (zi, zj, zk, zl), cov in zip(zijkl_comb, results, strict=True):
-                cov_rs_6d_binned[:, :, zi, zj, zk, zl] = cov
-
-            cov_out_6d = cov_rs_6d_binned
 
         # finally, assign the newly computed 6D cov to the appropriate key in cov_dict
         self.cov_dict[term][probe_2tpl]['6d'] = cov_out_6d

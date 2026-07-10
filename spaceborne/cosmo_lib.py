@@ -435,15 +435,6 @@ def ell_prefactor_mag(ell):
     return ell * (ell + 1) / (ell + 0.5) ** 2
 
 
-def reshape_pk_vincenzo_to_2d(filename):
-    # Import and reshape P(k,z) from the input used by Vincenzo
-    pk = np.genfromtxt(filename)
-    z_grid_pk = np.unique(pk[:, 0])
-    k_grid_pk = 10 ** np.unique(pk[:, 1])
-    pk_2d = pk[:, 2].reshape(len(z_grid_pk), len(k_grid_pk)).T
-    return pk_2d, k_grid_pk, z_grid_pk
-
-
 def sigma8_to_As(pars, extra_args):
     """This function has been written by Matteo Martinelli"""
     import camb

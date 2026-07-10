@@ -2,7 +2,8 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import gridspec
+from matplotlib import cm
+from matplotlib.colors import ListedColormap
 
 mpl_rcparams_dict = {
     'lines.linewidth': 1.5,
@@ -59,6 +60,105 @@ ylabel_sigma_relative_fid = mpl_other_dict['ylabel_sigma_relative_fid']
 # markersize = mpl_cfg.mpl_rcParams_dict['lines.markersize']
 
 
+def plot_dominant_array_element(
+    arrays_dict, tab_colors, elements_auto, elements_cross, show_zero: bool = True
+):
+    """Plot 2D arrays from a dictionary, highlighting the dominant component in
+    each element.
+
+    Colors are assigned based on the array with the dominant component
+    at each position. If no component is dominant (all are zero), the
+    color will be white.
+    """
+    centers = [
+        elements_auto // 2,
+        elements_auto + elements_cross // 2,
+        elements_auto + elements_cross + elements_auto // 2,
+    ]
+    labels = ['WL', 'GGL', 'GCph']
+
+    # Stack arrays along a new dimension and calculate the absolute values
+    stacked_abs_arrays = np.abs(np.stack(list(arrays_dict.values()), axis=-1))
+
+    # Find indices of the dominant array at each position
+    dominant_indices = np.argmax(stacked_abs_arrays, axis=-1)
+
+    # Add an extra category for non-dominant cases (where all arrays are zero)
+    non_dominant_value = (
+        -1
+    )  # Choose a value that doesn't conflict with existing indices
+    dominant_indices[np.all(stacked_abs_arrays == 0, axis=-1)] = non_dominant_value
+
+    # Prepare the colormap, including an extra color for non-dominant cases
+    # 'white' is for non-dominant cases
+    selected_colors = ['white'] + tab_colors[: len(arrays_dict)]
+    cmap = ListedColormap(selected_colors)
+
+    # Plot the dominant indices with the custom colormap
+    plt.figure(figsize=(10, 8))
+    im = plt.imshow(
+        dominant_indices,
+        cmap=cmap,
+        vmin=non_dominant_value - 0.5,  # Shifted by -0.5
+        vmax=len(arrays_dict)
+        - 0.5,  # Shifted to +0.5 (which is len(arrays_dict) - 0.5)
+    )
+
+    # Create a colorbar with labels
+    all_ticks = np.arange(non_dominant_value, len(arrays_dict))
+    all_labels = ['0'] + list(arrays_dict.keys())
+
+    if show_zero:
+        # Show everything normally
+        cbar = plt.colorbar(im, ticks=all_ticks)
+        cbar.set_ticklabels(all_labels)
+    else:
+        # We need a new mappable just for the colorbar that excludes the -1 (white) class
+        # Create a colormap with ONLY the valid colors (ignoring the first 'white' color)
+        cmap_no_zero = ListedColormap(selected_colors[1:])
+
+        # Create a dummy scalar mappable for the colorbar
+        sm = plt.cm.ScalarMappable(
+            cmap=cmap_no_zero,
+            # We want the indices to be 0, 1, 2, ..., N.
+            # So the boundaries of the colors must be at -0.5, 0.5, 1.5, ..., N+0.5
+            norm=plt.Normalize(vmin=-0.5, vmax=len(arrays_dict) - 1 + 0.5),
+        )
+        sm.set_array([])
+
+        # Draw the colorbar using the dummy mappable, explicitly attaching it to the image axes
+        cbar = plt.colorbar(sm, ax=im.axes, ticks=np.arange(0, len(arrays_dict)))
+        cbar.set_ticklabels(all_labels[1:])
+
+    # plot lines to separate the probe blocks
+    kw = {'lw': 2, 'color': 'k', 'ls': '--'}
+    plt.axvline(elements_auto - 0.5, **kw)
+    plt.axvline(elements_auto + elements_cross - 0.5, **kw)
+    plt.axhline(elements_auto - 0.5, **kw)
+    plt.axhline(elements_auto + elements_cross - 0.5, **kw)
+    plt.xticks([])
+    plt.yticks([])
+
+    for idx, label in enumerate(labels):
+        x = centers[idx]
+        plt.text(x, -1.5, label, va='bottom', ha='center')
+        plt.text(-1.5, x, label, va='center', ha='right', rotation='vertical')
+
+
+def matshow_vcenter(matrix, vcenter=0):
+    """Plots a matrix with a 0-centered, asymmetric colorbar."""
+    from matplotlib.colors import TwoSlopeNorm
+
+    plt.matshow(matrix, cmap='RdBu_r', norm=TwoSlopeNorm(vcenter=vcenter))
+    plt.colorbar()
+    plt.show()
+
+
+def plot_correlation_matrix(correlation_matrix):
+    plt.matshow(correlation_matrix, cmap='RdBu_r', vmin=-1, vmax=1)
+    plt.colorbar()
+
+
 def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
     plt.figure()
     for zi in range(zbins):
@@ -90,7 +190,6 @@ def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
     plt.suptitle('Galaxy kernels\n(w/o galaxy bias)')
     plt.tight_layout()
     plt.legend()
-    plt.show()
 
     wf_ia_contribution_arr = ccl_obj.wf_ia_contribution_arr
 
@@ -124,7 +223,6 @@ def plot_kernels(ccl_obj, z_grid: np.ndarray, zbins: int, clr: list):
     plt.ylabel(r'$W_i^{SHE}(z)$')
     plt.suptitle('Lensing kernels')
     plt.tight_layout()
-    plt.show()
 
 
 def cls_triangle_plot(
@@ -132,7 +230,7 @@ def cls_triangle_plot(
     cls_dict: dict,
     is_auto: bool,
     zbins: int,
-    twoellplusone: bool,
+    twoellplusone: bool = False,
     suptitle=None,
     cov_6d=None,
 ):
@@ -204,7 +302,7 @@ def cls_triangle_plot(
     # ax[0, 0].set_xlim(min_ell, 2 * max_ell)
 
     all_plotted = []
-    for label in ells_dict.keys():
+    for label in ells_dict:
         ells = ells_dict[label]
         cls = cls_dict[label]
         prefac = 2 * ells + 1 if twoellplusone else 1.0
@@ -314,7 +412,6 @@ def cls_triangle_plot_v2(cl_dict, zbins, is_auto, weights=None):
     )
     fig.supxlabel(r'$\ell$', y=-0.05, va='top')
     fig.supylabel(r'$C_\ell$ diff [%]', x=-0.1, ha='right')
-    plt.show()
 
 
 def bar_plot(
@@ -590,39 +687,26 @@ def triangle_plot(
     plt.show()
 
 
-def contour_plot_chainconsumer(cov, trimmed_fid_dict):
-    """Example usage:
-                # decide params to show in the triangle plot
-                cosmo_param_names = list(fiducials_dict.keys())[:num_params_tokeep]
-                shear_bias_param_names = [f'm{(zi + 1):02d}_photo' for zi in range(zbins)]
-                params_tot_list = cosmo_param_names + shear_bias_param_names
+def plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns):
+    assert nz_src.shape[1] == nz_lns.shape[1], 'number of zbins is not the same'
+    zbins = nz_src.shape[1]
 
-                trimmed_fid_dict = {param: fiducials_dict[param] for param in params_tot_list}
+    _, ax = plt.subplots(2, 1, sharex=True)
+    colors = cm.rainbow(np.linspace(0, 1, zbins))
+    for zi in range(zbins):
+        ax[0].plot(zgrid_nz_src, nz_src[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
+        # ax[0].axvline(zbin_centers_src[zi], c=colors[zi], ls='--',
+        # alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        ax[0].fill_between(zgrid_nz_src, nz_src[:, zi], color=colors[zi], alpha=0.2)
+        ax[0].set_xlabel('$z$')
+        ax[0].set_ylabel(r'$n_i^{\rm SHE}(z)$')
+    ax[0].legend(ncol=2)
 
-                # get the covariance matrix (careful on how you cut the FM!!)
-                fm_idxs_tokeep = [list(fiducials_dict.keys()).index(param) for param in params_tot_list]
-                cov = np.linalg.inv(fm)[fm_idxs_tokeep, :][:, fm_idxs_tokeep]
-
-                plot_utils.contour_plot_chainconsumer(cov, trimmed_fid_dict)
-    :param cov:
-    :param trimmed_fid_dict:
-    :return:
-    """
-    from chainconsumer import ChainConsumer
-
-    param_names = list(trimmed_fid_dict.keys())
-    param_means = list(trimmed_fid_dict.values())
-
-    c = ChainConsumer()
-    c.add_covariance(param_means, cov, parameters=param_names, name='Cov')
-    c.add_marker(
-        param_means,
-        parameters=param_names,
-        name='fiducial',
-        marker_style='.',
-        marker_size=50,
-        color='r',
-    )
-    c.configure(usetex=False, serif=True)
-    fig = c.plotter.plot()
-    return fig
+    for zi in range(zbins):
+        ax[1].plot(zgrid_nz_lns, nz_lns[:, zi], c=colors[zi], label=f'$z_{zi + 1}$')
+        # ax[1].axvline(zbin_centers_lns[zi], c=colors[zi], ls='--',
+        # alpha=0.6, label=r'$z_{%d}^{eff}$' % (zi + 1))
+        ax[1].fill_between(zgrid_nz_lns, nz_lns[:, zi], color=colors[zi], alpha=0.2)
+        ax[1].set_xlabel('$z$')
+        ax[1].set_ylabel(r'$n_i^{\rm POS}(z)$')
+    ax[1].legend(ncol=2)

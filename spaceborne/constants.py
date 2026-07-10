@@ -5,6 +5,7 @@ import numpy as np
 # RS = real space
 # SB = Spaceborne
 # HC = Heracles
+# OC = OneCovariance
 
 DEG2_IN_SPHERE = 4 * np.pi * (180 / np.pi) ** 2
 DEG2_TO_SR = (np.pi / 180) ** 2
@@ -44,6 +45,10 @@ CS_DIAG_PROBES = ['En', 'Bn', 'Psigl', 'Psigg']
 HS_DIAG_PROBE_COMBS = [p + p for p in HS_DIAG_PROBES]
 RS_DIAG_PROBE_COMBS = [p + p for p in RS_DIAG_PROBES]
 CS_DIAG_PROBE_COMBS = [p + p for p in CS_DIAG_PROBES]
+
+# real-space to harmonic-space probe mapping, used e.g. for fsky selection
+RS_DIAG_PROBES_TO_HS = {'xip': 'LL', 'xim': 'LL', 'gt': 'GL', 'w': 'GG'}
+CS_DIAG_PROBES_TO_HS = {'En': 'LL', 'Bn': 'LL', 'Psigl': 'GL', 'Psigg': 'GG'}
 
 # OneCov and OneCov to SB mappings
 HS_DIAG_PROBES_OC = ['mm', 'gm', 'gg']

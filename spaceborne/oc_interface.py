@@ -24,13 +24,115 @@ import warnings
 from collections import defaultdict
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
 _UNSET = object()
+
+
+def compare_sb_and_oc(
+    cov_sb_dict: dict,
+    cov_oc_obj: object,
+    cfg: dict,
+    pvt_cfg: dict,
+    cov_terms_and_codes: dict,
+) -> None:
+    """Compares the covariance matrices computed by Spaceborne and OneCovariance."""
+    # ! important note: for OC RS, list fmt seems to be missing some blocks (problem
+    # ! common to HS, solve it)
+    # ! moreover, some of the sub-blocks are transposed.
+
+    obs_space = cfg['probe_selection']['space']
+    oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
+
+    if not cfg['OneCovariance']['compare_against_oc']:
+        return
+
+    if 'OneCovariance' in cov_terms_and_codes.values():
+        warnings.warn(
+            'You are likely comparing OneCovariance against itself', stacklevel=2
+        )
+
+    for term in cov_sb_dict:
+        # plot title
+        title = (
+            f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, '
+            f'int {cfg["precision"]["proj_nongauss_integration_method"]} -'
+        )
+
+        # ! sanity check: mat and list formats must coincide for OC
+        # * THIS CHECK FAILS FOR REAL SPACE (I think it's a OneCov issue)
+        if obs_space != 'real' and cfg['OneCovariance']['process_cov_from_mat_file']:
+            if term not in ['sva', 'sn', 'mix']:
+                np.testing.assert_allclose(
+                    cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d'],
+                    cov_oc_obj.cov_dict[term]['3x2pt']['2d'],
+                    atol=0,
+                    rtol=1e-3,
+                    err_msg=(
+                        'mat and list formats for OC do not coincide'
+                        f' for term {term} in 3x2pt 2d block'
+                    ),
+                )
+
+            # ! sanity check: cov_dict_matfmt "g" == list_fmt "sva" + "sn" + "mix"
+            if (
+                'sva' in cov_oc_obj.cov_dict
+                and 'sn' in cov_oc_obj.cov_dict
+                and 'mix' in cov_oc_obj.cov_dict
+            ) and cfg['OneCovariance']['process_cov_from_mat_file']:
+                np.testing.assert_allclose(
+                    cov_oc_obj.cov_dict_matfmt['g']['3x2pt']['2d'],
+                    cov_oc_obj.cov_dict['sva']['3x2pt']['2d']
+                    + cov_oc_obj.cov_dict['sn']['3x2pt']['2d']
+                    + cov_oc_obj.cov_dict['mix']['3x2pt']['2d'],
+                    atol=0,
+                    rtol=1e-3,
+                )
+
+        # ! now compare SB and OC
+        if oc_fmt == 'list':
+            cov_a = cov_sb_dict[term]['3x2pt']['2d']
+            cov_b = cov_oc_obj.cov_dict[term]['3x2pt']['2d']
+            sl.compare_2d_covs(
+                cov_a,
+                cov_b,
+                'SB',
+                'OC',
+                title=title,
+                diff_threshold=10,
+                compare_cov_2d=True,
+                compare_corr_2d=False,
+                compare_diag=True,
+                compare_flat=True,
+                compare_spectrum=False,
+            )
+
+        elif oc_fmt == 'mat':
+            if term not in ['sva', 'sn', 'mix']:
+                cov_a = cov_sb_dict[term]['3x2pt']['2d']
+                cov_b = cov_oc_obj.cov_dict_matfmt[term]['3x2pt']['2d']
+                sl.compare_2d_covs(
+                    cov_a,
+                    cov_b,
+                    'SB',
+                    'OC mat fmt',
+                    title=title,
+                    diff_threshold=10,
+                    compare_cov_2d=True,
+                    compare_corr_2d=False,
+                    compare_diag=True,
+                    compare_flat=True,
+                    compare_spectrum=True,
+                )
+
+        else:
+            raise ValueError(
+                f'Unknown oc_format_to_compare_against: {oc_fmt}. '
+                'Should be either "list" or "mat".'
+            )
 
 
 def reorder_block_cov(
@@ -127,149 +229,6 @@ def cov_ggglll_to_llglgg(
 
     return reorder_block_cov(
         cov_ggglll_2d, block_sizes=block_sizes, from_order=from_order, to_order=to_order
-    )
-
-
-# old version kept for reference
-def _cov_ggglll_to_llglgg(
-    cov_ggglll_2d: np.ndarray, elem_auto: int, elem_cross: int
-) -> np.ndarray:
-    """Transforms a covariance matrix from gg-gl-ll format to llglgg format.
-
-    Parameters
-    ----------
-    cov_ggglll_2d : np.ndarray
-        Input covariance matrix in gg-gl-ll format.
-    elem_auto : int
-        Number of auto elements in the covariance matrix.
-    elem_cross : int
-        Number of cross elements in the covariance matrix.
-
-    Returns
-    -------
-    np.ndarray
-        Transformed covariance matrix in mm-gm-gg format.
-
-    """
-    elem_apc = elem_auto + elem_cross
-
-    cov_gggg_2d = cov_ggglll_2d[:elem_auto, :elem_auto]
-    cov_gggl_2d = cov_ggglll_2d[:elem_auto, elem_auto:elem_apc]
-    cov_ggll_2d = cov_ggglll_2d[:elem_auto, elem_apc:]
-    cov_glgg_2d = cov_ggglll_2d[elem_auto:elem_apc, :elem_auto]
-    cov_glgl_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_auto:elem_apc]
-    cov_glll_2d = cov_ggglll_2d[elem_auto:elem_apc, elem_apc:]
-    cov_llgg_2d = cov_ggglll_2d[elem_apc:, :elem_auto]
-    cov_llgl_2d = cov_ggglll_2d[elem_apc:, elem_auto:elem_apc]
-    cov_llll_2d = cov_ggglll_2d[elem_apc:, elem_apc:]
-
-    row_1 = np.concatenate((cov_llll_2d, cov_llgl_2d, cov_llgg_2d), axis=1)
-    row_2 = np.concatenate((cov_glll_2d, cov_glgl_2d, cov_glgg_2d), axis=1)
-    row_3 = np.concatenate((cov_ggll_2d, cov_gggl_2d, cov_gggg_2d), axis=1)
-
-    cov_llglgg_2d = np.concatenate((row_1, row_2, row_3), axis=0)
-
-    return cov_llglgg_2d
-
-
-def compare_sb_cov_to_oc_list(
-    cov_rs_obj,
-    cov_oc_dict_6d: dict,
-    probe_sb: str,
-    term: str,
-    ind_auto: np.ndarray,
-    ind_cross: np.ndarray,
-    zpairs_auto: int,
-    zpairs_cross: int,
-    scale_bins: int,
-    title: str | None = None,
-):
-    # gt is gm in OneCov
-    probe_oc = probe_sb.replace('gt', 'gm')
-
-    # get probe names, ind and zpairs for 2D conversion
-    probe_ab, probe_cd = sl.split_probe_name(probe_sb)  # TODO space?
-    probe_ab_ix, probe_cd_ix = (
-        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_ab],
-        const.RS_PROBE_NAME_TO_IX_DICT_SHORT[probe_cd],
-    )
-    zpairs_ab = zpairs_cross if probe_ab_ix == 1 else zpairs_auto
-    zpairs_cd = zpairs_cross if probe_cd_ix == 1 else zpairs_auto
-    ind_ab = ind_cross if probe_ab_ix == 1 else ind_auto
-    ind_cd = ind_cross if probe_cd_ix == 1 else ind_auto
-
-    # get 6D covs
-    cov_sb_6d = getattr(cov_rs_obj, f'cov_{probe_sb}_{term}_6d')
-
-    # for cov OC, some blocks may be transposed
-    try:
-        cov_oc_6d = cov_oc_dict_6d[f'{probe_oc}_{term}']
-    except KeyError:
-        _probe_sb_inv = probe_cd + probe_ab
-        _probe_oc_inv = _probe_sb_inv.replace('gt', 'gm')
-        cov_oc_6d = cov_oc_dict_6d[f'{_probe_oc_inv}_{term}'].transpose(
-            1, 0, 4, 5, 2, 3
-        )
-
-    # if both covs are null, exit the function
-    if np.all(cov_sb_6d == 0) and np.all(cov_oc_6d == 0):
-        print(f'OC and SB covs for {term = } {probe_sb = } are both identically 0')
-        return
-
-    # convert to 2D to compare
-    cov_sb_4d = sl.cov_6D_to_4D_blocks(
-        cov_sb_6d, scale_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-    )
-    cov_oc_4d = sl.cov_6D_to_4D_blocks(
-        cov_oc_6d, scale_bins, zpairs_ab, zpairs_cd, ind_ab, ind_cd
-    )
-
-    cov_sb_2d = sl.cov_4D_to_2D(cov_sb_4d, block_index='zpair', optimize=True)
-    cov_oc_2d = sl.cov_4D_to_2D(cov_oc_4d, block_index='zpair', optimize=True)
-
-    sl.compare_arrays(
-        cov_sb_2d,
-        cov_oc_2d,
-        'SB',
-        'OC',
-        log_array=True,
-        log_diff=True,
-        abs_val=True,
-        plot_diff_threshold=10,
-        title=title,
-    )
-
-    fig, axs = plt.subplots(
-        2,
-        2,
-        figsize=(15, 6),
-        sharex='col',
-        height_ratios=[2, 1],
-        gridspec_kw={'hspace': 0, 'wspace': 0.3},
-    )
-
-    # flatten to (2,2) shape
-    axs = axs.reshape(2, 2)
-
-    sl.compare_funcs(
-        None,
-        {'SB diag': np.abs(np.diag(cov_sb_2d)), 'OC diag': np.abs(np.diag(cov_oc_2d))},
-        logscale_y=[True, False],
-        title=title,
-        ylim_diff=[-100, 100],
-        ax=axs[:, 0],
-    )
-
-    sl.compare_funcs(
-        None,
-        {
-            'SB flat': np.abs(cov_sb_2d).flatten(),
-            'OC flat': np.abs(cov_oc_2d).flatten(),
-        },
-        logscale_y=[True, False],
-        title=title,
-        ylim_diff=[-100, 100],
-        ax=axs[:, 1],
     )
 
 
@@ -537,6 +496,8 @@ class OneCovarianceInterface:
         self.path_to_oc_executable = self.cfg['OneCovariance']['path_to_oc_executable']
 
         self.oc_path: str = _UNSET
+        self.fsky_ab_dict: dict = _UNSET
+        # OC has a single z grid for the trispectrum, so we choose the coarser one
         self.path_to_config_oc_ini: str = _UNSET
         self.ells_sb: np.ndarray = _UNSET
         self.cov_3x2pt_sva_10d: np.ndarray = _UNSET
@@ -670,7 +631,9 @@ class OneCovarianceInterface:
         cfg_oc_ini['covELLspace settings']['limber'] = str(True)
         cfg_oc_ini['covELLspace settings']['nglimber'] = str(True)
         warnings.warn(
-            'delta_z is quite low, increase if runtime becomes an issue!', stacklevel=2
+            'delta_z comes from Spaceborne and is quite small, '
+            'increase in OneCovariance if runtime becomes an issue!',
+            stacklevel=2,
         )
         cfg_oc_ini['covELLspace settings']['delta_z'] = str(
             self.cfg['precision']['delta_z']
@@ -714,19 +677,21 @@ class OneCovarianceInterface:
             cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
 
         # ! [survey specs]
-        # commented out to avoid loading mask file by accident
-        cfg_oc_ini['survey specs']['mask_directory'] = str(
-            self.cfg['mask']['mask_filename']
-        )  # TODO test this!!
-        cfg_oc_ini['survey specs']['survey_area_lensing_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
-        cfg_oc_ini['survey specs']['survey_area_ggl_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
-        cfg_oc_ini['survey specs']['survey_area_clust_in_deg2'] = str(
-            self.cfg['mask']['survey_area_deg2']
-        )
+        cfg_oc_ini['survey specs']['mask_directory'] = str(self.oc_path)
+
+        # Pass the 'preprocessed' footprints saved by main.py as
+        # sb_footprint_{LL,GL,GG}.fits (relative to mask_directory). Pass also fskys,
+        # as OC raises errors otherwise (why)?
+        # TODO change this after OC bufgix
+        for _probe_sb, _probe_oc in zip(
+            ['LL', 'GL', 'GG'], ['lensing', 'ggl', 'clust'], strict=True
+        ):
+            cfg_oc_ini['survey specs'][f'mask_file_{_probe_oc}'] = (
+                f'{self.oc_path}/sb_footprint_{_probe_sb}.fits'
+            )
+            cfg_oc_ini['survey specs'][f'survey_area_{_probe_oc}_in_deg2'] = str(
+                self.fsky_ab_dict[_probe_sb] * const.DEG2_IN_SPHERE
+            )
         cfg_oc_ini['survey specs']['n_eff_clust'] = ', '.join(
             map(str, n_eff_clust_list)
         )
@@ -851,6 +816,8 @@ class OneCovarianceInterface:
         cfg_oc_ini['halomodel evaluation']['disable_mass_conversion'] = str(True)
         cfg_oc_ini['halomodel evaluation']['delta_c'] = str(1.686)
         cfg_oc_ini['halomodel evaluation']['transfer_model'] = 'CAMB'
+        # Note: the small-k 1-halo damping can be disabled to get a better agreement
+        # with the SB SSC responses
         cfg_oc_ini['halomodel evaluation']['small_k_damping_for1h'] = 'damped'
 
         # ! [powspec evaluation]
@@ -861,10 +828,10 @@ class OneCovarianceInterface:
             self.cfg['extra_parameters']['camb']['HMCode_logT_AGN']
         )
         cfg_oc_ini['powspec evaluation']['log10k_min'] = str(
-            self.cfg['precision']['log10_k_min'] * h
+            self.cfg['precision']['log10_k_min'] - np.log10(h)
         )
         cfg_oc_ini['powspec evaluation']['log10k_max'] = str(
-            self.cfg['precision']['log10_k_max'] * h
+            self.cfg['precision']['log10_k_max'] - np.log10(h)
         )
         cfg_oc_ini['powspec evaluation']['log10k_bins'] = str(
             self.cfg['precision']['k_steps']
@@ -872,10 +839,10 @@ class OneCovarianceInterface:
 
         # ! [trispec evaluation]
         cfg_oc_ini['trispec evaluation']['log10k_min'] = str(
-            self.cfg['precision']['log10_k_min'] * h
+            self.cfg['precision']['log10_k_min'] - np.log10(h)
         )
         cfg_oc_ini['trispec evaluation']['log10k_max'] = str(
-            self.cfg['precision']['log10_k_max'] * h
+            self.cfg['precision']['log10_k_max'] - np.log10(h)
         )
         cfg_oc_ini['trispec evaluation']['log10k_bins'] = str(
             self.cfg['precision']['k_steps']
@@ -945,7 +912,6 @@ class OneCovarianceInterface:
         Cons:
             - Less maintainable than the bash call
         """
-        import sys
 
         sys.path.append(os.path.dirname(self.path_to_oc_executable))
         import platform

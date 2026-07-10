@@ -1,6 +1,8 @@
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
+import datetime
+import importlib.metadata
 import os
 import sys
 import warnings
@@ -1628,7 +1630,6 @@ if compute_ccl_ssc:
             pab, pcd = sl.split_probe_name(unique_probe_combs_hs[0], space='harmonic')
             sigma2_b_tpl_dict[probe_ab, probe_cd] = sigma2_b_tpl_dict[pab, pcd]
         else:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
                 z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
                 which_sigma2_b=which_sigma2_b,
@@ -1878,6 +1879,23 @@ oc_interface.compare_sb_and_oc(
     cov_terms_and_codes=cov_terms_and_codes,
 )
 
+# build run_cfg (config with OneCovariance stripped) once; reused for the npz
+# metadata below and the run_config.yaml dump further down
+run_cfg = deepcopy(cfg)
+for key in ['OneCovariance']:
+    if key in run_cfg:
+        del run_cfg[key]
+
+# metadata embedded in every covariance npz for provenance. `config` is the YAML
+# string (same bytes as run_config.yaml), so loaders just yaml.safe_load it back.
+_, commit = sl.get_git_info()
+cov_metadata = {
+    'config': yaml.safe_dump(run_cfg, default_flow_style=False, sort_keys=False),
+    'date_created': datetime.datetime.now().isoformat(),
+    'code_version': importlib.metadata.version('Spaceborne'),
+    'git_commit': commit,
+}
+
 # ! save 2D covs (for each term) in npz archive
 covs_3x2pt_2d_tosave_dict = {}
 if cfg['covariance']['G']:
@@ -1896,7 +1914,11 @@ if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
     covs_3x2pt_2d_tosave_dict['TOT'] = _cov_dict['tot']['3x2pt']['2d']
 
 cov_filename = cfg['covariance']['cov_filename']
-np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **covs_3x2pt_2d_tosave_dict)
+np.savez_compressed(
+    f'{output_path}/{cov_filename}_2D.npz',
+    **covs_3x2pt_2d_tosave_dict,
+    **cov_metadata,
+)
 
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
@@ -1920,7 +1942,11 @@ if cfg['covariance']['save_full_cov']:
         if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
             covs_6d_tosave_dict[f'{_probe}_TOT'] = _cd['tot'][probe_2tpl]['6d']
 
-    np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **covs_6d_tosave_dict)
+    np.savez_compressed(
+        f'{output_path}/{cov_filename}_6D.npz',
+        **covs_6d_tosave_dict,
+        **cov_metadata,
+    )
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
     io_obj.save_cov_euclidlib(cov_dict=_cov_dict)
@@ -2035,11 +2061,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
             fig.suptitle(f'cov {cov_name}', y=0.9)
 
 
-# save cfg file
-run_cfg = deepcopy(cfg)
-for key in ['OneCovariance']:
-    if key in run_cfg:
-        del run_cfg[key]
+# save cfg file (run_cfg was built above, next to the npz metadata)
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.safe_dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
 

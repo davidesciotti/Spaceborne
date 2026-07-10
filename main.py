@@ -1583,7 +1583,9 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             if same_ftp and i > 0:
                 # if all probes are the same, I can just copy the first result
-                pab, pcd = sl.split_probe_name(unique_probe_combs_hs[0], space='harmonic')
+                pab, pcd = sl.split_probe_name(
+                    unique_probe_combs_hs[0], space='harmonic'
+                )
                 sigma2_b_dict[probe_ab, probe_cd] = sigma2_b_dict[pab, pcd]
             else:
                 sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
@@ -1916,9 +1918,7 @@ if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
 
 cov_filename = cfg['covariance']['cov_filename']
 np.savez_compressed(
-    f'{output_path}/{cov_filename}_2D.npz',
-    **covs_3x2pt_2d_tosave_dict,
-    **cov_metadata,
+    f'{output_path}/{cov_filename}_2D.npz', **covs_3x2pt_2d_tosave_dict, **cov_metadata
 )
 
 # ! save 6D covs (for each probe and term) in npz archive.
@@ -1944,9 +1944,7 @@ if cfg['covariance']['save_full_cov']:
             covs_6d_tosave_dict[f'{_probe}_TOT'] = _cd['tot'][probe_2tpl]['6d']
 
     np.savez_compressed(
-        f'{output_path}/{cov_filename}_6D.npz',
-        **covs_6d_tosave_dict,
-        **cov_metadata,
+        f'{output_path}/{cov_filename}_6D.npz', **covs_6d_tosave_dict, **cov_metadata
     )
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':

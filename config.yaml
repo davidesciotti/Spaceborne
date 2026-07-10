@@ -79,7 +79,7 @@ nz:
   # Number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
   ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
-  ngal_lenses: [8.09216, 8.09215, 8.09215] # Type: list[float]
+  ngal_lenses: [4.09216, 4.09215, 4.09215] # Type: list[float]
 
   # [Note] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -102,7 +102,7 @@ binning:
   # so ell_bins is ignored and ell_max is included in the grid.
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 3000 # Type: int | float. Maximum ell
-  ell_bins: 30 # Type: int. Number of ell bins. Not used in the 'unbinned' case
+  ell_bins: 20 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
   # The file should have the following columns:
@@ -229,11 +229,11 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: NaMaster # Type: str
+  partial_sky_method: Knox # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: coupled # Type: str.
+  cov_type: decoupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
@@ -411,7 +411,7 @@ precision:
 misc:
   # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
   #        have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 30 # Type: int. How many threads to use for the parallel computations
+  num_threads: 50 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.

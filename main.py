@@ -1,6 +1,8 @@
 # ruff: noqa: E402 (ignore module import not on top of the file warnings)
 import argparse
 import contextlib
+import datetime
+import importlib.metadata
 import os
 import sys
 import warnings
@@ -93,9 +95,6 @@ os.environ['XLA_FLAGS'] = (
 # Import JAX after environment variables are set, then print device info
 import jax
 
-print(f'JAX devices: {jax.devices()}')
-print(f'JAX backend: {jax.default_backend()}')
-
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
@@ -121,7 +120,6 @@ from spaceborne import (
     io_handler,
     mask_utils,
     oc_interface,
-    plot_lib,
     responses,
     wf_cl_lib,
 )
@@ -138,6 +136,9 @@ with contextlib.suppress(ImportError):
 
 if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
     matplotlib.use('Agg')
+
+print(f'JAX devices: {jax.devices()}')
+print(f'JAX backend: {jax.default_backend()}')
 
 
 YELLOW = '\033[33m'
@@ -353,6 +354,7 @@ if 'cNG_code' not in cfg['covariance']:
 
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
+    cfg['OneCovariance']['compare_against_oc'] = False
 
 cfg['OneCovariance']['path_to_oc_env'] = cfg['OneCovariance'].get(
     'path_to_oc_env', os.environ.get('SPACEBORNE_OC_PYTHON', sys.executable)
@@ -860,6 +862,7 @@ footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
 # plot GL footprint
 mask_utils.plot_footprint(footp_ab_dict['GL'], probe='GL')
 
+
 # compute footprint spectra
 footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
     footp_ab_dict=footp_ab_dict,
@@ -875,6 +878,15 @@ fsky_max_abcd_dict, amax_abcd_dict = mask_utils.get_fsky_abcd_dict(
 
 # this will be used to normalise the SSC and cNG
 ccl_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
+
+_keys = list(footp_cl_norm_abcd_dict)
+_ref = footp_cl_norm_abcd_dict[_keys[0]][1]
+_fref = fsky_max_abcd_dict[_keys[0]]
+same_ftp = all(
+    np.array_equal(footp_cl_norm_abcd_dict[k][1], _ref)
+    and fsky_max_abcd_dict[k] == _fref
+    for k in _keys
+)
 
 
 # ! ===================================== n(z) =========================================
@@ -937,7 +949,7 @@ if cfg['nz']['normalize_nz']:
             'Proceeding to normalize them',
             stacklevel=2,
         )
-        nz_lns = wf_cl_lib.normalise_nz(nz_lns, zgrid_nz_lns)
+        nz_lns = wf_cl_lib.normalize_nz(nz_lns, zgrid_nz_lns)
     else:
         print('Lens n(z) are normalized')
 
@@ -947,7 +959,7 @@ if cfg['nz']['normalize_nz']:
             'Proceeding to normalize them',
             stacklevel=2,
         )
-        nz_src = wf_cl_lib.normalise_nz(nz_src, zgrid_nz_src)
+        nz_src = wf_cl_lib.normalize_nz(nz_src, zgrid_nz_src)
     else:
         print('Source n(z) are normalized')
 
@@ -1566,15 +1578,23 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
 
     sigma2_b_dict = {}
-    for probe_abcd in tqdm(unique_probe_combs_hs):
-        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-        sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
-            ccl_obj=ccl_obj,
-            cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-            fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
-            k_grid_s2b=k_grid_s2b,
-            which_sigma2_b=which_sigma2_b,
-        )
+    with sl.timer('\nComputing survey covariance...'):
+        for i, probe_abcd in enumerate(unique_probe_combs_hs):
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            if same_ftp and i > 0:
+                # if all probes are the same, I can just copy the first result
+                pab, pcd = sl.split_probe_name(
+                    unique_probe_combs_hs[0], space='harmonic'
+                )
+                sigma2_b_dict[probe_ab, probe_cd] = sigma2_b_dict[pab, pcd]
+            else:
+                sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
+                    ccl_obj=ccl_obj,
+                    cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+                    fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+                    k_grid_s2b=k_grid_s2b,
+                    which_sigma2_b=which_sigma2_b,
+                )
 
     cov_ssc_obj.compute_ssc(
         d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
@@ -1606,14 +1626,19 @@ if compute_ccl_ssc:
     # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
     sigma2_b_tpl_dict = {}
-    for probe_abcd in tqdm(unique_probe_combs_hs):
+    for i, probe_abcd in enumerate(unique_probe_combs_hs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-        sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
-            z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
-            which_sigma2_b=which_sigma2_b,
-            cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-            fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
-        )
+        if same_ftp and i > 0:
+            # if all probes are the same, I can just copy the first result
+            pab, pcd = sl.split_probe_name(unique_probe_combs_hs[0], space='harmonic')
+            sigma2_b_tpl_dict[probe_ab, probe_cd] = sigma2_b_tpl_dict[pab, pcd]
+        else:
+            sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
+                z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
+                which_sigma2_b=which_sigma2_b,
+                cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+                fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+            )
     ccl_obj.sigma2_b_tpl_dict = sigma2_b_tpl_dict
 
 
@@ -1857,6 +1882,23 @@ oc_interface.compare_sb_and_oc(
     cov_terms_and_codes=cov_terms_and_codes,
 )
 
+# build run_cfg (config with OneCovariance stripped) once; reused for the npz
+# metadata below and the run_config.yaml dump further down
+run_cfg = deepcopy(cfg)
+for key in ['OneCovariance']:
+    if key in run_cfg:
+        del run_cfg[key]
+
+# metadata embedded in every covariance npz for provenance. `config` is the YAML
+# string (same bytes as run_config.yaml), so loaders just yaml.safe_load it back.
+_, commit = sl.get_git_info()
+cov_metadata = {
+    'config': yaml.safe_dump(run_cfg, default_flow_style=False, sort_keys=False),
+    'date_created': datetime.datetime.now().isoformat(),
+    'code_version': importlib.metadata.version('Spaceborne'),
+    'git_commit': commit,
+}
+
 # ! save 2D covs (for each term) in npz archive
 covs_3x2pt_2d_tosave_dict = {}
 if cfg['covariance']['G']:
@@ -1875,7 +1917,9 @@ if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
     covs_3x2pt_2d_tosave_dict['TOT'] = _cov_dict['tot']['3x2pt']['2d']
 
 cov_filename = cfg['covariance']['cov_filename']
-np.savez_compressed(f'{output_path}/{cov_filename}_2D.npz', **covs_3x2pt_2d_tosave_dict)
+np.savez_compressed(
+    f'{output_path}/{cov_filename}_2D.npz', **covs_3x2pt_2d_tosave_dict, **cov_metadata
+)
 
 # ! save 6D covs (for each probe and term) in npz archive.
 # ! note that the 6D covs are always probe-specific,
@@ -1899,7 +1943,9 @@ if cfg['covariance']['save_full_cov']:
         if cfg['covariance']['cNG'] or cfg['covariance']['SSC']:
             covs_6d_tosave_dict[f'{_probe}_TOT'] = _cd['tot'][probe_2tpl]['6d']
 
-    np.savez_compressed(f'{output_path}/{cov_filename}_6D.npz', **covs_6d_tosave_dict)
+    np.savez_compressed(
+        f'{output_path}/{cov_filename}_6D.npz', **covs_6d_tosave_dict, **cov_metadata
+    )
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
     io_obj.save_cov_euclidlib(cov_dict=_cov_dict)
@@ -2014,11 +2060,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
             fig.suptitle(f'cov {cov_name}', y=0.9)
 
 
-# save cfg file
-run_cfg = deepcopy(cfg)
-for key in ['OneCovariance']:
-    if key in run_cfg:
-        del run_cfg[key]
+# save cfg file (run_cfg was built above, next to the npz metadata)
 with open(f'{output_path}/run_config.yaml', 'w') as yaml_file:
     yaml.safe_dump(run_cfg, yaml_file, default_flow_style=False, sort_keys=False)
 

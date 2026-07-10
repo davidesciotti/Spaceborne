@@ -2162,9 +2162,7 @@ def compute_g_cov(
         return cov
 
     cov_sva = np.asarray(cov_g_terms_helper_jax(cl_5d, cl_5d, prefactor, mix=False))
-    cov_sn = np.asarray(
-        cov_g_terms_helper_jax(nl_5d, nl_5d, prefactor, mix=False)
-    )
+    cov_sn = np.asarray(cov_g_terms_helper_jax(nl_5d, nl_5d, prefactor, mix=False))
     cov_mix = np.asarray(cov_g_terms_helper_jax(cl_5d, nl_5d, prefactor, mix=True))
 
     # bin the integer ell modes

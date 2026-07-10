@@ -45,7 +45,6 @@ def compare_sb_and_oc(
     # ! moreover, some of the sub-blocks are transposed.
 
     obs_space = cfg['probe_selection']['space']
-    oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
 
     if not cfg['OneCovariance']['compare_against_oc']:
         return
@@ -54,6 +53,8 @@ def compare_sb_and_oc(
         warnings.warn(
             'You are likely comparing OneCovariance against itself', stacklevel=2
         )
+
+    oc_fmt = cfg['OneCovariance']['oc_format_to_compare_against']
 
     for term in cov_sb_dict:
         # plot title

@@ -1578,20 +1578,21 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
 
     sigma2_b_dict = {}
-    for i, probe_abcd in enumerate(unique_probe_combs_hs):
-        probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-        if same_ftp and i > 0:
-            # if all probes are the same, I can just copy the first result
-            pab, pcd = sl.split_probe_name(unique_probe_combs_hs[0], space='harmonic')
-            sigma2_b_dict[probe_ab, probe_cd] = sigma2_b_dict[pab, pcd]
-        else:
-            sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
-                ccl_obj=ccl_obj,
-                cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-                fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
-                k_grid_s2b=k_grid_s2b,
-                which_sigma2_b=which_sigma2_b,
-            )
+    with sl.timer('\nComputing survey covariance...'):
+        for i, probe_abcd in enumerate(unique_probe_combs_hs):
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            if same_ftp and i > 0:
+                # if all probes are the same, I can just copy the first result
+                pab, pcd = sl.split_probe_name(unique_probe_combs_hs[0], space='harmonic')
+                sigma2_b_dict[probe_ab, probe_cd] = sigma2_b_dict[pab, pcd]
+            else:
+                sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
+                    ccl_obj=ccl_obj,
+                    cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+                    fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+                    k_grid_s2b=k_grid_s2b,
+                    which_sigma2_b=which_sigma2_b,
+                )
 
     cov_ssc_obj.compute_ssc(
         d2CLL_dVddeltab_4d=d2CLL_dVddeltab,

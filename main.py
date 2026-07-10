@@ -959,7 +959,6 @@ ccl_obj.check_nz_tuple(zbins)
 
 sb_plt.plot_nz_src_lns(zgrid_nz_src, nz_src, zgrid_nz_lns, nz_lns)
 
-assert False, 'stop here'
 
 # ! ========================================= IA =======================================
 ccl_obj.set_ia_bias_tuple(z_grid_src=z_grid, has_ia=cfg['C_ell']['has_IA'])

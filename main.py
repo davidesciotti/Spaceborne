@@ -93,9 +93,6 @@ os.environ['XLA_FLAGS'] = (
 # Import JAX after environment variables are set, then print device info
 import jax
 
-print(f'JAX devices: {jax.devices()}')
-print(f'JAX backend: {jax.default_backend()}')
-
 # override in cfg as well
 cfg['misc']['num_threads'] = num_threads
 
@@ -121,7 +118,6 @@ from spaceborne import (
     io_handler,
     mask_utils,
     oc_interface,
-    plot_lib,
     responses,
     wf_cl_lib,
 )
@@ -138,6 +134,9 @@ with contextlib.suppress(ImportError):
 
 if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
     matplotlib.use('Agg')
+
+print(f'JAX devices: {jax.devices()}')
+print(f'JAX backend: {jax.default_backend()}')
 
 
 YELLOW = '\033[33m'
@@ -353,6 +352,7 @@ if 'cNG_code' not in cfg['covariance']:
 
 if 'OneCovariance' not in cfg:
     cfg['OneCovariance'] = {}
+    cfg['OneCovariance']['compare_against_oc'] = False
 
 cfg['OneCovariance']['path_to_oc_env'] = cfg['OneCovariance'].get(
     'path_to_oc_env', os.environ.get('SPACEBORNE_OC_PYTHON', sys.executable)
@@ -860,6 +860,7 @@ footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
 # plot GL footprint
 mask_utils.plot_footprint(footp_ab_dict['GL'], probe='GL')
 
+
 # compute footprint spectra
 footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
     footp_ab_dict=footp_ab_dict,
@@ -875,6 +876,15 @@ fsky_max_abcd_dict, amax_abcd_dict = mask_utils.get_fsky_abcd_dict(
 
 # this will be used to normalise the SSC and cNG
 ccl_obj.fsky_max_abcd_dict = fsky_max_abcd_dict
+
+_keys = list(footp_cl_norm_abcd_dict)
+_ref = footp_cl_norm_abcd_dict[_keys[0]][1]
+_fref = fsky_max_abcd_dict[_keys[0]]
+same_ftp = all(
+    np.array_equal(footp_cl_norm_abcd_dict[k][1], _ref)
+    and fsky_max_abcd_dict[k] == _fref
+    for k in _keys
+)
 
 
 # ! ===================================== n(z) =========================================
@@ -937,7 +947,7 @@ if cfg['nz']['normalize_nz']:
             'Proceeding to normalize them',
             stacklevel=2,
         )
-        nz_lns = wf_cl_lib.normalise_nz(nz_lns, zgrid_nz_lns)
+        nz_lns = wf_cl_lib.normalize_nz(nz_lns, zgrid_nz_lns)
     else:
         print('Lens n(z) are normalized')
 
@@ -947,7 +957,7 @@ if cfg['nz']['normalize_nz']:
             'Proceeding to normalize them',
             stacklevel=2,
         )
-        nz_src = wf_cl_lib.normalise_nz(nz_src, zgrid_nz_src)
+        nz_src = wf_cl_lib.normalize_nz(nz_src, zgrid_nz_src)
     else:
         print('Source n(z) are normalized')
 
@@ -1566,15 +1576,20 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     cov_ssc_obj = cov_ssc.SpaceborneSSC(cfg, pvt_cfg, ccl_obj, z_grid)
 
     sigma2_b_dict = {}
-    for probe_abcd in tqdm(unique_probe_combs_hs):
+    for i, probe_abcd in enumerate(unique_probe_combs_hs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-        sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
-            ccl_obj=ccl_obj,
-            cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-            fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
-            k_grid_s2b=k_grid_s2b,
-            which_sigma2_b=which_sigma2_b,
-        )
+        if same_ftp and i > 0:
+            # if all probes are the same, I can just copy the first result
+            pab, pcd = sl.split_probe_name(unique_probe_combs_hs[0], space='harmonic')
+            sigma2_b_dict[probe_ab, probe_cd] = sigma2_b_dict[pab, pcd]
+        else:
+            sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
+                ccl_obj=ccl_obj,
+                cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+                fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+                k_grid_s2b=k_grid_s2b,
+                which_sigma2_b=which_sigma2_b,
+            )
 
     cov_ssc_obj.compute_ssc(
         d2CLL_dVddeltab_4d=d2CLL_dVddeltab,
@@ -1606,14 +1621,20 @@ if compute_ccl_ssc:
     # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
     # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
     sigma2_b_tpl_dict = {}
-    for probe_abcd in tqdm(unique_probe_combs_hs):
+    for i, probe_abcd in enumerate(unique_probe_combs_hs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
-        sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
-            z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
-            which_sigma2_b=which_sigma2_b,
-            cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-            fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
-        )
+        if same_ftp and i > 0:
+            # if all probes are the same, I can just copy the first result
+            pab, pcd = sl.split_probe_name(unique_probe_combs_hs[0], space='harmonic')
+            sigma2_b_tpl_dict[probe_ab, probe_cd] = sigma2_b_tpl_dict[pab, pcd]
+        else:
+            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
+                z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
+                which_sigma2_b=which_sigma2_b,
+                cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
+                fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
+            )
     ccl_obj.sigma2_b_tpl_dict = sigma2_b_tpl_dict
 
 

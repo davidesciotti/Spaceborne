@@ -87,7 +87,7 @@ Please refer to the [official installation instructions](https://docs.jax.dev/en
 (see e.g. Silicon Macs) instructions.
 
 ### Keeping the code up to date
-Please make sure to keep the code updated to the latest version. To do that, simply go to the `Spaceborne` root folder (for good measure, make sure the directory is clean, i.e., all of your configs/outputs/ecc are outside of it), then do
+Please make sure to keep the code updated to the latest version. To do that, simply go to the `Spaceborne` root folder (for good measure, make sure the directory is clean, i.e., all of your configs/outputs/etc are outside of it), then do
 
 ```bash
 git fetch --tags         

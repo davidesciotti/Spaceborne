@@ -1,0 +1,465 @@
+ ▐▛███▜▌   Claude Code v2.1.206
+▝▜█████▛▘  Fable 5 · Claude Pro
+  ▘▘ ▝▝    ~/code/Spaceborne
+
+ ▎ [✻] [✻] [✻] · Share Claude Code and earn €10 in usage credits · /passes
+
+❯ /model                                                                        
+  ⎿  Set model to Fable 5 and saved as your default for new sessions
+
+❯ Look at this codebase and make a list of the features that would make this    
+  code really unique and groundbreaking. I am thinking about novelties in the   
+  covariance computation, such as:                                              
+  * the ability to correlate any number of fields                               
+  * non-limber projection of the trispectrum for the cNG term                   
+  (I realise one of these is computational, the other is scientific).           
+  Suggest other examples. Right now the best choices on the market are TJPCov   
+  /home/sciotti/code/TJPCov                                                     
+  and OneCovariance                                                             
+  /home/sciotti/code/OneCovariance                                              
+  Use Sonnet 5 subagents when possible/appropriate to save tokens.              
+
+● I'll survey the two competitor codebases and Spaceborne's actual
+  implementation with three parallel Sonnet agents, then synthesize the
+  uniqueness list myself.
+
+● 3 background agents launched (↓ to manage)
+   ├ Survey TJPCov capabilities
+   ├ Survey OneCovariance capabilities
+   └ Audit Spaceborne generality/assumptions
+
+● Three surveys running in parallel (TJPCov, OneCovariance, Spaceborne
+  generality audit). I'll synthesize the uniqueness list once they report back.
+
+✻ Crunched for 1m 4s
+
+● Agent "Survey TJPCov capabilities" finished · 1m 57s
+
+● TJPCov survey is in — key takeaways: Gaussian is the only term with true
+  NaMaster mode-coupling (SSC gets only a mask-power-spectrum σ²_B, cNG only a
+  scalar fsky), everything is Limber, real space is Gaussian-only via Wigner
+  projection, no COSEBIs, no JAX/GPU, no Monte-Carlo/ensemble validation.
+  Tracers are arbitrary via sacc (shear, clustering, CMB κ, clusters), so "N
+  fields" is actually something TJPCov partially has. Waiting on the
+  OneCovariance and Spaceborne audits before synthesizing.
+
+✻ Worked for 9s
+
+● Agent "Audit Spaceborne generality/assumptions" finished · 4m 6s
+
+● Spaceborne audit is in too. Notable for the synthesis: Spaceborne is currently
+  hard-locked to 2 tracers (so "arbitrary N fields" would be a genuinely new
+  capability, a substantial refactor), its SSC window is already beyond-fsky
+  per-probe-pair, cNG is Limber+scalar-fsky via CCL, and the NaMaster Gaussian
+  covariance is not what gets projected to real space/COSEBIs (the real-space
+  Gaussian term is recomputed with idealized full-sky formulas — SSC/cNG are
+  projected). Waiting on the OneCovariance survey to finish the comparison.
+
+✻ Worked for 7s
+
+● Agent "Survey OneCovariance capabilities" finished · 4m 52s
+
+● All three surveys are done. Here's the synthesis.
+
+  Where the market actually stands
+
+  Capability: Gaussian, partial sky
+  TJPCov: NaMaster NKA
+  OneCovariance: fsky only
+  Spaceborne today: NaMaster iNKA, spin-2, coupled/decoupled
+  ────────────────────────────────────────
+  Capability: SSC window
+  TJPCov: mask-Cl σ²_B (CCL)
+  OneCovariance: mask-alm σ_b, per-probe
+  Spaceborne today: per-probe-pair mask-Cl σ²(z₁,z₂), in-house FFT
+  ────────────────────────────────────────
+  Capability: cNG
+  TJPCov: halo trispectrum, scalar fsky, Limber
+  OneCovariance: 1h+2h+3h+4h trispectrum, Limber (non-Limber path exists but
+  flagged "work in progress")
+  Spaceborne today: CCL halo trispectrum, scalar fsky, Limber
+  ────────────────────────────────────────
+  Capability: Fields
+  TJPCov: arbitrary via sacc (shear, clustering, CMB κ, clusters)
+  OneCovariance: hardcoded m/g (6x2pt = spec/photo split)
+  Spaceborne today: hardcoded 2 tracers / 3×2pt
+  ────────────────────────────────────────
+  Capability: Real space / COSEBIs
+  TJPCov: 2PCF Gaussian only
+  OneCovariance: 2PCF, COSEBIs, bandpowers, arbitrary summary stats
+  Spaceborne today: 2PCF + COSEBIs; SSC/cNG projected from harmonic, Gaussian
+  recomputed idealized
+  ────────────────────────────────────────
+  Capability: MC validation
+  TJPCov: none (explicitly out of scope)
+  OneCovariance: none
+  Spaceborne today: built-in ensemble covariance
+  ────────────────────────────────────────
+  Capability: GPU / JAX
+  TJPCov: none
+  OneCovariance: none (C++ Levin, OpenMP)
+  Spaceborne today: JAX spot acceleration, GPU-configurable
+
+  Honest assessment of your two examples
+
+  Arbitrary number of fields — not groundbreaking on its own: TJPCov already
+  iterates over arbitrary sacc tracers (including CMB κ and cluster counts).
+  What would be unique is N fields combined with Spaceborne's mask machinery:
+  nobody offers arbitrary tracers with iNKA mode-coupled Gaussian + beyond-fsky
+  SSC + real-space/COSEBIs projection. Fair warning from the audit: Spaceborne
+  is currently hard-locked to 2 tracers at many layers (constants.py closed
+  probe tables, the [0,0]/[1,0]/[1,1] 5D convention, n_probes=2 forced in
+  main.py:327, per-probe halo-profile dicts) — this is a weeks-scale refactor,
+  not a flag.
+
+  Non-Limber cNG projection — genuinely novel. TJPCov has zero non-Limber
+  anywhere; OneCovariance has a covELL_non_gaussian_non_Limber path whose own
+  docstring says "still work in progress". A validated non-Limber cNG (validated
+  against your ensemble mode or sims) would be first-of-its-kind. Same argument
+  applies to non-Limber SSC, which neither code has and which matters more in
+  practice since SSC dominates cNG for 3×2pt.
+
+  Other candidates, ranked
+
+  Already unique — advertise these, they exist now:
+  1. Built-in ensemble Monte-Carlo covariance with pixel-level noise injection,
+  directly comparable to the analytic result in the same run. TJPCov explicitly
+  excludes this; OC has nothing. This is your validation story and it de-risks
+  every other claim.
+  2. Hybrid/cross-check framework: oc_interface.py lets you substitute OC's
+  G/SSC/cNG term-by-term (G_code/SSC_code/cNG_code). No other code can mix
+  engines.
+  3. Per-bin, per-probe fractional weight maps in the mode-coupled Gaussian
+  covariance (binary footprint vs. weight map distinction). TJPCov's masks are
+  per-tracer; OC only uses masks in the SSC σ_b.
+
+  High-impact, feasible novelties:
+
+  4. Mode-coupled real-space & COSEBIs covariance — project the NaMaster
+  partial-sky Gaussian covariance to 2PCF/COSEBIs instead of the idealized
+  full-sky formula you currently recompute (cov_projector.py). Nobody does
+  partial-sky-exact real-space covariances (OC is fsky, TJPCov is fsky and
+  Gaussian-only). You already own both halves of the pipeline; this closes your
+  own gap and produces a paper-worthy result (how much does mode coupling matter
+  for ξ±/COSEBIs?).
+  5. Beyond-σ_b partial-sky SSC/cNG — apply actual mask mode-coupling to the
+  non-Gaussian terms (an NKA-like treatment of SSC, mask-convolved cNG) rather
+  than the scalar fsky everyone uses for cNG. Scientifically unexplored
+  territory; your ensemble mode can validate it.
+  6. Fully differentiable, GPU-resident covariance (end-to-end JAX) — neither
+  competitor has any GPU support. Beyond speed, autodiff gives you ∂Cov/∂θ
+  essentially free: cosmology-dependent covariance in the likelihood, iterative
+  covariance updates at the inference point, Fisher forecasts with covariance
+  derivatives. This is the computational headline feature; the blockers are
+  NaMaster and CCL calls (CPU C code), so realistically it's "JAX everything
+  except the MCM build".
+
+  Worth noting but lower priority:
+
+  7. Anisotropic/inhomogeneous survey covariance — depth-varying noise and n(z)
+  via per-pixel weight maps, beyond what the iNKA mean(w²) captures. A real
+  Euclid/LSST need nobody addresses analytically; the ensemble machinery already
+  supports testing it.
+  8. CMB-lensing (6×2pt with κ_CMB) with proper reconstruction-noise + partial 
+  sky — TJPCov has the tracer but fsky-level windows; OC needs a manual kernel
+  hack. Subsumed by item on N fields, but a concrete first target for the
+  generalization that keeps its scope bounded.
+  9. Arbitrary summary statistics (user-supplied ℓ- and θ-filters,
+  cross-covariances between statistics) — OC already has this and it's popular;
+  matching it is parity, not novelty.
+
+  If you want a strategy in one line: items 4+5+validated-by-1 form a coherent
+  "first exact partial-sky covariance for all terms and all statistics" story
+  that no one can currently match, with 6 as the computational multiplier and
+  N-fields as the longer-term generalization.
+
+✻ Cogitated for 6m 53s
+
+※ recap: Goal: identify features that would make Spaceborne unique versus TJPCov and OneCovariance. Comparison surveys and the ranked novelty list are done and posted above. Next action: your pick of which candidate features to pursue. (disable recaps in /config)
+
+❯ cool. please explain a bit better point #4 and point #5. In broad terms,      
+  what's the problem and how would he go about solvin it?                       
+
+● Point 4 — Mode-coupled real-space / COSEBIs covariance
+
+  The problem. Real-space statistics (ξ±, γₜ, w) and COSEBIs are linear
+  functionals of the C_ℓ's:
+
+  ξ(θ) = Σ_ℓ K(ℓθ) C_ℓ  →  Cov[ξ(θ₁), ξ(θ₂)] = Σ_ℓℓ' K(ℓθ₁) K(ℓ'θ₂) Cov[C_ℓ,
+  C_ℓ']
+
+  so the real-space covariance inherits whatever harmonic-space covariance you
+  feed the projection. Everyone — OneCovariance, TJPCov, and currently
+  Spaceborne itself — feeds it the idealized Gaussian covariance: diagonal in ℓ,
+  rescaled by 1/fsky, with pair-count shot noise. But on a masked sky the true
+  Cov[C_ℓ, C_ℓ'] is not diagonal: the mask couples modes across a band of Δℓ set
+  by the mask's power spectrum, and it does so differently for spin-2 (E/B
+  leakage) than spin-0. The projection kernels K(ℓθ) are broad and oscillatory,
+  so they integrate right across those coupled off-diagonal bands — the errors
+  don't obviously average out, and nobody has quantified by how much for a
+  realistic Euclid mask. For COSEBIs, whose filters are designed assuming clean
+  E/B separation, mask-induced E/B mixing is exactly the effect the idealized
+  formula can't see.
+
+  The solution. You already compute the correct object: the NaMaster iNKA
+  Gaussian covariance, in coupled form (cov_type: coupled), full ℓ×ℓ' matrix
+  with the real weight maps. The fix is plumbing plus one physics decision:
+
+  1. Replace the from-scratch SVA/SN/MIX computation in cov_projector.py with a
+  path that consumes cov_dict['g'] from CovNaMaster — the same sandwich you
+  already do for SSC/cNG (compute_rs_cov_term_probe_6d already pulls harmonic 4D
+  blocks and Bessel-projects them; the Gaussian term just needs to enter
+  through the same door).
+  2. The physics decision: project the coupled covariance of the pseudo-C_ℓ with
+  kernels adapted to what the estimator actually measures (a masked 2PCF
+  estimator measures something related to the pseudo-Cl, with a normalization —
+  this is where the thinking goes), rather than the decoupled bandpower
+  covariance. Getting this correspondence right is the paper.
+  3. Validate with the machinery you already own: run the ensemble mode,
+  transform each masked realization's pseudo-Cls to ξ±/COSEBIs, take the sample
+  covariance, and compare against (a) the idealized formula everyone uses and
+  (b) your mode-coupled projection. The gap between (a) and the ensemble is the
+  "does this matter" plot; agreement of (b) with the ensemble is the validation.
+
+  Cost: mostly moderate refactor of cov_projector.py/cov_real_space.py plus one
+  careful derivation. Main numerical caveat: the coupled cov is dense in ℓ×ℓ',
+  so the projection integral is a full matrix sandwich per block instead of a
+  diagonal sum — heavier, but it's exactly the kind of einsum JAX eats.
+
+  Point 5 — Beyond-σ_b partial-sky SSC and cNG
+
+  The problem. For the non-Gaussian terms, the survey geometry currently enters
+  as a single scalar (or nearly so):
+
+  - cNG: everyone, including you, does Cov_cNG = (projected trispectrum) / fsky.
+  That's the "the mask just reduces the number of modes" approximation. It
+  ignores that the mask also couples the trispectrum contribution across ℓ — the
+  masked cNG is really a 4-point analogue of the pseudo-Cl convolution: T̃ ~ Σ
+  (mask coupling)⁴ × T, not T/fsky.
+  - SSC: better off — your σ²(z₁,z₂) already uses the true mask power spectrum,
+  which is the dominant geometry effect (SSC is literally "response × variance
+  of the background mode inside the window", and σ_b is that variance). But the
+  approximation is that the mask affects only the amplitude of the super-survey
+  mode, while the response part of the covariance is still projected as if
+  full-sky: the ℓ-structure of the SSC block gets no mode-coupling, and the
+  mask–weight distinction (binary footprint vs. fractional weights, which you
+  handle carefully in the Gaussian term) is absent here.
+
+  Nobody in the field has a treatment beyond this — TJPCov and OC stop exactly
+  where you stop. So there's no reference answer; the field genuinely doesn't
+  know how big the error is.
+
+  The solution. Two-pronged, and the second prong is what makes it tractable:
+
+  1. Measure the effect first (cheap, decisive). Extend the ensemble mode from
+  Gaussian to non-Gaussian realizations. For SSC specifically there's a
+  well-known trick: "separate-universe"-style sims are overkill, but you can
+  generate Gaussian realizations modulated by a large-scale background mode
+  drawn with the right σ_b, apply the mask, and measure the induced covariance —
+  comparing the recovered SSC against your analytic σ_b version tells you
+  whether the missing mode-coupling matters at Euclid precision. If the answer
+  is "sub-percent on parameter errors", you write that up as a validation paper
+  and stop — that's a result too, and it's one nobody has.
+  2. If it matters, build the analytic correction as an NKA-for-SSC/cNG. The
+  structure of the fix mirrors what iNKA does for the Gaussian term: instead of
+  Cov_cNG = P(T)/fsky, sandwich the full-sky term with the mode-coupling
+  matrices you already cache — schematically Cov ≈ M · Cov_fullsky · Mᵀ /
+  normalization, with the mixing matrices M coming from the existing NaMaster
+  workspaces (w00/w02/w22 are already on disk). That's an approximation (the
+  exact masked trispectrum coupling is a 4-mask Wigner sum, hopeless), but it's
+  the same class of approximation as NKA/iNKA, and — crucially — you can
+  validate it against prong 1. For SSC the analogous move is to apply the
+  coupling to the response × σ_b block and to use the per-probe weight maps
+  (mean(w²) etc.) instead of the binary footprint, mirroring the distinction you
+  already enforce on the Gaussian side.
+
+  Order of attack: prong 1 for SSC first (SSC dominates cNG for 3×2pt, and the
+  modulated-Gaussian ensemble is a small extension of cov_partial_sky.py), then
+  cNG only if the SSC result suggests geometry effects are non-negligible.
+
+  The two points also compose: once the non-Gaussian terms carry mask coupling
+  (5) and the Gaussian projection uses the coupled covariance (4), the
+  real-space/COSEBIs covariance is partial-sky-consistent in every term — that's
+  the "first exact partial-sky covariance for all terms and all statistics"
+  claim from the previous list.
+
+✻ Brewed for 43s
+
+❯ doen't the real-space covariance already take into account the survey         
+  geometry via the data pair counts?                                            
+
+● Partly — and the part it covers is exactly the part that's not the problem.
+  The standard real-space Gaussian covariance splits into three terms, and
+  survey geometry enters each one differently:
+
+  - Shot-noise term (SN): goes as σ_ε⁴/N_p(θ). If N_p comes from the actual
+  catalog pair counts, geometry is captured exactly — edges, holes, depth
+  variations, everything. No complaint here.
+  - Mixed term: the analytic expression only uses A_survey and n_eff, so
+  geometry enters as an area scalar. Pair-count corrections help partially; this
+  is precisely why OneCovariance ships its discrete triplet-count estimator
+  (cov_discrete.py) — Reischke computes the mixed term from actual catalog
+  triplet counts because the analytic version misses geometry beyond the area.
+  - Sample-variance term (SVA): geometry enters only as 1/A_eff. This is the
+  real-space twin of the Knox 1/fsky approximation, and pair counts can't fix
+  it, because the term has no pairs in it — it's pure signal covariance, ∫ dℓ ℓ
+  K(ℓθ₁)K(ℓθ₂) [C C + C C] / (2π A).
+
+  So the pair counts capture how the mask thins out pairs (noise), not how it
+  couples modes (signal). The two signal-side effects the 1/A treatment misses:
+
+  1. When θ becomes comparable to the scale of holes or patch boundaries, the
+  large-scale modes contributing to Cov[ξ(θ₁), ξ(θ₂)] are not independently
+  sampled — that's the off-diagonal Cov[C_ℓ, C_ℓ'] coupling, and it lands in the
+  SVA (and mixed) term.
+  2. E/B mixing from the mask, which matters for ξ₋ and especially COSEBIs, is
+  again a signal effect invisible to pair counting.
+
+  One honest caveat that cuts in the other direction: pair-count-normalized
+  estimators (ξ̂ = Σwᵢwⱼεε / Σwᵢwⱼ) are locally normalized, so they're unbiased
+  under masking and generally more forgiving than pseudo-Cls — the residual
+  effect on the covariance may well be smaller than harmonic-space intuition
+  suggests. Which is why the right first move in point 4 is the ensemble
+  measurement, not the analytic machinery: mask realizations → measure
+  ξ±/COSEBIs → sample covariance → compare against the pair-count formula. If
+  the standard treatment survives at Euclid precision, that null result is
+  itself the publishable validation nobody has done; if it doesn't, you already
+  own the coupled-Cl projection needed to fix it.
+
+✻ Sautéed for 41s
+
+※ recap: We're identifying features that would make Spaceborne unique vs TJPCov/OneCovariance; surveys done, top novelties are mode-coupled real-space/COSEBIs covariance and beyond-fsky SSC/cNG. Next action: pick a candidate to pursue, likely starting with the ensemble validation measurement. (disable recaps in /config)
+
+❯ does OneCov use triplet counts by default? can we do that as well? what about 
+  quadruplets, as done here? from this paper, this seems as the cutting-edge    
+  method (unless you have criticisms)...                                        
+  https://arxiv.org/abs/2605.16186                                              
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Fetch(https://arxiv.org/abs/2605.16186)
+  ⎿  Received 42.7KB (200 OK)
+● Fetch(https://arxiv.org/abs/2605.16186v1)
+  ⎿  Received 42.7KB (200 OK)
+
+● Fetch(https://arxiv.org/html/2605.16186v1)
+  ⎿  Received 219.7KB (200 OK)
+
+● Short answers first, then the paper.
+
+  Does OneCovariance use triplet counts by default?
+
+  No. In the reference config.ini, mix_term_do_mix_for is empty, and the comment
+  says "LEAVE EMPTY … when the standard mix term should be considered" — i.e.
+  the default is the analytic mixed term. Triplet counts are opt-in, and
+  narrowly scoped: only for the mixed term, only for xipxip/xipxim/ximxim (not
+  γₜ or w), and they require the actual galaxy catalog (RA/Dec, weights, zbin
+  columns), patch-splitting of the sky, and hours of counting (which is why the
+  counts are cached to FITS and reloadable).
+
+  Can Spaceborne do it?
+
+  Two paths. The lazy one works today: your oc_interface.py can already
+  substitute OC's Gaussian term via G_code — configure OC's triplet-count mixed
+  term in the generated .ini and you get it without writing a line of counting
+  code. A native implementation would be a bigger deal: Spaceborne is
+  map/config-driven and has no catalog input path at all, so you'd be adding a
+  whole ingestion layer plus a counting engine (OC's is C++/ctypes). Not worth
+  building natively — unless you go the map-based route below, which sidesteps
+  catalogs entirely.
+
+  The quadruplet-counts paper (Nagura, Terasawa, Terawaki & Takada)
+
+  What it is: the exact expression for the sample-variance term of the
+  pair-weighted ξ estimator — Cov(ξᵢ,ξⱼ) = Σ over quadruplets of w_a w_b w_c w_d
+  × [ξ(θ_ac)ξ(θ_bd) + ξ(θ_ad)ξ(θ_bc)]/2, normalized by the pair counts, given a
+  fiducial ξ. This completes a neat hierarchy that answers your previous
+  question exactly: pair counts fix the shot-noise term, triplet counts fix the 
+  mixed term, quadruplet counts fix the sample-variance term — the one I said
+  pair counts can't touch. So yes, it's the cutting-edge method for
+  exact-geometry Gaussian real-space covariance, and notably it's not
+  brute-force over galaxies: they coarse-grain onto HEALPix cells (Nside
+  256–512) and evaluate a matrix expression over cell pairs, so it's really a
+  weight-map method, not a catalog method — which is exactly the data Spaceborne
+  already has.
+
+  Also important: the paper directly tested the alternative I proposed as point
+  4 (iNKA + Legendre projection) and found it fails — residual iNKA errors in
+  the off-diagonal harmonic covariance propagate through the Legendre transform
+  and bias even the diagonal of the real-space covariance. So the paper both
+  validates the concern behind point 4 and demotes my proposed solution route:
+  quartic counts beat it.
+
+  Criticisms / gaps (these are the opportunity, not reasons to dismiss it):
+
+  1. Convergence (spin-0) only — no spin-2 ξ±, no E/B, which is what an actual
+  shear analysis needs.
+  2. Sample variance only — shape noise "neglected", so no mixed or shot-noise
+  terms; a usable covariance needs those stitched in (triplets + pairs, or
+  analytic).
+  3. No tomography — single field, one HSC subfield (XMM). With Euclid's 10 bins
+  you have ~55 bin pairs and ~1500 covariance blocks; the cell-pair matrices
+  are shared across bins, but nobody has shown the bookkeeping and cost at that
+  scale.
+  4. Cost — even coarse-grained, they restricted to one small subfield "to ease
+  computational expense"; full-survey curved-sky feasibility is undemonstrated.
+  5. Gaussian term only; SSC/cNG untouched (fine — those come from your harmonic
+  pipeline, point 5).
+
+  Which sets up what I'd now call the sharpened version of point 4, and it's a
+  genuinely strong uniqueness claim: implement the quartic-counts SVA as dense 
+  cell-pair matrix products on your existing per-bin weight maps, in JAX on GPU,
+  extended to spin-2 ξ± and tomography, with pair/triplet-count noise terms, 
+  validated against your ensemble mode. Every ingredient plays to what
+  Spaceborne already has (weight maps, JAX einsum kernels, ensemble validation,
+  OC cross-check), the paper itself proves the fsky and iNKA-projection
+  alternatives are inadequate, and the extensions (spin-2, tomography,
+  full-survey scale) are precisely what the paper leaves open.
+
+✻ Baked for 2m 23s
+
+❯ ok. one naive question: the covariance I can compute is either for the        
+  coupled or decoupled cls. Coupled means "partial-sky", and decoupled means    
+  "full-sky", broadly speaking: in the decoupled case, we want to "undo" the    
+  effect of partial sky by deconvolving the mixing matrix. Then, why do I       
+  divide by fsky even in the decoupled (knox) case?                             
+
+● Because deconvolving the mixing matrix removes the bias of the estimator, not
+  its variance. Those are two different things, and fsky lives in the second
+  one.
+
+  The mask does two separate damages:
+
+  1. It distorts the mean: ⟨pseudo-Cl⟩ = Σ M_ℓℓ' C_ℓ'. This is what decoupling
+  undoes — applying M⁻¹ gives you an estimator whose expectation value is the
+  full-sky Cl. That's all "decoupled" promises.
+  2. It deletes information: you only observed a fraction fsky of the sky, so at
+  each ℓ you measured roughly fsky·(2ℓ+1) independent modes instead of (2ℓ+1).
+  No linear operation on the data can recreate modes you never observed — M⁻¹ is
+  just a reshuffling of the numbers you have.
+
+  The variance of a Cl estimator is set by mode counting: Var ∝ (C+N)²/N_modes.
+  Full sky: N_modes = (2ℓ+1)Δℓ. Cut sky: N_modes ≈ fsky·(2ℓ+1)Δℓ. Hence the Knox
+  1/fsky — it's the price of the missing sky, and it's there whether or not
+  you've debiased the mean. Same as ordinary statistics: if someone gives you
+  only 30% of the samples, you can build a perfectly unbiased estimator of the
+  mean, but its error bar is still √(1/0.3) larger.
+
+  Formally you can see it in the covariance propagation: Cov_decoupled = M⁻¹ ·
+  Cov_coupled · M⁻ᵀ. The coupled covariance has a small amplitude (pseudo-Cls
+  are suppressed by the mask, roughly by mean(w²)) but is smeared across ℓ;
+  sandwiching with M⁻¹ (whose overall normalization is ~1/fsky per side, since
+  M's row sums are ~fsky) undoes the smearing and the suppression, and what's
+  left over is precisely the ≈diagonal Knox form with the 1/fsky penalty. Knox
+  is the leading-order, mode-counting limit of the decoupled NaMaster covariance
+  — which is why in Spaceborne the Knox result is the thing to compare against
+  cov_type: decoupled, not coupled, and why the two converge for large,
+  well-behaved masks.
+
+  So the mental shortcut "decoupled = full-sky" is fine for the signal, but for
+  the covariance the correct reading is: decoupled = full-sky-shaped,
+  partial-sky-sized.
+
+✻ Worked for 28s
+
+※ recap: We're brainstorming features that would make Spaceborne unique vs TJPCov and OneCovariance, focusing on exact partial-sky covariances (quartic-counts real-space method, mode-coupled SSC/cNG). Next action: your call on which candidate feature to pursue or explore further. (disable recaps in /config)

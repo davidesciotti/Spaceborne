@@ -1,6 +1,6 @@
 # This is the environment file for the `spaceborne` conda environment
 
-name: spaceborne
+name: spaceborne_catcov
 channels:
   - conda-forge
   - defaults
@@ -20,7 +20,7 @@ dependencies:
   # pymaster dependencies - optional
   - cfitsio
   - fftw
-  - namaster
+  # - namaster
 
   # uncommenting these may help in case of issues with the pylevin installation
   - c-compiler

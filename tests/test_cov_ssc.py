@@ -271,7 +271,10 @@ class TestSscIntegral2D:
                 jnp.array(sig), 0.1, jnp.array(weights),
             )
         )
-        np.testing.assert_allclose(out, out.transpose(1, 0, 3, 2), rtol=1e-5)
+        # The swap symmetry is mathematically exact, but the einsum contracts in
+        # a fixed order that is not symmetric under the index swap, so it only
+        # holds to floating-point precision (rtol 1e-5 is too tight on some BLAS).
+        np.testing.assert_allclose(out, out.transpose(1, 0, 3, 2), rtol=1e-4)
 
     def test_linear_in_dab(self, ssc_inputs):
         """Scaling d_ab by alpha scales the result by alpha."""
@@ -334,7 +337,9 @@ class TestSscIntegralKE:
                 jnp.array(sig), 0.1, jnp.array(weights),
             )
         )
-        np.testing.assert_allclose(out, out.transpose(1, 0, 3, 2), rtol=1e-5)
+        # Exact swap symmetry only holds to floating-point precision because the
+        # einsum reduction order is not symmetric under the index swap.
+        np.testing.assert_allclose(out, out.transpose(1, 0, 3, 2), rtol=1e-4)
 
     def test_linear_in_dab(self, ssc_inputs):
         """Scaling d_ab by alpha scales the result by alpha."""

@@ -57,6 +57,15 @@ def valid_cfg(tmp_path):
     cfg = copy.deepcopy(_load_raw_config())
     cfg = _apply_main_hardcoded_overrides(cfg)
 
+    # The 'OneCovariance' section is optional in config.yaml; ensure it exists
+    # (with valid defaults) so the OneCovariance-specific tests can toggle its
+    # keys regardless of whether the reference config ships the section.
+    oc_cfg = cfg.setdefault('OneCovariance', {})
+    oc_cfg.setdefault('path_to_oc_executable', '../OneCovariance/covariance.py')
+    oc_cfg.setdefault('consistency_checks', False)
+    oc_cfg.setdefault('oc_output_filename', 'cov_oc')
+    oc_cfg.setdefault('compare_against_oc', False)
+
     fake_footprint = tmp_path / 'footprint.fits'
     fake_footprint.write_text('dummy')
     cfg['mask']['GG']['footprint_filename'] = str(fake_footprint)

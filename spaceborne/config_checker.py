@@ -710,9 +710,15 @@ class SpaceborneConfigChecker:
             )
 
     def check_onecov(self) -> None:
+        # The 'OneCovariance' section is optional (see check_types); if it is
+        # absent, OneCovariance simply cannot be used, so compare_against_oc
+        # defaults to False.
+        compare_against_oc = self.cfg.get('OneCovariance', {}).get(
+            'compare_against_oc', False
+        )
 
         uses_oc = (
-            self.cfg['OneCovariance']['compare_against_oc']
+            compare_against_oc
             or self.cfg['covariance']['G_code'] == 'OneCovariance'
             or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
             or self.cfg['covariance']['cNG_code'] == 'OneCovariance'
@@ -729,8 +735,7 @@ class SpaceborneConfigChecker:
             self.cfg['covariance']['SSC']
             and not self.cfg['precision']['use_KE_approximation']
         ) and (
-            self.cfg['OneCovariance']['compare_against_oc']
-            or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
+            compare_against_oc or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
         ):
             raise ValueError(
                 'The KE approximation for the SSC term is disabled in the '

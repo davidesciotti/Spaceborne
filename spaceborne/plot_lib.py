@@ -234,7 +234,9 @@ def cls_triangle_plot(
     suptitle=None,
     cov_6d=None,
 ):
-    fig, ax = plt.subplots(zbins, zbins, figsize=(7, 7), sharex=True, sharey=True)
+    fig, ax = plt.subplots(
+        zbins, zbins, figsize=(7, 7), sharex=True, sharey=True, squeeze=False
+    )
 
     for zi in range(zbins):
         for zj in range(zbins):

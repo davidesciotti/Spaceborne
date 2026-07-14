@@ -34,6 +34,14 @@ def assert_repo_branch(repo_path: str, expected_branch: str) -> None:
         text=True,
     ).stdout.strip()
 
+    if current_branch == 'HEAD':  # detached, e.g. checked out on a tag
+        current_branch = subprocess.run(
+            ['git', '-C', repo_path, 'describe', '--tags', '--exact-match'],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
     if current_branch != expected_branch:
         raise RuntimeError(
             f'Repo at {repo_path} is on branch "{current_branch}", expected "{expected_branch}".'

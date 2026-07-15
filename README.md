@@ -126,6 +126,16 @@ python main.py --config="path/to/my/config/config.yaml" --show-plots
 
 Additionally, in the `config.yaml` file you can set `save_figs: True` to save the figures in the `<output_folder>/figs` path.
 
+### Metadata
+
+The `npz` files produced by the code contain several useful pieces of information to help reproduce the results and keep track of the version of the code used to generate them. Importantly, the config dictionary is stored under the 'config' key, which can be viewed or loaded back into a dictionary with 
+
+```python
+covs = np.load('.../covmats_2D.npz')  # the same metadata are stored in the 6D arrays
+print(covs['config'])
+cfg = yaml.safe_load(covs['config'].item())
+```
+
 ## Benchmarks ⏱️
 On a 2024 MacBook Pro with a 14-core Apple M4 Pro processor and 24GB of RAM, for a configuration with $\ell_{\rm min}, \ell_{\rm max}, \ell_{\rm bins} = (10, 3000, 30)$ and 10 redshift bins, the 3×2pt harmonic-space covariance matrix takes:
 

@@ -156,6 +156,31 @@ def up_downgrade_map(map_in, nside_out):
         return map_in
 
 
+def _check_binary(footprint):
+    ones = np.sum(footprint == 1)
+    zeros = np.sum(footprint == 0)
+    total = footprint.size
+    if ones + zeros < 0.95 * total:
+        warnings.warn(
+            'The footprint should be binary, but it seems to contain more than 5% '
+            'of non-binary values (not 0 or 1). Please check the footprint file.',
+            stacklevel=2,
+        )
+
+def check_binary(footprint):
+    observed = footprint > 0
+    n_obs = np.sum(observed)
+    frac_nonbinary = 1 - np.sum(np.isclose(footprint[observed], 1.0)) / n_obs
+    if frac_nonbinary > 0.05:
+        warnings.warn(
+            f'{frac_nonbinary:.1%} of the observed pixels are neither 0 nor 1. The '
+            'footprint should be binary; fractional values are interpreted as '
+            'weights (effective fsky = mean(W_a * W_b)). Please check the '
+            'footprint file.',
+            stacklevel=2,
+        )
+
+
 class Mask:
     def __init__(self, mask_cfg, probe):
         self.probe = probe

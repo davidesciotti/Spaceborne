@@ -81,7 +81,7 @@ def save_configs_to_yaml(configs: list, filenames: list) -> None:
     for config, path in zip(configs, filenames, strict=True):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as f:
-            yaml.dump(config, f, default_flow_style=False)
+            yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
 
 
 def run_spaceborne(

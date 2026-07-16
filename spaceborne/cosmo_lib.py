@@ -31,14 +31,14 @@ def cloelib_to_spaceborne_params_mapping(
     """Maps cosmological parameters from the cloelib basis to the Spaceborne one.
     Requires the jaxcosmo package to compute sigma8 from As."""
 
-    import jaxcosmo
+    from cloelib.cosmology import jax_cosmology
 
     h = cloelib_pars_dict['H0'] / 100
     Omega_nu0 = cloelib_pars_dict['mnu'] / (93.14 * h**2)
     Omega_m0 = (
         cloelib_pars_dict['Omega_cdm0'] + cloelib_pars_dict['Omega_b0'] + Omega_nu0
     )
-    sigma8 = jaxcosmo.As_to_sigma8_max_precision(
+    sigma8 = jax_cosmology.As_to_sigma8_max_precision(
         cloelib_pars_dict['As'],
         Omega_m0,
         cloelib_pars_dict['Omega_b0'],

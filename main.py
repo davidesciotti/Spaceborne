@@ -1963,7 +1963,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
     for cov_name, cov in covs_3x2pt_2d_tosave_dict.items():
         if not np.allclose(cov, 0, atol=0, rtol=1e-6):
             fig, ax = plt.subplots(1, 2, figsize=(10, 6))
-            ax[0].matshow(np.log10(cov))
+            ax[0].matshow(np.log10(np.abs(cov)))
             ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
 
             # ! add lines and labels for the different selected probes
@@ -2055,8 +2055,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
             plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
-            ax[0].set_title('log10 cov')
-            ax[1].set_title('corr')
+            ax[0].set_title(r'$\log_{10} |{\rm Cov}|$')
+            ax[1].set_title(r'${\rm Corr}$')
             fig.suptitle(f'cov {cov_name}', y=0.9)
 
 

@@ -1,6 +1,5 @@
 import contextlib
 import itertools
-import pickle
 import subprocess
 import time
 import warnings
@@ -8,12 +7,12 @@ from collections.abc import Sequence
 from copy import deepcopy
 from functools import partial
 
+import healpy as hp
 import jax.numpy as jnp
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
-import yaml
 from jax import jit
 from scipy.integrate import simpson as simps
 from scipy.interpolate import CubicSpline, RectBivariateSpline, interp1d
@@ -83,6 +82,23 @@ Naming conventions (just to ease the notation):
 - cov_probe_dict = cov_dict[term][probe_ab, probe_cd]
 - cov_dim_dict = cov_dict[term][probe_ab, probe_cd][dim]
 """
+
+
+def cut_map_hemisphere(hp_map, nside, hemisphere_to_keep):
+    npix = hp.nside2npix(nside)
+    pixels = np.arange(npix)
+    theta, _ = hp.pix2ang(nside, pixels)
+    dec_map = 90 - np.rad2deg(theta)
+    hp_map = hp_map.copy()
+    if hemisphere_to_keep == 'NORTH':
+        hp_map[dec_map < 0] = 0
+    elif hemisphere_to_keep == 'SOUTH':
+        hp_map[dec_map >= 0] = 0
+    else:
+        raise ValueError(
+            f'Hemisphere: must be NORTH or SOUTH, got {hemisphere_to_keep}'
+        )
+    return hp_map
 
 
 def get_zsteps(z_min, z_max, delta_z):

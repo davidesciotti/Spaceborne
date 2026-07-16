@@ -1085,7 +1085,7 @@ class CovNaMaster:
             self.cfg['covariance']['partial_sky_method'] == 'ensemble'
             and not self.coupled_cov
         )
-
+        #  not (A or B) ≡ (not A) and (not B)
         if not (self.save_wsp_to_cache or ensemble_decoupled):
             return
 

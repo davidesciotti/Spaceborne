@@ -20,6 +20,8 @@ def load_weight_map_fits(path: str) -> np.ndarray:
         raise ValueError(f'Weight map file must be a .fits file, got {extension}')
 
     weight_map_arr = hp.read_map(path, field=None)
+    # ensure it's 2D, even for single-bin maps
+    weight_map_arr = np.atleast_2d(weight_map_arr)
 
     # sanity checks
     # (note that in principle hp.read_map(field=None) returns 1D for a single-bin

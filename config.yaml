@@ -123,7 +123,7 @@ binning:
   # so ell_bins is ignored and ell_max is included in the grid.
   ell_min: 10 # Type: int | float. Minimum ell
   ell_max: 1500 # Type: int | float. Maximum ell
-  ell_bins: 20 # Type: int. Number of ell bins.
+  ell_bins: 20 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
   # The file should have the following columns:
@@ -232,7 +232,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -250,15 +250,15 @@ covariance:
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: NaMaster # Type: str
+  partial_sky_method: Knox # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
-  cov_type: coupled # Type: str.
+  cov_type: decoupled # Type: str.
 
   # Whether to split the Gaussian covariance term into the
   # sample variance (SVA), sampling noise (SN) and mixed (MIX) terms
-  split_gaussian_cov: False # Type: bool
+  split_gaussian_cov: True # Type: bool
 
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
@@ -318,7 +318,7 @@ covariance:
 
   # When using NaMaster for the partial-sky Gaussian covariance, choose whether to
   # save the (binned and unbinned) mode coupling matrices (mcm)
-  save_mcms: True # Type: bool.
+  save_mcms: False # Type: bool.
   save_nmt_wsp_to_cache: False # Type: bool. Whether to save the NaMaster workspaces to the cache (the files can be heavy).
   load_cached_nmt_workspaces: False # Type: bool. Whether to load the NaMaster workspaces from the cache, if they have already been computed.
 
@@ -328,7 +328,7 @@ PyCCL:
   # - 'qag_quad' (GSL's qag method backed up by quad when it fails)
   # - 'spline' (the integrand is splined and then integrated analytically).
   # [Note] The former could give errors.
-  cov_integration_method: spline # Type: str
+  cov_integration_method: qag_quad # Type: str
 
   # Whether or not to load the previously computed trispectrum.
   load_cached_tkka: False # Type: bool.
@@ -419,8 +419,7 @@ precision:
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
-  spline_params:
-    # Type: dict | None
+  spline_params: # Type: dict | None
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 

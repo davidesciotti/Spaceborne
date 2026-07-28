@@ -198,17 +198,18 @@ class TestLoadWeightMapFits:
         with pytest.raises(ValueError, match='negative values'):
             io_handler.load_weight_map_fits(str(path))
 
-    def test_1d_map_raises_wrong_ndim(self, tmp_path):
-        """A single-map (1D, zbins=1) FITS file should be rejected: the
-        function requires a 2D (zbins, npix) array."""
+    def test_1d_map_promoted_to_2d(self, tmp_path):
+        """A single-map (1D, zbins=1) non-tomographic FITS file is promoted to
+        a 2D (1, npix) array via np.atleast_2d."""
         nside = 8
         npix = healpy.nside2npix(nside)
         weight_map = np.ones(npix)
         path = tmp_path / 'weight_map_1d.fits'
         healpy.write_map(str(path), weight_map, overwrite=True, dtype=np.float64)
 
-        with pytest.raises(ValueError, match='2D array'):
-            io_handler.load_weight_map_fits(str(path))
+        out = io_handler.load_weight_map_fits(str(path))
+
+        assert out.shape == (1, npix)
 
 
 class TestLoadNzEuclidlib:

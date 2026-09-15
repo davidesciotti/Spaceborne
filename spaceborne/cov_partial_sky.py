@@ -307,6 +307,10 @@ def mask_maps_and_compute_alms(
             masked_Q = hp.remove_monopole(masked_Q)
             masked_U = hp.remove_monopole(masked_U)
 
+        # map2alm_spin has no `iter` kwarg, so spin-2 alms are effectively iter=0
+        # while spin-0 uses n_iter. This seems irrelevant; in any case, symmetrising 
+        # is possible with hp.map2alm([T,Q,U], pol=True, iter=n_iter)
+        # but would ~4x the spin-2 SHT cost for that.
         alms_T.append(hp.map2alm(masked_T, lmax=lmax, iter=n_iter))
         alm_E, alm_B = hp.map2alm_spin([masked_Q, masked_U], spin=2, lmax=lmax)
         alms_E.append(alm_E)
@@ -1085,7 +1089,7 @@ class CovNaMaster:
             self.cfg['covariance']['partial_sky_method'] == 'ensemble'
             and not self.coupled_cov
         )
-
+        #  not (A or B) ≡ (not A) and (not B)
         if not (self.save_wsp_to_cache or ensemble_decoupled):
             return
 

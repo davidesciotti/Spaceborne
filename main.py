@@ -9,7 +9,6 @@ import warnings
 from copy import deepcopy
 
 import yaml
-from tqdm import tqdm
 
 
 def load_config(_config_path):
@@ -43,6 +42,15 @@ def load_config(_config_path):
 
 
 cfg = load_config('config.yaml')
+
+with contextlib.suppress(ImportError):
+    import pyfiglet
+
+    text = 'Spaceborne'
+    ascii_art = pyfiglet.figlet_format(text=text, font='slant')
+    print(ascii_art)
+    print('')
+
 
 # JAX settings
 if cfg['misc']['jax_platform'] != 'auto':
@@ -127,18 +135,11 @@ from spaceborne import constants as const
 from spaceborne import plot_lib as sb_plt
 from spaceborne import sb_lib as sl
 
-with contextlib.suppress(ImportError):
-    import pyfiglet
-
-    text = 'Spaceborne'
-    ascii_art = pyfiglet.figlet_format(text=text, font='slant')
-    print(ascii_art)
-
 if 'ipykernel_launcher.py' not in sys.argv[0] and '--show-plots' not in sys.argv:
     matplotlib.use('Agg')
 
 print(f'JAX devices: {jax.devices()}')
-print(f'JAX backend: {jax.default_backend()}')
+print(f'JAX backend: {jax.default_backend()}\n')
 
 
 YELLOW = '\033[33m'
@@ -187,72 +188,6 @@ script_start_time = time.perf_counter()
 # stop_event = threading.Event()
 # monitor_thread = threading.Thread(target=monitor_cpu, args=(0.5,), daemon=True)
 # monitor_thread.start()
-
-
-def plot_tomo_diag_cls():
-    _, ax = plt.subplots(1, 3, figsize=(15, 4))
-
-    # cls are (for the moment) in the ccl obj, whether they are imported from input
-    # files or not
-    for zi in range(zbins):
-        zj = zi
-        kw = {'c': clr[zi], 'ls': '-', 'marker': '.'}
-        if io_obj.need_input_cl_ll:
-            ax[0].plot(bin_obj.ells_WL, cl_3x2pt_5d[0, 0][:, zi, zj], **kw)
-        if io_obj.need_input_cl_gl:
-            ax[1].plot(bin_obj.ells_XC, cl_3x2pt_5d[1, 0][:, zi, zj], **kw)
-        if io_obj.need_input_cl_gg:
-            ax[2].plot(bin_obj.ells_GC, cl_3x2pt_5d[1, 1][:, zi, zj], **kw)
-
-    # if input cls are used, then overplot the sb predictions on top
-    for zi in range(zbins):
-        zj = zi
-        sb_kw = {'c': clr[zi], 'ls': '', 'marker': 'x'}
-        ax[0].plot(bin_obj.ells_WL, _cl_3x2pt_5d_sb[0, 0][:, zi, zj], **sb_kw)
-        ax[1].plot(bin_obj.ells_XC, _cl_3x2pt_5d_sb[1, 0][:, zi, zj], **sb_kw)
-        ax[2].plot(bin_obj.ells_GC, _cl_3x2pt_5d_sb[1, 1][:, zi, zj], **sb_kw)
-        # Add style legend only to middle plot
-        style_legend = ax[1].legend(
-            handles=[
-                plt.Line2D([], [], label='input', **kw),
-                plt.Line2D([], [], label='SB', **sb_kw),
-            ],
-            loc='upper right',
-            fontsize=16,
-            frameon=False,
-        )
-        ax[1].add_artist(style_legend)  # Preserve after adding z-bin legend
-
-    ax[0].set_yscale('log')
-    ax[1].set_yscale('log')
-    ax[2].set_yscale('log')
-    if cfg['binning']['binning_type'] in ['log', 'from_input']:
-        ax[0].set_xscale('log')
-        ax[1].set_xscale('log')
-        ax[2].set_xscale('log')
-
-    ax[2].legend(
-        [f'$z_{{{zi}}}$' for zi in range(zbins)],
-        loc='upper right',
-        fontsize=16,
-        frameon=False,
-    )
-
-    ax[0].set_title('LL')
-    ax[1].set_title('GL')
-    ax[2].set_title('GG')
-    ax[0].set_xlabel('$\\ell$')
-    ax[1].set_xlabel('$\\ell$')
-    ax[2].set_xlabel('$\\ell$')
-    ax[0].set_ylabel('$C_{\\ell}$')
-    # increase font size
-    for axi in ax:
-        for item in (
-            [axi.title, axi.xaxis.label, axi.yaxis.label]
-            + axi.get_xticklabels()
-            + axi.get_yticklabels()
-        ):
-            item.set_fontsize(16)
 
 
 def triangle_plot_cls_wrapper():
@@ -1093,9 +1028,8 @@ cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
 )
 
 # Cl plots
-plot_tomo_diag_cls()
+sb_plt.plot_tomo_diag_cls(cl_3x2pt_5d, _cl_3x2pt_5d_sb, cfg, io_obj, bin_obj, clr)
 triangle_plot_cls_wrapper()
-
 
 # ! ======================================== Nl ========================================
 sigma_eps2 = (np.array(cfg['covariance']['sigma_eps_i']) * np.sqrt(2)) ** 2
@@ -1963,7 +1897,7 @@ with np.errstate(invalid='ignore', divide='ignore'):
     for cov_name, cov in covs_3x2pt_2d_tosave_dict.items():
         if not np.allclose(cov, 0, atol=0, rtol=1e-6):
             fig, ax = plt.subplots(1, 2, figsize=(10, 6))
-            ax[0].matshow(np.log10(cov))
+            ax[0].matshow(np.log10(np.abs(cov)))
             ax[1].matshow(sl.cov2corr(cov), vmin=-1, vmax=1, cmap='RdBu_r')
 
             # ! add lines and labels for the different selected probes
@@ -2055,8 +1989,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
 
             plt.colorbar(ax[0].images[0], ax=ax[0], shrink=0.8)
             plt.colorbar(ax[1].images[0], ax=ax[1], shrink=0.8)
-            ax[0].set_title('log10 cov')
-            ax[1].set_title('corr')
+            ax[0].set_title(r'$\log_{10} |{\rm Cov}|$')
+            ax[1].set_title(r'${\rm Corr}$')
             fig.suptitle(f'cov {cov_name}', y=0.9)
 
 

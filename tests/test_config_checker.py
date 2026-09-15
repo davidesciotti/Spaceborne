@@ -41,8 +41,6 @@ def _apply_main_hardcoded_overrides(cfg):
     cfg['covariance'].setdefault('cNG_code', 'PyCCL')
     cfg['probe_selection']['Psigl'] = False
     cfg['probe_selection']['Psigg'] = False
-    cfg['covariance']['which_sigma2_b'] = 'from_input_mask'
-    cfg['covariance']['sigma2_b_int_method'] = 'fft'
     return cfg
 
 
@@ -118,26 +116,6 @@ class TestCheckBNTTransform:
         valid_cfg['probe_selection']['space'] = 'harmonic'
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         checker.check_BNT_transform()
-
-
-class TestCheckKEApproximation:
-    """Tests for check_KE_approximation."""
-
-    def test_ke_approx_with_disallowed_sigma2_b_raises(self, valid_cfg):
-        valid_cfg['precision']['use_KE_approximation'] = True
-        valid_cfg['covariance']['SSC_code'] = 'Spaceborne'
-        valid_cfg['covariance']['which_sigma2_b'] = 'full_curved_sky'
-        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
-        with pytest.raises(AssertionError):
-            checker.check_KE_approximation()
-
-    def test_no_ke_approx_with_disallowed_sigma2_b_raises(self, valid_cfg):
-        valid_cfg['precision']['use_KE_approximation'] = False
-        valid_cfg['covariance']['SSC_code'] = 'Spaceborne'
-        valid_cfg['covariance']['which_sigma2_b'] = 'flat_sky'
-        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
-        with pytest.raises(AssertionError):
-            checker.check_KE_approximation()
 
 
 class TestCheckProbeSelection:

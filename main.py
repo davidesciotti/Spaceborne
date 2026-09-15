@@ -254,7 +254,6 @@ for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
 # for the Gaussian covariance computation
-k_steps_sigma2_simps = 20_000
 shift_nz_interpolation_kind = 'linear'
 
 
@@ -320,22 +319,6 @@ if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg[
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
 
-# Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
-# - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only).
-#   In this case, the output covmat
-# - from_input_mask: input a mask with path specified by mask_filename
-# - polar_cap_on_the_fly: generate a polar cap during the run, with nside
-#   specified by nside
-# - null (None): use the flat-sky expression (valid for PyCCL only)
-# - flat_sky: use the flat-sky expression (valid for PyCCL only)
-#   has to be rescaled by fsky
-cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
-# Integration scheme used for the SSC survey covariance (sigma2_b) computation. Options:
-# - 'simps': uses simpson integration. This is faster but less accurate
-# - 'levin': uses levin integration. This is slower but more accurate
-cfg['covariance']['sigma2_b_int_method'] = 'fft'  # Type: str.
-
-
 # This has been deprecated since I am no longer using Levin integration.
 # This variable used to control the number of bins over which to compute the Levin
 # RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu).
@@ -356,7 +339,6 @@ cfg['precision']['levin_bin_avg'] = True  # Type: bool.
 
 # convenence settings that have been hardcoded
 n_probes = cfg['covariance']['n_probes']
-which_sigma2_b = cfg['covariance']['which_sigma2_b']
 # ! probe selection
 
 # * small naming guide for the confused developer:
@@ -652,12 +634,6 @@ k_grid = np.logspace(
     cfg['precision']['log10_k_min'],
     cfg['precision']['log10_k_max'],
     cfg['precision']['k_steps'],
-)
-# in this case we need finer k binning because of the bessel functions
-k_grid_s2b = np.logspace(
-    cfg['precision']['log10_k_min'],
-    cfg['precision']['log10_k_max'],
-    k_steps_sigma2_simps,
 )
 
 # set CCL spline parameters accordingly
@@ -1523,11 +1499,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
                 sigma2_b_dict[probe_ab, probe_cd] = sigma2_b_dict[pab, pcd]
             else:
                 sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
-                    ccl_obj=ccl_obj,
-                    cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-                    fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
-                    k_grid_s2b=k_grid_s2b,
-                    which_sigma2_b=which_sigma2_b,
+                    cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1]
                 )
 
     cov_ssc_obj.compute_ssc(
@@ -1538,18 +1510,6 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         unique_probe_combs_hs=unique_probe_combs_hs,
         nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
-
-    # in the full_curved_sky case only, sigma2_b has to be divided by fsky
-    # TODO it would make much more sense to divide s2b directly...
-    if which_sigma2_b == 'full_curved_sky':
-        for probe_2tpl in cov_ssc_obj.cov_dict['ssc']:
-            fsky_abcd = fsky_max_abcd_dict[probe_2tpl]  # just make name shorter
-            for dim in cov_ssc_obj.cov_dict['ssc'][probe_2tpl]:
-                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= fsky_abcd
-    elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
-        pass
-    else:
-        raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
 
 
 # ! ========================================== PyCCL ===================================
@@ -1569,9 +1529,7 @@ if compute_ccl_ssc:
         else:
             sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
                 z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
-                which_sigma2_b=which_sigma2_b,
                 cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-                fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
             )
     ccl_obj.sigma2_b_tpl_dict = sigma2_b_tpl_dict
 
@@ -2051,7 +2009,6 @@ if cfg['misc']['save_output_as_benchmark']:
     # better to work with empty arrays than None
 
     if not compute_sb_ssc:
-        k_grid_s2b = np.array([])
         sigma2_b_dict = {}
         dPmm_ddeltab = np.array([])
         dPgm_ddeltab = np.array([])
@@ -2059,10 +2016,6 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CLL_dVddeltab = np.array([])
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
-
-    if compute_sb_ssc and cfg['precision']['use_KE_approximation']:
-        # in this case, the k grid used is the same as the Pk one, I think
-        k_grid_s2b = np.array([])
 
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
@@ -2170,7 +2123,6 @@ if cfg['misc']['save_output_as_benchmark']:
         z_grid_trisp_ssc=z_grid_trisp_ssc,
         z_grid_trisp_cng=z_grid_trisp_cng,
         k_grid=k_grid,
-        k_grid_sigma2_b=k_grid_s2b,
         nz_src=nz_src,
         nz_lns=nz_lns,
         bnt_matrix=_bnt_matrix,

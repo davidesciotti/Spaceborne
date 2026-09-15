@@ -20,31 +20,6 @@ class SpaceborneConfigChecker:
         #     'fsky does not match the survey area.'
         # )
 
-    def check_KE_approximation(self) -> None:
-        if (
-            self.cfg['precision']['use_KE_approximation']
-            and self.cfg['covariance']['SSC_code'] == 'Spaceborne'
-        ):
-            assert self.cfg['covariance']['which_sigma2_b'] not in [
-                None,
-                'full_curved_sky',
-            ], (
-                'to use the flat-sky sigma2_b, set "flat_sky" in the cfg file. '
-                'Also, bear in mind that the flat-sky '
-                'approximation for sigma2_b is likely inappropriate for the large '
-                'Euclid survey area'
-            )
-
-        elif (
-            not self.cfg['precision']['use_KE_approximation']
-            and self.cfg['covariance']['SSC_code'] == 'Spaceborne'
-        ):
-            assert self.cfg['covariance']['which_sigma2_b'] not in [None, 'flat_sky'], (
-                "If you're not using the KE approximation, you should set "
-                '"full_curved_sky", '
-                '"from_input_mask or "polar_cap_on_the_fly"'
-            )
-
     def check_types(self) -> None:
         # Cosmology
         for par, val in self.cfg['cosmology'].items():
@@ -371,9 +346,6 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg['include_terasawa_terms'], bool), (
             'covariance: include_terasawa_terms must be a boolean'
         )
-        assert isinstance(cov_cfg['sigma2_b_int_method'], str), (
-            'covariance: sigma2_b_int_method must be a string'
-        )
         assert isinstance(cov_cfg['cov_filename'], str), (
             'covariance: cov_filename must be a string'
         )
@@ -382,9 +354,6 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(cov_cfg['SSC_code'], (str, type(None))), (
             'covariance: SSC_code must be a string or None'
-        )
-        assert isinstance(cov_cfg['which_sigma2_b'], (str, type(None))), (
-            'covariance: which_sigma2_b must be a string or None'
         )
         assert isinstance(cov_cfg['n_probes'], int), (
             'covariance: n_probes must be an int'
@@ -776,7 +745,6 @@ class SpaceborneConfigChecker:
         self.check_mask()
         self.check_BNT_transform()
         self.check_onecov()
-        self.check_KE_approximation()
         self.check_lists()
         # self.check_fsky()
         self.check_probe_selection()

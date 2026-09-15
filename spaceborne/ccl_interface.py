@@ -370,38 +370,15 @@ class CCLInterface:
         self.cov_dict = cd.create_cov_dict(_req_terms, _req_probe_combs_2d, dims=_dims)
 
     def sigma2_b_func(
-        self,
-        z_grid: np.ndarray,
-        which_sigma2_b: str,
-        cl_footp_norm_abcd: np.ndarray | None,
-        fsky_max_abcd: float,
-    ) -> tuple | None:
+        self, z_grid: np.ndarray, cl_footp_norm_abcd: np.ndarray
+    ) -> tuple:
         self.a_grid_sigma2_b = cosmo_lib.z_to_a(z_grid)[::-1]
 
         # normalize the mask and pass it to sigma2_B_from_mask
-        if which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask']:
-            sigma2_b = ccl.covariances.sigma2_B_from_mask(
-                cosmo=self.cosmo_ccl,
-                a_arr=self.a_grid_sigma2_b,
-                mask_wl=cl_footp_norm_abcd,
-            )
-            sigma2_b_tpl = (self.a_grid_sigma2_b, sigma2_b)
-
-        elif which_sigma2_b == 'flat_sky':
-            sigma2_b = ccl.covariances.sigma2_B_disc(
-                cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, fsky=fsky_max_abcd
-            )
-            sigma2_b_tpl = (self.a_grid_sigma2_b, sigma2_b)
-
-        elif which_sigma2_b is None:
-            sigma2_b_tpl = None
-
-        else:
-            raise ValueError(
-                'which_sigma2_b must be either "from_input_mask", '
-                '"polar_cap_on_the_fly" or None'
-            )
-        return sigma2_b_tpl
+        sigma2_b = ccl.covariances.sigma2_B_from_mask(
+            cosmo=self.cosmo_ccl, a_arr=self.a_grid_sigma2_b, mask_wl=cl_footp_norm_abcd
+        )
+        return self.a_grid_sigma2_b, sigma2_b
 
     def initialize_trispectrum(self, which_ng_cov, unique_probe_combs, pyccl_cfg):
         # some setup

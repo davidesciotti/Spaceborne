@@ -20,24 +20,33 @@ def linear_pk_transforms(
     r_max: float,
     nk_fft: int = 2**21,
     fft_pad: int = 8,
+    dr_min: float = 2.5e-3,
 ) -> tuple:
     r"""Transforms of the z=0 linear power spectrum, sampled on a uniform r grid.
 
     Returns ``(dr, cos_transform, xi)``, with
     ``cos_transform(r) = \int dk P(k) cos(kr)`` and
-    ``xi(r) = 1/(2 pi^2) \int dk k^2 P(k) j_0(kr)``, both over ``[k_min, k_max]``.
+    ``xi(r) = 1/(2 pi^2) \int dk k^2 P(k) j_0(kr)``, both over ``[k_min, k_max]``,
+    tabulated up to (at least) ``r_max``.
 
-    The FFT is zero-padded by ``fft_pad`` to oversample r: the sharp cut at ``k_max``
-    makes both transforms ring with period ``2 pi / k_max``, which is also the
-    unpadded r spacing, so without padding the ringing is aliased.
+    - The k sampling sets the largest separation the FFT can represent, pi / dk: at
+      least ``nk_fft`` points are used, more if needed to cover 1.5 * ``r_max``.
+    - The FFT is zero-padded by ``fft_pad`` to oversample r: the sharp cut at
+      ``k_max`` makes both transforms ring with period 2 pi / k_max, which is also
+      the unpadded r spacing, so without padding the ringing is aliased. The padding
+      is reduced when dr would fall well below ``dr_min`` [Mpc], to bound memory
+      for large k_max, where P(k_max), and hence the ringing, is negligible.
     """
-    k = np.linspace(k_min, k_max, nk_fft)
+    nk_range = 1.5 * r_max * (k_max - k_min) / np.pi
+    nk = max(nk_fft, 2 ** int(np.ceil(np.log2(nk_range))))
+    k = np.linspace(k_min, k_max, nk)
     dk = k[1] - k[0]
     pk = ccl.linear_matter_power(cosmo_ccl, k=k, a=1.0)
 
-    n_fft = fft_pad * nk_fft
+    n_fft_dr_min = 2 ** int(np.ceil(np.log2(2 * np.pi / (dk * dr_min))))
+    n_fft = max(2 * nk, min(fft_pad * nk, n_fft_dr_min))
     dr = 2 * np.pi / (n_fft * dk)
-    n_r = min(int(r_max / dr) + 2, n_fft // 2 + 1)
+    n_r = int(r_max / dr) + 2
     r = np.arange(n_r) * dr
 
     # rfft assumes a grid starting at k=0; restore the phase exp(-i r k_min)
@@ -59,6 +68,11 @@ def interp_uniform(x: np.ndarray, dx: float, y: np.ndarray) -> np.ndarray:
     Much faster than ``np.interp`` on large tables, since no bisection is needed.
     """
     pos = x / dx
+    if pos.max() > y.size - 1:
+        raise ValueError(
+            f'interpolation point {pos.max() * dx:.6g} beyond the table range '
+            f'{(y.size - 1) * dx:.6g}'
+        )
     idx = np.minimum(pos.astype(np.intp), y.size - 2)
     frac = pos - idx
     return y[idx] * (1 - frac) + y[idx + 1] * frac

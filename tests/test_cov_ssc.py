@@ -273,12 +273,29 @@ class TestInterpUniform:
         ref = np.interp(x, grid, y)
         np.testing.assert_allclose(out, ref, rtol=0, atol=1e-11)
 
+    def test_raises_beyond_table(self):
+        """Points beyond the tabulated range raise instead of extrapolating."""
+        y = np.arange(10.0)
+        with pytest.raises(ValueError, match='beyond the table range'):
+            cov_ssc.interp_uniform(np.array([9.5]), 1.0, y)
+
 
 # ----------------------------------------------------------------------------- #
 # linear_pk_transforms
 # ----------------------------------------------------------------------------- #
 class TestLinearPkTransforms:
     """Tests for the FFT-based transforms of the z=0 linear power spectrum."""
+
+    def test_k_sampling_covers_large_separations(self, cosmo):
+        """A too-coarse nk_fft is refined so that pi/dk covers the separations up to
+        2 chi(z_max): the result must not depend on the requested nk_fft. Without
+        the refinement, nk_fft=2**8 only reaches r ~ 800 Mpc."""
+        z_grid = np.array([0.5, 1.5, 3.0])
+        w = np.array([1 / (4 * np.pi)])
+        coarse = cov_ssc.sigma2_z1z2(z_grid, K_MIN, K_MAX, cosmo, w, nk_fft=2**8)
+        fine = cov_ssc.sigma2_z1z2(z_grid, K_MIN, K_MAX, cosmo, w, nk_fft=2**16)
+        # empirically ~1e-5 (the unrefined grid gives O(1) errors)
+        assert _max_scaled_abs_diff(coarse, fine) < 1e-4
 
     def test_xi_matches_direct_quadrature(self, cosmo):
         """xi(r) at a few r agrees with a direct quadrature of

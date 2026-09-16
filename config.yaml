@@ -60,7 +60,7 @@ halo_model:
 OneCovariance:
   # Path to Python executable in OneCovariance conda environment
   # Update this to match your system's conda installation
-  path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
+  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
@@ -193,7 +193,7 @@ C_ell:
   # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
   has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
   has_IA: True # Type: bool. Enable/disable intrinsic alignment.
-  has_magnification_bias: True # Type: bool. Enable/disable magnification bias.
+  has_magnification_bias: False # Type: bool. Enable/disable magnification bias.
 
   # Keyword arguments for CCL Cl calculation (excluding `p_of_k_a`), described in
   # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl
@@ -234,6 +234,8 @@ covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
   SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+
+  SSC_code: OneCovariance
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
@@ -330,9 +332,6 @@ PyCCL:
   # [Note] The former could give errors.
   cov_integration_method: qag_quad # Type: str
 
-  # Whether or not to load the previously computed trispectrum.
-  load_cached_tkka: False # Type: bool.
-
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower
   use_default_k_a_grids: False # Type: bool.
@@ -379,7 +378,7 @@ precision:
   delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
 
   # Whether or not to use the single-redshift integral approximation for the SSC.
-  use_KE_approximation: False # Type: bool.
+  use_KE_approximation: True # Type: bool.
 
   # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
@@ -451,5 +450,5 @@ misc:
   # set this to False to display the number of elements in the covariance instead
   plot_probe_names: True # Type: bool
 
-  output_path: ../DATA/Spaceborne_jobs_IO/develop/output/fix-SSC-s2b # Type: str. Path to the output directory
+  output_path: ../DATA/Spaceborne_jobs_IO/develop/output/oc_ssc # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'

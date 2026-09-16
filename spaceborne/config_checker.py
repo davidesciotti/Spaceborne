@@ -370,9 +370,6 @@ class SpaceborneConfigChecker:
         assert isinstance(pyccl_cfg['cov_integration_method'], str), (
             'PyCCL: cov_integration_method must be a string'
         )
-        assert isinstance(pyccl_cfg['load_cached_tkka'], bool), (
-            'PyCCL: load_cached_tkka must be a boolean'
-        )
         assert isinstance(pyccl_cfg['use_default_k_a_grids'], bool), (
             'PyCCL: use_default_k_a_grids must be a boolean'
         )

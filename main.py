@@ -247,8 +247,6 @@ if not os.path.exists(output_path):
         f'Output path {output_path} does not exist. '
         'Please create it before running the script.'
     )
-for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
-    os.makedirs(f'{output_path}/{subdir}', exist_ok=True)
 
 # ! ======================== START HARDCODED OPTIONS/PARAMETERS ========================
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
@@ -1480,7 +1478,9 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         dPmm_ddeltab_klimb=dPmm_ddeltab_klimb,
         dPgm_ddeltab_klimb=dPgm_ddeltab_klimb,
         dPgg_ddeltab_klimb=dPgg_ddeltab_klimb,
-        wf_lensing=wf_lensing,
+        # the multiplicative shear bias calibrates the lensing kernels, as it does the
+        # C_ells
+        wf_lensing=wf_lensing * (1 + np.array(cfg['C_ell']['mult_shear_bias'])),
         wf_delta=wf_delta,
         wf_mu=wf_mu,
     )
@@ -1555,7 +1555,7 @@ if compute_ccl_ssc or compute_ccl_cng:
     # compute covs
     for which_ng_cov in ccl_ng_cov_terms_list:
         ccl_obj.initialize_trispectrum(
-            which_ng_cov, unique_probe_combs_hs, cfg['PyCCL']
+            which_ng_cov, unique_probe_combs_hs
         )
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov=which_ng_cov,
@@ -1564,6 +1564,7 @@ if compute_ccl_ssc or compute_ccl_cng:
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
             ind_dict=ind_dict,
+            mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
         )
 
     # symmetry sanity check

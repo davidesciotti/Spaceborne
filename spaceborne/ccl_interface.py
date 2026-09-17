@@ -425,7 +425,7 @@ class CCLInterface:
 
         print('')
 
-        with sl.timer(f'Computing {which_ng_cov} trispectrum, '):
+        with sl.timer(f'Computing {which_ng_cov} trispectrum'):
             # in this case, only the LLLL trispectrum is needed. The compute_trisp_abcd
             # already only uses the 'L' entries, but I keep the 'LLLL' arg for clarity
             if which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
@@ -612,9 +612,9 @@ class CCLInterface:
                         integration_method=integration_method,
                         **sigma2_b_arg,
                     )
-                    cov_ng_4D[:, :, ij, kl] = res
+                    cov_ng_4D[:, :, ij, kl] = res.T
                     if kl != ij:
-                        cov_ng_4D[:, :, kl, ij] = res.T
+                        cov_ng_4D[:, :, kl, ij] = res
 
         # Off-diagonal probe blocks case e.g. LLGL, LLGG, etc.
         else:
@@ -644,6 +644,7 @@ class CCLInterface:
         unique_probe_combs,
         nonreq_probe_combs,
         ind_dict,
+        mult_shear_bias: np.ndarray,
     ):
         """Compute the specified non-Gaussian covariance term (ssc or cng) for each
         probe block.
@@ -694,7 +695,7 @@ class CCLInterface:
                 else None
             )
 
-            self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
+            cov_ng_4d = self.compute_ng_cov_probe_block(
                 which_ng_cov=which_ng_cov,
                 kernel_A=kernel_dict[probe_a],
                 kernel_B=kernel_dict[probe_b],
@@ -709,6 +710,25 @@ class CCLInterface:
                 integration_method=integration_method,
                 symmetrize_zpairs=symmetrize_zpairs,
             )
+
+            # multiplicative shear bias: each lensing leg is calibrated by (1 + m),
+            # as for the C_ells.
+            # This is done before filling the symmetric blocks, which inherit it
+            
+            # this is equivalent to the following, but more efficient:
+            # for ij in range(zpairs_AB):
+            #     for kl in range(zpairs_CD):
+            #         cov_ng_4d[:, :, ij, kl] *= calib_ab[ij] * calib_cd[kl]
+            # where calib_ab[ij] = (1 + m^A_i) * (1 + m^B_j)
+
+            calib = {'L': 1 + mult_shear_bias, 'G': np.ones(self.zbins)}
+            zi, zj = ind_dict[probe_ab][:, -2], ind_dict[probe_ab][:, -1]
+            zk, zl = ind_dict[probe_cd][:, -2], ind_dict[probe_cd][:, -1]
+            calib_ab = calib[probe_a][zi] * calib[probe_b][zj]
+            calib_cd = calib[probe_c][zk] * calib[probe_d][zl]
+            cov_ng_4d *= calib_ab[None, None, :, None] * calib_cd[None, None, None, :]
+
+            self.cov_dict[ng_term][probe_2tpl]['4d'] = cov_ng_4d
 
         # * symmetrize and set to 0 the remaning probe blocks
         sl.symmetrize_and_fill_probe_blocks(

@@ -303,14 +303,10 @@ cfg['OneCovariance']['oc_output_filename'] = cfg['OneCovariance'].get(
 cfg['OneCovariance']['compare_against_oc'] = cfg['OneCovariance'].get(
     'compare_against_oc', False
 )
-
-if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
-    cfg['misc']['save_output_as_benchmark'] = False
-    cfg['misc']['bench_filename'] = (
-        '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}'
-        '_devmerge3_nmt'
-    )
+cfg['misc']['save_output_as_benchmark'] = cfg['misc'].get(
+    'save_output_as_benchmark', False
+)
+cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
 
 
 # Psi-statistics not implemented yet
@@ -645,18 +641,18 @@ cfg['precision']['spline_params']['K_MAX_SPLINE'] = (
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 # TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
-z_grid_tkka_SSC = z_grid_trisp_ssc
-z_grid_tkka_cNG = z_grid_trisp_cng
-ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_tkka_SSC)[::-1]
-ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_tkka_cNG)[::-1]
-ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
-ccl_obj.logn_k_grid_tkka_cNG = np.log(k_grid)
+z_grid_trisp_SSC = z_grid_trisp_ssc
+z_grid_trisp_cNG = z_grid_trisp_cng
+ccl_obj.a_grid_trisp_SSC = cosmo_lib.z_to_a(z_grid_trisp_SSC)[::-1]
+ccl_obj.a_grid_trisp_cNG = cosmo_lib.z_to_a(z_grid_trisp_cNG)[::-1]
+ccl_obj.logn_k_grid_trisp_SSC = np.log(k_grid)
+ccl_obj.logn_k_grid_trisp_cNG = np.log(k_grid)
 
 # check that the grid is in ascending order
-if not np.all(np.diff(ccl_obj.a_grid_tkka_SSC) > 0):
-    raise ValueError('a_grid_tkka_SSC is not in ascending order!')
-if not np.all(np.diff(ccl_obj.a_grid_tkka_cNG) > 0):
-    raise ValueError('a_grid_tkka_cNG is not in ascending order!')
+if not np.all(np.diff(ccl_obj.a_grid_trisp_SSC) > 0):
+    raise ValueError('a_grid_trisp_SSC is not in ascending order!')
+if not np.all(np.diff(ccl_obj.a_grid_trisp_cNG) > 0):
+    raise ValueError('a_grid_trisp_cNG is not in ascending order!')
 if not np.all(np.diff(z_grid) > 0):
     raise ValueError('z grid is not in ascending order!')
 if not np.all(np.diff(z_grid_trisp_ssc) > 0):
@@ -665,10 +661,10 @@ if not np.all(np.diff(z_grid_trisp_cng) > 0):
     raise ValueError('z grid is not in ascending order!')
 
 if cfg['PyCCL']['use_default_k_a_grids']:
-    ccl_obj.a_grid_tkka_SSC = a_default_grid_ccl
-    ccl_obj.a_grid_tkka_cNG = a_default_grid_ccl
-    ccl_obj.logn_k_grid_tkka_SSC = lk_default_grid_ccl
-    ccl_obj.logn_k_grid_tkka_cNG = lk_default_grid_ccl
+    ccl_obj.a_grid_trisp_SSC = a_default_grid_ccl
+    ccl_obj.a_grid_trisp_cNG = a_default_grid_ccl
+    ccl_obj.logn_k_grid_trisp_SSC = lk_default_grid_ccl
+    ccl_obj.logn_k_grid_trisp_cNG = lk_default_grid_ccl
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -1525,10 +1521,10 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
     # Note: this z grid has to be larger than the one requested in the trispectrum
-    # (z_grid_tkka in the cfg file). You can probaby use the same grid as the
+    # (z_grid_trisp in the cfg file). You can probaby use the same grid as the
     # one used in the trispectrum, but from my tests is should be
-    # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
-    # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
+    # zmin_s2b < zmin_s2b_trisp and zmax_s2b =< zmax_s2b_trisp.
+    # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_trisp
     sigma2_b_tpl_dict = {}
     for i, probe_abcd in enumerate(unique_probe_combs_hs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
@@ -1564,7 +1560,16 @@ if compute_ccl_ssc or compute_ccl_cng:
 
     # compute covs
     for which_ng_cov in ccl_ng_cov_terms_list:
-        ccl_obj.initialize_trispectrum(which_ng_cov, unique_probe_combs_hs)
+        # compute galaxy bias on the z grid used for the trispectrum
+        a_grid_trisp = getattr(ccl_obj, f'a_grid_trisp_{which_ng_cov}')
+        gal_bias_1d_trisp = ccl_obj.gal_bias_func(cosmo_lib.a_to_z(a_grid_trisp))
+        if gal_bias_1d_trisp.ndim == 2:
+            # same bias in all bins, required for the PyCCL SSC (checked above)
+            gal_bias_1d_trisp = gal_bias_1d_trisp[:, 0]
+
+        # compute trispectrum
+        ccl_obj.build_trisp_dict(which_ng_cov, unique_probe_combs_hs, gal_bias_1d_trisp)
+
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov=which_ng_cov,
             ells=ell_grid,

@@ -363,14 +363,17 @@ class SpaceborneResponses:
 
         galaxy_bias_model : str
             String indicating how the galaxy field is modelled.
-            - 'HOD': Use the halo occupation distribution (HOD) profile, with no
-            first-order galaxy bias (b1g) involved.
-            - 'linear_bias': Use the input `b1g` array provided as an argument.
+            - 'HOD': the galaxy power spectra and responses are computed with the
+            halo occupation distribution (HOD) profile, and the first-order galaxy
+            bias in the counterterms is the HOD one, I^1_1(g) / n_g. The input
+            `b1g_zi`, `b1g_zj` are not used.
+            - 'linear_bias': galaxies are linearly biased tracers of matter, with
+            the first-order galaxy bias given by the input `b1g_zi`, `b1g_zj`.
 
-        b1g : array-like
-            If `galaxy_bias_model` is 'linear_bias', this array represents the
-            galaxy bias as a function of redshift.
-            Must have the same shape as `z_grid` and be a 1D array.
+        b1g_zi, b1g_zj : array-like
+            If `galaxy_bias_model` is 'linear_bias', the galaxy bias of the two
+            tomographic bins as a function of redshift.
+            Must be 1D arrays with the same shape as `z_grid`.
 
         Outputs (Set as attributes of the class):
         -----------------------------------------

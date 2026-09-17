@@ -1175,27 +1175,14 @@ if (
     np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
     np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
-    # oc needs finer ell sampling to avoid issues with ell bin edges
-    # ! old
-    ell_max_max = cfg['binning']['ell_max']
-    ell_min_unb_oc = 2
-    ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
-    nbl_3x2pt_oc = 500
-
-    ells_3x2pt_oc = np.geomspace(
-        bin_obj.ell_min_3x2pt, bin_obj.ell_max_3x2pt, nbl_3x2pt_oc
-    )
-
-    # ! new
-    # nbl_3x2pt_oc = 100
-    # nbl_3x2pt_oc = pvt_cfg['nbl_3x2pt']
-    # ells_3x2pt_oc, _ = ell_utils.compute_ells_oc(
-    #     nbl=nbl_3x2pt_oc,
-    #     ell_min=float(pvt_cfg['ell_min_3x2pt']),
-    #     ell_max=ell_max_max,
-    #     binning_type=cfg['binning']['binning_type'],
-    #     output_ell_bin_edges=False,
-    # )
+    # Cls need to be computed on a fine grid to avoid interpolation/extrapolation issues
+    if obs_space == 'harmonic':
+        ells_3x2pt_oc = np.geomspace(bin_obj.ell_min_3x2pt, bin_obj.ell_max_3x2pt, 100)
+    else:
+        ells_3x2pt_oc = np.geomspace(
+            cfg['precision']['ell_min_proj'], cfg['precision']['ell_max_proj'], 200
+        )
+    nbl_3x2pt_oc = len(ells_3x2pt_oc)
 
     cl_ll_3d_oc = ccl_obj.compute_cls(
         ells_3x2pt_oc,

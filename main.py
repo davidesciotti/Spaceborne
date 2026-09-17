@@ -538,7 +538,7 @@ ccl_obj = ccl_interface.CCLInterface(
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.output_path = output_path
-ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+ccl_obj.ng_cov_gal_bias_model = cfg['covariance']['ng_cov_gal_bias_model']
 ccl_obj.separable_growth = cfg['precision']['separable_growth']
 
 # get ccl default a and k grids
@@ -648,9 +648,9 @@ ccl_obj.logn_k_grid_trisp_cng = np.log(k_grid)
 
 # check that the grid is in ascending order
 if not np.all(np.diff(ccl_obj.a_grid_trisp_ssc) > 0):
-    raise ValueError('a_grid_trisp_SSC is not in ascending order!')
+    raise ValueError('a_grid_trisp_ssc is not in ascending order!')
 if not np.all(np.diff(ccl_obj.a_grid_trisp_cng) > 0):
-    raise ValueError('a_grid_trisp_cNG is not in ascending order!')
+    raise ValueError('a_grid_trisp_cng is not in ascending order!')
 if not np.all(np.diff(z_grid) > 0):
     raise ValueError('z grid is not in ascending order!')
 if not np.all(np.diff(z_grid_trisp_ssc) > 0):
@@ -909,11 +909,11 @@ single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 # CCL's linear-bias SSC response takes a single b(z) for each galaxy leg
 if (
     cov_terms_and_codes['SSC'] == 'PyCCL'
-    and cfg['covariance']['which_b1g_in_resp'] == 'from_input'
+    and cfg['covariance']['ng_cov_gal_bias_model'] == 'linear_bias'
     and not single_b_of_z
 ):
     raise ValueError(
-        'The PyCCL SSC with which_b1g_in_resp: from_input requires the same galaxy '
+        'The PyCCL SSC with ng_cov_gal_bias_model: linear_bias requires the same galaxy '
         "bias in all redshift bins. Please set SSC_code: 'Spaceborne'."
     )
 
@@ -1248,11 +1248,11 @@ if (
         'nz_lns_ascii_filename': nz_lns_ascii_filename,
     }
 
-    if cfg['covariance']['which_b1g_in_resp'] == 'from_input':
+    if cfg['covariance']['ng_cov_gal_bias_model'] == 'linear_bias':
         gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
         ccl_obj.save_gal_bias_table_ascii(z_grid, gal_bias_ascii_filename)
         ascii_filenames_dict['gal_bias_ascii_filename'] = gal_bias_ascii_filename
-    elif cfg['covariance']['which_b1g_in_resp'] == 'from_HOD':
+    elif cfg['covariance']['ng_cov_gal_bias_model'] == 'HOD':
         warnings.warn(
             'OneCovariance will use the HOD-derived galaxy bias '
             'for the Cls and responses',
@@ -1378,7 +1378,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
 
     if cfg['covariance']['which_pk_responses'] == 'halo_model':
         # convenience variables
-        which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+        ng_cov_gal_bias_model = cfg['covariance']['ng_cov_gal_bias_model']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
 
         # recompute galaxy bias on the z grid used to compute the responses/trispectrum
@@ -1402,7 +1402,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             resp_obj.set_hm_resp(
                 k_grid=k_grid,
                 z_grid=z_grid_trisp_ssc,
-                which_b1g=which_b1g_in_resp,
+                galaxy_bias_model=ng_cov_gal_bias_model,
                 b1g_zi=gal_bias_2d_trisp[:, 0],
                 b1g_zj=gal_bias_2d_trisp[:, 0],
                 include_terasawa_terms=include_terasawa_terms,
@@ -1426,7 +1426,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
                     resp_obj.set_hm_resp(
                         k_grid=k_grid,
                         z_grid=z_grid_trisp_ssc,
-                        which_b1g=which_b1g_in_resp,
+                        galaxy_bias_model=ng_cov_gal_bias_model,
                         b1g_zi=gal_bias_2d_trisp[:, zi],
                         b1g_zj=gal_bias_2d_trisp[:, zj],
                         include_terasawa_terms=include_terasawa_terms,
@@ -1560,7 +1560,7 @@ if compute_ccl_ssc or compute_ccl_cng:
     # compute covs
     for which_ng_cov in ccl_ng_cov_terms_list:
         # compute galaxy bias on the z grid used for the trispectrum
-        a_grid_trisp = getattr(ccl_obj, f'a_grid_trisp_{which_ng_cov}')
+        a_grid_trisp = getattr(ccl_obj, f'a_grid_trisp_{which_ng_cov.lower()}')
         gal_bias_1d_trisp = ccl_obj.gal_bias_func(cosmo_lib.a_to_z(a_grid_trisp))
         if gal_bias_1d_trisp.ndim == 2:
             # same bias in all bins, required for the PyCCL SSC (checked above)

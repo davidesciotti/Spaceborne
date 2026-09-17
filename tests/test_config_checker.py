@@ -168,19 +168,19 @@ class TestCheckCov:
             checker.check_cov()
 
 
-class TestCheckWhichB1g:
-    """Tests for the which_b1g_in_resp check in check_cov."""
+class TestCheckNgCovGalBiasModel:
+    """Tests for the ng_cov_gal_bias_model check in check_cov."""
 
-    @pytest.mark.parametrize('value', ['from_input', 'from_HOD'])
+    @pytest.mark.parametrize('value', ['linear_bias', 'HOD'])
     def test_valid_values_ok(self, valid_cfg, value):
-        valid_cfg['covariance']['which_b1g_in_resp'] = value
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = value
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         checker.check_cov()
 
     def test_invalid_value_raises(self, valid_cfg):
-        valid_cfg['covariance']['which_b1g_in_resp'] = 'from_hod'
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'hod'
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
-        with pytest.raises(AssertionError, match='which_b1g_in_resp'):
+        with pytest.raises(AssertionError, match='ng_cov_gal_bias_model'):
             checker.check_cov()
 
 
@@ -275,19 +275,19 @@ class TestCheckPyccl:
 
     def test_hod_cng_with_magnification_raises(self, valid_cfg):
         checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
-        valid_cfg['covariance']['which_b1g_in_resp'] = 'from_HOD'
-        with pytest.raises(ValueError, match='from_HOD'):
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'HOD'
+        with pytest.raises(ValueError, match='does not support magnification'):
             checker.check_pyccl()
 
     def test_hod_cng_without_magnification_warns(self, valid_cfg):
         checker = self._pyccl_cfg(valid_cfg, False, True, False, False)
-        valid_cfg['covariance']['which_b1g_in_resp'] = 'from_HOD'
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'HOD'
         with pytest.warns(UserWarning, match='2-halo'):
             checker.check_pyccl()
 
     def test_linear_bias_cng_does_not_warn(self, valid_cfg):
         checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
-        valid_cfg['covariance']['which_b1g_in_resp'] = 'from_input'
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'linear_bias'
         with warnings.catch_warnings():
             warnings.simplefilter('error')
             checker.check_pyccl()

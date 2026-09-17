@@ -147,7 +147,7 @@ class CCLInterface:
         self.p_of_k_a = _UNSET
         self.zbins: int = _UNSET
         self.output_path: str = _UNSET
-        self.which_b1g_in_resp: str = _UNSET
+        self.ng_cov_gal_bias_model: str = _UNSET
         self.lumin_ratio_2d_arr: np.ndarray | None = _UNSET
         self.a_grid_trisp_ssc: np.ndarray = _UNSET
         self.a_grid_trisp_cng: np.ndarray = _UNSET
@@ -428,7 +428,7 @@ class CCLInterface:
         with sl.timer(f'Computing {which_ng_cov} trispectrum'):
             # in this case, only the LLLL trispectrum is needed. The compute_trisp_abcd
             # already only uses the 'L' entries, but I keep the 'LLLL' arg for clarity
-            if which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
+            if which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'linear_bias':
                 trisp_mmmm = self.compute_trisp_abcd(
                     which_ng_cov, 'LLLL', p_of_k_a=p_of_k_a
                 )
@@ -436,7 +436,10 @@ class CCLInterface:
             for probe_abcd in unique_probe_combs:
                 probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
 
-                if which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
+                if (
+                    which_ng_cov == 'cNG'
+                    and self.ng_cov_gal_bias_model == 'linear_bias'
+                ):
                     # set all keys to the same trispectrum
                     trisp_abcd = trisp_mmmm
                 else:
@@ -465,7 +468,7 @@ class CCLInterface:
         return trisp_abcd
 
     def get_trisp_func(self, probe_a, probe_b, probe_c, probe_d, which_ng_cov):
-        if which_ng_cov == 'SSC' and self.which_b1g_in_resp == 'from_HOD':
+        if which_ng_cov == 'SSC' and self.ng_cov_gal_bias_model == 'HOD':
             trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
             additional_args = {
                 'prof': self.halo_profile_dict[probe_a],
@@ -479,7 +482,7 @@ class CCLInterface:
                 'extrap_pk': True,
             }
 
-        elif which_ng_cov == 'SSC' and self.which_b1g_in_resp == 'from_input':
+        elif which_ng_cov == 'SSC' and self.ng_cov_gal_bias_model == 'linear_bias':
             # prof should be the matter profile, since the bias is passed as an argument
             trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
             additional_args = {
@@ -497,7 +500,7 @@ class CCLInterface:
                 'extrap_pk': True,
             }
 
-        elif which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_HOD':
+        elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'HOD':
             trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
             additional_args = {
                 'prof': self.halo_profile_dict[probe_a],
@@ -515,11 +518,11 @@ class CCLInterface:
                 'separable_growth': self.separable_growth,
             }
 
-        elif which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
+        elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'linear_bias':
             # In this case, I only need T_mmmm, as this is multiplied by the galaxy bias
             # as Cov_gggg = \int w_g^4 T_mmmm
             # where w_g = w_delta * b + w_mu (both of which need to be paired with
-            # the matter profile)
+            # the matter profile).
             trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
             additional_args = {
                 'prof': self.halo_profile_dict['L'],
@@ -540,8 +543,8 @@ class CCLInterface:
         else:
             raise ValueError(
                 f'Invalid combination: which_ng_cov = {which_ng_cov!r} '
-                "(must be 'SSC' or 'cNG'), which_b1g_in_resp = "
-                f"{self.which_b1g_in_resp!r} (must be 'from_input' or 'from_HOD')."
+                "(must be 'SSC' or 'cNG'), ng_cov_gal_bias_model = "
+                f"{self.ng_cov_gal_bias_model!r} (must be 'linear_bias' or 'HOD')."
             )
 
         return trisp_func, additional_args
@@ -666,15 +669,15 @@ class CCLInterface:
 
         if which_ng_cov == 'SSC':
             kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
-        elif which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
+        elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'linear_bias':
             kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
-        elif which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_HOD':
+        elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'HOD':
             kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
         else:
             raise ValueError(
                 f'Invalid combination: which_ng_cov = {which_ng_cov!r} '
-                "(must be 'SSC' or 'cNG'), which_b1g_in_resp = "
-                f"{self.which_b1g_in_resp!r} (must be 'from_input' or 'from_HOD')."
+                "(must be 'SSC' or 'cNG'), ng_cov_gal_bias_model = "
+                f"{self.ng_cov_gal_bias_model!r} (must be 'linear_bias' or 'HOD')."
             )
 
         print('')
@@ -714,7 +717,7 @@ class CCLInterface:
             # multiplicative shear bias: each lensing leg is calibrated by (1 + m),
             # as for the C_ells.
             # This is done before filling the symmetric blocks, which inherit it
-            
+
             # this is equivalent to the following, but more efficient:
             # for ij in range(zpairs_AB):
             #     for kl in range(zpairs_CD):

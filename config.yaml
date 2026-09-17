@@ -60,11 +60,11 @@ halo_model:
 OneCovariance:
   # Path to Python executable in OneCovariance conda environment
   # Update this to match your system's conda installation
-  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+  path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
-  compare_against_oc: False # In this case, the output cov (2D/6D) is not overwritten by OC at all!
+  compare_against_oc: True # In this case, the output cov (2D/6D) is not overwritten by OC at all!
   new_run: True
   oc_format_to_compare_against: list
   process_cov_from_mat_file: True

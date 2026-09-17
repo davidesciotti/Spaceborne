@@ -567,6 +567,10 @@ class SpaceborneConfigChecker:
             ), 'Value mismatch for logT_AGN in the parameters definition'
 
     def check_cov(self) -> None:
+        assert self.cfg['covariance']['which_b1g_in_resp'] in (
+            'from_input',
+            'from_HOD',
+        ), 'which_b1g_in_resp must be either "from_input" or "from_HOD"'
         assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), (
             'triu_tril must be either "triu" or "tril"'
         )
@@ -714,20 +718,31 @@ class SpaceborneConfigChecker:
         cov_cfg = self.cfg['covariance']
         pyccl_ssc = cov_cfg['SSC'] and cov_cfg['SSC_code'] == 'PyCCL'
         pyccl_cng = cov_cfg['cNG'] and cov_cfg['cNG_code'] == 'PyCCL'
+        has_mag = self.cfg['C_ell']['has_magnification_bias']
 
         # the magnification component of the galaxy tracers would need the matter
         # response, while the PyCCL SSC pairs the galaxy legs with the galaxy one
-        if pyccl_ssc and self.cfg['C_ell']['has_magnification_bias']:
+        if pyccl_ssc and has_mag:
             raise ValueError(
                 'The PyCCL SSC does not support magnification bias yet. '
                 "Please set SSC_code: 'Spaceborne' or disable magnification bias."
             )
 
+        # same for the HOD cNG, whose galaxy legs are paired with the HOD trispectrum.
+        # The linear-bias cNG pairs the full galaxy kernel with the matter
+        # trispectrum, and is therefore correct
+        if pyccl_cng and cov_cfg['which_b1g_in_resp'] == 'from_HOD' and has_mag:
+            raise ValueError(
+                'The PyCCL cNG with which_b1g_in_resp: from_HOD does not support '
+                "magnification bias yet. Please set which_b1g_in_resp: 'from_input' "
+                'or disable magnification bias.'
+            )
+
         # CCL's angular_cl_cov_SSC/cNG ignore the RSD component of the tracers
-        if (pyccl_ssc or pyccl_cng) and self.cfg['C_ell']['has_rsd']:
+        if (cov_cfg['SSC'] or cov_cfg['cNG']) and self.cfg['C_ell']['has_rsd']:
             warnings.warn(
-                'has_rsd is True, but the PyCCL SSC and cNG covariance terms do not '
-                'include the RSD contribution.',
+                'has_rsd is True, but the non-Gaussian covariance terms do not include'
+                ' this contribution.',
                 stacklevel=2,
             )
 

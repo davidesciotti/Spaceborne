@@ -247,8 +247,6 @@ if not os.path.exists(output_path):
         f'Output path {output_path} does not exist. '
         'Please create it before running the script.'
     )
-for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
-    os.makedirs(f'{output_path}/{subdir}', exist_ok=True)
 
 # ! ======================== START HARDCODED OPTIONS/PARAMETERS ========================
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
@@ -305,14 +303,10 @@ cfg['OneCovariance']['oc_output_filename'] = cfg['OneCovariance'].get(
 cfg['OneCovariance']['compare_against_oc'] = cfg['OneCovariance'].get(
     'compare_against_oc', False
 )
-
-if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
-    cfg['misc']['save_output_as_benchmark'] = False
-    cfg['misc']['bench_filename'] = (
-        '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}'
-        '_devmerge3_nmt'
-    )
+cfg['misc']['save_output_as_benchmark'] = cfg['misc'].get(
+    'save_output_as_benchmark', False
+)
+cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
 
 
 # Psi-statistics not implemented yet
@@ -494,13 +488,6 @@ cov_terms_and_codes = {
     'cNG': cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else False,
 }
 
-_condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
-if compute_ccl_cng and _condition:
-    warnings.warn(
-        'There may be some issue with the symmetry of the GLGL block in the '
-        'CCL cNG covariance. The LLLL and GGGG blocks are not affected',
-        stacklevel=2,
-    )
 
 # ! set HS probes to compute depending on RS ones
 # Set HS probes depending on RS ones
@@ -543,7 +530,7 @@ ccl_obj = ccl_interface.CCLInterface(
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.output_path = output_path
-ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+ccl_obj.ng_cov_gal_bias_model = cfg['covariance']['ng_cov_gal_bias_model']
 ccl_obj.separable_growth = cfg['precision']['separable_growth']
 
 # get ccl default a and k grids
@@ -646,18 +633,16 @@ cfg['precision']['spline_params']['K_MAX_SPLINE'] = (
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 # TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
-z_grid_tkka_SSC = z_grid_trisp_ssc
-z_grid_tkka_cNG = z_grid_trisp_cng
-ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_tkka_SSC)[::-1]
-ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_tkka_cNG)[::-1]
-ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
-ccl_obj.logn_k_grid_tkka_cNG = np.log(k_grid)
+ccl_obj.a_grid_trisp_ssc = cosmo_lib.z_to_a(z_grid_trisp_ssc)[::-1]
+ccl_obj.a_grid_trisp_cng = cosmo_lib.z_to_a(z_grid_trisp_cng)[::-1]
+ccl_obj.logn_k_grid_trisp_ssc = np.log(k_grid)
+ccl_obj.logn_k_grid_trisp_cng = np.log(k_grid)
 
 # check that the grid is in ascending order
-if not np.all(np.diff(ccl_obj.a_grid_tkka_SSC) > 0):
-    raise ValueError('a_grid_tkka_SSC is not in ascending order!')
-if not np.all(np.diff(ccl_obj.a_grid_tkka_cNG) > 0):
-    raise ValueError('a_grid_tkka_cNG is not in ascending order!')
+if not np.all(np.diff(ccl_obj.a_grid_trisp_ssc) > 0):
+    raise ValueError('a_grid_trisp_ssc is not in ascending order!')
+if not np.all(np.diff(ccl_obj.a_grid_trisp_cng) > 0):
+    raise ValueError('a_grid_trisp_cng is not in ascending order!')
 if not np.all(np.diff(z_grid) > 0):
     raise ValueError('z grid is not in ascending order!')
 if not np.all(np.diff(z_grid_trisp_ssc) > 0):
@@ -666,10 +651,10 @@ if not np.all(np.diff(z_grid_trisp_cng) > 0):
     raise ValueError('z grid is not in ascending order!')
 
 if cfg['PyCCL']['use_default_k_a_grids']:
-    ccl_obj.a_grid_tkka_SSC = a_default_grid_ccl
-    ccl_obj.a_grid_tkka_cNG = a_default_grid_ccl
-    ccl_obj.logn_k_grid_tkka_SSC = lk_default_grid_ccl
-    ccl_obj.logn_k_grid_tkka_cNG = lk_default_grid_ccl
+    ccl_obj.a_grid_trisp_ssc = a_default_grid_ccl
+    ccl_obj.a_grid_trisp_cng = a_default_grid_ccl
+    ccl_obj.logn_k_grid_trisp_ssc = lk_default_grid_ccl
+    ccl_obj.logn_k_grid_trisp_cng = lk_default_grid_ccl
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -913,6 +898,17 @@ else:
 # two-dimensional", for shape consistency
 single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 
+# CCL's linear-bias SSC response takes a single b(z) for each galaxy leg
+if (
+    cov_terms_and_codes['SSC'] == 'PyCCL'
+    and cfg['covariance']['ng_cov_gal_bias_model'] == 'linear_bias'
+    and not single_b_of_z
+):
+    raise ValueError(
+        'The PyCCL SSC with ng_cov_gal_bias_model: linear_bias requires the same galaxy '
+        "bias in all redshift bins. Please set SSC_code: 'Spaceborne'."
+    )
+
 # ! ============================ Magnification bias ====================================
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
@@ -982,11 +978,12 @@ sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 # Compute SB Cl regardless of the cfg, to plot against the input ones.
 # Note that in this case I can't use compute_cls_or_interpolate_input_cls, since this
 # checks whether the input cls are to be used, and if so it loads them.
+mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
 _cl_3x2pt_5d_sb = ccl_interface.compute_cl_3x2pt_5d(
     ccl_obj,
     ells=bin_obj.ells_3x2pt,
     zbins=zbins,
-    mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+    mult_shear_bias=mult_shear_bias,
     cl_ccl_kwargs=cl_ccl_kwargs,
     n_probes_hs=cfg['covariance']['n_probes'],
 )
@@ -1230,11 +1227,11 @@ if (
         'nz_lns_ascii_filename': nz_lns_ascii_filename,
     }
 
-    if cfg['covariance']['which_b1g_in_resp'] == 'from_input':
+    if cfg['covariance']['ng_cov_gal_bias_model'] == 'linear_bias':
         gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
         ccl_obj.save_gal_bias_table_ascii(z_grid, gal_bias_ascii_filename)
         ascii_filenames_dict['gal_bias_ascii_filename'] = gal_bias_ascii_filename
-    elif cfg['covariance']['which_b1g_in_resp'] == 'from_HOD':
+    elif cfg['covariance']['ng_cov_gal_bias_model'] == 'HOD':
         warnings.warn(
             'OneCovariance will use the HOD-derived galaxy bias '
             'for the Cls and responses',
@@ -1360,7 +1357,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
 
     if cfg['covariance']['which_pk_responses'] == 'halo_model':
         # convenience variables
-        which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+        ng_cov_gal_bias_model = cfg['covariance']['ng_cov_gal_bias_model']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
 
         # recompute galaxy bias on the z grid used to compute the responses/trispectrum
@@ -1384,7 +1381,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             resp_obj.set_hm_resp(
                 k_grid=k_grid,
                 z_grid=z_grid_trisp_ssc,
-                which_b1g=which_b1g_in_resp,
+                galaxy_bias_model=ng_cov_gal_bias_model,
                 b1g_zi=gal_bias_2d_trisp[:, 0],
                 b1g_zj=gal_bias_2d_trisp[:, 0],
                 include_terasawa_terms=include_terasawa_terms,
@@ -1408,7 +1405,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
                     resp_obj.set_hm_resp(
                         k_grid=k_grid,
                         z_grid=z_grid_trisp_ssc,
-                        which_b1g=which_b1g_in_resp,
+                        galaxy_bias_model=ng_cov_gal_bias_model,
                         b1g_zi=gal_bias_2d_trisp[:, zi],
                         b1g_zj=gal_bias_2d_trisp[:, zj],
                         include_terasawa_terms=include_terasawa_terms,
@@ -1467,7 +1464,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         dPmm_ddeltab_klimb=dPmm_ddeltab_klimb,
         dPgm_ddeltab_klimb=dPgm_ddeltab_klimb,
         dPgg_ddeltab_klimb=dPgg_ddeltab_klimb,
-        wf_lensing=wf_lensing,
+        wf_lensing=wf_lensing * (1 + mult_shear_bias),
         wf_delta=wf_delta,
         wf_mu=wf_mu,
     )
@@ -1502,10 +1499,10 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
     # Note: this z grid has to be larger than the one requested in the trispectrum
-    # (z_grid_tkka in the cfg file). You can probaby use the same grid as the
+    # (z_grid_trisp in the cfg file). You can probaby use the same grid as the
     # one used in the trispectrum, but from my tests is should be
-    # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
-    # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
+    # zmin_s2b < zmin_s2b_trisp and zmax_s2b =< zmax_s2b_trisp.
+    # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_trisp
     sigma2_b_tpl_dict = {}
     for i, probe_abcd in enumerate(unique_probe_combs_hs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
@@ -1541,9 +1538,16 @@ if compute_ccl_ssc or compute_ccl_cng:
 
     # compute covs
     for which_ng_cov in ccl_ng_cov_terms_list:
-        ccl_obj.initialize_trispectrum(
-            which_ng_cov, unique_probe_combs_hs, cfg['PyCCL']
-        )
+        # compute galaxy bias on the z grid used for the trispectrum
+        a_grid_trisp = getattr(ccl_obj, f'a_grid_trisp_{which_ng_cov.lower()}')
+        gal_bias_1d_trisp = ccl_obj.gal_bias_func(cosmo_lib.a_to_z(a_grid_trisp))
+        if gal_bias_1d_trisp.ndim == 2:
+            # same bias in all bins, required for the PyCCL SSC (checked above)
+            gal_bias_1d_trisp = gal_bias_1d_trisp[:, 0]
+
+        # compute trispectrum
+        ccl_obj.build_trisp_dict(which_ng_cov, unique_probe_combs_hs, gal_bias_1d_trisp)
+
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov=which_ng_cov,
             ells=ell_grid,
@@ -1551,6 +1555,7 @@ if compute_ccl_ssc or compute_ccl_cng:
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
             ind_dict=ind_dict,
+            mult_shear_bias=mult_shear_bias,
         )
 
     # symmetry sanity check

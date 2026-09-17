@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import numpy as np
 
@@ -337,8 +338,8 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg['which_pk_responses'], str), (
             'covariance: which_pk_responses must be a string'
         )
-        assert isinstance(cov_cfg['which_b1g_in_resp'], str), (
-            'covariance: which_b1g_in_resp must be a string'
+        assert isinstance(cov_cfg['ng_cov_gal_bias_model'], str), (
+            'covariance: ng_cov_gal_bias_model must be a string'
         )
         assert isinstance(cov_cfg['include_b2g'], bool), (
             'covariance: include_b2g must be a boolean'
@@ -369,9 +370,6 @@ class SpaceborneConfigChecker:
         pyccl_cfg = self.cfg['PyCCL']
         assert isinstance(pyccl_cfg['cov_integration_method'], str), (
             'PyCCL: cov_integration_method must be a string'
-        )
-        assert isinstance(pyccl_cfg['load_cached_tkka'], bool), (
-            'PyCCL: load_cached_tkka must be a boolean'
         )
         assert isinstance(pyccl_cfg['use_default_k_a_grids'], bool), (
             'PyCCL: use_default_k_a_grids must be a boolean'
@@ -569,6 +567,10 @@ class SpaceborneConfigChecker:
             ), 'Value mismatch for logT_AGN in the parameters definition'
 
     def check_cov(self) -> None:
+        assert self.cfg['covariance']['ng_cov_gal_bias_model'] in (
+            'linear_bias',
+            'HOD',
+        ), 'ng_cov_gal_bias_model must be either "linear_bias" or "HOD"'
         assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), (
             'triu_tril must be either "triu" or "tril"'
         )
@@ -712,6 +714,56 @@ class SpaceborneConfigChecker:
                 'Results for GGL and GG might be inconsistent.'
             )
 
+    def check_pyccl(self) -> None:
+        cov_cfg = self.cfg['covariance']
+        pyccl_ssc = cov_cfg['SSC'] and cov_cfg['SSC_code'] == 'PyCCL'
+        pyccl_cng = cov_cfg['cNG'] and cov_cfg['cNG_code'] == 'PyCCL'
+        has_mag = self.cfg['C_ell']['has_magnification_bias']
+
+        # the magnification component of the galaxy tracers would need the matter
+        # response, while the PyCCL SSC pairs the galaxy legs with the galaxy one
+        if pyccl_ssc and has_mag:
+            raise ValueError(
+                'The PyCCL SSC does not support magnification bias yet. '
+                "Please set SSC_code: 'Spaceborne' or disable magnification bias."
+            )
+
+        # same for the HOD cNG, whose galaxy legs are paired with the HOD trispectrum.
+        # The linear-bias cNG pairs the full galaxy kernel with the matter
+        # trispectrum, and is therefore correct
+        if pyccl_cng and cov_cfg['ng_cov_gal_bias_model'] == 'HOD' and has_mag:
+            raise ValueError(
+                'The PyCCL cNG with ng_cov_gal_bias_model: HOD does not support '
+                'magnification bias yet. Please set '
+                "ng_cov_gal_bias_model: 'linear_bias' or disable magnification bias."
+            )
+
+        # pyccl.halos.pk_4pt.halomod_trispectrum_2h_13 (checked up to v3.3.3) takes
+        # shortcuts that are wrong for mixed matter/galaxy profiles
+        if pyccl_cng and cov_cfg['ng_cov_gal_bias_model'] == 'HOD':
+            warnings.warn(
+                'The PyCCL cNG with ng_cov_gal_bias_model: HOD uses the HOD '
+                'trispectrum, whose 2-halo (1+3) term could have a bug in CCL for mixed'
+                ' matter/galaxy profiles (e.g. the LLGG and GLGG blocks). The HOD is '
+                'also not consistent with the linear galaxy bias used in the C_ells.',
+                stacklevel=2,
+            )
+        if cov_cfg['ng_cov_gal_bias_model'] == 'HOD':
+            warnings.warn(
+                'At the moment, the Cls use linear galaxy bias, so selecting '
+                'ng_cov_gal_bias_model: HOD will create some inconsistency between '
+                'the cNG and G terms.',
+                stacklevel=2,
+            )
+
+        # CCL's angular_cl_cov_SSC/cNG ignore the RSD component of the tracers
+        if (cov_cfg['SSC'] or cov_cfg['cNG']) and self.cfg['C_ell']['has_rsd']:
+            warnings.warn(
+                'has_rsd is True, but the non-Gaussian covariance terms do not include'
+                ' this contribution.',
+                stacklevel=2,
+            )
+
     def check_mask(self) -> None:
         for probe in ['LL', 'GG']:
             assert self.cfg['mask'][probe]['geometry'] in [
@@ -745,6 +797,7 @@ class SpaceborneConfigChecker:
         self.check_mask()
         self.check_BNT_transform()
         self.check_onecov()
+        self.check_pyccl()
         self.check_lists()
         # self.check_fsky()
         self.check_probe_selection()

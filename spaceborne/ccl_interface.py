@@ -1,6 +1,5 @@
 """This module should be run with pyccl >= v3.2.1"""
 
-import warnings
 from functools import partial
 
 import numpy as np
@@ -148,12 +147,12 @@ class CCLInterface:
         self.p_of_k_a = _UNSET
         self.zbins: int = _UNSET
         self.output_path: str = _UNSET
-        self.which_b1g_in_resp: str = _UNSET
+        self.ng_cov_gal_bias_model: str = _UNSET
         self.lumin_ratio_2d_arr: np.ndarray | None = _UNSET
-        self.a_grid_tkka_SSC: np.ndarray = _UNSET
-        self.a_grid_tkka_cNG: np.ndarray = _UNSET
-        self.logn_k_grid_tkka_SSC: np.ndarray = _UNSET
-        self.logn_k_grid_tkka_cNG: np.ndarray = _UNSET
+        self.a_grid_trisp_ssc: np.ndarray = _UNSET
+        self.a_grid_trisp_cng: np.ndarray = _UNSET
+        self.logn_k_grid_trisp_ssc: np.ndarray = _UNSET
+        self.logn_k_grid_trisp_cng: np.ndarray = _UNSET
         self.wf_galaxy_arr = _UNSET
         self.cl_ll_3d: np.ndarray = _UNSET
         self.cl_gl_3d: np.ndarray = _UNSET
@@ -251,35 +250,60 @@ class CCLInterface:
             self.mag_bias_tuple = None
 
     def set_kernel_obj(self, has_rsd, n_samples_wf):
-        self.wf_lensing_obj = [
-            ccl.tracers.WeakLensingTracer(
-                cosmo=self.cosmo_ccl,
-                dndz=(self.nz_src_tuple[0], self.nz_src_tuple[1][:, zbin_idx]),
-                ia_bias=self.ia_bias_tuple,
-                use_A_ia=False,
-                n_samples=n_samples_wf,
-            )
-            for zbin_idx in range(self.zbins)
-        ]
 
+        unit_bias_tuple = (self.zgrid_nz_lns, np.ones_like(self.zgrid_nz_lns))
+
+        self.wf_lensing_obj = []
         self.wf_galaxy_obj = []
-        for zbin_idx in range(self.zbins):
-            # this is needed to be eble to pass mag_bias = None for each zbin
+        self.wf_density_obj = []  # density-only (no gal bias, no mag, no RSD)
+        self.wf_mag_obj = []  # magnification-only (no matter, no RSD)
+
+        for zi in range(self.zbins):
+            # ! Lensing
+            self.wf_lensing_obj.append(
+                ccl.tracers.WeakLensingTracer(
+                    cosmo=self.cosmo_ccl,
+                    dndz=(self.nz_src_tuple[0], self.nz_src_tuple[1][:, zi]),
+                    ia_bias=self.ia_bias_tuple,
+                    use_A_ia=False,
+                    n_samples=n_samples_wf,
+                )
+            )
+
+            # ! Galaxy
+            # this is needed to be able to pass mag_bias = None for each zbin
             if self.mag_bias_tuple is None:
                 mag_bias_arg = self.mag_bias_tuple
             else:
-                mag_bias_arg = (
-                    self.mag_bias_tuple[0],
-                    self.mag_bias_tuple[1][:, zbin_idx],
+                mag_bias_arg = (self.mag_bias_tuple[0], self.mag_bias_tuple[1][:, zi])
+                self.wf_mag_obj.append(
+                    ccl.tracers.NumberCountsTracer(
+                        cosmo=self.cosmo_ccl,
+                        has_rsd=False,
+                        dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zi]),
+                        bias=None,
+                        mag_bias=mag_bias_arg,
+                        n_samples=n_samples_wf,
+                    )
                 )
 
             self.wf_galaxy_obj.append(
                 ccl.tracers.NumberCountsTracer(
                     cosmo=self.cosmo_ccl,
                     has_rsd=has_rsd,
-                    dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zbin_idx]),
-                    bias=(self.gal_bias_tuple[0], self.gal_bias_tuple[1][:, zbin_idx]),
+                    dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zi]),
+                    bias=(self.gal_bias_tuple[0], self.gal_bias_tuple[1][:, zi]),
                     mag_bias=mag_bias_arg,
+                    n_samples=n_samples_wf,
+                )
+            )
+            self.wf_density_obj.append(
+                ccl.tracers.NumberCountsTracer(
+                    cosmo=self.cosmo_ccl,
+                    has_rsd=False,
+                    dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zi]),
+                    bias=unit_bias_tuple,
+                    mag_bias=None,
                     n_samples=n_samples_wf,
                 )
             )
@@ -380,19 +404,9 @@ class CCLInterface:
         )
         return self.a_grid_sigma2_b, sigma2_b
 
-    def initialize_trispectrum(self, which_ng_cov, unique_probe_combs, pyccl_cfg):
-        # some setup
-        comp_load_str = 'Loading' if pyccl_cfg['load_cached_tkka'] else 'Computing'
-        tkka_path = f'{self.output_path}/cache/trispectrum/{which_ng_cov}'
-        k_a_str = self._print_grid_info(which_ng_cov)
-
-        if pyccl_cfg['load_cached_tkka']:
-            warnings.warn(
-                'You are loading files from the cache. Please make '
-                'sure that the z and k grids, masks and cosmology are consistent with '
-                'the current run',
-                stacklevel=2,
-            )
+    def build_trisp_dict(
+        self, which_ng_cov: str, unique_probe_combs: list, gal_bias_1d: np.ndarray
+    ):
 
         # the default pk must be passed to the Tk3D functions as None, not as
         # 'delta_matter:delta_matter'
@@ -402,51 +416,46 @@ class CCLInterface:
 
         # TODO get default grids info when passing a, k = None
         # or, to set to the default:
-        # a_grid_tkka = None
-        # logn_k_grid_tkka = None
+        # a_grid_trisp = None
+        # logn_k_grid_trisp = None
 
         # set relevant dictionaries with the different probe combinations as keys
-        self.set_dicts_for_trisp()
-        self.tkka_dict = {}
+        self.set_dicts_for_trisp(gal_bias_1d=gal_bias_1d)
+        self.trisp_dict = {}
 
         print('')
 
-        for probe_abcd in unique_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        with sl.timer(f'Computing {which_ng_cov} trispectrum'):
+            # in this case, only the LLLL trispectrum is needed. The compute_trisp_abcd
+            # already only uses the 'L' entries, but I keep the 'LLLL' arg for clarity
+            if which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'linear_bias':
+                trisp_mmmm = self.compute_trisp_abcd(
+                    which_ng_cov, 'LLLL', p_of_k_a=p_of_k_a
+                )
 
-            with sl.timer(
-                f'{comp_load_str} {which_ng_cov} trispectrum, '
-                f'probe combination {(probe_ab, probe_cd)}'
-            ):
-                # Attempt to load from cache, fall back to computing if necessary
-                tkka_abcd = None
-                if pyccl_cfg['load_cached_tkka']:
-                    try:
-                        tkka_abcd = self._load_and_set_tkka(
-                            which_ng_cov, tkka_path, k_a_str, probe_abcd
-                        )
-                    except FileNotFoundError:
-                        print(
-                            f'No trispectrum files found in folder \n{tkka_path}\n'
-                            'Proceeding to compute the trispectrum...'
-                        )
+            for probe_abcd in unique_probe_combs:
+                probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
 
-                if tkka_abcd is None:
-                    tkka_abcd = self._compute_and_save_tkka(
-                        which_ng_cov, tkka_path, k_a_str, probe_abcd, p_of_k_a=p_of_k_a
+                if (
+                    which_ng_cov == 'cNG'
+                    and self.ng_cov_gal_bias_model == 'linear_bias'
+                ):
+                    # set all keys to the same trispectrum
+                    trisp_abcd = trisp_mmmm
+                else:
+                    trisp_abcd = self.compute_trisp_abcd(
+                        which_ng_cov, probe_abcd, p_of_k_a=p_of_k_a
                     )
 
-                self.tkka_dict[probe_ab, probe_cd] = tkka_abcd
+                self.trisp_dict[probe_ab, probe_cd] = trisp_abcd
 
-    def _compute_and_save_tkka(
-        self, which_ng_cov, tkka_path, k_a_str, probe_abcd, p_of_k_a
-    ):
+    def compute_trisp_abcd(self, which_ng_cov, probe_abcd, p_of_k_a):
         probe_a, probe_b, probe_c, probe_d = probe_abcd
 
-        tkka_func, additional_args = self.get_tkka_func(
+        trisp_func, additional_args = self.get_trisp_func(
             probe_a, probe_b, probe_c, probe_d, which_ng_cov
         )
-        tkka_abcd = tkka_func(
+        trisp_abcd = trisp_func(
             cosmo=self.cosmo_ccl,
             hmc=self.hmc,
             extrap_order_lok=1,
@@ -456,104 +465,43 @@ class CCLInterface:
             **additional_args,
         )
 
-        a_arr, lk1_arr, lk2_arr, tk_arrays = tkka_abcd.get_spline_arrays()
-        np.save(f'{tkka_path}/a_arr_{k_a_str}.npy', a_arr)
-        np.save(f'{tkka_path}/lnk1_arr_{k_a_str}.npy', lk1_arr)
-        np.save(f'{tkka_path}/lnk2_arr_{k_a_str}.npy', lk2_arr)
+        return trisp_abcd
 
-        if which_ng_cov == 'SSC':
-            np.save(f'{tkka_path}/pk1_arr_{probe_abcd}_{k_a_str}.npy', tk_arrays[0])
-            np.save(f'{tkka_path}/pk2_arr_{probe_abcd}_{k_a_str}.npy', tk_arrays[1])
-        elif which_ng_cov == 'cNG':
-            np.save(f'{tkka_path}/trisp_{probe_abcd}_{k_a_str}.npy', tk_arrays[0])
+    def get_trisp_func(self, probe_a, probe_b, probe_c, probe_d, which_ng_cov):
+        if which_ng_cov == 'SSC' and self.ng_cov_gal_bias_model == 'HOD':
+            trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
+            additional_args = {
+                'prof': self.halo_profile_dict[probe_a],
+                'prof2': self.halo_profile_dict[probe_b],
+                'prof3': self.halo_profile_dict[probe_c],
+                'prof4': self.halo_profile_dict[probe_d],
+                'prof12_2pt': self.prof_2pt_dict[probe_a, probe_b],
+                'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
+                'lk_arr': self.logn_k_grid_trisp_ssc,
+                'a_arr': self.a_grid_trisp_ssc,
+                'extrap_pk': True,
+            }
 
-        return tkka_abcd
+        elif which_ng_cov == 'SSC' and self.ng_cov_gal_bias_model == 'linear_bias':
+            # prof should be the matter profile, since the bias is passed as an argument
+            trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
+            additional_args = {
+                'prof': self.halo_profile_dict['L'],
+                'bias1': self.gal_bias_dict[probe_a],
+                'bias2': self.gal_bias_dict[probe_b],
+                'bias3': self.gal_bias_dict[probe_c],
+                'bias4': self.gal_bias_dict[probe_d],
+                'is_number_counts1': self.is_number_counts_dict[probe_a],
+                'is_number_counts2': self.is_number_counts_dict[probe_b],
+                'is_number_counts3': self.is_number_counts_dict[probe_c],
+                'is_number_counts4': self.is_number_counts_dict[probe_d],
+                'lk_arr': self.logn_k_grid_trisp_ssc,
+                'a_arr': self.a_grid_trisp_ssc,
+                'extrap_pk': True,
+            }
 
-    def _load_and_set_tkka(self, which_ng_cov, tkka_path, k_a_str, probe_block):
-        a_arr = np.load(f'{tkka_path}/a_arr_{k_a_str}.npy')
-        lk1_arr = np.load(f'{tkka_path}/lnk1_arr_{k_a_str}.npy')
-        lk2_arr = np.load(f'{tkka_path}/lnk2_arr_{k_a_str}.npy')
-        (
-            np.testing.assert_allclose(lk1_arr, lk2_arr, atol=0, rtol=1e-9),
-            ('k1_arr and lk2_arr different'),
-        )
-
-        if which_ng_cov == 'SSC':
-            pk1_arr = np.load(f'{tkka_path}/pk1_arr_{probe_block}_{k_a_str}.npy')
-            pk2_arr = np.load(f'{tkka_path}/pk2_arr_{probe_block}_{k_a_str}.npy')
-            tk3d_kwargs = {'tkk_arr': None, 'pk1_arr': pk1_arr, 'pk2_arr': pk2_arr}
-        elif which_ng_cov == 'cNG':
-            tkk_arr = np.load(f'{tkka_path}/trisp_{probe_block}_{k_a_str}.npy')
-            tk3d_kwargs = {'tkk_arr': tkk_arr, 'pk1_arr': None, 'pk2_arr': None}
-
-        tkka_abcd = ccl.tk3d.Tk3D(
-            a_arr=a_arr,
-            lk_arr=lk1_arr,
-            is_logt=False,
-            extrap_order_lok=1,
-            extrap_order_hik=1,
-            **tk3d_kwargs,
-        )
-
-        return tkka_abcd
-
-    def _print_grid_info(self, which_ng_cov):
-        # get grids
-        a_grid = getattr(self, f'a_grid_tkka_{which_ng_cov}', None)
-        logn_k_grid = getattr(self, f'logn_k_grid_tkka_{which_ng_cov}', None)
-
-        # print info
-        if a_grid is not None and logn_k_grid is not None:
-            print(
-                f'\n{which_ng_cov} trispectrum grid info:\n'
-                f'\tz points = {a_grid.size}'
-                f'\n\tk points = {logn_k_grid.size}'
-            )
-
-        # set string
-        k_a_str = (
-            f'amin{a_grid.min():.2f}_amax{a_grid.max():.2f}'
-            f'_asteps{a_grid.size}_lnkmin{logn_k_grid.min():.2f}'
-            f'_lnkmax{logn_k_grid.max():.2f}_ksteps{logn_k_grid.size}'
-        )
-        return k_a_str
-
-    def get_tkka_func(self, probe_a, probe_b, probe_c, probe_d, which_ng_cov):
-        if which_ng_cov == 'SSC':
-            if self.which_b1g_in_resp == 'from_HOD':
-                tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
-                additional_args = {
-                    'prof': self.halo_profile_dict[probe_a],
-                    'prof2': self.halo_profile_dict[probe_b],
-                    'prof3': self.halo_profile_dict[probe_c],
-                    'prof4': self.halo_profile_dict[probe_d],
-                    'prof12_2pt': self.prof_2pt_dict[probe_a, probe_b],
-                    'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
-                    'lk_arr': self.logn_k_grid_tkka_SSC,
-                    'a_arr': self.a_grid_tkka_SSC,
-                    'extrap_pk': True,
-                }
-
-            elif self.which_b1g_in_resp == 'from_input':
-                tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
-                additional_args = {
-                    # prof should be HaloProfileNFW, in this case
-                    'prof': self.halo_profile_dict['L'],
-                    'bias1': self.gal_bias_dict[probe_a],
-                    'bias2': self.gal_bias_dict[probe_b],
-                    'bias3': self.gal_bias_dict[probe_c],
-                    'bias4': self.gal_bias_dict[probe_d],
-                    'is_number_counts1': self.is_number_counts_dict[probe_a],
-                    'is_number_counts2': self.is_number_counts_dict[probe_b],
-                    'is_number_counts3': self.is_number_counts_dict[probe_c],
-                    'is_number_counts4': self.is_number_counts_dict[probe_d],
-                    'lk_arr': self.logn_k_grid_tkka_SSC,
-                    'a_arr': self.a_grid_tkka_SSC,
-                    'extrap_pk': True,
-                }
-
-        elif which_ng_cov == 'cNG':
-            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
+        elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'HOD':
+            trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
             additional_args = {
                 'prof': self.halo_profile_dict[probe_a],
                 'prof2': self.halo_profile_dict[probe_b],
@@ -565,22 +513,43 @@ class CCLInterface:
                 'prof24_2pt': self.prof_2pt_dict[probe_b, probe_d],
                 'prof32_2pt': self.prof_2pt_dict[probe_c, probe_b],
                 'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
-                'lk_arr': self.logn_k_grid_tkka_cNG,
-                'a_arr': self.a_grid_tkka_cNG,
+                'lk_arr': self.logn_k_grid_trisp_cng,
+                'a_arr': self.a_grid_trisp_cng,
+                'separable_growth': self.separable_growth,
+            }
+
+        elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'linear_bias':
+            # In this case, I only need T_mmmm, as this is multiplied by the galaxy bias
+            # as Cov_gggg = \int w_g^4 T_mmmm
+            # where w_g = w_delta * b + w_mu (both of which need to be paired with
+            # the matter profile).
+            trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
+            additional_args = {
+                'prof': self.halo_profile_dict['L'],
+                'prof2': self.halo_profile_dict['L'],
+                'prof3': self.halo_profile_dict['L'],
+                'prof4': self.halo_profile_dict['L'],
+                'prof12_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof13_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof14_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof24_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof32_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof34_2pt': self.prof_2pt_dict['L', 'L'],
+                'lk_arr': self.logn_k_grid_trisp_cng,
+                'a_arr': self.a_grid_trisp_cng,
                 'separable_growth': self.separable_growth,
             }
 
         else:
             raise ValueError(
-                f'Invalid value for which_ng_cov. It is {which_ng_cov}, '
-                "must be 'SSC' or 'cNG'."
+                f'Invalid combination: which_ng_cov = {which_ng_cov!r} '
+                "(must be 'SSC' or 'cNG'), ng_cov_gal_bias_model = "
+                f"{self.ng_cov_gal_bias_model!r} (must be 'linear_bias' or 'HOD')."
             )
 
-        return tkka_func, additional_args
+        return trisp_func, additional_args
 
-    def set_dicts_for_trisp(self):
-        # tODO pass this? make sure to be consistent
-        gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))
+    def set_dicts_for_trisp(self, gal_bias_1d):
 
         self.halo_profile_dict = {'L': self.halo_profile_dm, 'G': self.halo_profile_hod}
 
@@ -604,7 +573,7 @@ class CCLInterface:
         kernel_C: list,
         kernel_D: list,
         ell: np.ndarray,
-        tkka,
+        trisp_abcd: ccl.tk3d.Tk3D,
         fsky: float,
         sigma2_b_tpl: tuple | None,
         ind_AB: np.ndarray,
@@ -638,7 +607,7 @@ class CCLInterface:
                         tracer1=kernel_A[ind_AB[ij, -2]],
                         tracer2=kernel_B[ind_AB[ij, -1]],
                         ell=ell,
-                        t_of_kk_a=tkka,
+                        t_of_kk_a=trisp_abcd,
                         fsky=fsky,
                         tracer3=kernel_C[ind_CD[kl, -2]],
                         tracer4=kernel_D[ind_CD[kl, -1]],
@@ -646,9 +615,9 @@ class CCLInterface:
                         integration_method=integration_method,
                         **sigma2_b_arg,
                     )
-                    cov_ng_4D[:, :, ij, kl] = res
+                    cov_ng_4D[:, :, ij, kl] = res.T
                     if kl != ij:
-                        cov_ng_4D[:, :, kl, ij] = res.T
+                        cov_ng_4D[:, :, kl, ij] = res
 
         # Off-diagonal probe blocks case e.g. LLGL, LLGG, etc.
         else:
@@ -659,14 +628,14 @@ class CCLInterface:
                         tracer1=kernel_A[ind_AB[ij, -2]],
                         tracer2=kernel_B[ind_AB[ij, -1]],
                         ell=ell,
-                        t_of_kk_a=tkka,
+                        t_of_kk_a=trisp_abcd,
                         fsky=fsky,
                         tracer3=kernel_C[ind_CD[kl, -2]],
                         tracer4=kernel_D[ind_CD[kl, -1]],
                         ell2=None,
                         integration_method=integration_method,
                         **sigma2_b_arg,
-                    )
+                    ).T
 
         return cov_ng_4D
 
@@ -678,6 +647,7 @@ class CCLInterface:
         unique_probe_combs,
         nonreq_probe_combs,
         ind_dict,
+        mult_shear_bias: np.ndarray,
     ):
         """Compute the specified non-Gaussian covariance term (ssc or cng) for each
         probe block.
@@ -697,7 +667,18 @@ class CCLInterface:
         # key of cov_dict
         ng_term = which_ng_cov.lower()
 
-        kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
+        if which_ng_cov == 'SSC':
+            kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
+        elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'linear_bias':
+            kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
+        elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'HOD':
+            kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
+        else:
+            raise ValueError(
+                f'Invalid combination: which_ng_cov = {which_ng_cov!r} '
+                "(must be 'SSC' or 'cNG'), ng_cov_gal_bias_model = "
+                f"{self.ng_cov_gal_bias_model!r} (must be 'linear_bias' or 'HOD')."
+            )
 
         print('')
         # * compute required blocks
@@ -717,14 +698,14 @@ class CCLInterface:
                 else None
             )
 
-            self.cov_dict[ng_term][probe_2tpl]['4d'] = self.compute_ng_cov_probe_block(
+            cov_ng_4d = self.compute_ng_cov_probe_block(
                 which_ng_cov=which_ng_cov,
                 kernel_A=kernel_dict[probe_a],
                 kernel_B=kernel_dict[probe_b],
                 kernel_C=kernel_dict[probe_c],
                 kernel_D=kernel_dict[probe_d],
                 ell=ells,
-                tkka=self.tkka_dict[probe_ab, probe_cd],
+                trisp_abcd=self.trisp_dict[probe_ab, probe_cd],
                 fsky=self.fsky_max_abcd_dict[probe_ab, probe_cd],
                 sigma2_b_tpl=_sigma2_b_tpl,
                 ind_AB=ind_dict[probe_ab],
@@ -732,6 +713,25 @@ class CCLInterface:
                 integration_method=integration_method,
                 symmetrize_zpairs=symmetrize_zpairs,
             )
+
+            # multiplicative shear bias: each lensing leg is calibrated by (1 + m),
+            # as for the C_ells.
+            # This is done before filling the symmetric blocks, which inherit it
+
+            # this is equivalent to the following, but more efficient:
+            # for ij in range(zpairs_AB):
+            #     for kl in range(zpairs_CD):
+            #         cov_ng_4d[:, :, ij, kl] *= calib_ab[ij] * calib_cd[kl]
+            # where calib_ab[ij] = (1 + m^A_i) * (1 + m^B_j)
+
+            calib = {'L': 1 + mult_shear_bias, 'G': np.ones(self.zbins)}
+            zi, zj = ind_dict[probe_ab][:, -2], ind_dict[probe_ab][:, -1]
+            zk, zl = ind_dict[probe_cd][:, -2], ind_dict[probe_cd][:, -1]
+            calib_ab = calib[probe_a][zi] * calib[probe_b][zj]
+            calib_cd = calib[probe_c][zk] * calib[probe_d][zl]
+            cov_ng_4d *= calib_ab[None, None, :, None] * calib_cd[None, None, None, :]
+
+            self.cov_dict[ng_term][probe_2tpl]['4d'] = cov_ng_4d
 
         # * symmetrize and set to 0 the remaning probe blocks
         sl.symmetrize_and_fill_probe_blocks(

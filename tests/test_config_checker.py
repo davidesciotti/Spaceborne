@@ -7,6 +7,7 @@ plus a set of targeted invalid mutations.
 
 import copy
 import os
+import warnings
 
 import pytest
 import yaml
@@ -167,6 +168,22 @@ class TestCheckCov:
             checker.check_cov()
 
 
+class TestCheckNgCovGalBiasModel:
+    """Tests for the ng_cov_gal_bias_model check in check_cov."""
+
+    @pytest.mark.parametrize('value', ['linear_bias', 'HOD'])
+    def test_valid_values_ok(self, valid_cfg, value):
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_cov()
+
+    def test_invalid_value_raises(self, valid_cfg):
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'hod'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='ng_cov_gal_bias_model'):
+            checker.check_cov()
+
+
 class TestCheckMask:
     """Tests for check_mask."""
 
@@ -230,6 +247,56 @@ class TestCheckOnecov:
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(ValueError):
             checker.check_onecov()
+
+
+class TestCheckPyccl:
+    """Tests for check_pyccl."""
+
+    @staticmethod
+    def _pyccl_cfg(cfg, ssc, cng, has_mag, has_rsd):
+        cfg['covariance'].update(SSC=ssc, cNG=cng, SSC_code='PyCCL', cNG_code='PyCCL')
+        cfg['C_ell']['has_magnification_bias'] = has_mag
+        cfg['C_ell']['has_rsd'] = has_rsd
+        return config_checker.SpaceborneConfigChecker(cfg, _zbins(cfg))
+
+    def test_ssc_with_magnification_raises(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, True, False, True, False)
+        with pytest.raises(ValueError, match='magnification'):
+            checker.check_pyccl()
+
+    def test_cng_with_magnification_ok(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        checker.check_pyccl()
+
+    def test_spaceborne_ssc_with_magnification_ok(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, True, False, True, False)
+        valid_cfg['covariance']['SSC_code'] = 'Spaceborne'
+        checker.check_pyccl()
+
+    def test_hod_cng_with_magnification_raises(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'HOD'
+        with pytest.raises(ValueError, match='does not support magnification'):
+            checker.check_pyccl()
+
+    def test_hod_cng_without_magnification_warns(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, False, False)
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'HOD'
+        with pytest.warns(UserWarning, match='2-halo'):
+            checker.check_pyccl()
+
+    def test_linear_bias_cng_does_not_warn(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'linear_bias'
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            checker.check_pyccl()
+
+    @pytest.mark.parametrize(('ssc', 'cng'), [(True, False), (False, True)])
+    def test_rsd_warns(self, valid_cfg, ssc, cng):
+        checker = self._pyccl_cfg(valid_cfg, ssc, cng, False, True)
+        with pytest.warns(UserWarning, match='has_rsd'):
+            checker.check_pyccl()
 
 
 class TestCheckMisc:

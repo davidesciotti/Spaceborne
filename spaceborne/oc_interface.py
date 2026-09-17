@@ -725,7 +725,7 @@ class OneCovarianceInterface:
         cfg_oc_ini['cosmo']['tcmb0'] = str(2.7255)
 
         # ! [bias]
-        if self.cfg['covariance']['which_b1g_in_resp'] == 'from_input':
+        if self.cfg['covariance']['ng_cov_gal_bias_model'] == 'linear_bias':
             gal_bias_ascii_filename = ascii_filenames_dict['gal_bias_ascii_filename']
             cfg_oc_ini['bias']['bias_files'] = gal_bias_ascii_filename
 

@@ -738,6 +738,24 @@ class SpaceborneConfigChecker:
                 'or disable magnification bias.'
             )
 
+        # pyccl.halos.pk_4pt.halomod_trispectrum_2h_13 (checked up to v3.3.3) takes
+        # shortcuts that are wrong for mixed matter/galaxy profiles
+        if pyccl_cng and cov_cfg['which_b1g_in_resp'] == 'from_HOD':
+            warnings.warn(
+                'The PyCCL cNG with which_b1g_in_resp: from_HOD uses the HOD '
+                'trispectrum, whose 2-halo (1+3) term could have a bug in CCL for mixed'
+                ' matter/galaxy profiles (e.g. the LLGG and GLGG blocks). The HOD is '
+                'also not consistent with the linear galaxy bias used in the C_ells.',
+                stacklevel=2,
+            )
+        if cov_cfg['which_b1g_in_resp'] == 'from_HOD':
+            warnings.warn(
+                'At the moment, the Cls use linear galaxy bias, so selecting '
+                'which_b1g_in_resp: from_HOD will create some inconsistency between '
+                'the cNG and G terms.',
+                stacklevel=2,
+            )
+
         # CCL's angular_cl_cov_SSC/cNG ignore the RSD component of the tracers
         if (cov_cfg['SSC'] or cov_cfg['cNG']) and self.cfg['C_ell']['has_rsd']:
             warnings.warn(

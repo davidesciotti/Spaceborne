@@ -7,6 +7,7 @@ plus a set of targeted invalid mutations.
 
 import copy
 import os
+import warnings
 
 import pytest
 import yaml
@@ -278,10 +279,18 @@ class TestCheckPyccl:
         with pytest.raises(ValueError, match='from_HOD'):
             checker.check_pyccl()
 
-    def test_hod_cng_without_magnification_ok(self, valid_cfg):
+    def test_hod_cng_without_magnification_warns(self, valid_cfg):
         checker = self._pyccl_cfg(valid_cfg, False, True, False, False)
         valid_cfg['covariance']['which_b1g_in_resp'] = 'from_HOD'
-        checker.check_pyccl()
+        with pytest.warns(UserWarning, match='2-halo'):
+            checker.check_pyccl()
+
+    def test_linear_bias_cng_does_not_warn(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        valid_cfg['covariance']['which_b1g_in_resp'] = 'from_input'
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            checker.check_pyccl()
 
     @pytest.mark.parametrize(('ssc', 'cng'), [(True, False), (False, True)])
     def test_rsd_warns(self, valid_cfg, ssc, cng):

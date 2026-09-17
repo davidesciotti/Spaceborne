@@ -149,10 +149,10 @@ class CCLInterface:
         self.output_path: str = _UNSET
         self.which_b1g_in_resp: str = _UNSET
         self.lumin_ratio_2d_arr: np.ndarray | None = _UNSET
-        self.a_grid_tkka_SSC: np.ndarray = _UNSET
-        self.a_grid_tkka_cNG: np.ndarray = _UNSET
-        self.logn_k_grid_tkka_SSC: np.ndarray = _UNSET
-        self.logn_k_grid_tkka_cNG: np.ndarray = _UNSET
+        self.a_grid_trisp_SSC: np.ndarray = _UNSET
+        self.a_grid_trisp_cNG: np.ndarray = _UNSET
+        self.logn_k_grid_trisp_SSC: np.ndarray = _UNSET
+        self.logn_k_grid_trisp_cNG: np.ndarray = _UNSET
         self.wf_galaxy_arr = _UNSET
         self.cl_ll_3d: np.ndarray = _UNSET
         self.cl_gl_3d: np.ndarray = _UNSET
@@ -404,7 +404,9 @@ class CCLInterface:
         )
         return self.a_grid_sigma2_b, sigma2_b
 
-    def initialize_trispectrum(self, which_ng_cov, unique_probe_combs):
+    def build_trisp_dict(
+        self, which_ng_cov: str, unique_probe_combs: list, gal_bias_1d: np.ndarray
+    ):
 
         # the default pk must be passed to the Tk3D functions as None, not as
         # 'delta_matter:delta_matter'
@@ -414,41 +416,43 @@ class CCLInterface:
 
         # TODO get default grids info when passing a, k = None
         # or, to set to the default:
-        # a_grid_tkka = None
-        # logn_k_grid_tkka = None
+        # a_grid_trisp = None
+        # logn_k_grid_trisp = None
 
         # set relevant dictionaries with the different probe combinations as keys
-        self.set_dicts_for_trisp()
-        self.tkka_dict = {}
+        self.set_dicts_for_trisp(gal_bias_1d=gal_bias_1d)
+        self.trisp_dict = {}
 
         print('')
 
-        if which_ng_cov == 'cNG':
-            tkka_cng = self._compute_tkka(which_ng_cov, 'LLLL', p_of_k_a=p_of_k_a)
+        with sl.timer(f'Computing {which_ng_cov} trispectrum, '):
+            # in this case, only the LLLL trispectrum is needed. The compute_trisp_abcd
+            # already only uses the 'L' entries, but I keep the 'LLLL' arg for clarity
+            if which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
+                trisp_mmmm = self.compute_trisp_abcd(
+                    which_ng_cov, 'LLLL', p_of_k_a=p_of_k_a
+                )
 
-        for probe_abcd in unique_probe_combs:
-            probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+            for probe_abcd in unique_probe_combs:
+                probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
 
-            with sl.timer(
-                f'Computing {which_ng_cov} trispectrum, '
-                f'probe combination {(probe_ab, probe_cd)}'
-            ):
-                if which_ng_cov == 'cNG':
-                    tkka_abcd = tkka_cng
+                if which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
+                    # set all keys to the same trispectrum
+                    trisp_abcd = trisp_mmmm
                 else:
-                    tkka_abcd = self._compute_tkka(
+                    trisp_abcd = self.compute_trisp_abcd(
                         which_ng_cov, probe_abcd, p_of_k_a=p_of_k_a
                     )
 
-                self.tkka_dict[probe_ab, probe_cd] = tkka_abcd
+                self.trisp_dict[probe_ab, probe_cd] = trisp_abcd
 
-    def _compute_tkka(self, which_ng_cov, probe_abcd, p_of_k_a):
+    def compute_trisp_abcd(self, which_ng_cov, probe_abcd, p_of_k_a):
         probe_a, probe_b, probe_c, probe_d = probe_abcd
 
-        tkka_func, additional_args = self.get_tkka_func(
+        trisp_func, additional_args = self.get_trisp_func(
             probe_a, probe_b, probe_c, probe_d, which_ng_cov
         )
-        tkka_abcd = tkka_func(
+        trisp_abcd = trisp_func(
             cosmo=self.cosmo_ccl,
             hmc=self.hmc,
             extrap_order_lok=1,
@@ -458,44 +462,43 @@ class CCLInterface:
             **additional_args,
         )
 
-        return tkka_abcd
+        return trisp_abcd
 
-    def get_tkka_func(self, probe_a, probe_b, probe_c, probe_d, which_ng_cov):
-        if which_ng_cov == 'SSC':
-            if self.which_b1g_in_resp == 'from_HOD':
-                tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
-                additional_args = {
-                    'prof': self.halo_profile_dict[probe_a],
-                    'prof2': self.halo_profile_dict[probe_b],
-                    'prof3': self.halo_profile_dict[probe_c],
-                    'prof4': self.halo_profile_dict[probe_d],
-                    'prof12_2pt': self.prof_2pt_dict[probe_a, probe_b],
-                    'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
-                    'lk_arr': self.logn_k_grid_tkka_SSC,
-                    'a_arr': self.a_grid_tkka_SSC,
-                    'extrap_pk': True,
-                }
+    def get_trisp_func(self, probe_a, probe_b, probe_c, probe_d, which_ng_cov):
+        if which_ng_cov == 'SSC' and self.which_b1g_in_resp == 'from_HOD':
+            trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC
+            additional_args = {
+                'prof': self.halo_profile_dict[probe_a],
+                'prof2': self.halo_profile_dict[probe_b],
+                'prof3': self.halo_profile_dict[probe_c],
+                'prof4': self.halo_profile_dict[probe_d],
+                'prof12_2pt': self.prof_2pt_dict[probe_a, probe_b],
+                'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
+                'lk_arr': self.logn_k_grid_trisp_SSC,
+                'a_arr': self.a_grid_trisp_SSC,
+                'extrap_pk': True,
+            }
 
-            elif self.which_b1g_in_resp == 'from_input':
-                tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
-                additional_args = {
-                    # prof should be HaloProfileNFW, in this case
-                    'prof': self.halo_profile_dict['L'],
-                    'bias1': self.gal_bias_dict[probe_a],
-                    'bias2': self.gal_bias_dict[probe_b],
-                    'bias3': self.gal_bias_dict[probe_c],
-                    'bias4': self.gal_bias_dict[probe_d],
-                    'is_number_counts1': self.is_number_counts_dict[probe_a],
-                    'is_number_counts2': self.is_number_counts_dict[probe_b],
-                    'is_number_counts3': self.is_number_counts_dict[probe_c],
-                    'is_number_counts4': self.is_number_counts_dict[probe_d],
-                    'lk_arr': self.logn_k_grid_tkka_SSC,
-                    'a_arr': self.a_grid_tkka_SSC,
-                    'extrap_pk': True,
-                }
+        elif which_ng_cov == 'SSC' and self.which_b1g_in_resp == 'from_input':
+            # prof should be the matter profile, since the bias is passed as an argument
+            trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_SSC_linear_bias
+            additional_args = {
+                'prof': self.halo_profile_dict['L'],
+                'bias1': self.gal_bias_dict[probe_a],
+                'bias2': self.gal_bias_dict[probe_b],
+                'bias3': self.gal_bias_dict[probe_c],
+                'bias4': self.gal_bias_dict[probe_d],
+                'is_number_counts1': self.is_number_counts_dict[probe_a],
+                'is_number_counts2': self.is_number_counts_dict[probe_b],
+                'is_number_counts3': self.is_number_counts_dict[probe_c],
+                'is_number_counts4': self.is_number_counts_dict[probe_d],
+                'lk_arr': self.logn_k_grid_trisp_SSC,
+                'a_arr': self.a_grid_trisp_SSC,
+                'extrap_pk': True,
+            }
 
-        elif which_ng_cov == 'cNG':
-            tkka_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
+        elif which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_HOD':
+            trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
             additional_args = {
                 'prof': self.halo_profile_dict[probe_a],
                 'prof2': self.halo_profile_dict[probe_b],
@@ -507,22 +510,43 @@ class CCLInterface:
                 'prof24_2pt': self.prof_2pt_dict[probe_b, probe_d],
                 'prof32_2pt': self.prof_2pt_dict[probe_c, probe_b],
                 'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
-                'lk_arr': self.logn_k_grid_tkka_cNG,
-                'a_arr': self.a_grid_tkka_cNG,
+                'lk_arr': self.logn_k_grid_trisp_cNG,
+                'a_arr': self.a_grid_trisp_cNG,
+                'separable_growth': self.separable_growth,
+            }
+
+        elif which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
+            # In this case, I only need T_mmmm, as this is multiplied by the galaxy bias
+            # as Cov_gggg = \int w_g^4 T_mmmm
+            # where w_g = w_delta * b + w_mu (both of which need to be paired with
+            # the matter profile)
+            trisp_func = ccl.halos.pk_4pt.halomod_Tk3D_cNG
+            additional_args = {
+                'prof': self.halo_profile_dict['L'],
+                'prof2': self.halo_profile_dict['L'],
+                'prof3': self.halo_profile_dict['L'],
+                'prof4': self.halo_profile_dict['L'],
+                'prof12_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof13_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof14_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof24_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof32_2pt': self.prof_2pt_dict['L', 'L'],
+                'prof34_2pt': self.prof_2pt_dict['L', 'L'],
+                'lk_arr': self.logn_k_grid_trisp_cNG,
+                'a_arr': self.a_grid_trisp_cNG,
                 'separable_growth': self.separable_growth,
             }
 
         else:
             raise ValueError(
-                f'Invalid value for which_ng_cov. It is {which_ng_cov}, '
-                "must be 'SSC' or 'cNG'."
+                f'Invalid combination: which_ng_cov = {which_ng_cov!r} '
+                "(must be 'SSC' or 'cNG'), which_b1g_in_resp = "
+                f"{self.which_b1g_in_resp!r} (must be 'from_input' or 'from_HOD')."
             )
 
-        return tkka_func, additional_args
+        return trisp_func, additional_args
 
-    def set_dicts_for_trisp(self):
-        # tODO pass this? make sure to be consistent
-        gal_bias_1d = self.gal_bias_func(cosmo_lib.a_to_z(self.a_grid_tkka_SSC))
+    def set_dicts_for_trisp(self, gal_bias_1d):
 
         self.halo_profile_dict = {'L': self.halo_profile_dm, 'G': self.halo_profile_hod}
 
@@ -546,7 +570,7 @@ class CCLInterface:
         kernel_C: list,
         kernel_D: list,
         ell: np.ndarray,
-        tkka,
+        trisp_abcd: ccl.tk3d.Tk3D,
         fsky: float,
         sigma2_b_tpl: tuple | None,
         ind_AB: np.ndarray,
@@ -580,7 +604,7 @@ class CCLInterface:
                         tracer1=kernel_A[ind_AB[ij, -2]],
                         tracer2=kernel_B[ind_AB[ij, -1]],
                         ell=ell,
-                        t_of_kk_a=tkka,
+                        t_of_kk_a=trisp_abcd,
                         fsky=fsky,
                         tracer3=kernel_C[ind_CD[kl, -2]],
                         tracer4=kernel_D[ind_CD[kl, -1]],
@@ -601,7 +625,7 @@ class CCLInterface:
                         tracer1=kernel_A[ind_AB[ij, -2]],
                         tracer2=kernel_B[ind_AB[ij, -1]],
                         ell=ell,
-                        t_of_kk_a=tkka,
+                        t_of_kk_a=trisp_abcd,
                         fsky=fsky,
                         tracer3=kernel_C[ind_CD[kl, -2]],
                         tracer4=kernel_D[ind_CD[kl, -1]],
@@ -639,15 +663,17 @@ class CCLInterface:
         # key of cov_dict
         ng_term = which_ng_cov.lower()
 
-
         if which_ng_cov == 'SSC':
             kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
-        elif which_ng_cov == 'cNG':
+        elif which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_input':
             kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
+        elif which_ng_cov == 'cNG' and self.which_b1g_in_resp == 'from_HOD':
+            kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
         else:
             raise ValueError(
-                f'Invalid value for which_ng_cov. It is {which_ng_cov}, '
-                "must be 'SSC' or 'cNG'."
+                f'Invalid combination: which_ng_cov = {which_ng_cov!r} '
+                "(must be 'SSC' or 'cNG'), which_b1g_in_resp = "
+                f"{self.which_b1g_in_resp!r} (must be 'from_input' or 'from_HOD')."
             )
 
         print('')
@@ -675,7 +701,7 @@ class CCLInterface:
                 kernel_C=kernel_dict[probe_c],
                 kernel_D=kernel_dict[probe_d],
                 ell=ells,
-                tkka=self.tkka_dict[probe_ab, probe_cd],
+                trisp_abcd=self.trisp_dict[probe_ab, probe_cd],
                 fsky=self.fsky_max_abcd_dict[probe_ab, probe_cd],
                 sigma2_b_tpl=_sigma2_b_tpl,
                 ind_AB=ind_dict[probe_ab],

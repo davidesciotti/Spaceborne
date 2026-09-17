@@ -488,14 +488,6 @@ cov_terms_and_codes = {
     'cNG': cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else False,
 }
 
-_condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
-
-if compute_ccl_cng and _condition:
-    warnings.warn(
-        'There may be some issue with the symmetry of the GLGL block in the '
-        'CCL cNG covariance. The LLLL and GGGG blocks are not affected',
-        stacklevel=2,
-    )
 
 # ! set HS probes to compute depending on RS ones
 # Set HS probes depending on RS ones

@@ -641,17 +641,15 @@ cfg['precision']['spline_params']['K_MAX_SPLINE'] = (
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 # TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
-z_grid_trisp_SSC = z_grid_trisp_ssc
-z_grid_trisp_cNG = z_grid_trisp_cng
-ccl_obj.a_grid_trisp_SSC = cosmo_lib.z_to_a(z_grid_trisp_SSC)[::-1]
-ccl_obj.a_grid_trisp_cNG = cosmo_lib.z_to_a(z_grid_trisp_cNG)[::-1]
-ccl_obj.logn_k_grid_trisp_SSC = np.log(k_grid)
-ccl_obj.logn_k_grid_trisp_cNG = np.log(k_grid)
+ccl_obj.a_grid_trisp_ssc = cosmo_lib.z_to_a(z_grid_trisp_ssc)[::-1]
+ccl_obj.a_grid_trisp_cng = cosmo_lib.z_to_a(z_grid_trisp_cng)[::-1]
+ccl_obj.logn_k_grid_trisp_ssc = np.log(k_grid)
+ccl_obj.logn_k_grid_trisp_cng = np.log(k_grid)
 
 # check that the grid is in ascending order
-if not np.all(np.diff(ccl_obj.a_grid_trisp_SSC) > 0):
+if not np.all(np.diff(ccl_obj.a_grid_trisp_ssc) > 0):
     raise ValueError('a_grid_trisp_SSC is not in ascending order!')
-if not np.all(np.diff(ccl_obj.a_grid_trisp_cNG) > 0):
+if not np.all(np.diff(ccl_obj.a_grid_trisp_cng) > 0):
     raise ValueError('a_grid_trisp_cNG is not in ascending order!')
 if not np.all(np.diff(z_grid) > 0):
     raise ValueError('z grid is not in ascending order!')
@@ -661,10 +659,10 @@ if not np.all(np.diff(z_grid_trisp_cng) > 0):
     raise ValueError('z grid is not in ascending order!')
 
 if cfg['PyCCL']['use_default_k_a_grids']:
-    ccl_obj.a_grid_trisp_SSC = a_default_grid_ccl
-    ccl_obj.a_grid_trisp_cNG = a_default_grid_ccl
-    ccl_obj.logn_k_grid_trisp_SSC = lk_default_grid_ccl
-    ccl_obj.logn_k_grid_trisp_cNG = lk_default_grid_ccl
+    ccl_obj.a_grid_trisp_ssc = a_default_grid_ccl
+    ccl_obj.a_grid_trisp_cng = a_default_grid_ccl
+    ccl_obj.logn_k_grid_trisp_ssc = lk_default_grid_ccl
+    ccl_obj.logn_k_grid_trisp_cng = lk_default_grid_ccl
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)

@@ -149,10 +149,10 @@ class CCLInterface:
         self.output_path: str = _UNSET
         self.which_b1g_in_resp: str = _UNSET
         self.lumin_ratio_2d_arr: np.ndarray | None = _UNSET
-        self.a_grid_trisp_SSC: np.ndarray = _UNSET
-        self.a_grid_trisp_cNG: np.ndarray = _UNSET
-        self.logn_k_grid_trisp_SSC: np.ndarray = _UNSET
-        self.logn_k_grid_trisp_cNG: np.ndarray = _UNSET
+        self.a_grid_trisp_ssc: np.ndarray = _UNSET
+        self.a_grid_trisp_cng: np.ndarray = _UNSET
+        self.logn_k_grid_trisp_ssc: np.ndarray = _UNSET
+        self.logn_k_grid_trisp_cng: np.ndarray = _UNSET
         self.wf_galaxy_arr = _UNSET
         self.cl_ll_3d: np.ndarray = _UNSET
         self.cl_gl_3d: np.ndarray = _UNSET
@@ -474,8 +474,8 @@ class CCLInterface:
                 'prof4': self.halo_profile_dict[probe_d],
                 'prof12_2pt': self.prof_2pt_dict[probe_a, probe_b],
                 'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
-                'lk_arr': self.logn_k_grid_trisp_SSC,
-                'a_arr': self.a_grid_trisp_SSC,
+                'lk_arr': self.logn_k_grid_trisp_ssc,
+                'a_arr': self.a_grid_trisp_ssc,
                 'extrap_pk': True,
             }
 
@@ -492,8 +492,8 @@ class CCLInterface:
                 'is_number_counts2': self.is_number_counts_dict[probe_b],
                 'is_number_counts3': self.is_number_counts_dict[probe_c],
                 'is_number_counts4': self.is_number_counts_dict[probe_d],
-                'lk_arr': self.logn_k_grid_trisp_SSC,
-                'a_arr': self.a_grid_trisp_SSC,
+                'lk_arr': self.logn_k_grid_trisp_ssc,
+                'a_arr': self.a_grid_trisp_ssc,
                 'extrap_pk': True,
             }
 
@@ -510,8 +510,8 @@ class CCLInterface:
                 'prof24_2pt': self.prof_2pt_dict[probe_b, probe_d],
                 'prof32_2pt': self.prof_2pt_dict[probe_c, probe_b],
                 'prof34_2pt': self.prof_2pt_dict[probe_c, probe_d],
-                'lk_arr': self.logn_k_grid_trisp_cNG,
-                'a_arr': self.a_grid_trisp_cNG,
+                'lk_arr': self.logn_k_grid_trisp_cng,
+                'a_arr': self.a_grid_trisp_cng,
                 'separable_growth': self.separable_growth,
             }
 
@@ -532,8 +532,8 @@ class CCLInterface:
                 'prof24_2pt': self.prof_2pt_dict['L', 'L'],
                 'prof32_2pt': self.prof_2pt_dict['L', 'L'],
                 'prof34_2pt': self.prof_2pt_dict['L', 'L'],
-                'lk_arr': self.logn_k_grid_trisp_cNG,
-                'a_arr': self.a_grid_trisp_cNG,
+                'lk_arr': self.logn_k_grid_trisp_cng,
+                'a_arr': self.a_grid_trisp_cng,
                 'separable_growth': self.separable_growth,
             }
 

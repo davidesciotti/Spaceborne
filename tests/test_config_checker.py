@@ -167,6 +167,22 @@ class TestCheckCov:
             checker.check_cov()
 
 
+class TestCheckWhichB1g:
+    """Tests for the which_b1g_in_resp check in check_cov."""
+
+    @pytest.mark.parametrize('value', ['from_input', 'from_HOD'])
+    def test_valid_values_ok(self, valid_cfg, value):
+        valid_cfg['covariance']['which_b1g_in_resp'] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_cov()
+
+    def test_invalid_value_raises(self, valid_cfg):
+        valid_cfg['covariance']['which_b1g_in_resp'] = 'from_hod'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='which_b1g_in_resp'):
+            checker.check_cov()
+
+
 class TestCheckMask:
     """Tests for check_mask."""
 
@@ -256,10 +272,21 @@ class TestCheckPyccl:
         valid_cfg['covariance']['SSC_code'] = 'Spaceborne'
         checker.check_pyccl()
 
+    def test_hod_cng_with_magnification_raises(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        valid_cfg['covariance']['which_b1g_in_resp'] = 'from_HOD'
+        with pytest.raises(ValueError, match='from_HOD'):
+            checker.check_pyccl()
+
+    def test_hod_cng_without_magnification_ok(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, False, False)
+        valid_cfg['covariance']['which_b1g_in_resp'] = 'from_HOD'
+        checker.check_pyccl()
+
     @pytest.mark.parametrize(('ssc', 'cng'), [(True, False), (False, True)])
     def test_rsd_warns(self, valid_cfg, ssc, cng):
         checker = self._pyccl_cfg(valid_cfg, ssc, cng, False, True)
-        with pytest.warns(UserWarning, match='RSD'):
+        with pytest.warns(UserWarning, match='has_rsd'):
             checker.check_pyccl()
 
 

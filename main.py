@@ -493,6 +493,7 @@ cov_terms_and_codes = {
 }
 
 _condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
+
 if compute_ccl_cng and _condition:
     warnings.warn(
         'There may be some issue with the symmetry of the GLGL block in the '
@@ -910,6 +911,17 @@ else:
 # Note: the [0] (inside square brackets) means "select column 0 but keep the array
 # two-dimensional", for shape consistency
 single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
+
+# CCL's linear-bias SSC response takes a single b(z) for each galaxy leg
+if (
+    cov_terms_and_codes['SSC'] == 'PyCCL'
+    and cfg['covariance']['which_b1g_in_resp'] == 'from_input'
+    and not single_b_of_z
+):
+    raise ValueError(
+        'The PyCCL SSC with which_b1g_in_resp: from_input requires the same galaxy '
+        "bias in all redshift bins. Please set SSC_code: 'Spaceborne'."
+    )
 
 # ! ============================ Magnification bias ====================================
 if cfg['C_ell']['has_magnification_bias']:

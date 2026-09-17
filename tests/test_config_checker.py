@@ -232,6 +232,37 @@ class TestCheckOnecov:
             checker.check_onecov()
 
 
+class TestCheckPyccl:
+    """Tests for check_pyccl."""
+
+    @staticmethod
+    def _pyccl_cfg(cfg, ssc, cng, has_mag, has_rsd):
+        cfg['covariance'].update(SSC=ssc, cNG=cng, SSC_code='PyCCL', cNG_code='PyCCL')
+        cfg['C_ell']['has_magnification_bias'] = has_mag
+        cfg['C_ell']['has_rsd'] = has_rsd
+        return config_checker.SpaceborneConfigChecker(cfg, _zbins(cfg))
+
+    def test_ssc_with_magnification_raises(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, True, False, True, False)
+        with pytest.raises(ValueError, match='magnification'):
+            checker.check_pyccl()
+
+    def test_cng_with_magnification_ok(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        checker.check_pyccl()
+
+    def test_spaceborne_ssc_with_magnification_ok(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, True, False, True, False)
+        valid_cfg['covariance']['SSC_code'] = 'Spaceborne'
+        checker.check_pyccl()
+
+    @pytest.mark.parametrize(('ssc', 'cng'), [(True, False), (False, True)])
+    def test_rsd_warns(self, valid_cfg, ssc, cng):
+        checker = self._pyccl_cfg(valid_cfg, ssc, cng, False, True)
+        with pytest.warns(UserWarning, match='RSD'):
+            checker.check_pyccl()
+
+
 class TestCheckMisc:
     """Tests for check_misc."""
 

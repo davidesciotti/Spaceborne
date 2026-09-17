@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import numpy as np
 
@@ -709,6 +710,27 @@ class SpaceborneConfigChecker:
                 'Results for GGL and GG might be inconsistent.'
             )
 
+    def check_pyccl(self) -> None:
+        cov_cfg = self.cfg['covariance']
+        pyccl_ssc = cov_cfg['SSC'] and cov_cfg['SSC_code'] == 'PyCCL'
+        pyccl_cng = cov_cfg['cNG'] and cov_cfg['cNG_code'] == 'PyCCL'
+
+        # the magnification component of the galaxy tracers would need the matter
+        # response, while the PyCCL SSC pairs the galaxy legs with the galaxy one
+        if pyccl_ssc and self.cfg['C_ell']['has_magnification_bias']:
+            raise ValueError(
+                'The PyCCL SSC does not support magnification bias yet. '
+                "Please set SSC_code: 'Spaceborne' or disable magnification bias."
+            )
+
+        # CCL's angular_cl_cov_SSC/cNG ignore the RSD component of the tracers
+        if (pyccl_ssc or pyccl_cng) and self.cfg['C_ell']['has_rsd']:
+            warnings.warn(
+                'has_rsd is True, but the PyCCL SSC and cNG covariance terms do not '
+                'include the RSD contribution.',
+                stacklevel=2,
+            )
+
     def check_mask(self) -> None:
         for probe in ['LL', 'GG']:
             assert self.cfg['mask'][probe]['geometry'] in [
@@ -742,6 +764,7 @@ class SpaceborneConfigChecker:
         self.check_mask()
         self.check_BNT_transform()
         self.check_onecov()
+        self.check_pyccl()
         self.check_lists()
         # self.check_fsky()
         self.check_probe_selection()

@@ -423,6 +423,9 @@ class CCLInterface:
 
         print('')
 
+        if which_ng_cov == 'cNG':
+            tkka_cng = self._compute_tkka(which_ng_cov, 'LLLL', p_of_k_a=p_of_k_a)
+
         for probe_abcd in unique_probe_combs:
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
 
@@ -430,9 +433,12 @@ class CCLInterface:
                 f'Computing {which_ng_cov} trispectrum, '
                 f'probe combination {(probe_ab, probe_cd)}'
             ):
-                tkka_abcd = self._compute_tkka(
-                    which_ng_cov, probe_abcd, p_of_k_a=p_of_k_a
-                )
+                if which_ng_cov == 'cNG':
+                    tkka_abcd = tkka_cng
+                else:
+                    tkka_abcd = self._compute_tkka(
+                        which_ng_cov, probe_abcd, p_of_k_a=p_of_k_a
+                    )
 
                 self.tkka_dict[probe_ab, probe_cd] = tkka_abcd
 
@@ -602,7 +608,7 @@ class CCLInterface:
                         ell2=None,
                         integration_method=integration_method,
                         **sigma2_b_arg,
-                    )
+                    ).T
 
         return cov_ng_4D
 
@@ -633,7 +639,16 @@ class CCLInterface:
         # key of cov_dict
         ng_term = which_ng_cov.lower()
 
-        kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
+
+        if which_ng_cov == 'SSC':
+            kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
+        elif which_ng_cov == 'cNG':
+            kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_galaxy_obj}
+        else:
+            raise ValueError(
+                f'Invalid value for which_ng_cov. It is {which_ng_cov}, '
+                "must be 'SSC' or 'cNG'."
+            )
 
         print('')
         # * compute required blocks

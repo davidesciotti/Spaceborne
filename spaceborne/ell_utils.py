@@ -94,7 +94,6 @@ def compute_ells_oc(
     else:
         raise ValueError('binning_type must be either "lin" or "log"')
 
-    # TODO I think OneCovariance computes this differently
     deltas = np.diff(ell_bin_edges)
 
     if output_ell_bin_edges:

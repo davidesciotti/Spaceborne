@@ -358,13 +358,13 @@ class CovarianceProjector:
         nu = kernel_builder_func_kw.get('nu', None)
 
         # Build projection-specific kernels
-        kernel_1 = self.build_projection_kernel(
+        kernel_1 = self.get_projection_kernel_func_of_ell(
             scale_ix=scale_ix_1,
             obs_space=self.obs_space,
             mu=mu,
             kernel_func_kw=kernel_builder_func_kw,
         )
-        kernel_2 = self.build_projection_kernel(
+        kernel_2 = self.get_projection_kernel_func_of_ell(
             scale_ix=scale_ix_2,
             obs_space=self.obs_space,
             mu=nu,
@@ -422,7 +422,95 @@ class CovarianceProjector:
 
         return cov_out_6d
 
-    def build_projection_kernel(
+    def proj_mix_sva_simps_vectorized(
+        self,
+        cl_integrand_5d: np.ndarray,
+        amax_abcd: float,
+        mu: int | None = None,
+        nu: int | None = None,
+        kernel_func_kw: dict | None = None,
+    ) -> np.ndarray:
+        r"""
+        Computes, for every scale-bin pair (s1, s2) and tomographic quadruplet at once,
+        the integral of the SVA or MIX covariance projection, using Simpson's rule:
+
+            cov[s1, s2, zi, zj, zk, zl] =
+                1/(2 pi A_max) \int d\ell
+                \ell K_mu(\ell, s1) K_nu(\ell, s2) f(\ell, zi, zj, zk, zl)
+
+        The trick applied here is to replace the call to simps with a matrix
+        multiplication. This is because Simpson is linear in y, so it's a weighted sum
+        whose weights depend only on x, i.e., in general:
+
+        \int d\ell f(\ell) = simps(y=f, x=ells)
+        -> weights = simps(y=np.eye(nbl), x=ells)
+        \int d\ell f(\ell) = weights * f
+            (if f and weights are 1D), otherwise weights @ f
+
+        In this case, the projection becomes one (nbx^2, nbl) @ (nbl, zbins^4)
+        matmul.
+
+        The kernels depend only on (ell, scale bin, order), so they are built once
+        per scale bin rather than once per tomographic quadruplet.
+
+        ``integrand_5d`` is the tomographic part of the integrand, shape
+        (nbl, zbins, zbins, zbins, zbins): ``build_cov_sva_integrand_5d`` for SVA,
+        ``CovRealSpace.build_cov_mix_integrand_5d`` for MIX. ``mu``/``nu`` are the
+        Bessel orders (real space; unused for COSEBIs, where the kernel comes from
+        ``kernel_func_kw['w_ells_arr']``).
+        """
+        ells = self.ells_proj_g
+        nbl = len(ells)
+        if cl_integrand_5d.shape[0] != nbl:
+            raise ValueError(
+                f'cl_integrand_5d has {cl_integrand_5d.shape[0]} ell samples, '
+                f'expected {nbl}'
+            )
+
+        def build_kernel_array(mu: int | None) -> np.ndarray:
+            """
+            Builds an array of shape (nbx, nbl) containing the projection kernel for
+            the given Bessel order mu.
+            The projection kernel does not depend on the tomographic indices, so it
+            can be computed only once per scale bin."""
+            kernel_list = [
+                self.get_projection_kernel_func_of_ell(
+                    scale_ix=s,
+                    obs_space=self.obs_space,
+                    mu=mu,
+                    kernel_func_kw=kernel_func_kw or {},
+                )(ells)
+                for s in range(self.nbx)
+            ]
+            return np.array(kernel_list)
+
+        # shape: (nbx, nbl)
+        k1 = build_kernel_array(mu)
+        k2 = build_kernel_array(nu)
+
+        # simpson simps_weights do not depend on the integrand! I can simply compute
+        # them in this way and use them below:
+        # simps_weights @ (integrand) and simps(integrand, x) are the same
+        simps_weights = simps(y=np.eye(nbl), x=ells, axis=0)  # shape: (nbl,)
+
+        kernel_prod = k1[:, None, :] * k2[None, :, :]  # shape: (nbx, nbx, nbl)
+        weights = kernel_prod * simps_weights * ells  # shape: (nbx, nbx, nbl)
+
+        # the matmul is the sum, weighted via the simpson weights
+        # I want to sum over the ells, which need to be made the inner axes, with
+        # everything else flattened:
+        # (nbx * nbx, nbl) @ (nbl, zbins**4) -> (nbx * nbx, zbins**4)
+        cov_out_flat = weights.reshape(-1, nbl) @ cl_integrand_5d.reshape(nbl, -1)
+
+        # final reshape to get (nbx, nbx, zbins, zbins, zbins, zbins)
+        cov_out_6d = cov_out_flat.reshape(self.cov_shape_6d)
+
+        # apply the 1/(2 pi A_max) prefactor
+        cov_out_6d /= 2.0 * np.pi * amax_abcd
+
+        return cov_out_6d
+
+    def get_projection_kernel_func_of_ell(
         self,
         scale_ix: int,
         obs_space: str,

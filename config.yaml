@@ -72,7 +72,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: harmonic # Type: str.
+  space: real # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -389,14 +389,14 @@ precision:
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
-  ell_bins_proj_gauss: 500 # Type: int.
+  ell_bins_proj_gauss: 1000 # Type: int.
   ell_bins_proj_nongauss: 200 # Type: int.
 
   # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
   # performed with simpson integration.
   proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin', 'FFTLog']
-  proj_nongauss_integration_method: simps # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
+  proj_nongauss_integration_method: quad # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.

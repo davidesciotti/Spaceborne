@@ -232,7 +232,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -389,7 +389,7 @@ precision:
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
-  ell_bins_proj_gauss: 1000 # Type: int.
+  ell_bins_proj_gauss: 2000 # Type: int.
   ell_bins_proj_nongauss: 200 # Type: int.
 
   # integration method for the projection of the Gaussian and non-Gaussian covariance

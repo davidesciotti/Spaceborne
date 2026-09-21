@@ -623,12 +623,8 @@ def proj_cov_2d_parallel_helper(
 ):
     # TODO make kernel agnostic using kernel builder
     # TODO move to covariance_projector.py
-    kernel_1 = partial(
-        k_mu, thetal=theta_edges[s1], thetau=theta_edges[s1 + 1], mu=mu
-    )
-    kernel_2 = partial(
-        k_mu, thetal=theta_edges[s2], thetau=theta_edges[s2 + 1], mu=nu
-    )
+    kernel_1 = partial(k_mu, thetal=theta_edges[s1], thetau=theta_edges[s1 + 1], mu=mu)
+    kernel_2 = partial(k_mu, thetal=theta_edges[s2], thetau=theta_edges[s2 + 1], mu=nu)
 
     block = cp.proj_cov_2d(
         ells_proj=ells_proj_ng,
@@ -877,20 +873,16 @@ class CovRealSpace(CovarianceProjector):
 
         return integral_6d
 
-    def proj_mix_levin_or_fftlog(
-        self,
-        probe_a_ix: int,
-        probe_b_ix: int,
-        probe_c_ix: int,
-        probe_d_ix: int,
-        zpairs_ab: int,
-        zpairs_cd: int,
-        ind_ab: np.ndarray,
-        ind_cd: np.ndarray,
-        mu: int,
-        nu: int,
-        amax_abcd: float,
-    ):
+    def build_cov_mix_integrand_5d(
+        self, probe_a_ix: int, probe_b_ix: int, probe_c_ix: int, probe_d_ix: int
+    ) -> np.ndarray:
+        """Build the MIX-term integrand in harmonic space, shape (nbl, z, z, z, z).
+
+        This is the MIX analogue of ``cp.build_cov_sva_integrand_5d``: everything in
+        the integrand except the ``ell * K_mu * K_nu`` projection weight. Extracted so
+        that the levin/FFTLog/vectorized paths can all share it.
+        """
+
         def _get_mix_prefac(probe_b_ix, probe_d_ix, zj, zl):
             prefac = (
                 cp.get_delta_tomo(probe_b_ix, probe_d_ix, self.zbins)[zj, zl]
@@ -928,7 +920,25 @@ class CovRealSpace(CovarianceProjector):
             prefac[probe_a_ix, probe_d_ix],
             self.cl_3x2pt_5d[probe_b_ix, probe_c_ix],
         )
-        integrand_5d = a + b + c + d
+        return a + b + c + d
+
+    def proj_mix_levin_or_fftlog(
+        self,
+        probe_a_ix: int,
+        probe_b_ix: int,
+        probe_c_ix: int,
+        probe_d_ix: int,
+        zpairs_ab: int,
+        zpairs_cd: int,
+        ind_ab: np.ndarray,
+        ind_cd: np.ndarray,
+        mu: int,
+        nu: int,
+        amax_abcd: float,
+    ):
+        integrand_5d = self.build_cov_mix_integrand_5d(
+            probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix
+        )
 
         # compress integrand selecting only unique zpairs
         assert ind_ab.shape[1] == 2, (
@@ -998,9 +1008,7 @@ class CovRealSpace(CovarianceProjector):
                 **self.levin_prec_kw,
             )
 
-            cov_rs_4d = result_levin.reshape(
-                self.nbt, self.nbt, zpairs_ab, zpairs_cd
-            )
+            cov_rs_4d = result_levin.reshape(self.nbt, self.nbt, zpairs_ab, zpairs_cd)
 
         cov_rs_6d = sl.cov_4D_to_6D_blocks(
             cov_rs_4d,
@@ -1099,34 +1107,20 @@ class CovRealSpace(CovarianceProjector):
         assert zpairs_ab == ind_ab.shape[0], 'zpairs-ind inconsistency'
         assert zpairs_cd == ind_cd.shape[0], 'zpairs-ind inconsistency'
 
-        # arguments for the covariance projector functions
-        cov_simps_func_kw = {
-            'probe_a_ix': probe_a_ix,
-            'probe_b_ix': probe_b_ix,
-            'probe_c_ix': probe_c_ix,
-            'probe_d_ix': probe_d_ix,
-            'amax_abcd': amax_abcd,
-        }
-
-        # arguments for the covariance projector kernel functions
-        kernel_builder_func_kw = {
-            'mu': mu,
-            'nu': nu,
-            'kernel_1_func': k_mu,
-            'kernel_2_func': k_mu,
-        }
-
         # Compute covariance:
         if term == 'sva':
             if self.proj_g_int_method == 'simps':
-                cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
-                    zpairs_ab=zpairs_ab,
-                    zpairs_cd=zpairs_cd,
-                    ind_ab=ind_ab,
-                    ind_cd=ind_cd,
-                    cov_simps_func=self.proj_cov_sva_simps,
-                    cov_simps_func_kw=cov_simps_func_kw,
-                    kernel_builder_func_kw=kernel_builder_func_kw,
+                cov_out_6d = self.proj_mix_sva_simps_vectorized(
+                    cl_integrand_5d=cp.build_cov_sva_integrand_5d(
+                        cl_5d=self.cl_3x2pt_5d,
+                        probe_a_ix=probe_a_ix,
+                        probe_b_ix=probe_b_ix,
+                        probe_c_ix=probe_c_ix,
+                        probe_d_ix=probe_d_ix,
+                    ),
+                    amax_abcd=amax_abcd,
+                    mu=mu,
+                    nu=nu,
                 )
             elif self.proj_g_int_method in ['levin', 'FFTLog']:
                 cov_out_6d = self.proj_sva_levin_fftlog(
@@ -1145,14 +1139,13 @@ class CovRealSpace(CovarianceProjector):
 
         elif term == 'mix' and probe_abcd not in ['wxim', 'wxip']:
             if self.proj_g_int_method == 'simps':
-                cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
-                    zpairs_ab=zpairs_ab,
-                    zpairs_cd=zpairs_cd,
-                    ind_ab=ind_ab,
-                    ind_cd=ind_cd,
-                    cov_simps_func=self.proj_cov_mix_simps,
-                    cov_simps_func_kw=cov_simps_func_kw,
-                    kernel_builder_func_kw=kernel_builder_func_kw,
+                cov_out_6d = self.proj_mix_sva_simps_vectorized(
+                    cl_integrand_5d=self.build_cov_mix_integrand_5d(
+                        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix
+                    ),
+                    amax_abcd=amax_abcd,
+                    mu=mu,
+                    nu=nu,
                 )
             elif self.proj_g_int_method in ['levin', 'FFTLog']:
                 cov_out_6d = self.proj_mix_levin_or_fftlog(

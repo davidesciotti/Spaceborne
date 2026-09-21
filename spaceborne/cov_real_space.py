@@ -1247,7 +1247,7 @@ class CovRealSpace(CovarianceProjector):
                     theta_centers=self.theta_centers,
                     mu=mu,
                     nu=nu,
-                    N_pad=len(self.ells_proj_ng),
+                    N_pad=2 * len(self.ells_proj_ng),
                 )
 
             # reshape to 6d and symmetrize if needed

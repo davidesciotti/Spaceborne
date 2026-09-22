@@ -259,24 +259,6 @@ shift_nz_interpolation_kind = 'linear'
 cfg['covariance']['n_probes'] = 2
 
 
-# ===================================== pylevin ======================================
-# Precision settings for pylevin. See the official documentation for more details:
-# https://levin-bessel.readthedocs.io/en/latest/index.html
-# https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-
-# number of collocation points in each bisection. default: 8
-cfg['precision']['n_sub'] = 16
-# maximum number of bisections used. default: 32
-cfg['precision']['n_bisec_max'] = 128
-# relative accuracy target. default: 1.e-4
-cfg['precision']['rel_acc'] = 1.0e-4
-# Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at
-# high Bessel orders)
-cfg['precision']['boost_bessel'] = True
-# Type: bool. Whether to display warnings
-cfg['precision']['verbose'] = True
-
-
 if 'G_code' not in cfg['covariance']:
     cfg['covariance']['G_code'] = 'Spaceborne'
 if 'SSC_code' not in cfg['covariance']:
@@ -313,22 +295,6 @@ cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
 
-# This has been deprecated since I am no longer using Levin integration.
-# This variable used to control the number of bins over which to compute the Levin
-# RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu).
-# From then, the covariance was rebinned to cfg['binning']['theta_bins'].
-# This works but is not ideal, as the proper bin averaging is more correct.
-# Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
-# TODO DELETE THIS, it complicates things
-cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
-
-# Integration method for the covariance projection to real space. Options:
-# - 'simps': uses simpson integration. This is faster but less accurate
-# - 'levin': uses levin integration. This is slower but more accurate
-# cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
-# setting this to False makes the code resort to the less accurate bin averaging method
-# mentioned above
-cfg['precision']['levin_bin_avg'] = True  # Type: bool.
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
 # convenence settings that have been hardcoded
@@ -709,12 +675,13 @@ pvt_cfg = {
 # instantiate data handler class
 io_obj = io_handler.IOHandler(cfg, pvt_cfg)
 
-# declare covariance objects
+# declare covariance objects/dicts
 cov_hs_obj = None
 cov_nmt_obj = None
 cov_rs_obj = None
 cov_cs_obj = None
 cov_oc_obj = None
+cov_nmt_dict = None
 
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
@@ -1022,7 +989,6 @@ nl_3x2pt_5d = np.repeat(nl_3x2pt_4d[:, :, np.newaxis, :, :], bin_obj.nbl_3x2pt, 
 
 
 # ! =============================== Init NaMaster cov object ===========================
-cov_nmt_dict = None
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
@@ -1060,46 +1026,29 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_dict = cov_nmt_obj.build_psky_cov()
 
 
-# ! ============================== Init real space cov object ==========================
-if obs_space == 'real':
-    # initialize cov_rs_obj and set a couple useful attributes
-    cov_rs_obj = cov_real_space.CovRealSpace(cfg=cfg, pvt_cfg=pvt_cfg)
-
-    # set ell values used for projection
-    bin_obj.compute_ells_3x2pt_proj()
-    cov_rs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
-    cov_rs_obj.nbl_proj_g = len(bin_obj.ells_3x2pt_proj_g)
-    cov_rs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-
-    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
-    # and store in the cov_rs_obj
-    cov_rs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        cov_rs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
-    )
-
-
-# TODO this could probably be done with super.__init__() where super is the
-# cov projector class
-if obs_space == 'cosebis':
-    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg=cfg, pvt_cfg=pvt_cfg)
+# ! ===================== Init real-space / COSEBIs cov object =========================
+if obs_space in ['real', 'cosebis']:
+    # ell grids over which the harmonic-space covariance is projected
     bin_obj.compute_ells_3x2pt_proj()
 
-    # set ell values used for projection
-    cov_cs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
-    cov_cs_obj.nbl_proj_g = bin_obj.nbl_3x2pt_proj_g
-    cov_cs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-
-    # compute projection kernels over ell grids used for the integrals
-    # of the G and NG terms
-    cov_cs_obj.w_ells_arr_g = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_g)
-    if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
-        cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
-
-    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
-    # and store in the cov_cs_obj
-    cov_cs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        cov_cs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    # recompute the Cls (or interpolate the input ones) on the finer ell grid used for
+    # the projection of the Gaussian terms
+    cl_3x2pt_proj_g_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        bin_obj.ells_3x2pt_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
+
+    cov_proj_kw = {
+        'cfg': cfg,
+        'pvt_cfg': pvt_cfg,
+        'cl_3x2pt_5d': cl_3x2pt_proj_g_5d,
+        'nl_3x2pt_4d': nl_3x2pt_4d,
+        'ells_proj_g': bin_obj.ells_3x2pt_proj_g,
+        'ells_proj_ng': bin_obj.ells_3x2pt_proj_ng,
+    }
+    if obs_space == 'real':
+        cov_rs_obj = cov_real_space.CovRealSpace(**cov_proj_kw)
+    else:
+        cov_cs_obj = cov_cosebis.CovCOSEBIs(**cov_proj_kw)
 
 
 # !  =============================== Build Gaussian covs ===============================

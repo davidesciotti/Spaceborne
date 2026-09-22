@@ -7,14 +7,16 @@ and COSEBIs Gaussian-covariance projections:
   textbook area integral, N(theta) = pi (theta_u^2 - theta_l^2) * A * n_i *
   n_j; we check the closed form directly and cross-check it against a
   Simpson integral of the differential dN/dtheta over the same annulus.
-* ``t_mix`` -- the per-probe MIX-term variance factor (shape noise squared
-  for shear, unity for clustering).
 * ``get_delta_tomo`` -- Kronecker delta in tomographic bin space, identity
   for a probe with itself and zero across different probes.
-* ``build_cov_sva_integrand_5d`` -- the universal Gaussian SVA integrand
+* ``build_cl_integrand_5d_sva`` -- the universal Gaussian SVA integrand
   Cov[C_ab, C_cd] ~ C_ac C_bd + C_ad C_bc; checked against explicit index
   arithmetic on a small random C_ell array (using the [0,0]=LL, [1,1]=GG,
   [1,0]=GL probe-index convention from CLAUDE.md).
+* ``build_cl_integrand_5d_mix`` -- the Gaussian MIX integrand
+  C_ik N_jl + C_jl N_ik + C_il N_jk + C_jk N_il; checked element by element, for
+  all 16 probe combinations, against the explicit formula of the per-element
+  implementation it replaced.
 
 ``proj_cov_2d`` and the ``CovarianceProjector`` class need a full pipeline
 config and are intentionally not covered here.
@@ -91,32 +93,6 @@ class TestGetDnpair:
 
 
 # ----------------------------------------------------------------------------- #
-# t_mix
-# ----------------------------------------------------------------------------- #
-class TestTMix:
-    """Tests for the MIX-term per-probe variance factor."""
-
-    def test_shear_probe_uses_sigma_eps_squared(self):
-        zbins = 4
-        sigma_eps_i = np.array([0.1, 0.2, 0.3, 0.4])
-        out = cp.t_mix(0, zbins, sigma_eps_i)
-        np.testing.assert_allclose(out, sigma_eps_i**2)
-
-    def test_clustering_probe_is_ones(self):
-        zbins = 4
-        sigma_eps_i = np.array([0.1, 0.2, 0.3, 0.4])
-        out = cp.t_mix(1, zbins, sigma_eps_i)
-        np.testing.assert_allclose(out, np.ones(zbins))
-
-    def test_unknown_probe_index_is_zero(self):
-        """Neither branch matches, so the pre-allocated zeros are returned."""
-        zbins = 4
-        sigma_eps_i = np.array([0.1, 0.2, 0.3, 0.4])
-        out = cp.t_mix(2, zbins, sigma_eps_i)
-        np.testing.assert_allclose(out, np.zeros(zbins))
-
-
-# ----------------------------------------------------------------------------- #
 # get_delta_tomo
 # ----------------------------------------------------------------------------- #
 class TestGetDeltaTomo:
@@ -137,7 +113,7 @@ class TestGetDeltaTomo:
 
 
 # ----------------------------------------------------------------------------- #
-# build_cov_sva_integrand_5d
+# build_cl_integrand_5d_sva
 # ----------------------------------------------------------------------------- #
 class TestBuildCovSvaIntegrand5d:
     """Tests for the universal Gaussian SVA harmonic-space integrand."""
@@ -155,12 +131,12 @@ class TestBuildCovSvaIntegrand5d:
 
     def test_shape(self, cl_5d):
         n_ell, zbins = cl_5d.shape[2], cl_5d.shape[3]
-        out = cp.build_cov_sva_integrand_5d(cl_5d, 0, 0, 0, 0)
+        out = cp.build_cl_integrand_5d_sva(cl_5d, 0, 0, 0, 0)
         assert out.shape == (n_ell, zbins, zbins, zbins, zbins)
 
     def test_matches_explicit_index_arithmetic_ll_only(self, cl_5d):
         """Pure LL (probe index 0 everywhere): Cov ~ C_ik C_jl + C_il C_jk."""
-        out = cp.build_cov_sva_integrand_5d(cl_5d, 0, 0, 0, 0)
+        out = cp.build_cl_integrand_5d_sva(cl_5d, 0, 0, 0, 0)
         ell, i, j, k, l = 1, 2, 0, 3, 1
         expected = (
             cl_5d[0, 0, ell, i, k] * cl_5d[0, 0, ell, j, l]
@@ -171,7 +147,7 @@ class TestBuildCovSvaIntegrand5d:
     def test_matches_explicit_index_arithmetic_mixed_probes(self, cl_5d):
         """probe_a=LL(0), probe_b=GG(1), probe_c=GG(1), probe_d=GL(1,0)."""
         probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix = 0, 1, 1, 0
-        out = cp.build_cov_sva_integrand_5d(
+        out = cp.build_cl_integrand_5d_sva(
             cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix
         )
         ell, i, j, k, l = 0, 1, 2, 3, 0
@@ -188,5 +164,55 @@ class TestBuildCovSvaIntegrand5d:
         and (k,l)<->(l,k) simultaneously, since both terms just swap."""
         n_probes, n_ell, zbins = 2, 2, 3
         cl_5d = rng.standard_normal((n_probes, n_probes, n_ell, zbins, zbins))
-        out = cp.build_cov_sva_integrand_5d(cl_5d, 0, 0, 0, 0)
+        out = cp.build_cl_integrand_5d_sva(cl_5d, 0, 0, 0, 0)
         np.testing.assert_allclose(out, out.transpose(0, 2, 1, 4, 3))
+
+
+# ----------------------------------------------------------------------------- #
+# build_cl_integrand_5d_mix
+# ----------------------------------------------------------------------------- #
+class TestBuildClIntegrand5dMix:
+    """Tests for the Gaussian MIX harmonic-space integrand."""
+
+    N_PROBES, N_ELL, ZBINS = 2, 3, 3
+    PROBE_COMBOS = [
+        (a, b, c, d)
+        for a in range(2)
+        for b in range(2)
+        for c in range(2)
+        for d in range(2)
+    ]
+
+    @pytest.fixture
+    def cl_5d(self, rng):
+        return rng.standard_normal(
+            (self.N_PROBES, self.N_PROBES, self.N_ELL, self.ZBINS, self.ZBINS)
+        )
+
+    @pytest.fixture
+    def nl_4d(self, rng):
+        """Generic (non-diagonal) noise, so that every index placement matters."""
+        return rng.standard_normal(
+            (self.N_PROBES, self.N_PROBES, self.ZBINS, self.ZBINS)
+        )
+
+    @pytest.mark.parametrize('probes', PROBE_COMBOS)
+    def test_matches_explicit_formula(self, cl_5d, nl_4d, probes):
+        a, b, c, d = probes
+        out = cp.build_cl_integrand_5d_mix(cl_5d, nl_4d, a, b, c, d)
+        assert out.shape == (self.N_ELL,) + (self.ZBINS,) * 4
+
+        for ell in range(self.N_ELL):
+            for i, j, k, l in np.ndindex(*(self.ZBINS,) * 4):
+                expected = (
+                    cl_5d[a, c, ell, i, k] * nl_4d[b, d, j, l]
+                    + cl_5d[b, d, ell, j, l] * nl_4d[a, c, i, k]
+                    + cl_5d[a, d, ell, i, l] * nl_4d[b, c, j, k]
+                    + cl_5d[b, c, ell, j, k] * nl_4d[a, d, i, l]
+                )
+                np.testing.assert_allclose(out[ell, i, j, k, l], expected, rtol=1e-14)
+
+    def test_zero_noise_gives_zero(self, cl_5d):
+        nl_4d = np.zeros((self.N_PROBES, self.N_PROBES, self.ZBINS, self.ZBINS))
+        out = cp.build_cl_integrand_5d_mix(cl_5d, nl_4d, 0, 1, 0, 1)
+        np.testing.assert_array_equal(out, 0.0)

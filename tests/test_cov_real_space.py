@@ -1,16 +1,14 @@
-"""Unit tests for the pure numerical helpers in spaceborne.cov_real_space.
+r"""Unit tests for the pure numerical helpers in spaceborne.cov_real_space.
 
-This module only exercises functions that do not require pylevin, CCL, or the
-full CovRealSpace pipeline:
+This module only exercises functions that do not require CCL or the full
+CovRealSpace pipeline:
 
-* ``b_mu`` / ``b_mu_nobessel`` and ``k_mu`` / ``k_mu_nobessel`` -- the
-  ``_nobessel`` variants decompose the closed-form Bessel expressions into
-  ``(coefficient, bessel_order[, theta])`` terms (used to build Levin
-  integrands). We reconstruct the Bessel sums from the decomposed terms with
-  ``scipy.special.jv`` and check they reproduce the direct (bessel-evaluated)
-  functions, for the three supported multipole orders mu in {0, 2, 4}.
-* ``kmuknu_nobessel`` -- the product of two decomposed kernels; checked the
-  same way, by reconstructing K_mu(ell1) * K_nu(ell2) from the product terms.
+* ``b_mu`` and ``k_mu`` -- the closed-form antiderivatives of x J_mu(x) and the
+  resulting bin-averaged kernel. Checked against their defining integrals,
+  computed numerically, for the three supported orders mu in {0, 2, 4}:
+      b_mu(x) = \int_0^x x' J_mu(x') dx'   (up to a constant)
+      K_mu(ell; theta_l, theta_u) = 2 / (theta_u^2 - theta_l^2)
+                                    \int_{theta_l}^{theta_u} theta J_mu(ell theta)
 * ``t_sn`` -- checked case by case against explicitly constructed expected
   matrices. In particular, the mixed source/lens case (e.g. gt/gt) is pinned
   as a regression test: the source-bin variance sigma_eps_i**2 must be
@@ -21,30 +19,17 @@ full CovRealSpace pipeline:
   i != j (same convention as OneCovariance's gmgm shot-noise term). A
   diagonal-only variant (the former ``_t_sn``) was confirmed wrong and
   removed in 2026-07.
-* ``t_mix`` -- small standalone helper, checked directly.
 
-Functions requiring pylevin (``integrate_bessel_single_wrapper``,
-``dl1dl2_binavg_bessel_wrapper``, ``dl1dl2_nobinavg_bessel_wrapper``,
-``levin_integrate_bessel_double_wrapper``, ``integrate_single_bessel_pair``)
-or the full ``CovRealSpace``/``proj_cov_2d_fftlog`` pipeline are out of scope
-for this module.
 """
 
 import itertools
 
 import numpy as np
 import pytest
+from scipy.integrate import quad
 from scipy.special import jv
 
-from spaceborne.cov_real_space import (
-    b_mu,
-    b_mu_nobessel,
-    k_mu,
-    k_mu_nobessel,
-    kmuknu_nobessel,
-    t_mix,
-    t_sn,
-)
+from spaceborne.cov_real_space import b_mu, k_mu, t_sn
 
 
 def _is_mixed_mixed(combo):
@@ -68,80 +53,54 @@ MU_VALUES = (0, 2, 4)
 
 
 # ----------------------------------------------------------------------------- #
-# b_mu / b_mu_nobessel
+# b_mu
 # ----------------------------------------------------------------------------- #
 class TestBMu:
-    """b_mu_nobessel decomposes b_mu into explicit (coeff, bessel_order) terms."""
+    """b_mu is an antiderivative of x J_mu(x)."""
 
     @pytest.mark.parametrize('mu', MU_VALUES)
-    def test_nobessel_reconstructs_b_mu(self, mu, rng):
-        xs = rng.uniform(0.1, 20.0, 8)
-        for x in xs:
-            direct = b_mu(x, mu)
-            terms = b_mu_nobessel(x, mu)
-            recon = sum(coeff * jv(order, x) for coeff, order in terms)
-            np.testing.assert_allclose(recon, direct, rtol=1e-10)
+    def test_is_antiderivative_of_x_jmu(self, mu, rng):
+        x1, x2 = np.sort(rng.uniform(0.1, 20.0, 2))
+        expected, _ = quad(lambda x: x * jv(mu, x), x1, x2, epsabs=0, epsrel=1e-12)
+        np.testing.assert_allclose(b_mu(x2, mu) - b_mu(x1, mu), expected, rtol=1e-10)
 
     def test_invalid_mu_raises(self):
         with pytest.raises(ValueError, match='mu must be one of'):
             b_mu(1.0, mu=1)
 
-    def test_nobessel_invalid_mu_raises(self):
-        with pytest.raises(ValueError, match='mu must be one of'):
-            b_mu_nobessel(1.0, mu=3)
-
 
 # ----------------------------------------------------------------------------- #
-# k_mu / k_mu_nobessel
+# k_mu
 # ----------------------------------------------------------------------------- #
 class TestKMu:
-    """k_mu_nobessel decomposes k_mu into (coeff, bessel_order, theta) terms."""
+    """k_mu is the bin average of J_mu(ell theta), with weight theta."""
 
     @pytest.mark.parametrize('mu', MU_VALUES)
-    def test_nobessel_reconstructs_k_mu(self, mu, rng):
+    def test_matches_bin_averaged_bessel(self, mu, rng):
         ells = rng.uniform(10.0, 5000.0, 6)
         thetal_arr = rng.uniform(1e-3, 1e-2, 6)
         thetau_arr = thetal_arr + rng.uniform(1e-3, 1e-2, 6)
 
         for ell, thetal, thetau in zip(ells, thetal_arr, thetau_arr, strict=True):
+            integral, _ = quad(
+                lambda t, ell=ell: t * jv(mu, ell * t),
+                thetal,
+                thetau,
+                epsabs=0,
+                epsrel=1e-12,
+                limit=200,
+            )
+            expected = 2.0 / (thetau**2 - thetal**2) * integral
             direct = k_mu(ell, thetal=thetal, thetau=thetau, mu=mu)
-            terms = k_mu_nobessel(ell, thetal=thetal, thetau=thetau, mu=mu)
-            recon = sum(coeff * jv(order, ell * theta) for coeff, order, theta in terms)
-            np.testing.assert_allclose(recon, direct, rtol=1e-10)
-
-
-# ----------------------------------------------------------------------------- #
-# kmuknu_nobessel
-# ----------------------------------------------------------------------------- #
-class TestKMuKNuNobessel:
-    """kmuknu_nobessel expands the product K_mu(ell1) * K_nu(ell2)."""
+            np.testing.assert_allclose(direct, expected, rtol=1e-9)
 
     @pytest.mark.parametrize('mu', MU_VALUES)
-    @pytest.mark.parametrize('nu', MU_VALUES)
-    def test_product_matches_direct(self, mu, nu, rng):
-        ell1, ell2 = rng.uniform(10.0, 5000.0, 2)
-        thetal1, thetau1 = 0.001, 0.003
-        thetal2, thetau2 = 0.002, 0.005
-
-        k_mu_terms = k_mu_nobessel(ell1, thetal=thetal1, thetau=thetau1, mu=mu)
-        k_nu_terms = k_mu_nobessel(ell2, thetal=thetal2, thetau=thetau2, mu=nu)
-        product_terms = kmuknu_nobessel(k_mu_terms, k_nu_terms)
-
-        direct = k_mu(ell1, thetal=thetal1, thetau=thetau1, mu=mu) * k_mu(
-            ell2, thetal=thetal2, thetau=thetau2, mu=nu
-        )
-        recon = sum(
-            coeff * jv(n1, ell1 * t1) * jv(n2, ell2 * t2)
-            for coeff, n1, t1, n2, t2 in product_terms
-        )
-        np.testing.assert_allclose(recon, direct, rtol=1e-10)
-
-    def test_number_of_terms_is_product(self):
-        """kmuknu_nobessel returns the cartesian product of the input term lists."""
-        k_mu_terms = k_mu_nobessel(100.0, thetal=0.001, thetau=0.002, mu=4)
-        k_nu_terms = k_mu_nobessel(200.0, thetal=0.001, thetau=0.002, mu=2)
-        product_terms = kmuknu_nobessel(k_mu_terms, k_nu_terms)
-        assert len(product_terms) == len(k_mu_terms) * len(k_nu_terms)
+    def test_vectorised_in_ell(self, mu, rng):
+        """An array of ells gives the same values as one ell at a time."""
+        ells = rng.uniform(10.0, 5000.0, 7)
+        vec = k_mu(ells, thetal=0.002, thetau=0.004, mu=mu)
+        loop = [k_mu(ell, thetal=0.002, thetau=0.004, mu=mu) for ell in ells]
+        np.testing.assert_array_equal(vec, loop)
 
 
 # ----------------------------------------------------------------------------- #
@@ -211,20 +170,3 @@ class TestTSn:
         zbins = sigma_eps_i.size
         out = t_sn(0, 0, 1, 1, zbins, sigma_eps_i)
         np.testing.assert_allclose(out, np.zeros((zbins, zbins)))
-
-
-# ----------------------------------------------------------------------------- #
-# t_mix
-# ----------------------------------------------------------------------------- #
-class TestTMix:
-    def test_source_case(self, rng):
-        zbins = 5
-        sigma_eps_i = rng.uniform(0.1, 0.5, zbins)
-        out = t_mix(0, zbins, sigma_eps_i)
-        np.testing.assert_allclose(out, sigma_eps_i**2)
-
-    def test_lens_case(self, rng):
-        zbins = 5
-        sigma_eps_i = rng.uniform(0.1, 0.5, zbins)
-        out = t_mix(1, zbins, sigma_eps_i)
-        np.testing.assert_allclose(out, np.ones(zbins))

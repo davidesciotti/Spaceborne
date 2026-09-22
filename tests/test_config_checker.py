@@ -32,11 +32,6 @@ def _apply_main_hardcoded_overrides(cfg):
     since the comment there states they "should not be visible to the user".
     """
     cfg['covariance']['n_probes'] = 2
-    cfg['precision']['n_sub'] = 16
-    cfg['precision']['n_bisec_max'] = 128
-    cfg['precision']['rel_acc'] = 1.0e-4
-    cfg['precision']['boost_bessel'] = True
-    cfg['precision']['verbose'] = True
     cfg['covariance'].setdefault('G_code', 'Spaceborne')
     cfg['covariance'].setdefault('SSC_code', 'Spaceborne')
     cfg['covariance'].setdefault('cNG_code', 'PyCCL')
@@ -182,6 +177,55 @@ class TestCheckNgCovGalBiasModel:
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError, match='ng_cov_gal_bias_model'):
             checker.check_cov()
+
+
+class TestCheckProjectionMethods:
+    """Tests for check_projection_methods (harmonic -> real-space integrators)."""
+
+    @pytest.mark.parametrize(
+        ('key', 'method'),
+        [
+            ('proj_gauss_integration_method', 'simps'),
+            ('proj_gauss_integration_method', 'FFTLog'),
+            ('proj_nongauss_integration_method', 'simps'),
+            ('proj_nongauss_integration_method', 'quad'),
+            ('proj_nongauss_integration_method', 'FFTLog'),
+        ],
+    )
+    def test_valid_methods_ok(self, valid_cfg, key, method):
+        valid_cfg['precision'][key] = method
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_projection_methods()
+
+    @pytest.mark.parametrize(
+        'key', ['proj_gauss_integration_method', 'proj_nongauss_integration_method']
+    )
+    def test_levin_raises_with_removal_message(self, valid_cfg, key):
+        valid_cfg['precision'][key] = 'levin'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(ValueError, match='Levin integration has been removed'):
+            checker.check_projection_methods()
+
+    def test_quad_not_allowed_for_gaussian(self, valid_cfg):
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'quad'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(ValueError, match='must be one of'):
+            checker.check_projection_methods()
+
+    def test_fftlog_requires_log_theta_bins_in_real_space(self, valid_cfg):
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['binning']['binning_type'] = 'lin'
+        valid_cfg['precision']['proj_nongauss_integration_method'] = 'FFTLog'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(ValueError, match='log-spaced theta bins'):
+            checker.check_projection_methods()
+
+    def test_fftlog_with_lin_bins_ok_outside_real_space(self, valid_cfg):
+        valid_cfg['probe_selection']['space'] = 'harmonic'
+        valid_cfg['binning']['binning_type'] = 'lin'
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'FFTLog'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_projection_methods()
 
 
 class TestCheckMask:

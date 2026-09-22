@@ -26,6 +26,9 @@ warnings.filterwarnings(
 
 
 class CovCOSEBIs(CovarianceProjector):
+    
+    obs_space = 'cosebis'
+    
     def __init__(
         self,
         cfg: dict,

@@ -2,10 +2,10 @@
 Base class for projected covariance computations.
 
 This module provides the shared infrastructure for computing covariances
-of projected statistics (2PCF, COSEBIs, etc.) from harmonic-space C_ℓ.
+of projected statistics (2PCF, COSEBIs, etc.) from harmonic-space Cl.
 
 The key insight is that different statistics share the same integrand building
-(SVA, MIX terms) but differ in how they project from C_ℓ to the observable space.
+(SVA, MIX terms) but differ in how they project from Cl to the observable space.
 """
 
 from collections.abc import Callable
@@ -51,7 +51,7 @@ def build_cl_integrand_5d_sva(cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d
 
     This integrand is UNIVERSAL - it's the same for all projection methods
     (real space, COSEBIs, band powers, etc.). The formula comes from the
-    Gaussian covariance of C_ℓ:
+    Gaussian covariance of Cl:
 
     Cov[C_ab, C_cd] ∝ C_ac * C_bd + C_ad * C_bc
 
@@ -390,12 +390,12 @@ def _quad_outer_integral_over_ell1(
 
 
 class CovarianceProjector:
-    """
+    r"""
     Base class for all projected covariance computations.
 
     This class provides:
     - Shared setup (survey info, galaxy densities, etc.)
-    - The harmonic-space inputs of every projection: C_ℓ and N_ℓ, and the ℓ grids
+    - The harmonic-space inputs of every projection: Cl and Nl, and the \ell grids
       they are projected over
     - The projection of the Gaussian (SVA, MIX) and non-Gaussian integrands, given
       the kernels of the observable

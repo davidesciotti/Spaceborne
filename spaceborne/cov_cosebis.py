@@ -1,7 +1,3 @@
-# TODO the NG cov has not been re-tested against OC
-# TODO the NG cov needs a smaller number of ell bins for the simpson integration! It's
-# TODO unpractical to compute it in 1000 ell values
-
 import itertools
 import warnings
 
@@ -26,9 +22,8 @@ warnings.filterwarnings(
 
 
 class CovCOSEBIs(CovarianceProjector):
-    
     obs_space = 'cosebis'
-    
+
     def __init__(
         self,
         cfg: dict,

@@ -380,21 +380,6 @@ class SpaceborneConfigChecker:
             "Section 'precision' must be a dictionary"
         )
         precision_cfg = self.cfg['precision']
-        assert isinstance(precision_cfg['n_sub'], int), (
-            'precision: n_sub must be an int'
-        )
-        assert isinstance(precision_cfg['n_bisec_max'], int), (
-            'precision: n_bisec_max must be an int'
-        )
-        assert isinstance(precision_cfg['rel_acc'], float), (
-            'precision: rel_acc must be a float'
-        )
-        assert isinstance(precision_cfg['boost_bessel'], bool), (
-            'precision: boost_bessel must be a boolean'
-        )
-        assert isinstance(precision_cfg['verbose'], bool), (
-            'precision: verbose must be a boolean'
-        )
         assert isinstance(precision_cfg['ell_min_proj'], int), (
             'precision: ell_min_proj must be an int'
         )
@@ -790,6 +775,35 @@ class SpaceborneConfigChecker:
             'polynomial_fit',
         ], 'which_gal_bias should be "from_input" or "polynomial_fit"'
 
+    def check_projection_methods(self) -> None:
+        """Integration methods for the harmonic -> real-space projection."""
+        precision_cfg = self.cfg['precision']
+        allowed = {
+            'proj_gauss_integration_method': ('simps', 'FFTLog'),
+            'proj_nongauss_integration_method': ('simps', 'quad', 'FFTLog'),
+        }
+        for key, options in allowed.items():
+            method = precision_cfg[key]
+            if method == 'levin':
+                raise ValueError(
+                    f"precision: {key}='levin' is no longer supported (Levin "
+                    f'integration has been removed). Choose one of {options}.'
+                )
+            if method not in options:
+                raise ValueError(
+                    f'precision: {key} must be one of {options}, got {method!r}'
+                )
+
+        if (
+            self.cfg['probe_selection']['space'] == 'real'
+            and 'FFTLog' in (precision_cfg[key] for key in allowed)
+            and self.cfg['binning']['binning_type'] != 'log'
+        ):
+            raise ValueError(
+                "integration_method='FFTLog' requires log-spaced theta bins "
+                "(binning_type: 'log')."
+            )
+
     def run_all_checks(self) -> None:
         self.check_types()
         self.check_nmt()
@@ -805,3 +819,4 @@ class SpaceborneConfigChecker:
         self.check_nz()
         self.check_cosmo()
         self.check_cov()
+        self.check_projection_methods()

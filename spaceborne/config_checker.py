@@ -803,6 +803,17 @@ class SpaceborneConfigChecker:
                 "integration_method='FFTLog' requires log-spaced theta bins "
                 "(binning_type: 'log')."
             )
+        
+        # warn that for COSEBIs only simps is used
+        if self.cfg['probe_selection']['space'] == 'cosebis' and (
+            precision_cfg['proj_gauss_integration_method'] != 'simps'
+            or precision_cfg['proj_nongauss_integration_method'] != 'simps'
+        ):
+            warnings.warn(
+                "For COSEBIs, the projection methods are forced to 'simps' "
+                'regardless of the configuration settings.',
+                stacklevel=2,
+            )
 
     def run_all_checks(self) -> None:
         self.check_types()

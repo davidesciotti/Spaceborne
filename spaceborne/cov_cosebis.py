@@ -24,14 +24,21 @@ warnings.filterwarnings(
     category=RuntimeWarning,
 )
 
-_UNSET = object()
-
 
 class CovCOSEBIs(CovarianceProjector):
-    def __init__(self, cfg, pvt_cfg):
-        super().__init__(cfg, pvt_cfg)
+    def __init__(
+        self,
+        cfg: dict,
+        pvt_cfg: dict,
+        cl_3x2pt_5d: np.ndarray,
+        nl_3x2pt_4d: np.ndarray,
+        ells_proj_g: np.ndarray,
+        ells_proj_ng: np.ndarray,
+    ):
+        super().__init__(
+            cfg, pvt_cfg, cl_3x2pt_5d, nl_3x2pt_4d, ells_proj_g, ells_proj_ng
+        )
 
-        self.obs_space = 'cosebis'
         self._ch = None
 
         self.n_modes = cfg['binning']['n_modes_cosebis']
@@ -54,13 +61,14 @@ class CovCOSEBIs(CovarianceProjector):
         # setters
         self._set_theta_binning()
 
-        # attributes set at runtime
-        self.cl_3x2pt_5d = _UNSET
-        self.ells_proj_g = _UNSET
-        self.ells_proj_ng = _UNSET
-        self.nbl_proj_g = _UNSET
-        self.w_ells_arr_g = _UNSET
-        self.w_ells_arr_ng = _UNSET
+        # W_n(ell) projection kernels, shape (n_modes, nbl), on the ell grids of the
+        # G and NG projections. The NG grid is only needed if a NG term is requested
+        self.w_ells_arr_g = self._compute_w_ells(self.ells_proj_g)
+        self.w_ells_arr_ng = (
+            self._compute_w_ells(self.ells_proj_ng)
+            if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']
+            else None
+        )
 
     @property
     def ch(self):
@@ -96,13 +104,12 @@ class CovCOSEBIs(CovarianceProjector):
         assert len(self.theta_grid_rad) == self.nbt, 'theta_grid_rad length mismatch'
         assert np.min(np.diff(self.theta_grid_rad)) > 0, 'theta_grid_rad not sorted!'
 
-    def set_w_ells(self, ells):
-        """
-        Compute and set the COSEBIs W_n(ell) kernels for all modes and ells.
+    def _compute_w_ells(self, ells: np.ndarray) -> np.ndarray:
+        """Compute the COSEBIs W_n(ell) kernels for all modes, on the given ells.
 
-        Sets:
-            self.w_ells_arr (np.ndarray): Array of shape (n_modes, n_ells) containing
-                the computed W_n(ell) kernel values.
+        Returns
+        -------
+        np.ndarray, shape (n_modes, len(ells))
         """
 
         with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {self.nbs} modes...'):
@@ -112,7 +119,7 @@ class CovCOSEBIs(CovarianceProjector):
                 ells=ells,
                 N_thread=self.n_jobs,
             )
-            
+
         # add a guard against non-int keys
         mode_keys = sorted(k for k in w_ells_dict if isinstance(k, (int, np.integer)))
         w_ells_arr = np.array([w_ells_dict[k] for k in mode_keys])
@@ -231,52 +238,32 @@ class CovCOSEBIs(CovarianceProjector):
         zpairs_ab = self.zpairs_auto if probe_a_ix == probe_b_ix else self.zpairs_cross
         zpairs_cd = self.zpairs_auto if probe_c_ix == probe_d_ix else self.zpairs_cross
 
-        # Create a theta grid for computing the Hankel transform
-        # You may want to use a finer grid than self.theta_centers_fine
-
-        # Arguments for the covariance function (same for SVA and MIX)
-        cov_simps_func_kw = {
-            'probe_a_ix': probe_a_ix,
-            'probe_b_ix': probe_b_ix,
-            'probe_c_ix': probe_c_ix,
-            'probe_d_ix': probe_d_ix,
-            'amax_abcd': amax_abcd,
-        }
-
-        # Arguments for the kernel builder
-        # For COSEBIs it's only w_ells_arr (constant across all mode pairs)
-        # The mode indices (mode_n, mode_m) are passed as scale_ix_1, scale_ix_2 by
-        # the wrapper
-        kernel_builder_func_kw = {'w_ells_arr': self.w_ells_arr_g}
-
         # Compute term-specific covariance
-        if term == 'sva':
-            if 'Bn' in probe_2tpl:
-                cov_out_6d = np.zeros(self.cov_shape_6d)
+        if term in ['sva', 'mix'] and 'Bn' in probe_2tpl:
+            # the Gaussian SVA and MIX terms vanish for B-modes
+            cov_out_6d = np.zeros(self.cov_shape_6d)
+
+        elif term in ['sva', 'mix']:
+            if term == 'sva':
+                cl_integrand_5d = cp.build_cl_integrand_5d_sva(
+                    self.cl_3x2pt_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix
+                )
             else:
-                cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
-                    zpairs_ab=zpairs_ab,
-                    zpairs_cd=zpairs_cd,
-                    ind_ab=ind_ab,
-                    ind_cd=ind_cd,
-                    cov_simps_func=self.proj_cov_sva_simps,
-                    cov_simps_func_kw=cov_simps_func_kw,
-                    kernel_builder_func_kw=kernel_builder_func_kw,
+                cl_integrand_5d = cp.build_cl_integrand_5d_mix(
+                    self.cl_3x2pt_5d,
+                    self.nl_3x2pt_4d,
+                    probe_a_ix,
+                    probe_b_ix,
+                    probe_c_ix,
+                    probe_d_ix,
                 )
 
-        elif term == 'mix':
-            if 'Bn' in probe_2tpl:
-                cov_out_6d = np.zeros(self.cov_shape_6d)
-            else:
-                cov_out_6d = self.proj_cov_simps_parallel_helper_wrapper(
-                    zpairs_ab=zpairs_ab,
-                    zpairs_cd=zpairs_cd,
-                    ind_ab=ind_ab,
-                    ind_cd=ind_cd,
-                    cov_simps_func=self.proj_cov_mix_simps,
-                    cov_simps_func_kw=cov_simps_func_kw,
-                    kernel_builder_func_kw=kernel_builder_func_kw,
-                )
+            # the COSEBIs kernel is the precomputed W_n(ell), one row per mode
+            cov_out_6d = self.proj_mix_sva_simps_vectorized(
+                cl_integrand_5d=cl_integrand_5d,
+                amax_abcd=amax_abcd,
+                kernel_func_kw={'w_ells_arr': self.w_ells_arr_g},
+            )
 
         elif term == 'sn':
             if probe_ab == probe_cd:
@@ -330,7 +317,7 @@ class CovCOSEBIs(CovarianceProjector):
                         cov_hs_ng_4d=cov_hs_ng_4d,
                         kernel_1_func_of_ell=kernel_n,
                         kernel_2_func_of_ell=kernel_m,
-                        integration_method='simps'
+                        integration_method='simps',
                     )
 
             # reshape to 6d and symmetrize if needed

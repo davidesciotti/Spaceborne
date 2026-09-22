@@ -1192,8 +1192,11 @@ class CovRealSpace(CovarianceProjector):
             # project hs non-gaussian cov to real space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
-            if self.proj_ng_int_method in ['simps', 'quad']:
-                cov_rs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
+            if self.proj_ng_int_method == 'quad':
+                cov_rs_ng_4d = self.proj_ng_quad(cov_hs_ng_4d, mu=mu, nu=nu)
+
+            elif self.proj_ng_int_method == 'simps':
+                cov_rs_ng_4d = np.zeros((self.nbs, self.nbs, zpairs_ab, zpairs_cd))
 
                 # to parallelize over the scale (theta, in this case) indices s1 and s2,
                 # rely on proj_cov_2d_parallel_helper
@@ -1210,8 +1213,8 @@ class CovRealSpace(CovarianceProjector):
                         ells_proj_ng=self.ells_proj_ng,
                         cov_hs_ng_4d=cov_hs_ng_4d,
                     )
-                    for s1 in range(self.nbx)
-                    for s2 in range(self.nbx)
+                    for s1 in range(self.nbs)
+                    for s2 in range(self.nbs)
                 )
 
                 for s1, s2, block in results:
@@ -1246,7 +1249,7 @@ class CovRealSpace(CovarianceProjector):
             # reshape to 6d and symmetrize if needed
             cov_rs_ng_6d = sl.cov_4D_to_6D_blocks(
                 cov_4D=cov_rs_ng_4d,
-                nbl=self.nbx,
+                nbl=self.nbs,
                 zbins=self.zbins,
                 ind_ab=ind_ab,
                 ind_cd=ind_cd,

@@ -66,7 +66,7 @@ implementation. Reading order to understand a run:
        `_compute_one_realization`, `sim_cls_to_ensemble_cov`).
    - **SSC / cNG**: `cov_ssc.py` + CCL trispectrum (PyCCL section of `main.py`).
    - **Real space / COSEBIs**: `cov_real_space.py`, `cov_cosebis.py`, projected from harmonic space via
-     `cov_projector.py` (uses `twobessel_fang.py`, optional `pylevin`).
+     `cov_projector.py` (uses `twobessel_fang.py` for FFTLog; COSEBIs kernels need `cloelib`).
    - **External cross-check**: `oc_interface.py` shells out to OneCovariance.
 5. **Assemble & save**: terms combined, then reshaped and written. `io_handler.py` + `sb_lib.py` hold the
    shape machinery and I/O.

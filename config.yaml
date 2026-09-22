@@ -232,7 +232,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -390,13 +390,13 @@ precision:
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
   ell_bins_proj_gauss: 2000 # Type: int.
-  ell_bins_proj_nongauss: 200 # Type: int.
+  ell_bins_proj_nongauss: 300 # Type: int.
 
   # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
   # performed with simpson integration.
-  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin', 'FFTLog']
-  proj_nongauss_integration_method: quad # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
+  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'FFTLog']
+  proj_nongauss_integration_method: quad # Type: str. Options: ['simps', 'quad', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.

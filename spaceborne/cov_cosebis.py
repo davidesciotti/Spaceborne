@@ -35,7 +35,7 @@ class CovCOSEBIs(CovarianceProjector):
         self._ch = None
 
         self.n_modes = cfg['binning']['n_modes_cosebis']
-        assert self.n_modes == self.nbx, 'n_modes_cosebis must equal nbx!'
+        assert self.n_modes == self.nbs, 'n_modes_cosebis must equal nbs!'
         self.symmetrize_output_dict = pvt_cfg['symmetrize_output_dict']
 
         # ! instantiate cov_dict
@@ -105,10 +105,10 @@ class CovCOSEBIs(CovarianceProjector):
                 the computed W_n(ell) kernel values.
         """
 
-        with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {self.nbx} modes...'):
+        with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {self.nbs} modes...'):
             w_ells_dict = self.ch.get_W_ell(
                 thetagrid=self.theta_grid_rad,
-                Nmax=self.nbx,
+                Nmax=self.nbs,
                 ells=ells,
                 N_thread=self.n_jobs,
             )
@@ -130,14 +130,14 @@ class CovCOSEBIs(CovarianceProjector):
         prefactor = first_term[:, :, None, None] * second_term
 
         # 1. Compute T_minus and T_plus
-        t_minus = np.zeros((self.nbt, self.nbx))
-        t_plus = np.zeros((self.nbt, self.nbx))
+        t_minus = np.zeros((self.nbt, self.nbs))
+        t_plus = np.zeros((self.nbt, self.nbs))
 
         rn, nn, coeff_j = self.ch.get_roots_and_norms(
-            tmax=self.theta_max_rad, tmin=self.theta_min_rad, Nmax=self.nbx
+            tmax=self.theta_max_rad, tmin=self.theta_min_rad, Nmax=self.nbs
         )
 
-        for n in range(self.nbx):
+        for n in range(self.nbs):
             t_minus[:, n] = self.ch.tm(
                 n=n + 1,
                 t=self.theta_grid_rad,
@@ -311,9 +311,9 @@ class CovCOSEBIs(CovarianceProjector):
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
             # Loop over scale indices (mode_n, mode_m)
-            cov_cs_ng_4d = np.zeros((self.nbx, self.nbx, zpairs_ab, zpairs_cd))
-            for s1 in range(self.nbx):
-                for s2 in range(self.nbx):
+            cov_cs_ng_4d = np.zeros((self.nbs, self.nbs, zpairs_ab, zpairs_cd))
+            for s1 in range(self.nbs):
+                for s2 in range(self.nbs):
                     # Build projection kernels for s1 and s2 (mode_n, mode_m):
                     # I need callables that are a function of ell,
                     # even though they are not in this case
@@ -336,7 +336,7 @@ class CovCOSEBIs(CovarianceProjector):
             # reshape to 6d and symmetrize if needed
             cov_ng_cs_6d = sl.cov_4D_to_6D_blocks(
                 cov_4D=cov_cs_ng_4d,
-                nbl=self.nbx,
+                nbl=self.nbs,
                 zbins=self.zbins,
                 ind_ab=ind_ab,
                 ind_cd=ind_cd,

@@ -307,7 +307,7 @@ def sum_split_g_terms_allprobeblocks_alldims(cov_dict) -> None:
 
 
 def fill_remaining_probe_blocks_6d(
-    cov_dict, term, symm_probe_combs, nonreq_probe_combs, space, nbx, zbins
+    cov_dict, term, symm_probe_combs, nonreq_probe_combs, space, nbs, zbins
 ):
     """Fill the remaining probe combinations by symmetry or
     set them to 0 if not required."""
@@ -326,14 +326,14 @@ def fill_remaining_probe_blocks_6d(
         probe_2tpl = (probe_ab, probe_cd)
 
         cov_dict[term][probe_2tpl]['6d'] = np.zeros(
-            (nbx, nbx, zbins, zbins, zbins, zbins)
+            (nbs, nbs, zbins, zbins, zbins, zbins)
         )
 
 
 def postprocess_cov_dict(
     cov_dict,
     obs_space,
-    nbx,
+    nbs,
     ind_auto,
     ind_cross,
     zpairs_auto,
@@ -353,7 +353,7 @@ def postprocess_cov_dict(
     cov_dict_6d_probe_blocks_to_4d_and_2d(
         cov_dict=cov_dict,
         obs_space=obs_space,
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -389,7 +389,7 @@ def symmetrize_and_fill_probe_blocks(
     unique_probe_combs: list[str],
     nonreq_probe_combs: list[str],
     obs_space: str,
-    nbx: int,
+    nbs: int,
     zbins: int | None,
     ind_dict: dict,
     msg: str,
@@ -444,9 +444,9 @@ def symmetrize_and_fill_probe_blocks(
         print(f'{msg}skipping probe combination {(probe_ab, probe_cd)}')
 
         if dim == '4d':
-            shape = (nbx, nbx, zpairs_ab, zpairs_cd)
+            shape = (nbs, nbs, zpairs_ab, zpairs_cd)
         elif dim == '6d':
-            shape = (nbx, nbx, zbins, zbins, zbins, zbins)
+            shape = (nbs, nbs, zbins, zbins, zbins, zbins)
 
         cov_term_dict[probe_2tpl][dim] = np.zeros(shape)
 
@@ -2199,7 +2199,7 @@ def compute_g_cov(
 def cov_dict_6d_probe_blocks_to_4d_and_2d(
     cov_dict: dict,
     obs_space: str,
-    nbx: int,
+    nbs: int,
     ind_auto: np.ndarray,
     ind_cross: np.ndarray,
     zpairs_auto: int,
@@ -2258,7 +2258,7 @@ def cov_dict_6d_probe_blocks_to_4d_and_2d(
                 # reshape
                 cov_dict[term][probe_ab, probe_cd]['4d'] = cov_6D_to_4D_blocks(
                     cov_6D=cov_6d,
-                    nbl=nbx,
+                    nbl=nbs,
                     npairs_AB=zpairs_ab,
                     npairs_CD=zpairs_cd,
                     ind_AB=ind_ab,
@@ -2599,18 +2599,18 @@ def build_cov_3x2pt_2d(
     # get the number of ell bins
     probe_blocks = [k for k in cov_term_dict if cov_term_dict[k] is not None]
     first_block = probe_blocks[0]
-    nbx = cov_term_dict[first_block]['4d'].shape[0]
+    nbs = cov_term_dict[first_block]['4d'].shape[0]
 
     # make sure it's consistent across all probes and dimensions
     # (# ell bins = # ell^prime bins)
     for probe_2tpl in probe_blocks:
         if probe_2tpl == '3x2pt':
             continue
-        _nbx = cov_term_dict[probe_2tpl]['4d'].shape[0]
-        assert _nbx == cov_term_dict[probe_2tpl]['4d'].shape[1], (
+        _nbs = cov_term_dict[probe_2tpl]['4d'].shape[0]
+        assert _nbs == cov_term_dict[probe_2tpl]['4d'].shape[1], (
             'axes lengths must match'
         )
-        assert nbx == _nbx, 'axes lengths must match'
+        assert nbs == _nbs, 'axes lengths must match'
 
     if cov_ordering_2d in ['probe_scale_zpair', 'probe_zpair_scale']:
         rows = []
@@ -2634,9 +2634,9 @@ def build_cov_3x2pt_2d(
     # Work directly with 4D arrays and extract zpair slices for each ell pair
     elif cov_ordering_2d == 'scale_probe_zpair':
         rows = []
-        for ell1 in range(nbx):
+        for ell1 in range(nbs):
             row_blocks = []
-            for ell2 in range(nbx):
+            for ell2 in range(nbs):
                 # For this ell pair, stack all probe combinations
                 probe_rows = []
                 for probe_ab in diag_probes:

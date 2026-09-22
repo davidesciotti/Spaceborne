@@ -727,17 +727,17 @@ bin_obj.compute_ells_3x2pt_unbinned()  # not always required, but this is simple
 bin_obj._validate_bins()
 
 if obs_space == 'harmonic':
-    nbx = bin_obj.nbl_3x2pt
+    nbs = bin_obj.nbl_3x2pt
 elif obs_space == 'real':
-    nbx = cfg['binning']['theta_bins']
+    nbs = cfg['binning']['theta_bins']
 elif obs_space == 'cosebis':
-    nbx = cfg['binning']['n_modes_cosebis']
+    nbs = cfg['binning']['n_modes_cosebis']
 else:
     raise ValueError(f'Unknown observables space: {obs_space:s}')
 
 pvt_cfg['nbl_3x2pt'] = bin_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = bin_obj.ell_min_3x2pt
-pvt_cfg['nbx'] = nbx
+pvt_cfg['nbs'] = nbs
 
 
 # ! ===================================== Mask =========================================
@@ -1270,7 +1270,7 @@ if (
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
         obs_space=obs_space,
-        nbx=nbx,
+        nbs=nbs,
         df_chunk_size=5_000_000,
     )
 
@@ -1334,7 +1334,7 @@ if (
     sl.postprocess_cov_dict(
         cov_dict=cov_oc_obj.cov_dict,
         obs_space=obs_space,
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1614,7 +1614,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
             symm_probe_combs=symm_probe_combs_rs,
             nonreq_probe_combs=nonreq_probe_combs_rs,
             space='real',
-            nbx=nbx,
+            nbs=nbs,
             zbins=zbins,
         )
 
@@ -1625,7 +1625,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     sl.postprocess_cov_dict(
         cov_dict=cov_rs_obj.cov_dict,
         obs_space='real',
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1681,7 +1681,7 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
             symm_probe_combs=symm_probe_combs_cs,
             nonreq_probe_combs=nonreq_probe_combs_cs,
             space='cosebis',
-            nbx=nbx,
+            nbs=nbs,
             zbins=zbins,
         )
 
@@ -1692,7 +1692,7 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     sl.postprocess_cov_dict(
         cov_dict=cov_cs_obj.cov_dict,
         obs_space='cosebis',
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1874,8 +1874,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
                 req_diag_probes = [p for p in diag_probe_combs if p in req_diag_probes]
 
                 # set the boundaries
-                elem_auto = zpairs_auto * nbx
-                elem_cross = zpairs_cross * nbx
+                elem_auto = zpairs_auto * nbs
+                elem_cross = zpairs_cross * nbs
 
                 lim_dict = {
                     'LL': elem_auto,

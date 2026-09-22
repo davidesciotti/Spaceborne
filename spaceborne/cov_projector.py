@@ -223,6 +223,169 @@ def proj_cov_2d(
     return cov_out
 
 
+def proj_cov_2d_quad_all_scales(
+    ells_proj: np.ndarray,
+    cov_hs_ng_4d: np.ndarray,
+    kernel_1_funcs: list[Callable[[float], float]],
+    kernel_2_funcs: list[Callable[[float], float]],
+) -> np.ndarray:
+    r"""Same integral as ``proj_cov_2d(..., 'quad')``, but for *all* the scale-bin
+    pairs (s1, s2) at once:
+
+        cov[s1, s2] = \int d\ell_1 \ell_1 k_1(\ell_1; s1)
+                      \int d\ell_2 \ell_2 k_2(\ell_2; s2) cov_hs(\ell_1, \ell_2)
+                      └──────────────── inner(\ell_1; s2) ────────────────┘
+
+    Calling ``proj_cov_2d`` once per (s1, s2) costs nbs^2 * (nbl + 1) adaptive
+    integrations. Here it costs nbs + 1, thanks to three observations:
+
+    1. the inner integral depends on s2 but not on s1, so it is computed once per s2
+       rather than once per (s1, s2);
+    2. quad_vec integrates vector-valued functions, so the loop over ell_1 in the
+       inner integral becomes a single integration of a vector with one entry per
+       (ell_1, zpair);
+    3. for the same reason, the outer integral is a single integration of a vector
+       with one entry per (s1, s2, zpair).
+
+    The (zpair_ab, zpair_cd) axes are flattened into a single zpair axis throughout.
+
+    Notes
+    -----
+    Batching changes where quad_vec subdivides the integration range, since it
+    refines on the norm of the whole output vector: the results agree with the
+    one-(s1, s2)-at-a-time version to within the quad_vec tolerance, but are not
+    bitwise identical.
+
+    Parameters
+    ----------
+    ells_proj : np.ndarray, shape (nbl,)
+        Multipoles at which cov_hs_ng_4d is sampled; strictly increasing.
+    cov_hs_ng_4d : np.ndarray, shape (nbl, nbl, zpairs_ab, zpairs_cd)
+        Harmonic-space non-Gaussian covariance.
+    kernel_1_funcs, kernel_2_funcs : list of callables, length nbs
+        Projection kernels as functions of (scalar) ell, one per scale bin.
+
+    Returns
+    -------
+    np.ndarray, shape (nbs, nbs, zpairs_ab, zpairs_cd)
+    """
+    nbl = len(ells_proj)
+    if cov_hs_ng_4d.ndim != 4:
+        raise ValueError('cov_hs_ng_4d must be 4D')
+    if cov_hs_ng_4d.shape[0] != nbl or cov_hs_ng_4d.shape[1] != nbl:
+        raise ValueError(
+            f'cov_hs_ng_4d.shape={cov_hs_ng_4d.shape} inconsistent with nbl={nbl}'
+        )
+    if len(kernel_1_funcs) != len(kernel_2_funcs):
+        raise ValueError('kernel_1_funcs and kernel_2_funcs must have the same length')
+
+    zpairs_ab, zpairs_cd = cov_hs_ng_4d.shape[2], cov_hs_ng_4d.shape[3]
+    nbs = len(kernel_1_funcs)
+
+    # flatten the two zpair axes: (nbl, nbl, zpairs_ab, zpairs_cd) -> (nbl, nbl, zpairs)
+    cov_ell1ell2 = cov_hs_ng_4d.reshape(nbl, nbl, zpairs_ab * zpairs_cd)
+
+    # inner integral, over ell2. Shape (nbs, nbl, zpairs) = (s2, ell1, zpair)
+    inner = _quad_inner_integral_over_ell2(ells_proj, cov_ell1ell2, kernel_2_funcs)
+
+    # outer integral, over ell1. Shape (nbs, nbs, zpairs) = (s1, s2, zpair)
+    cov_out = _quad_outer_integral_over_ell1(ells_proj, inner, kernel_1_funcs)
+
+    return cov_out.reshape(nbs, nbs, zpairs_ab, zpairs_cd)
+
+
+def _quad_inner_integral_over_ell2(
+    ells_proj: np.ndarray,
+    cov_ell1ell2: np.ndarray,
+    kernel_2_funcs: list[Callable[[float], float]],
+) -> np.ndarray:
+    r"""For each scale bin s2, compute
+
+        inner(\ell_1; s2) = \int d\ell_2 \ell_2 k_2(\ell_2; s2) cov(\ell_1, \ell_2)
+
+    for all ell_1 and zpairs at once.
+
+    Parameters
+    ----------
+    ells_proj : np.ndarray, shape (nbl,)
+    cov_ell1ell2 : np.ndarray, shape (nbl, nbl, zpairs), axes (ell1, ell2, zpair)
+    kernel_2_funcs : list of callables, length nbs
+
+    Returns
+    -------
+    np.ndarray, shape (nbs, nbl, zpairs), axes (s2, ell1, zpair)
+    """
+    ell_min, ell_max = ells_proj[0], ells_proj[-1]
+
+    # Interpolate the covariance along ell2 (axis 1). Evaluated at a single ell2, the
+    # spline returns the whole (ell1, zpair) slice, shape (nbl, zpairs): this is what
+    # lets quad_vec integrate over ell2 for all ell1 at once.
+    # Only the covariance is interpolated: the oscillatory kernel is evaluated
+    # exactly at every point quad_vec asks for.
+    cov_spline_in_ell2 = make_interp_spline(ells_proj, cov_ell1ell2, k=3, axis=1)
+
+    # The loop over s2 is deliberately not batched like the outer integral: the
+    # vector here is already nbl times larger, and quad_vec keeps one copy of it per
+    # subinterval, so adding an s2 axis would multiply the memory by nbs.
+    inner = []
+    for kernel_2 in kernel_2_funcs:
+
+        def integrand(ell2, kernel_2=kernel_2):
+            return ell2 * kernel_2(ell2) * cov_spline_in_ell2(ell2)  # (nbl, zpairs)
+
+        integral, _ = quad_vec(integrand, ell_min, ell_max)
+        inner.append(integral)
+
+    return np.stack(inner, axis=0)
+
+
+def _quad_outer_integral_over_ell1(
+    ells_proj: np.ndarray,
+    inner: np.ndarray,
+    kernel_1_funcs: list[Callable[[float], float]],
+    epsrel: float = 1e-10,
+) -> np.ndarray:
+    r"""For all scale-bin pairs (s1, s2) at once, compute
+
+        cov(s1, s2) = \int d\ell_1 \ell_1 k_1(\ell_1; s1) inner(\ell_1; s2)
+
+    Parameters
+    ----------
+    ells_proj : np.ndarray, shape (nbl,)
+    inner : np.ndarray, shape (nbs, nbl, zpairs), axes (s2, ell1, zpair)
+        Output of ``_quad_inner_integral_over_ell2``.
+    kernel_1_funcs : list of callables, length nbs
+    epsrel : float
+        Relative tolerance of quad_vec. Tighter than its 1e-8 default because it
+        applies to the norm of the whole (s1, s2, zpair) vector, so the entries much
+        smaller than the largest one (e.g. the large-theta bins, down to ~1e-6 of the
+        maximum) would otherwise get a correspondingly poorer relative accuracy.
+        With 1e-10 they are at least as accurate as with one integration per (s1, s2)
+        at the default tolerance, for ~25% more integrand evaluations.
+
+    Returns
+    -------
+    np.ndarray, shape (nbs, nbs, zpairs), axes (s1, s2, zpair)
+    """
+    ell_min, ell_max = ells_proj[0], ells_proj[-1]
+
+    # Interpolate the inner integral along ell1 (axis 1). Evaluated at a single ell1,
+    # the spline returns shape (nbs, zpairs), i.e. every (s2, zpair).
+    inner_spline_in_ell1 = make_interp_spline(ells_proj, inner, k=3, axis=1)
+
+    def integrand(ell1):
+        # all the s1 kernels at this ell1, shape (nbs,)
+        kernels_1 = np.array([kernel_1(ell1) for kernel_1 in kernel_1_funcs])
+        # inner integral at this ell1, shape (nbs, zpairs)
+        inner_at_ell1 = inner_spline_in_ell1(ell1)
+
+        # broadcast to (s1, s2, zpair)
+        return ell1 * kernels_1[:, None, None] * inner_at_ell1[None, :, :]
+
+    cov_out, _ = quad_vec(integrand, ell_min, ell_max, epsrel=epsrel)
+    return cov_out
+
+
 class CovarianceProjector:
     """
     Base class for all projected covariance computations.
@@ -258,7 +421,7 @@ class CovarianceProjector:
         self.ind_auto = pvt_cfg['ind_auto']
         self.ind_cross = pvt_cfg['ind_cross']
         self.ind_dict = pvt_cfg['ind_dict']
-        self.nbx = pvt_cfg['nbx']
+        self.nbs = pvt_cfg['nbs']  # "nbs" = number of scale (theta or n) bins
         self.n_jobs = cfg['misc']['num_threads']
         self.n_probes_hs = 2
 
@@ -273,8 +436,8 @@ class CovarianceProjector:
 
         # TODO here (in the init) I should add the finely binned Cls, which are used in all projections!
         self.cov_shape_6d = (
-            self.nbx,
-            self.nbx,
+            self.nbs,
+            self.nbs,
             self.zbins,
             self.zbins,
             self.zbins,
@@ -411,8 +574,8 @@ class CovarianceProjector:
                 cov_func_kw=cov_simps_func_kw,
                 kernel_builder_func_kw=kernel_builder_func_kw,
             )
-            for s1 in tqdm(range(self.nbx))
-            for s2 in range(self.nbx)
+            for s1 in tqdm(range(self.nbs))
+            for s2 in range(self.nbs)
             for zij in range(zpairs_ab)
             for zkl in range(zpairs_cd)
         )
@@ -447,7 +610,7 @@ class CovarianceProjector:
         \int d\ell f(\ell) = weights * f
             (if f and weights are 1D), otherwise weights @ f
 
-        In this case, the projection becomes one (nbx^2, nbl) @ (nbl, zbins^4)
+        In this case, the projection becomes one (nbs^2, nbl) @ (nbl, zbins^4)
         matmul.
 
         The kernels depend only on (ell, scale bin, order), so they are built once
@@ -469,7 +632,7 @@ class CovarianceProjector:
 
         def build_kernel_array(mu: int | None) -> np.ndarray:
             """
-            Builds an array of shape (nbx, nbl) containing the projection kernel for
+            Builds an array of shape (nbs, nbl) containing the projection kernel for
             the given Bessel order mu.
             The projection kernel does not depend on the tomographic indices, so it
             can be computed only once per scale bin."""
@@ -480,29 +643,29 @@ class CovarianceProjector:
                     mu=mu,
                     kernel_func_kw=kernel_func_kw or {},
                 )(ells)
-                for s in range(self.nbx)
+                for s in range(self.nbs)
             ]
             return np.array(kernel_list)
 
-        # shape: (nbx, nbl)
+        # shape: (nbs, nbl)
         k1 = build_kernel_array(mu)
-        k2 = build_kernel_array(nu)
+        k2 = k1 if nu == mu else build_kernel_array(nu)
 
         # simpson simps_weights do not depend on the integrand! I can simply compute
         # them in this way and use them below:
         # simps_weights @ (integrand) and simps(integrand, x) are the same
         simps_weights = simps(y=np.eye(nbl), x=ells, axis=0)  # shape: (nbl,)
 
-        kernel_prod = k1[:, None, :] * k2[None, :, :]  # shape: (nbx, nbx, nbl)
-        weights = kernel_prod * simps_weights * ells  # shape: (nbx, nbx, nbl)
+        kernel_prod = k1[:, None, :] * k2[None, :, :]  # shape: (nbs, nbs, nbl)
+        weights = kernel_prod * simps_weights * ells  # shape: (nbs, nbs, nbl)
 
         # the matmul is the sum, weighted via the simpson weights
         # I want to sum over the ells, which need to be made the inner axes, with
         # everything else flattened:
-        # (nbx * nbx, nbl) @ (nbl, zbins**4) -> (nbx * nbx, zbins**4)
+        # (nbs * nbs, nbl) @ (nbl, zbins**4) -> (nbs * nbs, zbins**4)
         cov_out_flat = weights.reshape(-1, nbl) @ cl_integrand_5d.reshape(nbl, -1)
 
-        # final reshape to get (nbx, nbx, zbins, zbins, zbins, zbins)
+        # final reshape to get (nbs, nbs, zbins, zbins, zbins, zbins)
         cov_out_6d = cov_out_flat.reshape(self.cov_shape_6d)
 
         # apply the 1/(2 pi A_max) prefactor
@@ -568,6 +731,41 @@ class CovarianceProjector:
             raise ValueError(f'Observable space {obs_space} not recognized!')
 
         return kernel_func_of_ell
+
+    def proj_ng_quad(
+        self, cov_hs_ng_4d: np.ndarray, mu: int | None, nu: int | None
+    ) -> np.ndarray:
+        """Project a harmonic-space non-Gaussian covariance block with quad_vec.
+
+        Builds the projection kernels for every scale bin and calls
+        ``proj_cov_2d_quad_all_scales``.
+
+        Parameters
+        ----------
+        cov_hs_ng_4d : np.ndarray, shape (nbl, nbl, zpairs_ab, zpairs_cd)
+            Harmonic-space covariance, sampled at ``self.ells_proj_ng``.
+        mu, nu : int or None
+            Bessel orders of the two probes (real space only).
+
+        Returns
+        -------
+        np.ndarray, shape (nbs, nbs, zpairs_ab, zpairs_cd)
+        """
+
+        def kernels_for_all_scale_bins(order):
+            return [
+                self.get_projection_kernel_func_of_ell(
+                    scale_ix=s, obs_space=self.obs_space, mu=order, kernel_func_kw={}
+                )
+                for s in range(self.nbs)
+            ]
+
+        return proj_cov_2d_quad_all_scales(
+            ells_proj=self.ells_proj_ng,
+            cov_hs_ng_4d=cov_hs_ng_4d,
+            kernel_1_funcs=kernels_for_all_scale_bins(mu),
+            kernel_2_funcs=kernels_for_all_scale_bins(nu),
+        )
 
     def proj_cov_mix_simps(
         self,

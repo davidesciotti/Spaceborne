@@ -216,3 +216,93 @@ class TestBuildClIntegrand5dMix:
         nl_4d = np.zeros((self.N_PROBES, self.N_PROBES, self.ZBINS, self.ZBINS))
         out = cp.build_cl_integrand_5d_mix(cl_5d, nl_4d, 0, 1, 0, 1)
         np.testing.assert_array_equal(out, 0.0)
+
+
+# ----------------------------------------------------------------------------- #
+# proj_cov_2d_quad_all_scales
+# ----------------------------------------------------------------------------- #
+_THETA_EDGES = np.geomspace(5, 300, 4) * np.pi / 10800  # 3 log bins, in rad
+
+
+def _real_space_kernels(mu, nbs=3):
+    from spaceborne.cov_real_space import k_mu
+
+    return [
+        lambda ell, p=p: k_mu(
+            ell, thetal=_THETA_EDGES[p], thetau=_THETA_EDGES[p + 1], mu=mu
+        )
+        for p in range(nbs)
+    ]
+
+
+class TestProjCov2dQuadAllScales:
+    """The non-Gaussian quad projection, batched over scale bins and ell_1."""
+
+    @staticmethod
+    def _binavg_j0_gaussian(s, thetal, thetau):
+        r"""Exact 2/(tu^2 - tl^2) \int_tl^tu dt t \int_0^inf dl l J0(l t) e^{-l^2/2s^2},
+        using \int_0^inf l J0(l t) e^{-l^2/2s^2} dl = s^2 e^{-t^2 s^2 / 2}."""
+        return (
+            2
+            * (np.exp(-(thetal**2) * s**2 / 2) - np.exp(-(thetau**2) * s**2 / 2))
+            / (thetau**2 - thetal**2)
+        )
+
+    def test_mu0_matches_analytic(self):
+        """A separable Gaussian C(l1, l2) = f(l1) f(l2) projects to V_p V_q."""
+        s = 30.0
+        # the ell range covers the Gaussian entirely, so truncation is negligible
+        ells = np.geomspace(1e-3, 400, 300)
+        f = np.exp(-(ells**2) / (2 * s**2))
+        cov = np.outer(f, f)[:, :, None, None]
+
+        out = cp.proj_cov_2d_quad_all_scales(
+            ells, cov, _real_space_kernels(0), _real_space_kernels(0)
+        )
+
+        v = np.array([
+            self._binavg_j0_gaussian(s, _THETA_EDGES[p], _THETA_EDGES[p + 1])
+            for p in range(3)
+        ])  # fmt: skip
+        # the residual is the cubic-spline interpolation error of f on this grid
+        np.testing.assert_allclose(out[..., 0, 0], np.outer(v, v), rtol=5e-6, atol=0)
+
+    def test_matches_one_scale_pair_at_a_time(self):
+        """Batching over (s1, s2) and ell_1 reproduces proj_cov_2d(..., 'quad'),
+        including for zpairs whose amplitude is 1e-4 of the largest one, and for
+        non-square (zpairs_ab, zpairs_cd)."""
+        nbl, nbs = 30, 2
+        ells = np.geomspace(10, 3000, nbl)
+        c = ells**-1.2
+        u = c * np.sin(np.log(ells))
+        shapes = [np.outer(c, c), np.outer(c, c) + 0.3 * np.outer(u, u), np.outer(u, c)]
+        amplitudes = [1.0, 1.0, 1e-4, 2.0, 2.0, 2e-4]
+        cov = np.stack(
+            [a * shapes[i % 3] for i, a in enumerate(amplitudes)], axis=-1
+        ).reshape(nbl, nbl, 2, 3)
+        k1, k2 = _real_space_kernels(2, nbs), _real_space_kernels(4, nbs)
+
+        batched = cp.proj_cov_2d_quad_all_scales(ells, cov, k1, k2)
+
+        assert batched.shape == (nbs, nbs, 2, 3)
+        for p in range(nbs):
+            for q in range(nbs):
+                one_pair = cp.proj_cov_2d(ells, cov, k1[p], k2[q], 'quad')
+                np.testing.assert_allclose(batched[p, q], one_pair, rtol=1e-7, atol=0)
+
+    def test_rejects_non_4d_input(self):
+        ells = np.geomspace(10, 100, 5)
+        with pytest.raises(ValueError, match='must be 4D'):
+            cp.proj_cov_2d_quad_all_scales(
+                ells, np.ones((5, 5, 3)), _real_space_kernels(0), _real_space_kernels(0)
+            )
+
+    def test_rejects_kernel_lists_of_different_length(self):
+        ells = np.geomspace(10, 100, 5)
+        with pytest.raises(ValueError, match='same length'):
+            cp.proj_cov_2d_quad_all_scales(
+                ells,
+                np.ones((5, 5, 1, 1)),
+                _real_space_kernels(0, nbs=3),
+                _real_space_kernels(0, nbs=2),
+            )

@@ -29,7 +29,7 @@ import pytest
 from scipy.integrate import quad
 from scipy.special import jv
 
-from spaceborne.cov_real_space import b_mu, k_mu, t_sn
+from spaceborne.cov_real_space import CovRealSpace, b_mu, k_mu, t_sn
 
 
 def _is_mixed_mixed(combo):
@@ -87,8 +87,8 @@ class TestKMu:
                 thetal,
                 thetau,
                 epsabs=0,
-                epsrel=1e-12,
-                limit=200,
+                epsrel=1e-10,
+                limit=500,
             )
             expected = 2.0 / (thetau**2 - thetal**2) * integral
             direct = k_mu(ell, thetal=thetal, thetau=thetau, mu=mu)
@@ -170,3 +170,47 @@ class TestTSn:
         zbins = sigma_eps_i.size
         out = t_sn(0, 0, 1, 1, zbins, sigma_eps_i)
         np.testing.assert_allclose(out, np.zeros((zbins, zbins)))
+
+
+# ----------------------------------------------------------------------------- #
+# proj_mix_sva_simps_vectorized
+# ----------------------------------------------------------------------------- #
+class TestProjMixSvaSimpsVectorized:
+    """The Gaussian projection as one matmul must equal Simpson's rule applied to
+    every (s1, s2, zi, zj, zk, zl) element separately."""
+
+    NBS, ZBINS, NBL = 3, 2, 50
+
+    @pytest.fixture
+    def cov_rs(self):
+        # bypass __init__ (which needs the full pipeline config) and set only the
+        # attributes the projection uses
+        obj = CovRealSpace.__new__(CovRealSpace)
+        obj.ells_proj_g = np.geomspace(10, 3000, self.NBL)
+        obj.nbs = self.NBS
+        obj.theta_edges = np.geomspace(5, 300, self.NBS + 1) * np.pi / 10800
+        obj.cov_shape_6d = (self.NBS, self.NBS) + (self.ZBINS,) * 4
+        return obj
+
+    @pytest.mark.parametrize(('mu', 'nu'), [(0, 0), (2, 4), (4, 0)])
+    def test_matches_element_by_element_simpson(self, cov_rs, rng, mu, nu):
+        from scipy.integrate import simpson
+
+        ells, edges = cov_rs.ells_proj_g, cov_rs.theta_edges
+        integrand_5d = rng.standard_normal((self.NBL,) + (self.ZBINS,) * 4)
+        integrand_5d *= (ells**-2)[:, None, None, None, None]
+        amax = 0.3
+
+        out = cov_rs.proj_mix_sva_simps_vectorized(
+            cl_integrand_5d=integrand_5d, amax_abcd=amax, mu=mu, nu=nu
+        )
+
+        expected = np.zeros(cov_rs.cov_shape_6d)
+        for s1, s2 in itertools.product(range(self.NBS), repeat=2):
+            k1 = k_mu(ells, thetal=edges[s1], thetau=edges[s1 + 1], mu=mu)
+            k2 = k_mu(ells, thetal=edges[s2], thetau=edges[s2 + 1], mu=nu)
+            for z in itertools.product(range(self.ZBINS), repeat=4):
+                y = ells * k1 * k2 * integrand_5d[(slice(None), *z)]
+                expected[(s1, s2, *z)] = simpson(y, x=ells) / (2 * np.pi * amax)
+
+        np.testing.assert_allclose(out, expected, rtol=1e-10, atol=0)

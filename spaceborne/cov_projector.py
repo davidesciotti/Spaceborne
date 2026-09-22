@@ -12,15 +12,11 @@ from collections.abc import Callable
 from functools import partial
 
 import numpy as np
-from joblib import Parallel, delayed
 from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
 from scipy.interpolate import make_interp_spline
-from tqdm import tqdm
 
 from spaceborne import constants as const
-
-_UNSET = object()
 
 
 def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
@@ -44,30 +40,12 @@ def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
     return 2 * np.pi * theta * survey_area_sr * n_eff_i_sr * n_eff_j_sr
 
 
-def t_mix(probe_a_ix, zbins, sigma_eps_i):
-    """
-    Helper function for MIX term computation.
-
-    Returns the appropriate variance term for the given probe.
-    """
-    t_munu = np.zeros(zbins)
-
-    # xipxip or ximxim
-    if probe_a_ix == 0:
-        t_munu = sigma_eps_i**2
-
-    # gggg
-    elif probe_a_ix == 1:
-        t_munu = np.ones(zbins)
-
-    return t_munu
-
-
 def get_delta_tomo(probe_a_ix: int, probe_b_ix: int, zbins: int) -> np.ndarray:
     return np.eye(zbins) if probe_a_ix == probe_b_ix else np.zeros((zbins, zbins))
 
 
-def build_cov_sva_integrand_5d(cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
+# ! ==================== build Cl integrand for SVA and MIX covs =====================
+def build_cl_integrand_5d_sva(cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix):
     """
     Build the SVA (sample variance) integrand in harmonic space.
 
@@ -97,6 +75,31 @@ def build_cov_sva_integrand_5d(cl_5d, probe_a_ix, probe_b_ix, probe_c_ix, probe_
         'Lil,Ljk->Lijkl', cl_5d[probe_a_ix, probe_d_ix], cl_5d[probe_b_ix, probe_c_ix]
     )
     return a + b
+
+
+def build_cl_integrand_5d_mix(
+    cl_5d, nl_4d, probe_a_ix: int, probe_b_ix: int, probe_c_ix: int, probe_d_ix: int
+) -> np.ndarray:
+    """Build the MIX-term integrand in harmonic space, shape (nbl, z, z, z, z).
+
+    This is the MIX analogue of ``build_cl_integrand_5d_sva``: everything in
+    the integrand except the ``ell * K_mu * K_nu`` projection weight. Extracted so
+    that the FFTLog/vectorized paths can all share it.
+    """
+
+    a = np.einsum(
+        'jl,Lik->Lijkl', nl_4d[probe_b_ix, probe_d_ix], cl_5d[probe_a_ix, probe_c_ix]
+    )
+    b = np.einsum(
+        'ik,Ljl->Lijkl', nl_4d[probe_a_ix, probe_c_ix], cl_5d[probe_b_ix, probe_d_ix]
+    )
+    c = np.einsum(
+        'jk,Lil->Lijkl', nl_4d[probe_b_ix, probe_c_ix], cl_5d[probe_a_ix, probe_d_ix]
+    )
+    d = np.einsum(
+        'il,Ljk->Lijkl', nl_4d[probe_a_ix, probe_d_ix], cl_5d[probe_b_ix, probe_c_ix]
+    )
+    return a + b + c + d
 
 
 def proj_cov_2d(
@@ -392,15 +395,28 @@ class CovarianceProjector:
 
     This class provides:
     - Shared setup (survey info, galaxy densities, etc.)
-    - Integrand builders (SVA, MIX) that work from C_ℓ
-    - Abstract projection interface for subclasses
+    - The harmonic-space inputs of every projection: C_ℓ and N_ℓ, and the ℓ grids
+      they are projected over
+    - The projection of the Gaussian (SVA, MIX) and non-Gaussian integrands, given
+      the kernels of the observable
 
-    Subclasses (CovRealSpace, CovCosebis) implement:
+    Subclasses (CovRealSpace, CovCOSEBIs) implement:
     - Specific projection kernels (k_mu, W_n, etc.)
     - Statistic-specific infrastructure (theta bins, modes, etc.)
     """
 
-    def __init__(self, cfg, pvt_cfg):
+    # name of the observable space, set by each subclass ('real', 'cosebis')
+    obs_space: str
+
+    def __init__(
+        self,
+        cfg: dict,
+        pvt_cfg: dict,
+        cl_3x2pt_5d: np.ndarray,
+        nl_3x2pt_4d: np.ndarray,
+        ells_proj_g: np.ndarray,
+        ells_proj_ng: np.ndarray,
+    ):
         """
         Initialize shared infrastructure.
 
@@ -410,9 +426,23 @@ class CovarianceProjector:
             Configuration dictionary
         pvt_cfg : dict
             Private configuration with derived quantities
+        cl_3x2pt_5d : np.ndarray, shape (n_probes, n_probes, nbl_g, zbins, zbins)
+            3x2pt angular power spectra, sampled at ``ells_proj_g``
+        nl_3x2pt_4d : np.ndarray, shape (n_probes, n_probes, zbins, zbins)
+            Noise power spectra (ell-independent)
+        ells_proj_g : np.ndarray
+            ell grid over which the Gaussian terms are projected
+        ells_proj_ng : np.ndarray
+            ell grid over which the non-Gaussian terms are projected
         """
         self.cfg = cfg
         self.pvt_cfg = pvt_cfg
+
+        # harmonic-space inputs
+        self.cl_3x2pt_5d = cl_3x2pt_5d
+        self.nl_3x2pt_4d = nl_3x2pt_4d
+        self.ells_proj_g = ells_proj_g
+        self.ells_proj_ng = ells_proj_ng
 
         # Shared setup
         self.zbins = pvt_cfg['zbins']
@@ -434,7 +464,6 @@ class CovarianceProjector:
         self._set_terms_toloop()
         self._set_neff_and_sigma_eps()
 
-        # TODO here (in the init) I should add the finely binned Cls, which are used in all projections!
         self.cov_shape_6d = (
             self.nbs,
             self.nbs,
@@ -443,8 +472,6 @@ class CovarianceProjector:
             self.zbins,
             self.zbins,
         )
-
-        self.obs_space = _UNSET
 
     def _set_terms_toloop(self):
         self.terms_toloop = []
@@ -460,130 +487,6 @@ class CovarianceProjector:
         self.n_eff_src = self.cfg['nz']['ngal_sources']  # lensing
         self.n_eff_2d = np.vstack((self.n_eff_src, self.n_eff_lns))
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
-
-    def proj_cov_parallel_helper(
-        self,
-        scale_ix_1: int,
-        scale_ix_2: int,
-        zij: int,
-        zkl: int,
-        ind_ab: np.ndarray,
-        ind_cd: np.ndarray,
-        cov_func: Callable,
-        cov_func_kw: dict,
-        kernel_builder_func_kw: dict,
-    ):
-        """
-        Universal parallel helper for covariance computation.
-
-        This method provides a unified interface for parallel covariance calculation
-        across different projection methods (real space, COSEBIs, band powers, etc.).
-        The projection-specific kernel construction is delegated to child classes
-        via the kernel_builder callback.
-
-        Parameters
-        ----------
-        scale_ix_1, scale_ix_2 : int
-            First and second projection indices. These represent:
-            - Theta bin indices for real space (theta_1_ix, theta_2_ix)
-            - Mode indices for COSEBIs (mode_n, mode_m)
-            - ell bin indices for band powers, etc.
-        zij, zkl : int
-            Tomographic bin pair indices
-        ind_ab, ind_cd : np.ndarray
-            Arrays mapping pair indices to tomographic bin pairs
-        func : callable
-            Covariance function to compute (e.g., cov_sva_simps, cov_mix_simps)
-        kernel_builder : callable
-            Child-specific function that builds projection kernels.
-            Signature: kernel_builder(scale_ix_1, scale_ix_2, **kwargs) -> (kernel_1, kernel_2)
-            Examples:
-            - Real space: builds k_mu(ell, theta) partial functions
-            - COSEBIs: builds W_n(ell) lambda functions
-        **kwargs : dict
-            Additional arguments containing:
-            - Data: probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, cl_5d, ells
-            - Projection-specific: mu, nu, w_ells_arr, kernel_1_func, kernel_2_func, etc.
-
-        Returns
-        -------
-        tuple
-            (scale_ix_1, scale_ix_2, zi, zj, zk, zl, cov_value)
-            Indices and computed covariance value for this combination
-        """
-        # Extract tomographic bin indices
-        zi, zj = ind_ab[zij, :]
-        zk, zl = ind_cd[zkl, :]
-
-        # if not present in kernel_builder_func_kw (e.g. for the COSEBIs case),
-        # set mu and nu to None
-        mu = kernel_builder_func_kw.get('mu', None)
-        nu = kernel_builder_func_kw.get('nu', None)
-
-        # Build projection-specific kernels
-        kernel_1 = self.get_projection_kernel_func_of_ell(
-            scale_ix=scale_ix_1,
-            obs_space=self.obs_space,
-            mu=mu,
-            kernel_func_kw=kernel_builder_func_kw,
-        )
-        kernel_2 = self.get_projection_kernel_func_of_ell(
-            scale_ix=scale_ix_2,
-            obs_space=self.obs_space,
-            mu=nu,
-            kernel_func_kw=kernel_builder_func_kw,
-        )
-
-        # Update kwargs with the constructed kernels. I instantiate a new dict to
-        # avoid problems with parallelization
-        local_kw = {
-            **cov_func_kw,
-            'kernel_1_func_of_ell': kernel_1,
-            'kernel_2_func_of_ell': kernel_2,
-        }
-
-        # Compute covariance value
-        cov_value = cov_func(zi=zi, zj=zj, zk=zk, zl=zl, **local_kw)
-
-        return (scale_ix_1, scale_ix_2, zi, zj, zk, zl, cov_value)
-
-    def proj_cov_simps_parallel_helper_wrapper(
-        self,
-        zpairs_ab: int,
-        zpairs_cd: int,
-        ind_ab: np.ndarray,
-        ind_cd: np.ndarray,
-        cov_simps_func: Callable,
-        cov_simps_func_kw: dict,
-        kernel_builder_func_kw: dict,
-    ) -> np.ndarray:
-        """Helper to parallelize the cov_sva_simps and cov_mix_simps functions
-        s1/s2 is the first scale index (e.g., theta or the COSEBIs mode)
-        """
-        cov_out_6d = np.zeros(self.cov_shape_6d)
-
-        results = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.proj_cov_parallel_helper)(
-                scale_ix_1=s1,
-                scale_ix_2=s2,
-                zij=zij,
-                zkl=zkl,
-                ind_ab=ind_ab,
-                ind_cd=ind_cd,
-                cov_func=cov_simps_func,
-                cov_func_kw=cov_simps_func_kw,
-                kernel_builder_func_kw=kernel_builder_func_kw,
-            )
-            for s1 in tqdm(range(self.nbs))
-            for s2 in range(self.nbs)
-            for zij in range(zpairs_ab)
-            for zkl in range(zpairs_cd)
-        )
-
-        for s1, s2, zi, zj, zk, zl, cov_value in results:
-            cov_out_6d[s1, s2, zi, zj, zk, zl] = cov_value
-
-        return cov_out_6d
 
     def proj_mix_sva_simps_vectorized(
         self,
@@ -617,8 +520,8 @@ class CovarianceProjector:
         per scale bin rather than once per tomographic quadruplet.
 
         ``integrand_5d`` is the tomographic part of the integrand, shape
-        (nbl, zbins, zbins, zbins, zbins): ``build_cov_sva_integrand_5d`` for SVA,
-        ``CovRealSpace.build_cov_mix_integrand_5d`` for MIX. ``mu``/``nu`` are the
+        (nbl, zbins, zbins, zbins, zbins): ``build_cl_integrand_5d_sva`` for SVA,
+        ``build_cl_integrand_5d_mix`` for MIX. ``mu``/``nu`` are the
         Bessel orders (real space; unused for COSEBIs, where the kernel comes from
         ``kernel_func_kw['w_ells_arr']``).
         """
@@ -766,122 +669,3 @@ class CovarianceProjector:
             kernel_1_funcs=kernels_for_all_scale_bins(mu),
             kernel_2_funcs=kernels_for_all_scale_bins(nu),
         )
-
-    def proj_cov_mix_simps(
-        self,
-        probe_a_ix: int,
-        probe_b_ix: int,
-        probe_c_ix: int,
-        probe_d_ix: int,
-        zi: int,
-        zj: int,
-        zk: int,
-        zl: int,
-        kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
-        kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
-        amax_abcd: float
-    ):  # fmt: skip
-        def integrand_func(ells, inner_integrand, amax_abcd):
-            k1 = kernel_1_func_of_ell(ells)
-            k2 = kernel_2_func_of_ell(ells)
-            return (1 / (2 * np.pi * amax_abcd)) * ells * k1 * k2 * inner_integrand
-
-        def get_prefac(probe_a_ix, probe_b_ix, zi, zj):
-            prefac = (
-                get_delta_tomo(probe_a_ix, probe_b_ix, self.zbins)[zi, zj]
-                * t_mix(probe_a_ix, self.zbins, self.sigma_eps_i)[zi]
-                / (self.n_eff_2d[probe_a_ix, zi] * const.SR_TO_ARCMIN2)
-            )
-            return prefac
-
-        # permutations should be performed as done in the SVA function
-        integrand = integrand_func(
-            self.ells_proj_g,
-            self.cl_3x2pt_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-            * get_prefac(probe_b_ix, probe_d_ix, zj, zl)
-            + self.cl_3x2pt_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-            * get_prefac(probe_a_ix, probe_c_ix, zi, zk)
-            + self.cl_3x2pt_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-            * get_prefac(probe_b_ix, probe_c_ix, zj, zk)
-            + self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-            * get_prefac(probe_a_ix, probe_d_ix, zi, zl),
-            amax_abcd,
-        )
-
-        integral = simps(y=integrand, x=self.ells_proj_g)
-
-        # elif integration_method == 'quad':
-
-        #     integral_1 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-        #                           args=(self.cl_3x2pt_5d[probe_a_ix, probe_c_ix, :, zi, zk],))[0]
-        #     integral_2 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-        #                           args=(self.cl_3x2pt_5d[probe_b_ix, probe_d_ix, :, zj, zl],))[0]
-        #     integral_3 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-        #                           args=(self.cl_3x2pt_5d[probe_a_ix, probe_d_ix, :, zi, zl],))[0]
-        #     integral_4 = quad_vec(integrand_scalar, ell_values[0], ell_values[-1],
-        #                           args=(self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk],))[0]
-
-        # else:
-        # raise ValueError(f'integration_method {integration_method} '
-        # 'not recognized.')
-
-        return integral
-
-    def proj_cov_sva_simps(
-        self,
-        probe_a_ix: int,
-        probe_b_ix: int,
-        probe_c_ix: int,
-        probe_d_ix: int,
-        zi: int,
-        zj: int,
-        zk: int,
-        zl: int,
-        kernel_1_func_of_ell: Callable[[np.ndarray], np.ndarray],
-        kernel_2_func_of_ell: Callable[[np.ndarray], np.ndarray],
-        amax_abcd: float,
-    ) -> float:
-        """
-        Universal Simpson integrator for SVA covariance - projection kernel agnostic.
-
-        This function computes a single matrix element of the SVA covariance by:
-        1. Selecting the relevant C_ℓ spectra for the given tomographic bins
-        2. Evaluating projection kernels (e.g., k_mu for real space, W_n for COSEBIs)
-        3. Building the integrand: ℓ * kernel_1 * kernel_2 * (C_ik*C_jl + C_il*C_jk)
-        4. Integrating with Simpson's rule
-
-        Parameters
-        ----------
-        probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix : int
-            Probe indices
-        zi, zj, zk, zl : int
-            Tomographic bin indices
-        kernel_1_func_of_ell : callable
-            First projection kernel function of ℓ (e.g., k_mu(ℓ, theta_1))
-        kernel_2_func_of_ell : callable
-            Second projection kernel function of ℓ (e.g., k_nu(ℓ, theta_2))
-
-        Returns
-        -------
-        cov_elem : float
-            Single covariance matrix element
-        """
-        # Extract relevant C_ℓ for these tomographic bins
-        c_ik = self.cl_3x2pt_5d[probe_a_ix, probe_c_ix, :, zi, zk]
-        c_jl = self.cl_3x2pt_5d[probe_b_ix, probe_d_ix, :, zj, zl]
-        c_il = self.cl_3x2pt_5d[probe_a_ix, probe_d_ix, :, zi, zl]
-        c_jk = self.cl_3x2pt_5d[probe_b_ix, probe_c_ix, :, zj, zk]
-
-        # Evaluate projection kernels
-        # TODO this should probably be done at init to save time (at the cost of flexibility?)
-        kernel_1 = kernel_1_func_of_ell(self.ells_proj_g)
-        kernel_2 = kernel_2_func_of_ell(self.ells_proj_g)
-
-        # Build integrand: ℓ * K_μ * K_ν * (C_ik*C_jl + C_il*C_jk)
-        integrand = self.ells_proj_g * kernel_1 * kernel_2 * (c_ik * c_jl + c_il * c_jk)
-
-        # Integrate with Simpson's rule
-        integral = simps(y=integrand, x=self.ells_proj_g)
-
-        # Apply normalization factor
-        return integral / (2.0 * np.pi * amax_abcd)

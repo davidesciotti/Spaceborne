@@ -65,5 +65,9 @@ therefore needs to be installed for the code to run.
 * ``NaMaster`` [`GitHub <https://github.com/LSSTDESC/NaMaster>`_]. This package is used 
   to compute the partial-sky Gaussian covariance in the NKA or iNKA approximation, using
   the pseudo-:math:`C_\ell` framework (see `1809.09603 <https://arxiv.org/abs/1809.09603>`_).
+* ``cloelib`` [`GitHub <https://github.com/cloe-org/cloelib>`_]. This package provides the
+  COSEBIs filter functions, and is only needed to compute the COSEBIs covariance. It must
+  be installed with the ``pylevin`` and ``mpmath`` extras (``pip install "cloelib[pylevin,mpmath]"``),
+  since it relies on ``pylevin`` internally. This is already included in ``environment.yaml``.
 
 

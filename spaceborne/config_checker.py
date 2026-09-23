@@ -777,43 +777,62 @@ class SpaceborneConfigChecker:
 
     def check_projection_methods(self) -> None:
         """Integration methods for the harmonic -> real-space projection."""
+        space = self.cfg['probe_selection']['space']
+        # no projection is performed in harmonic space
+        if space == 'harmonic':
+            return
+
         precision_cfg = self.cfg['precision']
+        cov_cfg = self.cfg['covariance']
         allowed = {
             'proj_gauss_integration_method': ('simps', 'FFTLog'),
             'proj_nongauss_integration_method': ('simps', 'quad', 'FFTLog'),
         }
-        for key, options in allowed.items():
-            method = precision_cfg[key]
-            if method == 'levin':
+
+        # only check the methods of the terms which are actually projected
+        integr_method_keys = []
+        if cov_cfg['G']:
+            integr_method_keys.append('proj_gauss_integration_method')
+        if cov_cfg['SSC'] or cov_cfg['cNG']:
+            integr_method_keys.append('proj_nongauss_integration_method')
+
+        for key in integr_method_keys:
+            integr_method = precision_cfg[key]
+            if integr_method not in allowed[key]:
                 raise ValueError(
-                    f"precision: {key}='levin' is no longer supported (Levin "
-                    f'integration has been removed). Choose one of {options}.'
-                )
-            if method not in options:
-                raise ValueError(
-                    f'precision: {key} must be one of {options}, got {method!r}'
+                    f'precision: {key} must be one of {allowed[key]}, '
+                    f'got {integr_method!r}'
                 )
 
-        if (
-            self.cfg['probe_selection']['space'] == 'real'
-            and 'FFTLog' in (precision_cfg[key] for key in allowed)
-            and self.cfg['binning']['binning_type'] != 'log'
-        ):
-            raise ValueError(
-                "integration_method='FFTLog' requires log-spaced theta bins "
-                "(binning_type: 'log')."
-            )
-        
+        if space == 'real':
+            ell_bins_keys = {
+                'proj_gauss_integration_method': 'ell_bins_proj_gauss',
+                'proj_nongauss_integration_method': 'ell_bins_proj_nongauss',
+            }
+            for key in integr_method_keys:
+                if precision_cfg[key] != 'FFTLog':
+                    continue
+                if self.cfg['binning']['binning_type'] != 'log':
+                    raise ValueError(
+                        f"precision: {key}='FFTLog' requires log-spaced theta bins "
+                        "(binning_type: 'log')."
+                    )
+                nbl_key = ell_bins_keys[key]
+                if precision_cfg[nbl_key] % 2 != 0:
+                    raise ValueError(
+                        f"precision: {key}='FFTLog' requires an even {nbl_key}, "
+                        f'got {precision_cfg[nbl_key]}.'
+                    )
+
         # warn that for COSEBIs only simps is used
-        if self.cfg['probe_selection']['space'] == 'cosebis' and (
-            precision_cfg['proj_gauss_integration_method'] != 'simps'
-            or precision_cfg['proj_nongauss_integration_method'] != 'simps'
-        ):
-            warnings.warn(
-                "For COSEBIs, the projection methods are forced to 'simps' "
-                'regardless of the configuration settings.',
-                stacklevel=2,
-            )
+        if space == 'cosebis':
+            forced_keys = [k for k in integr_method_keys if precision_cfg[k] != 'simps']
+            if forced_keys:
+                warnings.warn(
+                    f'For COSEBIs, the projection methods are forced to "simps"; '
+                    f'the configured {forced_keys} will be ignored.',
+                    stacklevel=2,
+                )
 
     def run_all_checks(self) -> None:
         self.check_types()

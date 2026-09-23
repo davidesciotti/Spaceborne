@@ -200,10 +200,67 @@ class TestCheckProjectionMethods:
     @pytest.mark.parametrize(
         'key', ['proj_gauss_integration_method', 'proj_nongauss_integration_method']
     )
-    def test_levin_raises_with_removal_message(self, valid_cfg, key):
+    def test_levin_raises(self, valid_cfg, key):
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['G'] = True
+        valid_cfg['covariance']['SSC'] = True
         valid_cfg['precision'][key] = 'levin'
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
-        with pytest.raises(ValueError, match='Levin integration has been removed'):
+        with pytest.raises(ValueError, match='must be one of'):
+            checker.check_projection_methods()
+
+    def test_methods_ignored_in_harmonic_space(self, valid_cfg):
+        """No projection happens in harmonic space, so stale values are fine."""
+        valid_cfg['probe_selection']['space'] = 'harmonic'
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'levin'
+        valid_cfg['precision']['proj_nongauss_integration_method'] = 'levin'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_projection_methods()
+
+    def test_method_of_unrequested_term_ignored(self, valid_cfg):
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['G'] = True
+        valid_cfg['covariance']['SSC'] = False
+        valid_cfg['covariance']['cNG'] = False
+        valid_cfg['binning']['binning_type'] = 'lin'
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'simps'
+        valid_cfg['precision']['proj_nongauss_integration_method'] = 'FFTLog'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_projection_methods()
+
+    @pytest.mark.parametrize(
+        ('key', 'nbl_key'),
+        [
+            ('proj_gauss_integration_method', 'ell_bins_proj_gauss'),
+            ('proj_nongauss_integration_method', 'ell_bins_proj_nongauss'),
+        ],
+    )
+    def test_fftlog_requires_even_ell_bins(self, valid_cfg, key, nbl_key):
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['G'] = True
+        valid_cfg['covariance']['SSC'] = True
+        valid_cfg['binning']['binning_type'] = 'log'
+        valid_cfg['precision'][key] = 'FFTLog'
+        valid_cfg['precision'][nbl_key] = 301
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(ValueError, match=f'requires an even {nbl_key}'):
+            checker.check_projection_methods()
+
+    def test_cosebis_warning_only_for_requested_terms(self, valid_cfg):
+        valid_cfg['probe_selection']['space'] = 'cosebis'
+        valid_cfg['covariance']['G'] = True
+        valid_cfg['covariance']['SSC'] = False
+        valid_cfg['covariance']['cNG'] = False
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'simps'
+        valid_cfg['precision']['proj_nongauss_integration_method'] = 'quad'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            checker.check_projection_methods()
+
+        valid_cfg['covariance']['SSC'] = True
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.warns(UserWarning, match='forced to "simps"'):
             checker.check_projection_methods()
 
     def test_quad_not_allowed_for_gaussian(self, valid_cfg):
@@ -214,6 +271,7 @@ class TestCheckProjectionMethods:
 
     def test_fftlog_requires_log_theta_bins_in_real_space(self, valid_cfg):
         valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['SSC'] = True
         valid_cfg['binning']['binning_type'] = 'lin'
         valid_cfg['precision']['proj_nongauss_integration_method'] = 'FFTLog'
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))

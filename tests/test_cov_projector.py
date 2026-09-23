@@ -18,8 +18,14 @@ and COSEBIs Gaussian-covariance projections:
   all 16 probe combinations, against the explicit formula of the per-element
   implementation it replaced.
 
-``proj_cov_2d`` and the ``CovarianceProjector`` class need a full pipeline
-config and are intentionally not covered here.
+* ``proj_cov_2d_quad_all_scales`` -- the batched NG quad projection, checked
+  against an analytic mu=0 case and against one scale pair at a time.
+* ``proj_mix_sva_simps_vectorized`` -- the vectorised Gaussian projection,
+  checked against a brute-force per-element Simpson integral, including the
+  COSEBIs W_n(ell) kernel path (on a minimal ``CovCOSEBIs`` stub, so no cloelib
+  is needed).
+
+``proj_cov_2d`` needs a full pipeline config and is not covered here.
 """
 
 import numpy as np
@@ -306,3 +312,121 @@ class TestProjCov2dQuadAllScales:
                 _real_space_kernels(0, nbs=3),
                 _real_space_kernels(0, nbs=2),
             )
+
+
+# ----------------------------------------------------------------------------- #
+# proj_mix_sva_simps_vectorized, obs_space='cosebis'
+# ----------------------------------------------------------------------------- #
+class TestProjMixSvaSimpsVectorizedCosebis:
+    r"""For COSEBIs the projection kernel is the precomputed W_n(ell), passed as
+    ``kernel_func_kw={'w_ells_arr': ...}`` with shape (n_modes, nbl), and there
+    are no Bessel orders (mu = nu = None). The one-matmul projection must equal
+
+        1/(2 pi A_max) simps(ell W_n(ell) W_m(ell) f(ell, zi, zj, zk, zl), ell)
+
+    for every (n, m, zi, zj, zk, zl) element. The W_n are synthetic, so neither
+    cloelib nor the CovCOSEBIs __init__ are needed."""
+
+    N_MODES, ZBINS, NBL = 4, 2, 60
+    AMAX = 0.3
+
+    @pytest.fixture
+    def cov_cs(self):
+        from spaceborne.cov_cosebis import CovCOSEBIs
+
+        # bypass __init__ (which needs the full pipeline config and cloelib) and
+        # set only the attributes the projection uses
+        obj = CovCOSEBIs.__new__(CovCOSEBIs)
+        obj.ells_proj_g = np.geomspace(2, 5000, self.NBL)
+        obj.nbs = self.N_MODES
+        obj.zbins = self.ZBINS
+        obj.cov_shape_6d = (self.N_MODES, self.N_MODES) + (self.ZBINS,) * 4
+        return obj
+
+    @pytest.fixture
+    def w_ells_arr(self, rng):
+        return rng.standard_normal((self.N_MODES, self.NBL))
+
+    def _brute_force(self, ells, w_ells_arr, integrand_5d):
+        expected = np.zeros((self.N_MODES, self.N_MODES) + (self.ZBINS,) * 4)
+        for n, m in np.ndindex(self.N_MODES, self.N_MODES):
+            for z in np.ndindex(*(self.ZBINS,) * 4):
+                y = (
+                    ells
+                    * w_ells_arr[n]
+                    * w_ells_arr[m]
+                    * integrand_5d[(slice(None), *z)]
+                )
+                expected[(n, m, *z)] = simps(y=y, x=ells) / (2 * np.pi * self.AMAX)
+        return expected
+
+    def test_obs_space_is_cosebis(self, cov_cs):
+        assert cov_cs.obs_space == 'cosebis'
+
+    def test_matches_element_by_element_simpson(self, cov_cs, w_ells_arr, rng):
+        ells = cov_cs.ells_proj_g
+        integrand_5d = rng.standard_normal((self.NBL,) + (self.ZBINS,) * 4)
+        integrand_5d *= (ells**-2)[:, None, None, None, None]
+
+        out = cov_cs.proj_mix_sva_simps_vectorized(
+            cl_integrand_5d=integrand_5d,
+            amax_abcd=self.AMAX,
+            kernel_func_kw={'w_ells_arr': w_ells_arr},
+        )
+
+        assert out.shape == cov_cs.cov_shape_6d
+        expected = self._brute_force(ells, w_ells_arr, integrand_5d)
+        np.testing.assert_allclose(out, expected, rtol=1e-10, atol=0)
+
+    @pytest.mark.parametrize('term', ['sva', 'mix'])
+    def test_compute_cs_cov_term_uses_w_ells(self, cov_cs, w_ells_arr, rng, term):
+        """End to end through ``compute_cs_cov_term_probe_6d``: the EnEn Gaussian
+        blocks are the brute-force projection of the SVA/MIX integrand with
+        ``w_ells_arr_g``, the MIX one using the physical noise from
+        ``build_noise``; the B-mode blocks vanish."""
+        from spaceborne import cov_dict as cd
+        from spaceborne import sb_lib as sl
+
+        zbins, nbl = self.ZBINS, self.NBL
+        ells = cov_cs.ells_proj_g
+        zpairs_auto, zpairs_cross, _ = sl.get_zpairs(zbins)
+        ind = sl.build_full_ind('triu', 'row-major', zbins)
+        cov_cs.zpairs_auto, cov_cs.zpairs_cross = zpairs_auto, zpairs_cross
+        cov_cs.ind_auto = ind[:zpairs_auto, :].copy()
+        cov_cs.ind_cross = ind[zpairs_auto : zpairs_auto + zpairs_cross, :].copy()
+        cov_cs.w_ells_arr_g = w_ells_arr
+        cov_cs.cl_3x2pt_5d = rng.uniform(0.5, 1.5, (2, 2, nbl, zbins, zbins))
+        cov_cs.cl_3x2pt_5d *= 1e-6 * (ells**-1.2)[None, None, :, None, None]
+        cov_cs.nl_3x2pt_4d = sl.build_noise(
+            zbins,
+            2,
+            sigma_eps2=(np.array([0.26, 0.37]) * np.sqrt(2)) ** 2,
+            ng_shear=np.array([8.1, 11.5]),
+            ng_clust=np.array([4.2, 9.3]),
+        )
+        cov_cs.cov_dict = cd.create_cov_dict(
+            [term], [('En', 'En'), ('En', 'Bn')], dims=['6d']
+        )
+
+        for probe_abcd in ('EnEn', 'EnBn'):
+            cov_cs.compute_cs_cov_term_probe_6d(
+                cov_hs_ng_dict=None,
+                probe_abcd=probe_abcd,
+                term=term,
+                amax_abcd=self.AMAX,
+            )
+
+        if term == 'sva':
+            integrand_5d = cp.build_cl_integrand_5d_sva(cov_cs.cl_3x2pt_5d, 0, 0, 0, 0)
+        else:
+            integrand_5d = cp.build_cl_integrand_5d_mix(
+                cov_cs.cl_3x2pt_5d, cov_cs.nl_3x2pt_4d, 0, 0, 0, 0
+            )
+        expected = self._brute_force(ells, w_ells_arr, integrand_5d)
+
+        out = cov_cs.cov_dict[term]['En', 'En']['6d']
+        assert np.abs(expected).max() > 0
+        np.testing.assert_allclose(
+            out, expected, rtol=1e-10, atol=1e-12 * np.abs(expected).max()
+        )
+        np.testing.assert_array_equal(cov_cs.cov_dict[term]['En', 'Bn']['6d'], 0.0)

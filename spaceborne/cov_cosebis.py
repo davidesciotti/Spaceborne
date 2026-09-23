@@ -78,8 +78,10 @@ class CovCOSEBIs(CovarianceProjector):
                 self._ch = ch
             except ImportError as e:
                 raise ImportError(
-                    'cloelib is required to compute COSEBIs covariance. '
-                    'Please install it and rerun the code.'
+                    f'Could not import {e.name!r}, which is required to compute '
+                    'the COSEBIs covariance. Install cloelib with its pylevin '
+                    'extra (pip install "cloelib[pylevin,mpmath]"; see '
+                    'environment.yaml) and rerun the code.'
                 ) from e
         return self._ch
 

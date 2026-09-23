@@ -617,10 +617,17 @@ class CovarianceProjector:
 
         elif obs_space == 'cosebis':
             # in this case the kernel function neither probe nor ell-dependent, so I
-            # define a simple function of ell that just returns the precomputed array
+            # define a simple function of ell that just returns the precomputed array.
+            # ! this is only valid if ell is the grid w_ells_arr was computed on
             w_ells_arr = kernel_func_kw['w_ells_arr']
 
             def kernel_func_of_ell(ell):
+                if np.shape(ell) != w_ells_arr.shape[1:]:
+                    raise ValueError(
+                        'COSEBIs W_n(ell) kernels are precomputed on a fixed ell '
+                        f'grid of length {w_ells_arr.shape[1]}, cannot evaluate '
+                        f'them at ell of shape {np.shape(ell)}.'
+                    )
                 return w_ells_arr[scale_ix]
 
         elif obs_space == 'arbitrary':
@@ -654,6 +661,13 @@ class CovarianceProjector:
         -------
         np.ndarray, shape (nbs, nbs, zpairs_ab, zpairs_cd)
         """
+        # quad_vec evaluates the kernels at arbitrary ell, while the COSEBIs W_n(ell)
+        # kernels are only available on the (fixed) ells_proj_ng grid
+        if self.obs_space != 'real':
+            raise NotImplementedError(
+                f'quad NG projection is only implemented for real space, '
+                f'got obs_space={self.obs_space!r}. Use simps instead.'
+            )
 
         def kernels_for_all_scale_bins(order):
             return [

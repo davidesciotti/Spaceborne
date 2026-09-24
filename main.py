@@ -259,24 +259,6 @@ shift_nz_interpolation_kind = 'linear'
 cfg['covariance']['n_probes'] = 2
 
 
-# ===================================== pylevin ======================================
-# Precision settings for pylevin. See the official documentation for more details:
-# https://levin-bessel.readthedocs.io/en/latest/index.html
-# https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-
-# number of collocation points in each bisection. default: 8
-cfg['precision']['n_sub'] = 16
-# maximum number of bisections used. default: 32
-cfg['precision']['n_bisec_max'] = 128
-# relative accuracy target. default: 1.e-4
-cfg['precision']['rel_acc'] = 1.0e-4
-# Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at
-# high Bessel orders)
-cfg['precision']['boost_bessel'] = True
-# Type: bool. Whether to display warnings
-cfg['precision']['verbose'] = True
-
-
 if 'G_code' not in cfg['covariance']:
     cfg['covariance']['G_code'] = 'Spaceborne'
 if 'SSC_code' not in cfg['covariance']:
@@ -313,22 +295,6 @@ cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
 
-# This has been deprecated since I am no longer using Levin integration.
-# This variable used to control the number of bins over which to compute the Levin
-# RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu).
-# From then, the covariance was rebinned to cfg['binning']['theta_bins'].
-# This works but is not ideal, as the proper bin averaging is more correct.
-# Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
-# TODO DELETE THIS, it complicates things
-cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
-
-# Integration method for the covariance projection to real space. Options:
-# - 'simps': uses simpson integration. This is faster but less accurate
-# - 'levin': uses levin integration. This is slower but more accurate
-# cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
-# setting this to False makes the code resort to the less accurate bin averaging method
-# mentioned above
-cfg['precision']['levin_bin_avg'] = True  # Type: bool.
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
 # convenence settings that have been hardcoded
@@ -709,12 +675,13 @@ pvt_cfg = {
 # instantiate data handler class
 io_obj = io_handler.IOHandler(cfg, pvt_cfg)
 
-# declare covariance objects
+# declare covariance objects/dicts
 cov_hs_obj = None
 cov_nmt_obj = None
 cov_rs_obj = None
 cov_cs_obj = None
 cov_oc_obj = None
+cov_nmt_dict = None
 
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
@@ -727,17 +694,17 @@ bin_obj.compute_ells_3x2pt_unbinned()  # not always required, but this is simple
 bin_obj._validate_bins()
 
 if obs_space == 'harmonic':
-    nbx = bin_obj.nbl_3x2pt
+    nbs = bin_obj.nbl_3x2pt
 elif obs_space == 'real':
-    nbx = cfg['binning']['theta_bins']
+    nbs = cfg['binning']['theta_bins']
 elif obs_space == 'cosebis':
-    nbx = cfg['binning']['n_modes_cosebis']
+    nbs = cfg['binning']['n_modes_cosebis']
 else:
     raise ValueError(f'Unknown observables space: {obs_space:s}')
 
 pvt_cfg['nbl_3x2pt'] = bin_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = bin_obj.ell_min_3x2pt
-pvt_cfg['nbx'] = nbx
+pvt_cfg['nbs'] = nbs
 
 
 # ! ===================================== Mask =========================================
@@ -1022,7 +989,6 @@ nl_3x2pt_5d = np.repeat(nl_3x2pt_4d[:, :, np.newaxis, :, :], bin_obj.nbl_3x2pt, 
 
 
 # ! =============================== Init NaMaster cov object ===========================
-cov_nmt_dict = None
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
@@ -1060,46 +1026,29 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_dict = cov_nmt_obj.build_psky_cov()
 
 
-# ! ============================== Init real space cov object ==========================
-if obs_space == 'real':
-    # initialize cov_rs_obj and set a couple useful attributes
-    cov_rs_obj = cov_real_space.CovRealSpace(cfg=cfg, pvt_cfg=pvt_cfg)
-
-    # set ell values used for projection
-    bin_obj.compute_ells_3x2pt_proj()
-    cov_rs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
-    cov_rs_obj.nbl_proj_g = len(bin_obj.ells_3x2pt_proj_g)
-    cov_rs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-
-    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
-    # and store in the cov_rs_obj
-    cov_rs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        cov_rs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
-    )
-
-
-# TODO this could probably be done with super.__init__() where super is the
-# cov projector class
-if obs_space == 'cosebis':
-    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg=cfg, pvt_cfg=pvt_cfg)
+# ! ===================== Init real-space / COSEBIs cov object =========================
+if obs_space in ['real', 'cosebis']:
+    # ell grids over which the harmonic-space covariance is projected
     bin_obj.compute_ells_3x2pt_proj()
 
-    # set ell values used for projection
-    cov_cs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
-    cov_cs_obj.nbl_proj_g = bin_obj.nbl_3x2pt_proj_g
-    cov_cs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-
-    # compute projection kernels over ell grids used for the integrals
-    # of the G and NG terms
-    cov_cs_obj.w_ells_arr_g = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_g)
-    if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
-        cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
-
-    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
-    # and store in the cov_cs_obj
-    cov_cs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        cov_cs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    # recompute the Cls (or interpolate the input ones) on the finer ell grid used for
+    # the projection of the Gaussian terms
+    cl_3x2pt_proj_g_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        bin_obj.ells_3x2pt_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
+
+    cov_proj_kw = {
+        'cfg': cfg,
+        'pvt_cfg': pvt_cfg,
+        'cl_3x2pt_5d': cl_3x2pt_proj_g_5d,
+        'nl_3x2pt_4d': nl_3x2pt_4d,
+        'ells_proj_g': bin_obj.ells_3x2pt_proj_g,
+        'ells_proj_ng': bin_obj.ells_3x2pt_proj_ng,
+    }
+    if obs_space == 'real':
+        cov_rs_obj = cov_real_space.CovRealSpace(**cov_proj_kw)
+    else:
+        cov_cs_obj = cov_cosebis.CovCOSEBIs(**cov_proj_kw)
 
 
 # !  =============================== Build Gaussian covs ===============================
@@ -1270,7 +1219,7 @@ if (
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
         obs_space=obs_space,
-        nbx=nbx,
+        nbs=nbs,
         df_chunk_size=5_000_000,
     )
 
@@ -1334,7 +1283,7 @@ if (
     sl.postprocess_cov_dict(
         cov_dict=cov_oc_obj.cov_dict,
         obs_space=obs_space,
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1614,7 +1563,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
             symm_probe_combs=symm_probe_combs_rs,
             nonreq_probe_combs=nonreq_probe_combs_rs,
             space='real',
-            nbx=nbx,
+            nbs=nbs,
             zbins=zbins,
         )
 
@@ -1625,7 +1574,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     sl.postprocess_cov_dict(
         cov_dict=cov_rs_obj.cov_dict,
         obs_space='real',
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1681,7 +1630,7 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
             symm_probe_combs=symm_probe_combs_cs,
             nonreq_probe_combs=nonreq_probe_combs_cs,
             space='cosebis',
-            nbx=nbx,
+            nbs=nbs,
             zbins=zbins,
         )
 
@@ -1692,7 +1641,7 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     sl.postprocess_cov_dict(
         cov_dict=cov_cs_obj.cov_dict,
         obs_space='cosebis',
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1874,8 +1823,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
                 req_diag_probes = [p for p in diag_probe_combs if p in req_diag_probes]
 
                 # set the boundaries
-                elem_auto = zpairs_auto * nbx
-                elem_cross = zpairs_cross * nbx
+                elem_auto = zpairs_auto * nbs
+                elem_cross = zpairs_cross * nbs
 
                 lim_dict = {
                     'LL': elem_auto,
@@ -2030,13 +1979,10 @@ if cfg['misc']['save_output_as_benchmark']:
     # other stuff to save
     misc_dict = {}
 
-    # COSEBIs W_n kernels
-    # TODO bookmark check this
+    # COSEBIs W_n kernels, on the Gaussian projection ell grid
     if obs_space == 'cosebis' and cov_cs_obj is not None:
-        if hasattr(cov_cs_obj, 'w_ells'):
-            misc_dict['cosebis_w_ells'] = cov_cs_obj.w_ells
-        if hasattr(cov_cs_obj, 'ells_for_w'):
-            misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
+        misc_dict['cosebis_w_ells'] = cov_cs_obj.w_ells_arr_g
+        misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_proj_g
 
     # Mask information
     for mask_obj, name in zip((mask_obj_ll, mask_obj_gg), ('LL', 'GG'), strict=True):

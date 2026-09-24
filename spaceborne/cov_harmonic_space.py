@@ -394,7 +394,7 @@ class CovHarmonicSpace:
         sl.cov_dict_6d_probe_blocks_to_4d_and_2d(
             cov_dict=self.cov_dict,
             obs_space='harmonic',
-            nbx=self.bin_obj.nbl_3x2pt,
+            nbs=self.bin_obj.nbl_3x2pt,
             ind_auto=self.ind_auto,
             ind_cross=self.ind_cross,
             zpairs_auto=self.zpairs_auto,

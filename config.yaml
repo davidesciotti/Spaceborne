@@ -389,14 +389,14 @@ precision:
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
-  ell_bins_proj_gauss: 1000 # Type: int.
-  ell_bins_proj_nongauss: 200 # Type: int.
+  ell_bins_proj_gauss: 2000 # Type: int.
+  ell_bins_proj_nongauss: 300 # Type: int.
 
   # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
   # performed with simpson integration.
-  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin', 'FFTLog']
-  proj_nongauss_integration_method: quad # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
+  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'FFTLog']
+  proj_nongauss_integration_method: quad # Type: str. Options: ['simps', 'quad', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.
@@ -434,7 +434,7 @@ precision:
 misc:
   # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
   #        have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 150 # Type: int. How many threads to use for the parallel computations
+  num_threads: 20 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.

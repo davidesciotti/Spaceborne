@@ -59,7 +59,7 @@ def compare_sb_and_oc(
     for term in cov_sb_dict:
         # plot title
         title = (
-            f'cov {term}, {obs_space} space, nbx {pvt_cfg["nbx"]}, '
+            f'cov {term}, {obs_space} space, nbs {pvt_cfg["nbs"]}, '
             f'int {cfg["precision"]["proj_nongauss_integration_method"]} -'
         )
 
@@ -245,7 +245,7 @@ def print_cfg_onecov_ini(cfg_onecov_ini):
 
 
 def process_cov_from_list_file(
-    cov_dict, oc_output_covlist_fname, zbins, obs_space, nbx, df_chunk_size=5_000_000
+    cov_dict, oc_output_covlist_fname, zbins, obs_space, nbs, df_chunk_size=5_000_000
 ):
     import re
 
@@ -279,9 +279,9 @@ def process_cov_from_list_file(
 
     scales_oc_load = sorted(data[f'{scale_ix_name}1'].unique())
     cov_scale_indices = {scale: idx for idx, scale in enumerate(scales_oc_load)}
-    nbx_oc = len(scales_oc_load)  # 'nbx' = nbt or nbl
-    assert nbx_oc == nbx, (
-        f'Scale bins mismatch: OC: {nbx_oc}, SB: {nbx}.\n'
+    nbs_oc = len(scales_oc_load)  # 'nbs' = nbt or nbl
+    assert nbs_oc == nbs, (
+        f'Scale bins mismatch: OC: {nbs_oc}, SB: {nbs}.\n'
         'A possible source of this error is '
         'the casting of ell bin edges to integers in OneCovariance, which may reduce '
         'the number of unique ell bins. Please check the ell binning settings.'
@@ -314,7 +314,7 @@ def process_cov_from_list_file(
     # are filled partially at each iteration of the for loop
     temp_cov_arrays = defaultdict(
         lambda: defaultdict(
-            lambda: np.zeros((nbx_oc, nbx_oc, zbins, zbins, zbins, zbins))
+            lambda: np.zeros((nbs_oc, nbs_oc, zbins, zbins, zbins, zbins))
         )
     )
 
@@ -444,7 +444,7 @@ class OneCovarianceInterface:
         self.nbl_3x2pt = pvt_cfg['nbl_3x2pt']
         self.zbins = pvt_cfg['zbins']
         self.ind = pvt_cfg['ind']
-        self.nbx = pvt_cfg['nbx']
+        self.nbs = pvt_cfg['nbs']
 
         # set which cov terms to compute from cfg file
         self.compute_g = do_g
@@ -1058,19 +1058,19 @@ class OneCovarianceInterface:
         cov_sn_tuple = [self.cov_g[idx * 3 + 2] for idx in range(6)]
 
         self.cov_sva_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sva_tuple, nbl=self.nbx, compute_cov=self.compute_g
+            cov_tuple_in=cov_sva_tuple, nbl=self.nbs, compute_cov=self.compute_g
         )
         self.cov_mix_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_mix_tuple, nbl=self.nbx, compute_cov=self.compute_g
+            cov_tuple_in=cov_mix_tuple, nbl=self.nbs, compute_cov=self.compute_g
         )
         self.cov_sn_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=cov_sn_tuple, nbl=self.nbx, compute_cov=self.compute_g
+            cov_tuple_in=cov_sn_tuple, nbl=self.nbs, compute_cov=self.compute_g
         )
         self.cov_ssc_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_ssc, nbl=self.nbx, compute_cov=self.compute_ssc
+            cov_tuple_in=self.cov_ssc, nbl=self.nbs, compute_cov=self.compute_ssc
         )
         self.cov_cng_oc_3x2pt_10D = self.oc_cov_to_10d(
-            cov_tuple_in=self.cov_cng, nbl=self.nbx, compute_cov=self.compute_cng
+            cov_tuple_in=self.cov_cng, nbl=self.nbs, compute_cov=self.compute_cng
         )
 
         self.cov_g_oc_3x2pt_10D = (
@@ -1086,8 +1086,8 @@ class OneCovarianceInterface:
 
         self.cov_dict_matfmt = defaultdict(lambda: defaultdict(dict))
 
-        elem_auto = self.zpairs_auto * self.nbx
-        elem_cross = self.zpairs_cross * self.nbx
+        elem_auto = self.zpairs_auto * self.nbs
+        elem_cross = self.zpairs_cross * self.nbs
 
         if self.compute_g:
             _gauss_mat_fname = f'{self.oc_path}/{self.cov_oc_fname}'

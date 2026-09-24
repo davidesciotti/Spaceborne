@@ -740,7 +740,7 @@ class CCLInterface:
             unique_probe_combs=unique_probe_combs,
             nonreq_probe_combs=nonreq_probe_combs,
             obs_space='harmonic',
-            nbx=len(ells),
+            nbs=len(ells),
             zbins=None,
             ind_dict=ind_dict,
             msg=f'{which_ng_cov} cov: ',

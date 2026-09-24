@@ -380,21 +380,6 @@ class SpaceborneConfigChecker:
             "Section 'precision' must be a dictionary"
         )
         precision_cfg = self.cfg['precision']
-        assert isinstance(precision_cfg['n_sub'], int), (
-            'precision: n_sub must be an int'
-        )
-        assert isinstance(precision_cfg['n_bisec_max'], int), (
-            'precision: n_bisec_max must be an int'
-        )
-        assert isinstance(precision_cfg['rel_acc'], float), (
-            'precision: rel_acc must be a float'
-        )
-        assert isinstance(precision_cfg['boost_bessel'], bool), (
-            'precision: boost_bessel must be a boolean'
-        )
-        assert isinstance(precision_cfg['verbose'], bool), (
-            'precision: verbose must be a boolean'
-        )
         assert isinstance(precision_cfg['ell_min_proj'], int), (
             'precision: ell_min_proj must be an int'
         )
@@ -790,6 +775,65 @@ class SpaceborneConfigChecker:
             'polynomial_fit',
         ], 'which_gal_bias should be "from_input" or "polynomial_fit"'
 
+    def check_projection_methods(self) -> None:
+        """Integration methods for the harmonic -> real-space projection."""
+        space = self.cfg['probe_selection']['space']
+        # no projection is performed in harmonic space
+        if space == 'harmonic':
+            return
+
+        precision_cfg = self.cfg['precision']
+        cov_cfg = self.cfg['covariance']
+        allowed = {
+            'proj_gauss_integration_method': ('simps', 'FFTLog'),
+            'proj_nongauss_integration_method': ('simps', 'quad', 'FFTLog'),
+        }
+
+        # only check the methods of the terms which are actually projected
+        integr_method_keys = []
+        if cov_cfg['G']:
+            integr_method_keys.append('proj_gauss_integration_method')
+        if cov_cfg['SSC'] or cov_cfg['cNG']:
+            integr_method_keys.append('proj_nongauss_integration_method')
+
+        for key in integr_method_keys:
+            integr_method = precision_cfg[key]
+            if integr_method not in allowed[key]:
+                raise ValueError(
+                    f'precision: {key} must be one of {allowed[key]}, '
+                    f'got {integr_method!r}'
+                )
+
+        if space == 'real':
+            ell_bins_keys = {
+                'proj_gauss_integration_method': 'ell_bins_proj_gauss',
+                'proj_nongauss_integration_method': 'ell_bins_proj_nongauss',
+            }
+            for key in integr_method_keys:
+                if precision_cfg[key] != 'FFTLog':
+                    continue
+                if self.cfg['binning']['binning_type'] != 'log':
+                    raise ValueError(
+                        f"precision: {key}='FFTLog' requires log-spaced theta bins "
+                        "(binning_type: 'log')."
+                    )
+                nbl_key = ell_bins_keys[key]
+                if precision_cfg[nbl_key] % 2 != 0:
+                    raise ValueError(
+                        f"precision: {key}='FFTLog' requires an even {nbl_key}, "
+                        f'got {precision_cfg[nbl_key]}.'
+                    )
+
+        # warn that for COSEBIs only simps is used
+        if space == 'cosebis':
+            forced_keys = [k for k in integr_method_keys if precision_cfg[k] != 'simps']
+            if forced_keys:
+                warnings.warn(
+                    f'For COSEBIs, the projection methods are forced to "simps"; '
+                    f'the configured {forced_keys} will be ignored.',
+                    stacklevel=2,
+                )
+
     def run_all_checks(self) -> None:
         self.check_types()
         self.check_nmt()
@@ -805,3 +849,4 @@ class SpaceborneConfigChecker:
         self.check_nz()
         self.check_cosmo()
         self.check_cov()
+        self.check_projection_methods()

@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## What this is
 
 Spaceborne computes the **covariance matrix** of the 3×2pt photometric probes — weak lensing (`LL`),
@@ -9,34 +7,10 @@ photometric galaxy clustering (`GG`), and galaxy-galaxy lensing (`GL`) — in **
 for Gaussian (G), super-sample (SSC) and connected non-Gaussian (cNG) terms. Pure Python, JAX-accelerated,
 interfaced with CCL (cosmology), NaMaster (partial-sky harmonic cov) and OneCovariance (cross-checks).
 
-## Commands
+## Lint/format
 
-Environment (conda, Python 3.13):
-```bash
-conda env create -f environment.yaml   # or: mamba env create -f environment.yaml
-conda activate spaceborne
-pip install .
-```
-
-Run (the whole pipeline is driven by a single YAML config):
-```bash
-python main.py                                   # uses ./config.yaml
-python main.py --config=/path/to/config.yaml     # custom config
-python main.py --config=... --show-plots         # also display figures
-```
-
-Tests (CI runs these on pushes/PRs to `develop` and `main`):
-```bash
-python -m pytest tests/ -v                        # full suite
-python -m pytest tests/test_mask_utils.py -v      # one file
-python -m pytest tests/test_ell_utils.py::test_name -v   # one test
-```
-
-Lint/format (ruff, enforced via `.pre-commit-config.yaml`):
-```bash
-ruff check . && ruff format .
-```
-Style is non-default: line-length 88, **single quotes**, `skip-magic-trailing-comma = true`
+`ruff check . && ruff format .` (config in `pyproject.toml`; **not** run by pre-commit or CI — run it
+manually). Style is non-default: line-length 88, **single quotes**, `skip-magic-trailing-comma = true`
 (so do not add trailing commas that force multi-line collapses). Many naming rules (N802/N803/N806…)
 are intentionally ignored because the code uses physics notation (`C_ell`, `compute_FoM`, etc.) — match
 the surrounding style, don't "fix" casing.
@@ -49,12 +23,10 @@ implementation. Reading order to understand a run:
 
 1. **Config** (`config.yaml`) is the single source of truth. Every option is documented inline with its
    type. There is no hidden default file — the YAML *is* the API. `config_checker.py` validates it.
-2. **Cosmology & power spectra**: `ccl_interface.py` (CCL cosmology, `p_of_k`, tracers) →
-   `wf_cl_lib.py` (radial kernels, `C(ell)`), `responses.py` (P(k) responses for SSC).
-3. **Geometry**: `mask_utils.py` — `Mask` objects per probe. Distinguishes the **binary footprint**
+2. **Geometry**: `mask_utils.py` — `Mask` objects per probe. Distinguishes the **binary footprint**
    (used for `fsky` scalars) from fractional **weight maps** (per-bin, per-probe; used only by the
    NaMaster partial-sky cov). `footprint_fsky_ab` builds the probe-pair effective fskys.
-4. **Covariance terms** (each builds a nested `cov_dict`):
+3. **Covariance terms** (each builds a nested `cov_dict`):
    - **Gaussian**: `cov_harmonic_space.py::CovHarmonicSpace.set_gauss_cov` dispatches on
      `covariance.partial_sky_method`:
      - `Knox` — analytic 1/fsky rescaling (fast).
@@ -68,8 +40,6 @@ implementation. Reading order to understand a run:
    - **Real space / COSEBIs**: `cov_real_space.py`, `cov_cosebis.py`, projected from harmonic space via
      `cov_projector.py` (uses `twobessel_fang.py` for FFTLog; COSEBIs kernels need `cloelib`).
    - **External cross-check**: `oc_interface.py` shells out to OneCovariance.
-5. **Assemble & save**: terms combined, then reshaped and written. `io_handler.py` + `sb_lib.py` hold the
-   shape machinery and I/O.
 
 ### Covariance data model (important, easy to get wrong)
 - `cov_dict[term][probe_ab, probe_cd]` where `term ∈ {'g','ssc','cng'}` and probe blocks are 2-tuples of
@@ -103,5 +73,4 @@ dedicated repo) to clone the base config, override keys
 
 ## Releases
 
-Only tagged releases are considered stable; `main` may be mid-development. Version in `pyproject.toml`
-(date-based, e.g. `2026.05.0`).
+Only tagged releases are considered stable; `main` may be mid-development.

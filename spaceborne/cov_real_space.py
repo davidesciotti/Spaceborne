@@ -150,7 +150,7 @@ def proj_cov_2d_fftlog(
     if nbl % 2 != 0:
         raise ValueError(
             f'ells must have even length for FFTLog (got {nbl}). '
-            'Set ell_bins_proj_nongauss to an even number.'
+            'Set ell_bins_proj_gauss/ell_bins_proj_nongauss to an even number.'
         )
 
     dlnells = np.diff(np.log(ells_proj))

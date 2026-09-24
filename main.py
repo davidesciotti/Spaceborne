@@ -1979,13 +1979,10 @@ if cfg['misc']['save_output_as_benchmark']:
     # other stuff to save
     misc_dict = {}
 
-    # COSEBIs W_n kernels
-    # TODO bookmark check this
+    # COSEBIs W_n kernels, on the Gaussian projection ell grid
     if obs_space == 'cosebis' and cov_cs_obj is not None:
-        if hasattr(cov_cs_obj, 'w_ells'):
-            misc_dict['cosebis_w_ells'] = cov_cs_obj.w_ells
-        if hasattr(cov_cs_obj, 'ells_for_w'):
-            misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
+        misc_dict['cosebis_w_ells'] = cov_cs_obj.w_ells_arr_g
+        misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_proj_g
 
     # Mask information
     for mask_obj, name in zip((mask_obj_ll, mask_obj_gg), ('LL', 'GG'), strict=True):

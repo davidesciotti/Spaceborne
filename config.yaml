@@ -211,7 +211,7 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
   cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
@@ -254,11 +254,17 @@ covariance:
   # background density fluctuation, needed for the SSC term.
   which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
 
-  # Which first-order galaxy bias to use in the computation of the counterterms for the GL and GG responses.
+  # How to model the galaxy field in the non-Gaussian covariance terms, i.e., in the
+  # GL and GG SSC responses and in the cNG trispectrum.
   # Options:
-  # - 'from_HOD' (from the Halo Occupation Distribution previously initialized)
-  # - 'from_input' (from the input tabulated galaxy bias values)/FS2 fit computed in SB
-  which_b1g_in_resp: from_input # Type: str. Options: ['from_HOD', 'from_input']
+  # - 'linear_bias': galaxies are linearly biased tracers of matter, with b1 taken from
+  #                  the input tabulated values/third order polynomial computed in SB. 
+  #                  This is consistent with the C_ells. The PyCCL cNG uses the matter
+  #                  trispectrum, with the galaxy bias entering through the kernels.
+  # - 'HOD': the galaxy field is described by the Halo Occupation Distribution (HOD)
+  #          initialized in the halo_model section. Note: the C_ells still use the
+  #          linear bias.
+  ng_cov_gal_bias_model: linear_bias # Type: str. Options: ['linear_bias', 'HOD']
 
   # Whether or not to include the second-order galaxy bias in the GG SU responses
   include_b2g: True # Type: bool
@@ -308,9 +314,6 @@ PyCCL:
   # - 'spline' (the integrand is splined and then integrated analytically).
   # [Note] The former could give errors.
   cov_integration_method: qag_quad # Type: str
-
-  # Whether or not to load the previously computed trispectrum.
-  load_cached_tkka: False # Type: bool.
 
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower
@@ -365,14 +368,14 @@ precision:
   # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
-  ell_bins_proj_gauss: 500 # Type: int.
-  ell_bins_proj_nongauss: 200 # Type: int.
+  ell_bins_proj_gauss: 2000 # Type: int.
+  ell_bins_proj_nongauss: 300 # Type: int.
 
   # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
   # performed with simpson integration.
-  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'levin', 'FFTLog']
-  proj_nongauss_integration_method: simps # Type: str. Options: ['simps', 'quad', 'levin', 'FFTLog']
+  proj_gauss_integration_method: simps # Type: str. Options: ['simps', 'FFTLog']
+  proj_nongauss_integration_method: quad # Type: str. Options: ['simps', 'quad', 'FFTLog']
 
   # Parameters of the (log-spaced) grid used for the COSEBIs covariance
   theta_min_arcmin_cosebis: 5 # Type: int | float.

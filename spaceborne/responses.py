@@ -348,7 +348,7 @@ class SpaceborneResponses:
         self.r1_gg = self.dPgg_ddeltab / self.pk_gg
 
     def set_hm_resp(
-        self, k_grid, z_grid, which_b1g, b1g_zi, b1g_zj, include_terasawa_terms
+        self, k_grid, z_grid, galaxy_bias_model, b1g_zi, b1g_zj, include_terasawa_terms
     ):
         """Compute the power spectra response terms from the halo model.
 
@@ -361,16 +361,19 @@ class SpaceborneResponses:
         z_grid : array-like
             The redshift grid on which to evaluate the PS and responses.
 
-        which_b1g : str
-            String indicating how the first-order galaxy bias (b1g) is to be treated.
-            - 'from_HOD': Use the halo occupation distribution (HOD) profile to compute
-            galaxy bias.
-            - 'from_input': Use the input `b1g` array provided as an argument.
+        galaxy_bias_model : str
+            String indicating how the galaxy field is modelled.
+            - 'HOD': the galaxy power spectra and responses are computed with the
+            halo occupation distribution (HOD) profile, and the first-order galaxy
+            bias in the counterterms is the HOD one, I^1_1(g) / n_g. The input
+            `b1g_zi`, `b1g_zj` are not used.
+            - 'linear_bias': galaxies are linearly biased tracers of matter, with
+            the first-order galaxy bias given by the input `b1g_zi`, `b1g_zj`.
 
-        b1g : array-like
-            If `which_b1g` is 'from_input', this array represents the galaxy bias as a
-            function of redshift.
-            Must have the same shape as `z_grid` and be a 1D array.
+        b1g_zi, b1g_zj : array-like
+            If `galaxy_bias_model` is 'linear_bias', the galaxy bias of the two
+            tomographic bins as a function of redshift.
+            Must be 1D arrays with the same shape as `z_grid`.
 
         Outputs (Set as attributes of the class):
         -----------------------------------------
@@ -393,9 +396,9 @@ class SpaceborneResponses:
         Raises
         ------
         AssertionError:
-            If `which_b1g` is not one of 'from_HOD' or 'from_input'.
+            If `galaxy_bias_model` is not one of 'HOD' or 'linear_bias'.
             If `b1g` is not a 1D array or does not have the same shape as `z_grid`
-            when `which_b1g` is 'from_input'.
+            when `galaxy_bias_model` is 'linear_bias'.
 
         Notes
         -----
@@ -411,8 +414,8 @@ class SpaceborneResponses:
         print('\nComputing halo model probe responses...')
 
         # perform some checks on the input shapes
-        assert which_b1g in ['from_HOD', 'from_input'], (
-            '"which_b1g" must be either "from_HOD" or "from_input"'
+        assert galaxy_bias_model in ['HOD', 'linear_bias'], (
+            '"galaxy_bias_model" must be either "HOD" or "linear_bias"'
         )
         for b1g in [b1g_zi, b1g_zj]:
             assert len(b1g) == len(z_grid), 'b1g must have the same shape as z_grid'
@@ -525,7 +528,7 @@ class SpaceborneResponses:
             # TODO the HOD galaxy bias sould probably be used also in the rest
             # TODO of the code!
             # this case is equivalent to the halomod_Tk3D_SSC function
-            if which_b1g == 'from_HOD':
+            if galaxy_bias_model == 'HOD':
                 # Super-sample covariance response terms
                 dPmm_ddeltab[a_idx] = (
                     (47 / 21 + trsw_mm - dpklin / 3) * i11_m * i11_m * pklin + i12_mm
@@ -561,7 +564,7 @@ class SpaceborneResponses:
                 dPgg_ddeltab[a_idx] -= counter_gg
 
             # this case is equivalent to the halomod_Tk3D_SSC_linear_bias function
-            elif which_b1g == 'from_input':
+            elif galaxy_bias_model == 'linear_bias':
                 # ! old
                 # these 2 lines are wrong, in this case the galaxy bias should be
                 # taken from the input!
@@ -610,7 +613,7 @@ class SpaceborneResponses:
 
             else:
                 raise ValueError(
-                    "'which_b1g' must be either 'from_HOD' or 'from_input'"
+                    "'galaxy_bias_model' must be either 'HOD' or 'linear_bias'"
                 )
 
         # transpose to have pk(k, z)
@@ -644,8 +647,10 @@ class SpaceborneResponses:
         # shape checks
         assert dPmm_ddeltab.ndim == 2, 'dPmm_ddeltab must have shape (k, z)'
         assert dPgm_ddeltab.ndim == 3, 'dPgm_ddeltab must have shape (k, z, zbins)'
-        assert dPgg_ddeltab.ndim == 4, 'dPgg_ddeltab must have shape (k, z, zbins, zbins)'
-        
+        assert dPgg_ddeltab.ndim == 4, (
+            'dPgg_ddeltab must have shape (k, z, zbins, zbins)'
+        )
+
         assert dPgm_ddeltab.shape[2] == zbins, (
             'dPgm_ddeltab second dimension must match zbins'
         )

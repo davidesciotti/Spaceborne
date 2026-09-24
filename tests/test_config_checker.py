@@ -7,6 +7,7 @@ plus a set of targeted invalid mutations.
 
 import copy
 import os
+import warnings
 
 import pytest
 import yaml
@@ -31,18 +32,11 @@ def _apply_main_hardcoded_overrides(cfg):
     since the comment there states they "should not be visible to the user".
     """
     cfg['covariance']['n_probes'] = 2
-    cfg['precision']['n_sub'] = 16
-    cfg['precision']['n_bisec_max'] = 128
-    cfg['precision']['rel_acc'] = 1.0e-4
-    cfg['precision']['boost_bessel'] = True
-    cfg['precision']['verbose'] = True
     cfg['covariance'].setdefault('G_code', 'Spaceborne')
     cfg['covariance'].setdefault('SSC_code', 'Spaceborne')
     cfg['covariance'].setdefault('cNG_code', 'PyCCL')
     cfg['probe_selection']['Psigl'] = False
     cfg['probe_selection']['Psigg'] = False
-    cfg['covariance']['which_sigma2_b'] = 'from_input_mask'
-    cfg['covariance']['sigma2_b_int_method'] = 'fft'
     return cfg
 
 
@@ -120,26 +114,6 @@ class TestCheckBNTTransform:
         checker.check_BNT_transform()
 
 
-class TestCheckKEApproximation:
-    """Tests for check_KE_approximation."""
-
-    def test_ke_approx_with_disallowed_sigma2_b_raises(self, valid_cfg):
-        valid_cfg['precision']['use_KE_approximation'] = True
-        valid_cfg['covariance']['SSC_code'] = 'Spaceborne'
-        valid_cfg['covariance']['which_sigma2_b'] = 'full_curved_sky'
-        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
-        with pytest.raises(AssertionError):
-            checker.check_KE_approximation()
-
-    def test_no_ke_approx_with_disallowed_sigma2_b_raises(self, valid_cfg):
-        valid_cfg['precision']['use_KE_approximation'] = False
-        valid_cfg['covariance']['SSC_code'] = 'Spaceborne'
-        valid_cfg['covariance']['which_sigma2_b'] = 'flat_sky'
-        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
-        with pytest.raises(AssertionError):
-            checker.check_KE_approximation()
-
-
 class TestCheckProbeSelection:
     """Tests for check_probe_selection."""
 
@@ -187,6 +161,129 @@ class TestCheckCov:
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_cov()
+
+
+class TestCheckNgCovGalBiasModel:
+    """Tests for the ng_cov_gal_bias_model check in check_cov."""
+
+    @pytest.mark.parametrize('value', ['linear_bias', 'HOD'])
+    def test_valid_values_ok(self, valid_cfg, value):
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_cov()
+
+    def test_invalid_value_raises(self, valid_cfg):
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'hod'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='ng_cov_gal_bias_model'):
+            checker.check_cov()
+
+
+class TestCheckProjectionMethods:
+    """Tests for check_projection_methods (harmonic -> real-space integrators)."""
+
+    @pytest.mark.parametrize(
+        ('key', 'method'),
+        [
+            ('proj_gauss_integration_method', 'simps'),
+            ('proj_gauss_integration_method', 'FFTLog'),
+            ('proj_nongauss_integration_method', 'simps'),
+            ('proj_nongauss_integration_method', 'quad'),
+            ('proj_nongauss_integration_method', 'FFTLog'),
+        ],
+    )
+    def test_valid_methods_ok(self, valid_cfg, key, method):
+        valid_cfg['precision'][key] = method
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_projection_methods()
+
+    @pytest.mark.parametrize(
+        'key', ['proj_gauss_integration_method', 'proj_nongauss_integration_method']
+    )
+    def test_levin_raises(self, valid_cfg, key):
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['G'] = True
+        valid_cfg['covariance']['SSC'] = True
+        valid_cfg['precision'][key] = 'levin'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(ValueError, match='must be one of'):
+            checker.check_projection_methods()
+
+    def test_methods_ignored_in_harmonic_space(self, valid_cfg):
+        """No projection happens in harmonic space, so stale values are fine."""
+        valid_cfg['probe_selection']['space'] = 'harmonic'
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'levin'
+        valid_cfg['precision']['proj_nongauss_integration_method'] = 'levin'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_projection_methods()
+
+    def test_method_of_unrequested_term_ignored(self, valid_cfg):
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['G'] = True
+        valid_cfg['covariance']['SSC'] = False
+        valid_cfg['covariance']['cNG'] = False
+        valid_cfg['binning']['binning_type'] = 'lin'
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'simps'
+        valid_cfg['precision']['proj_nongauss_integration_method'] = 'FFTLog'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_projection_methods()
+
+    @pytest.mark.parametrize(
+        ('key', 'nbl_key'),
+        [
+            ('proj_gauss_integration_method', 'ell_bins_proj_gauss'),
+            ('proj_nongauss_integration_method', 'ell_bins_proj_nongauss'),
+        ],
+    )
+    def test_fftlog_requires_even_ell_bins(self, valid_cfg, key, nbl_key):
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['G'] = True
+        valid_cfg['covariance']['SSC'] = True
+        valid_cfg['binning']['binning_type'] = 'log'
+        valid_cfg['precision'][key] = 'FFTLog'
+        valid_cfg['precision'][nbl_key] = 301
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(ValueError, match=f'requires an even {nbl_key}'):
+            checker.check_projection_methods()
+
+    def test_cosebis_warning_only_for_requested_terms(self, valid_cfg):
+        valid_cfg['probe_selection']['space'] = 'cosebis'
+        valid_cfg['covariance']['G'] = True
+        valid_cfg['covariance']['SSC'] = False
+        valid_cfg['covariance']['cNG'] = False
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'simps'
+        valid_cfg['precision']['proj_nongauss_integration_method'] = 'quad'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            checker.check_projection_methods()
+
+        valid_cfg['covariance']['SSC'] = True
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.warns(UserWarning, match='forced to "simps"'):
+            checker.check_projection_methods()
+
+    def test_quad_not_allowed_for_gaussian(self, valid_cfg):
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'quad'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(ValueError, match='must be one of'):
+            checker.check_projection_methods()
+
+    def test_fftlog_requires_log_theta_bins_in_real_space(self, valid_cfg):
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['SSC'] = True
+        valid_cfg['binning']['binning_type'] = 'lin'
+        valid_cfg['precision']['proj_nongauss_integration_method'] = 'FFTLog'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(ValueError, match='log-spaced theta bins'):
+            checker.check_projection_methods()
+
+    def test_fftlog_with_lin_bins_ok_outside_real_space(self, valid_cfg):
+        valid_cfg['probe_selection']['space'] = 'harmonic'
+        valid_cfg['binning']['binning_type'] = 'lin'
+        valid_cfg['precision']['proj_gauss_integration_method'] = 'FFTLog'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_projection_methods()
 
 
 class TestCheckMask:
@@ -252,6 +349,56 @@ class TestCheckOnecov:
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(ValueError):
             checker.check_onecov()
+
+
+class TestCheckPyccl:
+    """Tests for check_pyccl."""
+
+    @staticmethod
+    def _pyccl_cfg(cfg, ssc, cng, has_mag, has_rsd):
+        cfg['covariance'].update(SSC=ssc, cNG=cng, SSC_code='PyCCL', cNG_code='PyCCL')
+        cfg['C_ell']['has_magnification_bias'] = has_mag
+        cfg['C_ell']['has_rsd'] = has_rsd
+        return config_checker.SpaceborneConfigChecker(cfg, _zbins(cfg))
+
+    def test_ssc_with_magnification_raises(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, True, False, True, False)
+        with pytest.raises(ValueError, match='magnification'):
+            checker.check_pyccl()
+
+    def test_cng_with_magnification_ok(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        checker.check_pyccl()
+
+    def test_spaceborne_ssc_with_magnification_ok(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, True, False, True, False)
+        valid_cfg['covariance']['SSC_code'] = 'Spaceborne'
+        checker.check_pyccl()
+
+    def test_hod_cng_with_magnification_raises(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'HOD'
+        with pytest.raises(ValueError, match='does not support magnification'):
+            checker.check_pyccl()
+
+    def test_hod_cng_without_magnification_warns(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, False, False)
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'HOD'
+        with pytest.warns(UserWarning, match='2-halo'):
+            checker.check_pyccl()
+
+    def test_linear_bias_cng_does_not_warn(self, valid_cfg):
+        checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
+        valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'linear_bias'
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            checker.check_pyccl()
+
+    @pytest.mark.parametrize(('ssc', 'cng'), [(True, False), (False, True)])
+    def test_rsd_warns(self, valid_cfg, ssc, cng):
+        checker = self._pyccl_cfg(valid_cfg, ssc, cng, False, True)
+        with pytest.warns(UserWarning, match='has_rsd'):
+            checker.check_pyccl()
 
 
 class TestCheckMisc:

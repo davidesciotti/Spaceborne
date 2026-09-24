@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import numpy as np
 
@@ -19,31 +20,6 @@ class SpaceborneConfigChecker:
         # assert np.abs(sl.percent_diff(self.cfg['mask']['fsky'], fsky_check)) < 1e-5, (
         #     'fsky does not match the survey area.'
         # )
-
-    def check_KE_approximation(self) -> None:
-        if (
-            self.cfg['precision']['use_KE_approximation']
-            and self.cfg['covariance']['SSC_code'] == 'Spaceborne'
-        ):
-            assert self.cfg['covariance']['which_sigma2_b'] not in [
-                None,
-                'full_curved_sky',
-            ], (
-                'to use the flat-sky sigma2_b, set "flat_sky" in the cfg file. '
-                'Also, bear in mind that the flat-sky '
-                'approximation for sigma2_b is likely inappropriate for the large '
-                'Euclid survey area'
-            )
-
-        elif (
-            not self.cfg['precision']['use_KE_approximation']
-            and self.cfg['covariance']['SSC_code'] == 'Spaceborne'
-        ):
-            assert self.cfg['covariance']['which_sigma2_b'] not in [None, 'flat_sky'], (
-                "If you're not using the KE approximation, you should set "
-                '"full_curved_sky", '
-                '"from_input_mask or "polar_cap_on_the_fly"'
-            )
 
     def check_types(self) -> None:
         # Cosmology
@@ -362,17 +338,14 @@ class SpaceborneConfigChecker:
         assert isinstance(cov_cfg['which_pk_responses'], str), (
             'covariance: which_pk_responses must be a string'
         )
-        assert isinstance(cov_cfg['which_b1g_in_resp'], str), (
-            'covariance: which_b1g_in_resp must be a string'
+        assert isinstance(cov_cfg['ng_cov_gal_bias_model'], str), (
+            'covariance: ng_cov_gal_bias_model must be a string'
         )
         assert isinstance(cov_cfg['include_b2g'], bool), (
             'covariance: include_b2g must be a boolean'
         )
         assert isinstance(cov_cfg['include_terasawa_terms'], bool), (
             'covariance: include_terasawa_terms must be a boolean'
-        )
-        assert isinstance(cov_cfg['sigma2_b_int_method'], str), (
-            'covariance: sigma2_b_int_method must be a string'
         )
         assert isinstance(cov_cfg['cov_filename'], str), (
             'covariance: cov_filename must be a string'
@@ -382,9 +355,6 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(cov_cfg['SSC_code'], (str, type(None))), (
             'covariance: SSC_code must be a string or None'
-        )
-        assert isinstance(cov_cfg['which_sigma2_b'], (str, type(None))), (
-            'covariance: which_sigma2_b must be a string or None'
         )
         assert isinstance(cov_cfg['n_probes'], int), (
             'covariance: n_probes must be an int'
@@ -401,9 +371,6 @@ class SpaceborneConfigChecker:
         assert isinstance(pyccl_cfg['cov_integration_method'], str), (
             'PyCCL: cov_integration_method must be a string'
         )
-        assert isinstance(pyccl_cfg['load_cached_tkka'], bool), (
-            'PyCCL: load_cached_tkka must be a boolean'
-        )
         assert isinstance(pyccl_cfg['use_default_k_a_grids'], bool), (
             'PyCCL: use_default_k_a_grids must be a boolean'
         )
@@ -413,21 +380,6 @@ class SpaceborneConfigChecker:
             "Section 'precision' must be a dictionary"
         )
         precision_cfg = self.cfg['precision']
-        assert isinstance(precision_cfg['n_sub'], int), (
-            'precision: n_sub must be an int'
-        )
-        assert isinstance(precision_cfg['n_bisec_max'], int), (
-            'precision: n_bisec_max must be an int'
-        )
-        assert isinstance(precision_cfg['rel_acc'], float), (
-            'precision: rel_acc must be a float'
-        )
-        assert isinstance(precision_cfg['boost_bessel'], bool), (
-            'precision: boost_bessel must be a boolean'
-        )
-        assert isinstance(precision_cfg['verbose'], bool), (
-            'precision: verbose must be a boolean'
-        )
         assert isinstance(precision_cfg['ell_min_proj'], int), (
             'precision: ell_min_proj must be an int'
         )
@@ -600,6 +552,10 @@ class SpaceborneConfigChecker:
             ), 'Value mismatch for logT_AGN in the parameters definition'
 
     def check_cov(self) -> None:
+        assert self.cfg['covariance']['ng_cov_gal_bias_model'] in (
+            'linear_bias',
+            'HOD',
+        ), 'ng_cov_gal_bias_model must be either "linear_bias" or "HOD"'
         assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), (
             'triu_tril must be either "triu" or "tril"'
         )
@@ -743,6 +699,56 @@ class SpaceborneConfigChecker:
                 'Results for GGL and GG might be inconsistent.'
             )
 
+    def check_pyccl(self) -> None:
+        cov_cfg = self.cfg['covariance']
+        pyccl_ssc = cov_cfg['SSC'] and cov_cfg['SSC_code'] == 'PyCCL'
+        pyccl_cng = cov_cfg['cNG'] and cov_cfg['cNG_code'] == 'PyCCL'
+        has_mag = self.cfg['C_ell']['has_magnification_bias']
+
+        # the magnification component of the galaxy tracers would need the matter
+        # response, while the PyCCL SSC pairs the galaxy legs with the galaxy one
+        if pyccl_ssc and has_mag:
+            raise ValueError(
+                'The PyCCL SSC does not support magnification bias yet. '
+                "Please set SSC_code: 'Spaceborne' or disable magnification bias."
+            )
+
+        # same for the HOD cNG, whose galaxy legs are paired with the HOD trispectrum.
+        # The linear-bias cNG pairs the full galaxy kernel with the matter
+        # trispectrum, and is therefore correct
+        if pyccl_cng and cov_cfg['ng_cov_gal_bias_model'] == 'HOD' and has_mag:
+            raise ValueError(
+                'The PyCCL cNG with ng_cov_gal_bias_model: HOD does not support '
+                'magnification bias yet. Please set '
+                "ng_cov_gal_bias_model: 'linear_bias' or disable magnification bias."
+            )
+
+        # pyccl.halos.pk_4pt.halomod_trispectrum_2h_13 (checked up to v3.3.3) takes
+        # shortcuts that are wrong for mixed matter/galaxy profiles
+        if pyccl_cng and cov_cfg['ng_cov_gal_bias_model'] == 'HOD':
+            warnings.warn(
+                'The PyCCL cNG with ng_cov_gal_bias_model: HOD uses the HOD '
+                'trispectrum, whose 2-halo (1+3) term could have a bug in CCL for mixed'
+                ' matter/galaxy profiles (e.g. the LLGG and GLGG blocks). The HOD is '
+                'also not consistent with the linear galaxy bias used in the C_ells.',
+                stacklevel=2,
+            )
+        if cov_cfg['ng_cov_gal_bias_model'] == 'HOD':
+            warnings.warn(
+                'At the moment, the Cls use linear galaxy bias, so selecting '
+                'ng_cov_gal_bias_model: HOD will create some inconsistency between '
+                'the cNG and G terms.',
+                stacklevel=2,
+            )
+
+        # CCL's angular_cl_cov_SSC/cNG ignore the RSD component of the tracers
+        if (cov_cfg['SSC'] or cov_cfg['cNG']) and self.cfg['C_ell']['has_rsd']:
+            warnings.warn(
+                'has_rsd is True, but the non-Gaussian covariance terms do not include'
+                ' this contribution.',
+                stacklevel=2,
+            )
+
     def check_mask(self) -> None:
         for probe in ['LL', 'GG']:
             assert self.cfg['mask'][probe]['geometry'] in [
@@ -769,6 +775,65 @@ class SpaceborneConfigChecker:
             'polynomial_fit',
         ], 'which_gal_bias should be "from_input" or "polynomial_fit"'
 
+    def check_projection_methods(self) -> None:
+        """Integration methods for the harmonic -> real-space projection."""
+        space = self.cfg['probe_selection']['space']
+        # no projection is performed in harmonic space
+        if space == 'harmonic':
+            return
+
+        precision_cfg = self.cfg['precision']
+        cov_cfg = self.cfg['covariance']
+        allowed = {
+            'proj_gauss_integration_method': ('simps', 'FFTLog'),
+            'proj_nongauss_integration_method': ('simps', 'quad', 'FFTLog'),
+        }
+
+        # only check the methods of the terms which are actually projected
+        integr_method_keys = []
+        if cov_cfg['G']:
+            integr_method_keys.append('proj_gauss_integration_method')
+        if cov_cfg['SSC'] or cov_cfg['cNG']:
+            integr_method_keys.append('proj_nongauss_integration_method')
+
+        for key in integr_method_keys:
+            integr_method = precision_cfg[key]
+            if integr_method not in allowed[key]:
+                raise ValueError(
+                    f'precision: {key} must be one of {allowed[key]}, '
+                    f'got {integr_method!r}'
+                )
+
+        if space == 'real':
+            ell_bins_keys = {
+                'proj_gauss_integration_method': 'ell_bins_proj_gauss',
+                'proj_nongauss_integration_method': 'ell_bins_proj_nongauss',
+            }
+            for key in integr_method_keys:
+                if precision_cfg[key] != 'FFTLog':
+                    continue
+                if self.cfg['binning']['binning_type'] != 'log':
+                    raise ValueError(
+                        f"precision: {key}='FFTLog' requires log-spaced theta bins "
+                        "(binning_type: 'log')."
+                    )
+                nbl_key = ell_bins_keys[key]
+                if precision_cfg[nbl_key] % 2 != 0:
+                    raise ValueError(
+                        f"precision: {key}='FFTLog' requires an even {nbl_key}, "
+                        f'got {precision_cfg[nbl_key]}.'
+                    )
+
+        # warn that for COSEBIs only simps is used
+        if space == 'cosebis':
+            forced_keys = [k for k in integr_method_keys if precision_cfg[k] != 'simps']
+            if forced_keys:
+                warnings.warn(
+                    f'For COSEBIs, the projection methods are forced to "simps"; '
+                    f'the configured {forced_keys} will be ignored.',
+                    stacklevel=2,
+                )
+
     def run_all_checks(self) -> None:
         self.check_types()
         self.check_nmt()
@@ -776,7 +841,7 @@ class SpaceborneConfigChecker:
         self.check_mask()
         self.check_BNT_transform()
         self.check_onecov()
-        self.check_KE_approximation()
+        self.check_pyccl()
         self.check_lists()
         # self.check_fsky()
         self.check_probe_selection()
@@ -784,3 +849,4 @@ class SpaceborneConfigChecker:
         self.check_nz()
         self.check_cosmo()
         self.check_cov()
+        self.check_projection_methods()

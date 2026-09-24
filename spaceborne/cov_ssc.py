@@ -1,87 +1,178 @@
 import time
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
 import pyccl as ccl
 from jax import jit
 from scipy.fft import rfft
 from scipy.integrate import simpson as simps
-from scipy.interpolate import interp1d
+from scipy.interpolate import RectBivariateSpline
 
 from spaceborne import cosmo_lib
 from spaceborne import cov_dict as cd
 from spaceborne import sb_lib as sl
 
 
-def sigma2_z1z2_fft(
-    z1_arr: np.ndarray,
-    z2_arr: np.ndarray,
-    k_grid_sigma2: np.ndarray,
+def linear_pk_transforms(
     cosmo_ccl: ccl.Cosmology,
-    which_sigma2_b: str,
-    cl_footp_norm_abcd: np.ndarray,
+    k_min: float,
+    k_max: float,
+    r_max: float,
+    nk_fft: int = 2**21,
+    fft_pad: int = 8,
+    dr_min: float = 2.5e-3,
+) -> tuple:
+    r"""Transforms of the z=0 linear power spectrum, sampled on a uniform r grid.
+
+    Returns ``(dr, cos_transform, xi)``, with
+    ``cos_transform(r) = \int dk P(k) cos(kr)`` and
+    ``xi(r) = 1/(2 pi^2) \int dk k^2 P(k) j_0(kr)``, both over ``[k_min, k_max]``,
+    tabulated up to (at least) ``r_max``.
+
+    - The k sampling sets the largest separation the FFT can represent, pi / dk: at
+      least ``nk_fft`` points are used, more if needed to cover 1.5 * ``r_max``.
+    - The FFT is zero-padded by ``fft_pad`` to oversample r: the sharp cut at
+      ``k_max`` makes both transforms ring with period 2 pi / k_max, which is also
+      the unpadded r spacing, so without padding the ringing is aliased. The padding
+      is reduced when dr would fall well below ``dr_min`` [Mpc], to bound memory
+      for large k_max, where P(k_max), and hence the ringing, is negligible.
+    """
+    nk_range = 1.5 * r_max * (k_max - k_min) / np.pi
+    nk = max(nk_fft, 2 ** int(np.ceil(np.log2(nk_range))))
+    k = np.linspace(k_min, k_max, nk)
+    dk = k[1] - k[0]
+    pk = ccl.linear_matter_power(cosmo_ccl, k=k, a=1.0)
+
+    n_fft_dr_min = 2 ** int(np.ceil(np.log2(2 * np.pi / (dk * dr_min))))
+    n_fft = max(2 * nk, min(fft_pad * nk, n_fft_dr_min))
+    dr = 2 * np.pi / (n_fft * dk)
+    n_r = int(r_max / dr) + 2
+    r = np.arange(n_r) * dr
+
+    # rfft assumes a grid starting at k=0; restore the phase exp(-i r k_min)
+    phase = np.exp(-1j * r * k_min)
+    cos_transform = (phase * rfft(pk, n=n_fft)[:n_r]).real * dk
+    sin_transform = -(phase * rfft(k * pk, n=n_fft)[:n_r]).imag * dk  # of k P(k)
+
+    xi = np.empty(n_r)
+    xi[0] = simps(y=k**2 * pk, x=k)
+    xi[1:] = sin_transform[1:] / r[1:]
+    xi /= 2 * np.pi**2
+
+    return dr, cos_transform, xi
+
+
+def interp_uniform(x: np.ndarray, dx: float, y: np.ndarray) -> np.ndarray:
+    """Linear interpolation of ``y``, sampled at ``0, dx, 2 dx, ...``, at ``x >= 0``.
+
+    Much faster than ``np.interp`` on large tables, since no bisection is needed.
+    """
+    pos = x / dx
+    if pos.max() > y.size - 1:
+        raise ValueError(
+            f'interpolation point {pos.max() * dx:.6g} beyond the table range '
+            f'{(y.size - 1) * dx:.6g}'
+        )
+    idx = np.minimum(pos.astype(np.intp), y.size - 2)
+    frac = pos - idx
+    return y[idx] * (1 - frac) + y[idx + 1] * frac
+
+
+def sigma2_z1z2(
+    z_grid: np.ndarray,
+    k_min: float,
+    k_max: float,
+    cosmo_ccl: ccl.Cosmology,
+    cl_footp_norm: np.ndarray,
     *,
     nk_fft: int = 2**21,
-):
-    # sanity check for z1_arr and z2_arr
-    z1_arr = np.atleast_1d(z1_arr)
-    z2_arr = np.atleast_1d(z2_arr)
-    np.testing.assert_equal(z1_arr, z2_arr)
+    fft_pad: int = 8,
+    n_z_coarse: int = 600,
+) -> np.ndarray:
+    r"""Variance of the background density mode in the survey, sigma^2_b(z1, z2).
 
-    a1 = cosmo_lib.z_to_a(z1_arr)
-    a2 = cosmo_lib.z_to_a(z2_arr)
-    chi1 = ccl.comoving_radial_distance(cosmo_ccl, a1)
-    chi2 = ccl.comoving_radial_distance(cosmo_ccl, a2)
-    g1 = ccl.growth_factor(cosmo_ccl, a1)
-    g2 = ccl.growth_factor(cosmo_ccl, a2)
+    For a mask with normalised spectrum
+    ``w_L = (2L+1) C_L^{W_AB W_CD} / ((4 pi)^2 f_AB f_CD)`` (``cl_footp_norm``),
+    Lacasa, Lima & Aguena (2016, arXiv:1612.05958) give
 
-    k_min = k_grid_sigma2.min()
-    k_max = k_grid_sigma2.max()
+        sigma2 = D1 D2 \sum_L w_L 2/pi \int dk k^2 P(k) j_L(k chi1) j_L(k chi2).
 
-    k_grid = np.linspace(k_min, k_max, nk_fft)
-    dk = k_grid[1] - k_grid[0]
-    Pk0 = ccl.linear_matter_power(cosmo_ccl, k=k_grid, a=1.0)
+    The addition theorem turns the sum over L into an angular integral,
 
-    # real FFT -> cosine coefficients on linear grid
-    fft_coeffs = rfft(Pk0) * dk  # \sum f(k) cos -> Re{FFT} * dk
-    r_grid = np.arange(fft_coeffs.size) * 2 * np.pi / (k_max - k_min)
-    # the grid starts at k_min != 0, so the cosine transform C(r) = int P(k) cos(kr) dk
-    # picks up a phase exp(-i r k_min) that rfft (which assumes a grid starting at 0)
-    # omits. Without it, C(r) is biased by O(r k_min), growing with r.
-    c_r = (np.exp(-1j * r_grid * k_min) * fft_coeffs).real
+        sigma2 = 2 pi D1 D2 \int_{-1}^{1} dmu W(mu) xi(r),
+        W(mu) = \sum_L w_L P_L(mu),  r^2 = chi1^2 + chi2^2 - 2 chi1 chi2 mu,
 
-    # interpolate C(r)
-    c_0 = simps(y=Pk0, x=k_grid)
-    c_func = interp1d(
-        r_grid,
-        c_r,
-        kind='cubic',
-        bounds_error=False,
-        fill_value=(c_0, 0.0),
-        assume_sorted=True,
+    which is evaluated by splitting ``W(mu) = W(1) + [W(mu) - W(1)]``:
+
+    - the monopole term ``W(1)`` integrates analytically in mu to a cosine transform
+      of P(k); it holds the sharp structure around z1 = z2 and is evaluated on
+      the full ``z_grid``;
+    - the mask-shape term has an integrand vanishing at mu = 1, so it is smooth in
+      (z1, z2): it is evaluated on ``n_z_coarse`` log-spaced redshifts and
+      spline-interpolated onto ``z_grid``.
+    """
+    z_grid = np.atleast_1d(z_grid)
+    chi = ccl.comoving_radial_distance(cosmo_ccl, cosmo_lib.z_to_a(z_grid))
+    growth = ccl.growth_factor(cosmo_ccl, cosmo_lib.z_to_a(z_grid))
+    assert np.all(chi > 0), 'sigma2_b requires z > 0'
+
+    dr, cos_transform, xi = linear_pk_transforms(
+        cosmo_ccl, k_min, k_max, r_max=2 * chi.max(), nk_fft=nk_fft, fft_pad=fft_pad
     )
 
-    chi1_mat, chi2_mat = chi1[:, None], chi2[None, :]
-    r_plus = chi1_mat + chi2_mat
-    r_minus = np.abs(chi1_mat - chi2_mat)
-    integral = 0.5 / (chi1_mat * chi2_mat) * (c_func(r_minus) - c_func(r_plus))
+    # * monopole term, without growth factors, using
+    # * \int dk k^2 P j0(k chi1) j0(k chi2)
+    # *   = [C(|chi1 - chi2|) - C(chi1 + chi2)] / (2 chi1 chi2)
+    # * (upper triangle, filled row by row to limit memory usage)
+    w_mu_1 = np.sum(cl_footp_norm)
+    sigma2 = np.zeros((chi.size, chi.size))
+    for i, chi_i in enumerate(chi):
+        chi_j = chi[i:]
+        sigma2[i, i:] = interp_uniform(np.abs(chi_j - chi_i), dr, cos_transform)
+        sigma2[i, i:] -= interp_uniform(chi_i + chi_j, dr, cos_transform)
+        sigma2[i, i:] *= w_mu_1 / (np.pi * chi_i * chi_j)
+    sigma2 += np.triu(sigma2, 1).T
 
-    if which_sigma2_b == 'full_curved_sky':
-        return (g1[:, None] * g2[None, :]) * integral / (2.0 * np.pi**2)
+    # * mask-shape term
+    if z_grid.size <= n_z_coarse:
+        z_coarse, chi_coarse = z_grid, chi
+    else:
+        z_coarse = np.geomspace(z_grid[0], z_grid[-1], n_z_coarse)
+        z_coarse[[0, -1]] = z_grid[[0, -1]]
+        chi_coarse = ccl.comoving_radial_distance(cosmo_ccl, cosmo_lib.z_to_a(z_coarse))
 
-    elif which_sigma2_b in {'polar_cap_on_the_fly', 'from_input_mask'}:
-        # old version, with unnormalised footprint Cl
-        # part_result = np.sum((2 * ells_footp_abcd + 1) * cl_footp_abcd) * 2.0 / np.pi
-        # denominator = (4.0 * np.pi) ** 2 * fsky_footp_ab * fsky_footp_cd
-        part_result = np.sum(cl_footp_norm_abcd) * 2.0 / np.pi
-        return part_result * g1[:, None] * g2[None, :] * integral
-
-    raise ValueError(
-        f'Invalid which_sigma2_b option: got {which_sigma2_b}, '
-        'expected one of ["full_curved_sky", "polar_cap_on_the_fly", '
-        '"from_input_mask"]'
+    # angular trapezoid quadrature: a uniform grid resolving the oscillations of W(mu)
+    # up to the mask ell_max, refined logarithmically at small angles, where
+    # xi(r) varies on scales r ~ chi * theta
+    theta = np.unique(
+        np.concatenate(
+            [
+                np.geomspace(1e-6, 1e-1, 1000),
+                np.linspace(0, np.pi, 8 * max(cl_footp_norm.size, 512) + 1),
+            ]
+        )
     )
+    cos_theta = np.cos(theta)
+    w_mu = np.polynomial.legendre.legval(cos_theta, cl_footp_norm)
+    theta_weights = np.zeros(theta.size)
+    theta_weights[1:] += np.diff(theta) / 2
+    theta_weights[:-1] += np.diff(theta) / 2
+    theta_weights *= (w_mu - w_mu_1) * np.sin(theta)
+
+    shape_term = np.zeros((z_coarse.size, z_coarse.size))
+    for i, chi_i in enumerate(chi_coarse):
+        chi_j = chi_coarse[i:, None]
+        r = np.sqrt(np.maximum(chi_i**2 + chi_j**2 - 2 * chi_i * chi_j * cos_theta, 0))
+        shape_term[i, i:] = interp_uniform(r, dr, xi) @ theta_weights
+    shape_term += np.triu(shape_term, 1).T
+    shape_term *= 2 * np.pi
+
+    if z_coarse is not z_grid:
+        shape_term = RectBivariateSpline(z_coarse, z_coarse, shape_term)(z_grid, z_grid)
+
+    sigma2 += shape_term
+    sigma2 *= np.outer(growth, growth)
+    return sigma2
 
 
 @jit
@@ -147,6 +238,8 @@ class SpaceborneSSC:
         self.use_ke_approx = cfg['precision']['use_KE_approximation']
         self.z_grid = z_grid
         self.ccl_obj = ccl_obj
+        self.k_min = 10 ** cfg['precision']['log10_k_min']
+        self.k_max = 10 ** cfg['precision']['log10_k_max']
 
         # set some useful attributes
         if self.use_ke_approx:
@@ -176,45 +269,27 @@ class SpaceborneSSC:
         dims = ['4d']
         self.cov_dict = cd.create_cov_dict(req_terms, _req_probe_combs_2d, dims=dims)
 
-    def sigma2_b_func(
-        self,
-        ccl_obj,
-        cl_footp_norm_abcd: np.ndarray,
-        fsky_max_abcd: float,
-        k_grid_s2b: np.ndarray,
-        which_sigma2_b: str,
-    ):
-        """Wrapper function for setting sigma2_b in 1 or 2 dimensions (depending on
-        whether the KE approximation is used or not).
+    def sigma2_b_func(self, cl_footp_norm_abcd: np.ndarray) -> np.ndarray:
+        """sigma2_b(z) with the KE approximation (from CCL), sigma2_b(z1, z2)
+        otherwise.
         """
-
         if self.use_ke_approx:
-            # compute sigma2_b(z) (1 dimension) using the existing CCL implementation
-            _sigma2_b_tpl = ccl_obj.sigma2_b_func(
-                z_grid=self.z_grid,
-                which_sigma2_b=which_sigma2_b,
-                cl_footp_norm_abcd=cl_footp_norm_abcd,
-                fsky_max_abcd=fsky_max_abcd,
+            a_grid, sigma2_b = self.ccl_obj.sigma2_b_func(
+                z_grid=self.z_grid, cl_footp_norm_abcd=cl_footp_norm_abcd
             )
-            _a, sigma2_b = _sigma2_b_tpl
-
-            # quick sanity check on the a/z grid
-            sigma2_b = sigma2_b[::-1]
-            _z = cosmo_lib.a_to_z(_a)[::-1]
-            np.testing.assert_allclose(self.z_grid, _z, atol=0, rtol=1e-8)
-
-        else:
-            sigma2_b = sigma2_z1z2_fft(
-                z1_arr=self.z_grid,
-                z2_arr=self.z_grid,
-                k_grid_sigma2=k_grid_s2b,
-                cosmo_ccl=ccl_obj.cosmo_ccl,
-                which_sigma2_b=which_sigma2_b,
-                cl_footp_norm_abcd=cl_footp_norm_abcd,
-                nk_fft=2**21,
+            # CCL works with increasing a, i.e. decreasing z
+            np.testing.assert_allclose(
+                self.z_grid, cosmo_lib.a_to_z(a_grid)[::-1], atol=0, rtol=1e-8
             )
+            return sigma2_b[::-1]
 
-        return sigma2_b
+        return sigma2_z1z2(
+            z_grid=self.z_grid,
+            k_min=self.k_min,
+            k_max=self.k_max,
+            cosmo_ccl=self.ccl_obj.cosmo_ccl,
+            cl_footp_norm=cl_footp_norm_abcd,
+        )
 
     def set_ssc_integral_prefactor(self):
         self.cl_integral_prefactor = cosmo_lib.cl_integral_prefactor(
@@ -323,7 +398,7 @@ class SpaceborneSSC:
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
             obs_space='harmonic',
-            nbx=nbl,
+            nbs=nbl,
             zbins=None,
             ind_dict=self.ind_dict,
             msg='SSC cov: ',

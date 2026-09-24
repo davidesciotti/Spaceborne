@@ -62,18 +62,12 @@ therefore needs to be installed for the code to run.
 * ``CCL``. The code relies heavily on the ``CCL`` library for the computation of the background 
   evolution, radial kernels, angular power spectra, halo model, and connected trispectrum.
   This is the main dependency of the code, and it is mandatory to run it.
-* ``CLOE``. [WORK IN PROGRESS]. Alternatively, the code can use the ``CLOE`` library as 
-  a backend for the calculation of the background evolution, radial kernels and 
-  angular power spectra. Note that also in this case, the halo mode quantities and 
-  connected trispectra will still be computed with ``CCL``.
-* ``pylevin`` [`GitHub <https://github.com/rreischke/levin_bessel>`_]. This package 
-  is used to  perform the integrals involving Bessel functions, namely the survey 
-  covariance :math:`\sigma_b^2(z_1, z_2)` and the real-space covariance, using the Levin 
-  method (see `2502.12142 <https://arxiv.org/abs/2502.12142>`_) 
-  The use of this package is optional, and the code will fall back to a simpson 
-  integration if ``pylevin`` is not installed.
 * ``NaMaster`` [`GitHub <https://github.com/LSSTDESC/NaMaster>`_]. This package is used 
   to compute the partial-sky Gaussian covariance in the NKA or iNKA approximation, using
   the pseudo-:math:`C_\ell` framework (see `1809.09603 <https://arxiv.org/abs/1809.09603>`_).
+* ``cloelib`` [`GitHub <https://github.com/cloe-org/cloelib>`_]. This package provides the
+  COSEBIs filter functions, and is only needed to compute the COSEBIs covariance. It must
+  be installed with the ``pylevin`` and ``mpmath`` extras (``pip install "cloelib[pylevin,mpmath]"``),
+  since it relies on ``pylevin`` internally. This is already included in ``environment.yaml``.
 
 

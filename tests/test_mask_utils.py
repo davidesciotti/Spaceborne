@@ -3,6 +3,7 @@
 import os
 import tempfile
 import types
+import warnings
 
 import healpy as hp
 import numpy as np
@@ -493,3 +494,62 @@ class TestMaskWeightMaps:
         mask_obj.process()
 
         assert mask_obj.weight_maps.shape == (zbins, hp.nside2npix(nside_target))
+
+
+class TestCheckFootprintClBandLimit:
+    """Tests for check_footprint_cl_band_limit (audit N01 follow-up: the mask
+    spectrum must resolve enough power to be trusted by sigma2_b).
+
+    The metric under test is
+    ``retained = sum_L (2L+1) C_L / (4 pi mean(map1 * map2))``, which by
+    Parseval equals 1 for a harmonic sum truncated at infinite ell. A finite
+    ``nside``/``lmax`` truncates the sum, so ``retained`` is always <= 1; a
+    well-resolved footprint keeps it close to 1, a poorly-resolved (or
+    artificially truncated) one does not.
+    """
+
+    @pytest.fixture(scope='class')
+    def polar_cap_cl(self):
+        """ells, cls and the retained fraction for a well-resolved polar cap."""
+        nside = 64
+        mask = mask_utils.generate_polar_cap_func(area_deg2=5000.0, nside=nside)
+        ells, cls = mask_utils.get_maps_cl(mask, mask)
+        retained = np.sum((2 * ells + 1) * cls) / (4 * np.pi * np.mean(mask * mask))
+        return mask, ells, cls, retained
+
+    def test_well_resolved_cap_retained_fraction(self, polar_cap_cl):
+        """Precondition: at nside=64 the polar-cap spectrum captures >99% of the
+        footprint power, i.e. this is indeed a 'well-resolved' case."""
+        _, _, _, retained = polar_cap_cl
+        assert retained > 0.99
+
+    def test_no_warning_when_well_resolved(self, polar_cap_cl):
+        """No warning is raised for a footprint whose spectrum is well within
+        the default rtol=1e-2 of the expected power."""
+        mask, ells, cls, _ = polar_cap_cl
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            mask_utils.check_footprint_cl_band_limit(
+                ells, cls, mask, mask, label='LL,LL'
+            )
+
+    def test_warns_when_tolerance_too_tight(self, polar_cap_cl):
+        """The same, well-resolved spectrum still trips a warning if the
+        requested tolerance is tighter than its actual residual deficit."""
+        mask, ells, cls, retained = polar_cap_cl
+        assert abs(retained - 1) > 1e-4  # sanity check: rtol=1e-4 must be violated
+        with pytest.warns(UserWarning, match='retains a fraction'):
+            mask_utils.check_footprint_cl_band_limit(
+                ells, cls, mask, mask, label='LL,LL', rtol=1e-4
+            )
+
+    def test_warns_when_spectrum_truncated(self, polar_cap_cl):
+        """A deliberately truncated cls array (as if the harmonic sum were
+        cut off well before it converges) misses a large fraction of the
+        power and warns even at the default rtol."""
+        mask, ells, cls, _ = polar_cap_cl
+        ells_trunc, cls_trunc = ells[:5], cls[:5]
+        with pytest.warns(UserWarning, match='retains a fraction'):
+            mask_utils.check_footprint_cl_band_limit(
+                ells_trunc, cls_trunc, mask, mask, label='LL,LL'
+            )

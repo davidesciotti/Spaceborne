@@ -247,37 +247,16 @@ if not os.path.exists(output_path):
         f'Output path {output_path} does not exist. '
         'Please create it before running the script.'
     )
-for subdir in ['cache', 'cache/trispectrum/SSC', 'cache/trispectrum/cNG']:
-    os.makedirs(f'{output_path}/{subdir}', exist_ok=True)
 
 # ! ======================== START HARDCODED OPTIONS/PARAMETERS ========================
 use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
 # for the Gaussian covariance computation
-k_steps_sigma2_simps = 20_000
 shift_nz_interpolation_kind = 'linear'
 
 
 # these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
-
-
-# ===================================== pylevin ======================================
-# Precision settings for pylevin. See the official documentation for more details:
-# https://levin-bessel.readthedocs.io/en/latest/index.html
-# https://github.com/rreischke/levin_bessel/blob/main/tutorial/levin_tutorial.ipynb
-
-# number of collocation points in each bisection. default: 8
-cfg['precision']['n_sub'] = 16
-# maximum number of bisections used. default: 32
-cfg['precision']['n_bisec_max'] = 128
-# relative accuracy target. default: 1.e-4
-cfg['precision']['rel_acc'] = 1.0e-4
-# Type: bool. Compute bessel functions with boost instead of GSL (higher accuracy at
-# high Bessel orders)
-cfg['precision']['boost_bessel'] = True
-# Type: bool. Whether to display warnings
-cfg['precision']['verbose'] = True
 
 
 if 'G_code' not in cfg['covariance']:
@@ -306,57 +285,20 @@ cfg['OneCovariance']['oc_output_filename'] = cfg['OneCovariance'].get(
 cfg['OneCovariance']['compare_against_oc'] = cfg['OneCovariance'].get(
     'compare_against_oc', False
 )
-
-if 'save_output_as_benchmark' not in cfg['misc'] or 'bench_filename' not in cfg['misc']:
-    cfg['misc']['save_output_as_benchmark'] = False
-    cfg['misc']['bench_filename'] = (
-        '../Spaceborne_bench/output_G{g_code:s}_SSC{ssc_code:s}_cNG{cng_code:s}'
-        '_KE{use_KE:s}_resp{which_pk_responses:s}_b1g{which_b1g_in_resp:s}'
-        '_devmerge3_nmt'
-    )
+cfg['misc']['save_output_as_benchmark'] = cfg['misc'].get(
+    'save_output_as_benchmark', False
+)
+cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
 
 
 # Psi-statistics not implemented yet
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
 
-# Sigma2_b settings, common to Spaceborne and PyCCL. Can be one of:
-# - full_curved_sky: Use the full- (curved-) sky expression (for Spaceborne only).
-#   In this case, the output covmat
-# - from_input_mask: input a mask with path specified by mask_filename
-# - polar_cap_on_the_fly: generate a polar cap during the run, with nside
-#   specified by nside
-# - null (None): use the flat-sky expression (valid for PyCCL only)
-# - flat_sky: use the flat-sky expression (valid for PyCCL only)
-#   has to be rescaled by fsky
-cfg['covariance']['which_sigma2_b'] = 'from_input_mask'  # Type: str | None
-# Integration scheme used for the SSC survey covariance (sigma2_b) computation. Options:
-# - 'simps': uses simpson integration. This is faster but less accurate
-# - 'levin': uses levin integration. This is slower but more accurate
-cfg['covariance']['sigma2_b_int_method'] = 'fft'  # Type: str.
-
-
-# This has been deprecated since I am no longer using Levin integration.
-# This variable used to control the number of bins over which to compute the Levin
-# RS cov (*without* analytical bin averaging, i.e. using J_mu in place of K_mu).
-# From then, the covariance was rebinned to cfg['binning']['theta_bins'].
-# This works but is not ideal, as the proper bin averaging is more correct.
-# Type: int. Number of theta bins used for the fine grid, after which the covariance is rebinned
-# TODO DELETE THIS, it complicates things
-cfg['precision']['theta_bins_fine'] = cfg['binning']['theta_bins']
-
-# Integration method for the covariance projection to real space. Options:
-# - 'simps': uses simpson integration. This is faster but less accurate
-# - 'levin': uses levin integration. This is slower but more accurate
-# cfg['precision']['cov_rs_int_method'] = 'simps'  # Type: str.
-# setting this to False makes the code resort to the less accurate bin averaging method
-# mentioned above
-cfg['precision']['levin_bin_avg'] = True  # Type: bool.
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
 # convenence settings that have been hardcoded
 n_probes = cfg['covariance']['n_probes']
-which_sigma2_b = cfg['covariance']['which_sigma2_b']
 # ! probe selection
 
 # * small naming guide for the confused developer:
@@ -512,13 +454,6 @@ cov_terms_and_codes = {
     'cNG': cfg['covariance']['cNG_code'] if cfg['covariance']['cNG'] else False,
 }
 
-_condition = 'GLGL' in req_probe_combs_hs_2d or 'gtgt' in req_probe_combs_rs_2d
-if compute_ccl_cng and _condition:
-    warnings.warn(
-        'There may be some issue with the symmetry of the GLGL block in the '
-        'CCL cNG covariance. The LLLL and GGGG blocks are not affected',
-        stacklevel=2,
-    )
 
 # ! set HS probes to compute depending on RS ones
 # Set HS probes depending on RS ones
@@ -561,7 +496,7 @@ ccl_obj = ccl_interface.CCLInterface(
 ccl_obj.p_of_k_a = 'delta_matter:delta_matter'
 ccl_obj.zbins = zbins
 ccl_obj.output_path = output_path
-ccl_obj.which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+ccl_obj.ng_cov_gal_bias_model = cfg['covariance']['ng_cov_gal_bias_model']
 ccl_obj.separable_growth = cfg['precision']['separable_growth']
 
 # get ccl default a and k grids
@@ -653,12 +588,6 @@ k_grid = np.logspace(
     cfg['precision']['log10_k_max'],
     cfg['precision']['k_steps'],
 )
-# in this case we need finer k binning because of the bessel functions
-k_grid_s2b = np.logspace(
-    cfg['precision']['log10_k_min'],
-    cfg['precision']['log10_k_max'],
-    k_steps_sigma2_simps,
-)
 
 # set CCL spline parameters accordingly
 cfg['precision']['spline_params']['N_K'] = cfg['precision']['k_steps']
@@ -670,18 +599,16 @@ cfg['precision']['spline_params']['K_MAX_SPLINE'] = (
 # ! do the same for CCL - i.e., set the above in the ccl_obj with little variations
 # ! (e.g. a instead of z)
 # TODO I leave the option to use a grid for the CCL, but I am not sure if it is needed
-z_grid_tkka_SSC = z_grid_trisp_ssc
-z_grid_tkka_cNG = z_grid_trisp_cng
-ccl_obj.a_grid_tkka_SSC = cosmo_lib.z_to_a(z_grid_tkka_SSC)[::-1]
-ccl_obj.a_grid_tkka_cNG = cosmo_lib.z_to_a(z_grid_tkka_cNG)[::-1]
-ccl_obj.logn_k_grid_tkka_SSC = np.log(k_grid)
-ccl_obj.logn_k_grid_tkka_cNG = np.log(k_grid)
+ccl_obj.a_grid_trisp_ssc = cosmo_lib.z_to_a(z_grid_trisp_ssc)[::-1]
+ccl_obj.a_grid_trisp_cng = cosmo_lib.z_to_a(z_grid_trisp_cng)[::-1]
+ccl_obj.logn_k_grid_trisp_ssc = np.log(k_grid)
+ccl_obj.logn_k_grid_trisp_cng = np.log(k_grid)
 
 # check that the grid is in ascending order
-if not np.all(np.diff(ccl_obj.a_grid_tkka_SSC) > 0):
-    raise ValueError('a_grid_tkka_SSC is not in ascending order!')
-if not np.all(np.diff(ccl_obj.a_grid_tkka_cNG) > 0):
-    raise ValueError('a_grid_tkka_cNG is not in ascending order!')
+if not np.all(np.diff(ccl_obj.a_grid_trisp_ssc) > 0):
+    raise ValueError('a_grid_trisp_ssc is not in ascending order!')
+if not np.all(np.diff(ccl_obj.a_grid_trisp_cng) > 0):
+    raise ValueError('a_grid_trisp_cng is not in ascending order!')
 if not np.all(np.diff(z_grid) > 0):
     raise ValueError('z grid is not in ascending order!')
 if not np.all(np.diff(z_grid_trisp_ssc) > 0):
@@ -690,10 +617,10 @@ if not np.all(np.diff(z_grid_trisp_cng) > 0):
     raise ValueError('z grid is not in ascending order!')
 
 if cfg['PyCCL']['use_default_k_a_grids']:
-    ccl_obj.a_grid_tkka_SSC = a_default_grid_ccl
-    ccl_obj.a_grid_tkka_cNG = a_default_grid_ccl
-    ccl_obj.logn_k_grid_tkka_SSC = lk_default_grid_ccl
-    ccl_obj.logn_k_grid_tkka_cNG = lk_default_grid_ccl
+    ccl_obj.a_grid_trisp_ssc = a_default_grid_ccl
+    ccl_obj.a_grid_trisp_cng = a_default_grid_ccl
+    ccl_obj.logn_k_grid_trisp_ssc = lk_default_grid_ccl
+    ccl_obj.logn_k_grid_trisp_cng = lk_default_grid_ccl
 
 # build the ind array and store it into the covariance dictionary
 zpairs_auto, zpairs_cross, zpairs_3x2pt = sl.get_zpairs(zbins)
@@ -748,12 +675,13 @@ pvt_cfg = {
 # instantiate data handler class
 io_obj = io_handler.IOHandler(cfg, pvt_cfg)
 
-# declare covariance objects
+# declare covariance objects/dicts
 cov_hs_obj = None
 cov_nmt_obj = None
 cov_rs_obj = None
 cov_cs_obj = None
 cov_oc_obj = None
+cov_nmt_dict = None
 
 # ! ====================================================================================
 # ! ================================= BEGIN MAIN BODY ==================================
@@ -766,17 +694,17 @@ bin_obj.compute_ells_3x2pt_unbinned()  # not always required, but this is simple
 bin_obj._validate_bins()
 
 if obs_space == 'harmonic':
-    nbx = bin_obj.nbl_3x2pt
+    nbs = bin_obj.nbl_3x2pt
 elif obs_space == 'real':
-    nbx = cfg['binning']['theta_bins']
+    nbs = cfg['binning']['theta_bins']
 elif obs_space == 'cosebis':
-    nbx = cfg['binning']['n_modes_cosebis']
+    nbs = cfg['binning']['n_modes_cosebis']
 else:
     raise ValueError(f'Unknown observables space: {obs_space:s}')
 
 pvt_cfg['nbl_3x2pt'] = bin_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = bin_obj.ell_min_3x2pt
-pvt_cfg['nbx'] = nbx
+pvt_cfg['nbs'] = nbs
 
 
 # ! ===================================== Mask =========================================
@@ -937,6 +865,17 @@ else:
 # two-dimensional", for shape consistency
 single_b_of_z = np.allclose(ccl_obj.gal_bias_2d, ccl_obj.gal_bias_2d[:, [0]])
 
+# CCL's linear-bias SSC response takes a single b(z) for each galaxy leg
+if (
+    cov_terms_and_codes['SSC'] == 'PyCCL'
+    and cfg['covariance']['ng_cov_gal_bias_model'] == 'linear_bias'
+    and not single_b_of_z
+):
+    raise ValueError(
+        'The PyCCL SSC with ng_cov_gal_bias_model: linear_bias requires the same galaxy '
+        "bias in all redshift bins. Please set SSC_code: 'Spaceborne'."
+    )
+
 # ! ============================ Magnification bias ====================================
 if cfg['C_ell']['has_magnification_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
@@ -1006,11 +945,12 @@ sb_plt.plot_kernels(ccl_obj, z_grid, zbins, clr)
 # Compute SB Cl regardless of the cfg, to plot against the input ones.
 # Note that in this case I can't use compute_cls_or_interpolate_input_cls, since this
 # checks whether the input cls are to be used, and if so it loads them.
+mult_shear_bias = np.array(cfg['C_ell']['mult_shear_bias'])
 _cl_3x2pt_5d_sb = ccl_interface.compute_cl_3x2pt_5d(
     ccl_obj,
     ells=bin_obj.ells_3x2pt,
     zbins=zbins,
-    mult_shear_bias=np.array(cfg['C_ell']['mult_shear_bias']),
+    mult_shear_bias=mult_shear_bias,
     cl_ccl_kwargs=cl_ccl_kwargs,
     n_probes_hs=cfg['covariance']['n_probes'],
 )
@@ -1049,7 +989,6 @@ nl_3x2pt_5d = np.repeat(nl_3x2pt_4d[:, :, np.newaxis, :, :], bin_obj.nbl_3x2pt, 
 
 
 # ! =============================== Init NaMaster cov object ===========================
-cov_nmt_dict = None
 if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     from spaceborne import cov_partial_sky
 
@@ -1087,46 +1026,29 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_dict = cov_nmt_obj.build_psky_cov()
 
 
-# ! ============================== Init real space cov object ==========================
-if obs_space == 'real':
-    # initialize cov_rs_obj and set a couple useful attributes
-    cov_rs_obj = cov_real_space.CovRealSpace(cfg=cfg, pvt_cfg=pvt_cfg)
-
-    # set ell values used for projection
-    bin_obj.compute_ells_3x2pt_proj()
-    cov_rs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
-    cov_rs_obj.nbl_proj_g = len(bin_obj.ells_3x2pt_proj_g)
-    cov_rs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-
-    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
-    # and store in the cov_rs_obj
-    cov_rs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        cov_rs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
-    )
-
-
-# TODO this could probably be done with super.__init__() where super is the
-# cov projector class
-if obs_space == 'cosebis':
-    cov_cs_obj = cov_cosebis.CovCOSEBIs(cfg=cfg, pvt_cfg=pvt_cfg)
+# ! ===================== Init real-space / COSEBIs cov object =========================
+if obs_space in ['real', 'cosebis']:
+    # ell grids over which the harmonic-space covariance is projected
     bin_obj.compute_ells_3x2pt_proj()
 
-    # set ell values used for projection
-    cov_cs_obj.ells_proj_g = bin_obj.ells_3x2pt_proj_g
-    cov_cs_obj.nbl_proj_g = bin_obj.nbl_3x2pt_proj_g
-    cov_cs_obj.ells_proj_ng = bin_obj.ells_3x2pt_proj_ng
-
-    # compute projection kernels over ell grids used for the integrals
-    # of the G and NG terms
-    cov_cs_obj.w_ells_arr_g = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_g)
-    if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
-        cov_cs_obj.w_ells_arr_ng = cov_cs_obj.set_w_ells(cov_cs_obj.ells_proj_ng)
-
-    # set 3x2pt cls: recompute or interpolate cls on the finer ell grid
-    # and store in the cov_cs_obj
-    cov_cs_obj.cl_3x2pt_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        cov_cs_obj.ells_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+    # recompute the Cls (or interpolate the input ones) on the finer ell grid used for
+    # the projection of the Gaussian terms
+    cl_3x2pt_proj_g_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        bin_obj.ells_3x2pt_proj_g, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
+
+    cov_proj_kw = {
+        'cfg': cfg,
+        'pvt_cfg': pvt_cfg,
+        'cl_3x2pt_5d': cl_3x2pt_proj_g_5d,
+        'nl_3x2pt_4d': nl_3x2pt_4d,
+        'ells_proj_g': bin_obj.ells_3x2pt_proj_g,
+        'ells_proj_ng': bin_obj.ells_3x2pt_proj_ng,
+    }
+    if obs_space == 'real':
+        cov_rs_obj = cov_real_space.CovRealSpace(**cov_proj_kw)
+    else:
+        cov_cs_obj = cov_cosebis.CovCOSEBIs(**cov_proj_kw)
 
 
 # !  =============================== Build Gaussian covs ===============================
@@ -1199,27 +1121,14 @@ if (
     np.savetxt(f'{oc_path}/{nz_src_ascii_filename}', nz_src_tosave)
     np.savetxt(f'{oc_path}/{nz_lns_ascii_filename}', nz_lns_tosave)
 
-    # oc needs finer ell sampling to avoid issues with ell bin edges
-    # ! old
-    ell_max_max = cfg['binning']['ell_max']
-    ell_min_unb_oc = 2
-    ell_max_unb_oc = 5000 if ell_max_max < 5000 else ell_max_max
-    nbl_3x2pt_oc = 500
-
-    ells_3x2pt_oc = np.geomspace(
-        bin_obj.ell_min_3x2pt, bin_obj.ell_max_3x2pt, nbl_3x2pt_oc
-    )
-
-    # ! new
-    # nbl_3x2pt_oc = 100
-    # nbl_3x2pt_oc = pvt_cfg['nbl_3x2pt']
-    # ells_3x2pt_oc, _ = ell_utils.compute_ells_oc(
-    #     nbl=nbl_3x2pt_oc,
-    #     ell_min=float(pvt_cfg['ell_min_3x2pt']),
-    #     ell_max=ell_max_max,
-    #     binning_type=cfg['binning']['binning_type'],
-    #     output_ell_bin_edges=False,
-    # )
+    # Cls need to be computed on a fine grid to avoid interpolation/extrapolation issues
+    if obs_space == 'harmonic':
+        ells_3x2pt_oc = np.geomspace(bin_obj.ell_min_3x2pt, bin_obj.ell_max_3x2pt, 100)
+    else:
+        ells_3x2pt_oc = np.geomspace(
+            cfg['precision']['ell_min_proj'], cfg['precision']['ell_max_proj'], 200
+        )
+    nbl_3x2pt_oc = len(ells_3x2pt_oc)
 
     cl_ll_3d_oc = ccl_obj.compute_cls(
         ells_3x2pt_oc,
@@ -1267,11 +1176,11 @@ if (
         'nz_lns_ascii_filename': nz_lns_ascii_filename,
     }
 
-    if cfg['covariance']['which_b1g_in_resp'] == 'from_input':
+    if cfg['covariance']['ng_cov_gal_bias_model'] == 'linear_bias':
         gal_bias_ascii_filename = f'{oc_path}/gal_bias_table.ascii'
         ccl_obj.save_gal_bias_table_ascii(z_grid, gal_bias_ascii_filename)
         ascii_filenames_dict['gal_bias_ascii_filename'] = gal_bias_ascii_filename
-    elif cfg['covariance']['which_b1g_in_resp'] == 'from_HOD':
+    elif cfg['covariance']['ng_cov_gal_bias_model'] == 'HOD':
         warnings.warn(
             'OneCovariance will use the HOD-derived galaxy bias '
             'for the Cls and responses',
@@ -1310,7 +1219,7 @@ if (
         oc_output_covlist_fname=oc_output_covlist_fname,
         zbins=zbins,
         obs_space=obs_space,
-        nbx=nbx,
+        nbs=nbs,
         df_chunk_size=5_000_000,
     )
 
@@ -1374,7 +1283,7 @@ if (
     sl.postprocess_cov_dict(
         cov_dict=cov_oc_obj.cov_dict,
         obs_space=obs_space,
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1397,7 +1306,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
 
     if cfg['covariance']['which_pk_responses'] == 'halo_model':
         # convenience variables
-        which_b1g_in_resp = cfg['covariance']['which_b1g_in_resp']
+        ng_cov_gal_bias_model = cfg['covariance']['ng_cov_gal_bias_model']
         include_terasawa_terms = cfg['covariance']['include_terasawa_terms']
 
         # recompute galaxy bias on the z grid used to compute the responses/trispectrum
@@ -1421,7 +1330,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
             resp_obj.set_hm_resp(
                 k_grid=k_grid,
                 z_grid=z_grid_trisp_ssc,
-                which_b1g=which_b1g_in_resp,
+                galaxy_bias_model=ng_cov_gal_bias_model,
                 b1g_zi=gal_bias_2d_trisp[:, 0],
                 b1g_zj=gal_bias_2d_trisp[:, 0],
                 include_terasawa_terms=include_terasawa_terms,
@@ -1445,7 +1354,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
                     resp_obj.set_hm_resp(
                         k_grid=k_grid,
                         z_grid=z_grid_trisp_ssc,
-                        which_b1g=which_b1g_in_resp,
+                        galaxy_bias_model=ng_cov_gal_bias_model,
                         b1g_zi=gal_bias_2d_trisp[:, zi],
                         b1g_zj=gal_bias_2d_trisp[:, zj],
                         include_terasawa_terms=include_terasawa_terms,
@@ -1504,7 +1413,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         dPmm_ddeltab_klimb=dPmm_ddeltab_klimb,
         dPgm_ddeltab_klimb=dPgm_ddeltab_klimb,
         dPgg_ddeltab_klimb=dPgg_ddeltab_klimb,
-        wf_lensing=wf_lensing,
+        wf_lensing=wf_lensing * (1 + mult_shear_bias),
         wf_delta=wf_delta,
         wf_mu=wf_mu,
     )
@@ -1523,11 +1432,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
                 sigma2_b_dict[probe_ab, probe_cd] = sigma2_b_dict[pab, pcd]
             else:
                 sigma2_b_dict[probe_ab, probe_cd] = cov_ssc_obj.sigma2_b_func(
-                    ccl_obj=ccl_obj,
-                    cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-                    fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
-                    k_grid_s2b=k_grid_s2b,
-                    which_sigma2_b=which_sigma2_b,
+                    cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1]
                 )
 
     cov_ssc_obj.compute_ssc(
@@ -1539,26 +1444,14 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
 
-    # in the full_curved_sky case only, sigma2_b has to be divided by fsky
-    # TODO it would make much more sense to divide s2b directly...
-    if which_sigma2_b == 'full_curved_sky':
-        for probe_2tpl in cov_ssc_obj.cov_dict['ssc']:
-            fsky_abcd = fsky_max_abcd_dict[probe_2tpl]  # just make name shorter
-            for dim in cov_ssc_obj.cov_dict['ssc'][probe_2tpl]:
-                cov_ssc_obj.cov_dict['ssc'][probe_2tpl][dim] /= fsky_abcd
-    elif which_sigma2_b in ['polar_cap_on_the_fly', 'from_input_mask', 'flat_sky']:
-        pass
-    else:
-        raise ValueError(f'which_sigma2_b = {which_sigma2_b} not recognized')
-
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
     # Note: this z grid has to be larger than the one requested in the trispectrum
-    # (z_grid_tkka in the cfg file). You can probaby use the same grid as the
+    # (z_grid_trisp in the cfg file). You can probaby use the same grid as the
     # one used in the trispectrum, but from my tests is should be
-    # zmin_s2b < zmin_s2b_tkka and zmax_s2b =< zmax_s2b_tkka.
-    # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_tkka
+    # zmin_s2b < zmin_s2b_trisp and zmax_s2b =< zmax_s2b_trisp.
+    # if zmin=0 it looks like I can have zmin_s2b = zmin_s2b_trisp
     sigma2_b_tpl_dict = {}
     for i, probe_abcd in enumerate(unique_probe_combs_hs):
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
@@ -1569,9 +1462,7 @@ if compute_ccl_ssc:
         else:
             sigma2_b_tpl_dict[probe_ab, probe_cd] = ccl_obj.sigma2_b_func(
                 z_grid=z_default_grid_ccl,  # TODO can I not just pass z_grid here?
-                which_sigma2_b=which_sigma2_b,
                 cl_footp_norm_abcd=footp_cl_norm_abcd_dict[probe_ab, probe_cd][1],
-                fsky_max_abcd=fsky_max_abcd_dict[probe_ab, probe_cd],
             )
     ccl_obj.sigma2_b_tpl_dict = sigma2_b_tpl_dict
 
@@ -1596,9 +1487,16 @@ if compute_ccl_ssc or compute_ccl_cng:
 
     # compute covs
     for which_ng_cov in ccl_ng_cov_terms_list:
-        ccl_obj.initialize_trispectrum(
-            which_ng_cov, unique_probe_combs_hs, cfg['PyCCL']
-        )
+        # compute galaxy bias on the z grid used for the trispectrum
+        a_grid_trisp = getattr(ccl_obj, f'a_grid_trisp_{which_ng_cov.lower()}')
+        gal_bias_1d_trisp = ccl_obj.gal_bias_func(cosmo_lib.a_to_z(a_grid_trisp))
+        if gal_bias_1d_trisp.ndim == 2:
+            # same bias in all bins, required for the PyCCL SSC (checked above)
+            gal_bias_1d_trisp = gal_bias_1d_trisp[:, 0]
+
+        # compute trispectrum
+        ccl_obj.build_trisp_dict(which_ng_cov, unique_probe_combs_hs, gal_bias_1d_trisp)
+
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov=which_ng_cov,
             ells=ell_grid,
@@ -1606,6 +1504,7 @@ if compute_ccl_ssc or compute_ccl_cng:
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
             ind_dict=ind_dict,
+            mult_shear_bias=mult_shear_bias,
         )
 
     # symmetry sanity check
@@ -1664,7 +1563,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
             symm_probe_combs=symm_probe_combs_rs,
             nonreq_probe_combs=nonreq_probe_combs_rs,
             space='real',
-            nbx=nbx,
+            nbs=nbs,
             zbins=zbins,
         )
 
@@ -1675,7 +1574,7 @@ if obs_space == 'real' and 'Spaceborne' in cov_terms_and_codes.values():
     sl.postprocess_cov_dict(
         cov_dict=cov_rs_obj.cov_dict,
         obs_space='real',
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1731,7 +1630,7 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
             symm_probe_combs=symm_probe_combs_cs,
             nonreq_probe_combs=nonreq_probe_combs_cs,
             space='cosebis',
-            nbx=nbx,
+            nbs=nbs,
             zbins=zbins,
         )
 
@@ -1742,7 +1641,7 @@ if obs_space == 'cosebis' and 'Spaceborne' in cov_terms_and_codes.values():
     sl.postprocess_cov_dict(
         cov_dict=cov_cs_obj.cov_dict,
         obs_space='cosebis',
-        nbx=nbx,
+        nbs=nbs,
         ind_auto=ind_auto,
         ind_cross=ind_cross,
         zpairs_auto=zpairs_auto,
@@ -1924,8 +1823,8 @@ with np.errstate(invalid='ignore', divide='ignore'):
                 req_diag_probes = [p for p in diag_probe_combs if p in req_diag_probes]
 
                 # set the boundaries
-                elem_auto = zpairs_auto * nbx
-                elem_cross = zpairs_cross * nbx
+                elem_auto = zpairs_auto * nbs
+                elem_cross = zpairs_cross * nbs
 
                 lim_dict = {
                     'LL': elem_auto,
@@ -2051,7 +1950,6 @@ if cfg['misc']['save_output_as_benchmark']:
     # better to work with empty arrays than None
 
     if not compute_sb_ssc:
-        k_grid_s2b = np.array([])
         sigma2_b_dict = {}
         dPmm_ddeltab = np.array([])
         dPgm_ddeltab = np.array([])
@@ -2059,10 +1957,6 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CLL_dVddeltab = np.array([])
         d2CGL_dVddeltab = np.array([])
         d2CGG_dVddeltab = np.array([])
-
-    if compute_sb_ssc and cfg['precision']['use_KE_approximation']:
-        # in this case, the k grid used is the same as the Pk one, I think
-        k_grid_s2b = np.array([])
 
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
@@ -2085,13 +1979,10 @@ if cfg['misc']['save_output_as_benchmark']:
     # other stuff to save
     misc_dict = {}
 
-    # COSEBIs W_n kernels
-    # TODO bookmark check this
+    # COSEBIs W_n kernels, on the Gaussian projection ell grid
     if obs_space == 'cosebis' and cov_cs_obj is not None:
-        if hasattr(cov_cs_obj, 'w_ells'):
-            misc_dict['cosebis_w_ells'] = cov_cs_obj.w_ells
-        if hasattr(cov_cs_obj, 'ells_for_w'):
-            misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_for_w
+        misc_dict['cosebis_w_ells'] = cov_cs_obj.w_ells_arr_g
+        misc_dict['cosebis_ells_for_w'] = cov_cs_obj.ells_proj_g
 
     # Mask information
     for mask_obj, name in zip((mask_obj_ll, mask_obj_gg), ('LL', 'GG'), strict=True):
@@ -2170,7 +2061,6 @@ if cfg['misc']['save_output_as_benchmark']:
         z_grid_trisp_ssc=z_grid_trisp_ssc,
         z_grid_trisp_cng=z_grid_trisp_cng,
         k_grid=k_grid,
-        k_grid_sigma2_b=k_grid_s2b,
         nz_src=nz_src,
         nz_lns=nz_lns,
         bnt_matrix=_bnt_matrix,

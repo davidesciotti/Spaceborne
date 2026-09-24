@@ -27,7 +27,31 @@ def get_footprint_cl_abcd_dicts(
         denominator = (4 * np.pi) ** 2 * fsky_ab_dict[probe_ab] * fsky_ab_dict[probe_cd]
         _cls_norm = _cls * (2 * _ells + 1) / denominator
         footp_cl_norm_abcd_dict[probe_ab, probe_cd] = (_ells, _cls_norm)
+
+        check_footprint_cl_band_limit(
+            _ells, _cls, footp_ab_dict[probe_ab], footp_ab_dict[probe_cd], probe_abcd
+        )
     return footp_cl_abcd_dict, footp_cl_norm_abcd_dict
+
+
+def check_footprint_cl_band_limit(
+    ells: np.ndarray,
+    cls: np.ndarray,
+    map1: np.ndarray,
+    map2: np.ndarray,
+    label: str,
+    rtol: float = 1e-2,
+) -> None:
+    """Warn if the footprint cross-spectrum misses part of the footprint power.
+
+    """
+    retained = np.sum((2 * ells + 1) * cls) / (4 * np.pi * np.mean(map1 * map2))
+    if abs(retained - 1) > rtol:
+        warnings.warn(
+            f'The footprint spectrum for {label} retains a fraction {retained:.4f} of '
+            'the footprint power; consider increasing mask.nside.',
+            stacklevel=2,
+        )
 
 
 def get_fsky_abcd_dict(fsky_ab_dict: dict, req_probe_combs_hs_2d: list) -> tuple:

@@ -264,6 +264,9 @@ class TestCheckProjectionMethods:
             checker.check_projection_methods()
 
     def test_quad_not_allowed_for_gaussian(self, valid_cfg):
+        # the check is skipped in harmonic space, where nothing is projected
+        valid_cfg['probe_selection']['space'] = 'real'
+        valid_cfg['covariance']['G'] = True
         valid_cfg['precision']['proj_gauss_integration_method'] = 'quad'
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(ValueError, match='must be one of'):

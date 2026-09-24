@@ -228,9 +228,9 @@ def triangle_plot_cls_wrapper():
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
-galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
+galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['gal_bias_fit_coeff'])
 magnification_bias_fit_fiducials = np.array(
-    cfg['C_ell']['magnification_bias_fit_coeff']
+    cfg['C_ell']['mag_bias_fit_coeff']
 )
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])

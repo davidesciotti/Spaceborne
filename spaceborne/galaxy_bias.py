@@ -89,7 +89,7 @@ def galaxy_bias_from_cfg(
         b_1d = wf_cl_lib.b_of_z_fs2_fit(
             z_grid,
             magcut_lens=None,
-            poly_fit_values=np.array(cl_cfg['galaxy_bias_fit_coeff']),
+            poly_fit_values=np.array(cl_cfg['gal_bias_fit_coeff']),
         )
         z_nodes = z_grid
         values = np.repeat(b_1d[:, None], zbins, axis=1)  # same b(z) in every bin

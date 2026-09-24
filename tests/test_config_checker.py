@@ -433,7 +433,7 @@ class TestCheckLists:
     """Tests for check_lists."""
 
     def test_wrong_length_galaxy_bias_fit_coeff_raises(self, valid_cfg):
-        valid_cfg['C_ell']['galaxy_bias_fit_coeff'] = [1.0, 2.0, 3.0]
+        valid_cfg['C_ell']['gal_bias_fit_coeff'] = [1.0, 2.0, 3.0]
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_lists()

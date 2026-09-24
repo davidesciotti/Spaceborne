@@ -165,14 +165,14 @@ C_ell:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
   # - 'polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
   #                         The actual values of these coefficients can be changed by modifying the values of
-  #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
+  #                         'gal_bias_fit_coeff' and 'mag_bias_fit_coeff'.
   which_gal_bias: polynomial_fit # Type: str.
   which_mag_bias: polynomial_fit # Type: str.
 
   # Coefficients of the third-order polynomial galaxy and magnification bias.
   # The order is [z^0, z^1, z^2, z^3]
-  galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
-  magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
+  gal_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
+  mag_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.

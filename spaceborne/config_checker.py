@@ -104,18 +104,18 @@ class SpaceborneConfigChecker:
         assert isinstance(c_ell_cfg['which_mag_bias'], str), (
             'C_ell: which_mag_bias must be a string'
         )
-        assert isinstance(c_ell_cfg['galaxy_bias_fit_coeff'], list), (
-            'C_ell: galaxy_bias_fit_coeff must be a list'
+        assert isinstance(c_ell_cfg['gal_bias_fit_coeff'], list), (
+            'C_ell: gal_bias_fit_coeff must be a list'
         )
-        assert all(isinstance(x, float) for x in c_ell_cfg['galaxy_bias_fit_coeff']), (
-            'C_ell: All elements in galaxy_bias_fit_coeff must be floats'
+        assert all(isinstance(x, float) for x in c_ell_cfg['gal_bias_fit_coeff']), (
+            'C_ell: All elements in gal_bias_fit_coeff must be floats'
         )
-        assert isinstance(c_ell_cfg['magnification_bias_fit_coeff'], list), (
-            'C_ell: magnification_bias_fit_coeff must be a list'
+        assert isinstance(c_ell_cfg['mag_bias_fit_coeff'], list), (
+            'C_ell: mag_bias_fit_coeff must be a list'
         )
         assert all(
-            isinstance(x, float) for x in c_ell_cfg['magnification_bias_fit_coeff']
-        ), 'C_ell: All elements in magnification_bias_fit_coeff must be floats'
+            isinstance(x, float) for x in c_ell_cfg['mag_bias_fit_coeff']
+        ), 'C_ell: All elements in mag_bias_fit_coeff must be floats'
 
         assert isinstance(c_ell_cfg['gal_bias_table_filename'], str), (
             'C_ell: gal_bias_table_filename must be a string'
@@ -517,11 +517,11 @@ class SpaceborneConfigChecker:
         )
 
     def check_lists(self) -> None:
-        assert len(self.cfg['C_ell']['galaxy_bias_fit_coeff']) == 4, (
-            'galaxy_bias_fit_coeff must be of length 4'
+        assert len(self.cfg['C_ell']['gal_bias_fit_coeff']) == 4, (
+            'gal_bias_fit_coeff must be of length 4'
         )
-        assert len(self.cfg['C_ell']['magnification_bias_fit_coeff']) == 4, (
-            'magnification_bias_fit_coeff must be of length 4'
+        assert len(self.cfg['C_ell']['mag_bias_fit_coeff']) == 4, (
+            'mag_bias_fit_coeff must be of length 4'
         )
 
         assert len(self.cfg['C_ell']['mult_shear_bias']) == self.zbins, (

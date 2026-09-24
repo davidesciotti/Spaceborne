@@ -59,6 +59,36 @@ import time
 import numpy as np
 import yaml
 
+# benchmark cfgs predate these renames: (section, old_key, new_key, {old_val: new_val})
+CFG_RENAMES = [
+    (
+        'covariance',
+        'which_b1g_in_resp',
+        'ng_cov_gal_bias_model',
+        {'from_input': 'linear_bias', 'from_HOD': 'HOD'},
+    ),
+    (
+        'precision',
+        'proj_gauss_integration_method',
+        'proj_gauss_integration_method',
+        {'levin': 'simps'},
+    ),
+    (
+        'precision',
+        'proj_nongauss_integration_method',
+        'proj_nongauss_integration_method',
+        {'levin': 'simps'},
+    ),
+]
+
+
+def migrate_cfg(cfg):
+    for section, old, new, val_map in CFG_RENAMES:
+        if old in cfg[section]:
+            val = cfg[section].pop(old)
+            cfg[section][new] = val_map.get(val, val)
+    return cfg
+
 
 def run_main_and_test_outputs(
     test_cfg_path,
@@ -104,8 +134,8 @@ def run_main_and_test_outputs(
         try:
             # Direct comparison (handles empty arrays automatically)
             np.testing.assert_allclose(
-                bench_arr,
-                test_arr,
+                actual=test_arr,
+                desired=bench_arr,
                 atol=0,
                 rtol=1e-5,
                 err_msg=f"{key} doesn't match the benchmark ❌",
@@ -132,7 +162,7 @@ DATA_ROOT = '/data/sciotti/DATA'  # mileva
 CODE_ROOT = '/home/sciotti/code'  # mileva
 # CODE_ROOT = DATA_ROOT  # all the others
 
-bench_path = f'{DATA_ROOT}/Spaceborne_bench/bench_set_output'
+bench_path = f'{DATA_ROOT}/Spaceborne_jobs_IO/validate_vs_bench_set_v2026.07.0/output'
 
 # run all tests...
 bench_yaml_names = glob.glob(f'{bench_path}/*.npz')
@@ -141,8 +171,9 @@ bench_yaml_names = [bench_name.replace('.npz', '') for bench_name in bench_yaml_
 bench_yaml_names.sort()
 
 
+
 # run certain tests only...
-# bench_yaml_names = bench_yaml_names[134:]
+# bench_yaml_names = bench_yaml_names[186:]
 
 # slow_benchs = [
 #     'config_0018',
@@ -171,6 +202,7 @@ start_time = time.perf_counter()
 main_script_path = f'{CODE_ROOT}/Spaceborne/main.py'
 temp_output_filename = f'{DATA_ROOT}/Spaceborne_bench/tmp/test_file'
 temp_output_folder = os.path.dirname(temp_output_filename)
+os.makedirs(temp_output_folder, exist_ok=True)
 excluded_keys = ['backup_cfg', 'metadata']
 
 # set the working directory to the main script path
@@ -195,6 +227,7 @@ for bench_name in bench_yaml_names:
     # Load the benchmark config
     with open(f'{bench_path}/{bench_name}.yaml') as f:
         cfg = yaml.safe_load(f)
+    cfg = migrate_cfg(cfg)
 
     # Update config for the test run
     cfg['misc']['save_output_as_benchmark'] = True
@@ -203,12 +236,19 @@ for bench_name in bench_yaml_names:
     cfg['misc']['output_path'] = temp_output_folder
 
     # Save the updated test config
-    test_cfg_path = f'{bench_path}/_tmp/test_config.yaml'
+    test_cfg_path = f'{temp_output_folder}/test_config.yaml'
     with open(test_cfg_path, 'w') as f:
         yaml.safe_dump(cfg, f, default_flow_style=False, sort_keys=False)
 
     # ! run the actual test
-    run_main_and_test_outputs(test_cfg_path)
+    run_main_and_test_outputs(
+        test_cfg_path,
+        main_script_path=main_script_path,
+        bench_path=bench_path,
+        bench_name=bench_name,
+        temp_output_filename=temp_output_filename,
+        excluded_keys=excluded_keys,
+    )
 
     # delete the output test files in tmp folder
     for file_path in glob.glob(f'{temp_output_folder}/*'):

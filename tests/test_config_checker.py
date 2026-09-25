@@ -260,7 +260,7 @@ class TestCheckProjectionMethods:
 
         valid_cfg['covariance']['SSC'] = True
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
-        with pytest.warns(UserWarning, match='forced to "simps"'):
+        with pytest.warns(UserWarning, match='always performed on a fixed ell grid'):
             checker.check_projection_methods()
 
     def test_quad_not_allowed_for_gaussian(self, valid_cfg):

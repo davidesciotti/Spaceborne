@@ -179,7 +179,7 @@ class CovCOSEBIs(CovarianceProjector):
             # due to the size of the ell_fine grid (10^4 x 10^4 x zbins^4)
             # (works both for simps and trapz)
             # simps(y, x) == simps_weights @ y. Shape: (len(ells_fine),)
-            trapz_weights = np.trapezoid(y=np.eye(len(ells_fine)), x=ells_fine, axis=0)
+            intgr_weights = np.trapezoid(y=np.eye(len(ells_fine)), x=ells_fine, axis=0)
 
             # Same goes for the spline:
             # spline_of_y(x_fine) = S @ y with S of shape (N_fine, N_coarse)
@@ -191,7 +191,7 @@ class CovCOSEBIs(CovarianceProjector):
             # batch together simpson weights, ells, and W_n(ell) into a single
             # projection matrix, shape (n_modes, nbl_proj_ng)
             self._proj_mat_ng = (
-                self.w_ells_arr_fine * ells_fine * trapz_weights
+                self.w_ells_arr_fine * ells_fine * intgr_weights
             ) @ interp_op
 
         proj_mat = self._proj_mat_ng

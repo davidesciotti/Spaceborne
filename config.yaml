@@ -60,7 +60,7 @@ halo_model:
 OneCovariance:
   # Path to Python executable in OneCovariance conda environment
   # Update this to match your system's conda installation
-  path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+  path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
   path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
   consistency_checks: False
   oc_output_filename: cov_oc
@@ -386,11 +386,18 @@ precision:
 
   # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
-  # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
+  # the grid used is np.geomspace(ell_min_proj, ell_max_proj, ell_bins_proj_*)
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
   ell_bins_proj_gauss: 2000 # Type: int.
   ell_bins_proj_nongauss: 300 # Type: int.
+
+  # For COSEBIs, a finer grid is needed for the projection of the non-diagonal covariance.
+  # The grid is np.geomspace(ell_min_proj, ell_max_proj, ell_bins_proj_nongauss_cosebis).
+  # [Note] the non-Gaussian harmonic-space covariance is still computed in ell_bins_proj_nongauss points.
+  # It is then interpolated over the finer grid for the projection to COSEBIs, which is also 
+  # used to compute the W_n(\ell) projection kernels.
+  ell_bins_proj_nongauss_cosebis: 10000 # Type: int.
 
   # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
@@ -447,7 +454,7 @@ misc:
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
-  cl_triangle_plot: True # Type: bool.
+  cl_triangle_plot: False # Type: bool.
 
   # If the covariance_ordering_2D starts with 'probe', setting this to True
   # automatically displays the labels and limits for the different probe blocks.

@@ -135,12 +135,17 @@ class CovCOSEBIs(CovarianceProjector):
         self.ells_w_fine = np.geomspace(
             self.ells_proj_g[0],
             self.ells_proj_g[-1],
-            self.cfg['precision']['ell_bins_w_ell_cosebis'],
+            self.cfg['precision']['ell_bins_proj_nongauss_cosebis'],
         )
         # shape (n_modes, len(self.ells_w_fine))
         with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {self.nbs} modes...'):
             self.w_ells_arr_g = self._compute_w_ells(self.ells_proj_g)
-            self.w_ells_arr_fine = self._compute_w_ells(self.ells_w_fine)
+
+            self.w_ells_arr_fine = (
+                self._compute_w_ells(self.ells_w_fine)
+                if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']
+                else None
+            )
 
     def _proj_ng_cs_4d(self, cov_hs_ng_4d: np.ndarray) -> np.ndarray:
         r"""Project the harmonic-space NG covariance to COSEBIs space:

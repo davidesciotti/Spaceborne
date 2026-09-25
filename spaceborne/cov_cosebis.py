@@ -186,6 +186,12 @@ class CovCOSEBIs(CovarianceProjector):
             # simps(y, x) == simps_weights @ y. Shape: (len(ells_fine),)
             intgr_weights = np.trapezoid(y=np.eye(len(ells_fine)), x=ells_fine, axis=0)
 
+            # memory-efficient way to get trapz integration weights:
+            # dx = np.diff(ells_fine)
+            # intgr_weights = np.zeros_like(ells_fine)
+            # intgr_weights[:-1] = dx / 2
+            # intgr_weights[1:] += dx / 2
+
             # Same goes for the spline:
             # spline_of_y(x_fine) = S @ y with S of shape (N_fine, N_coarse)
             # evaluate on log grid, where the covariance is smooth

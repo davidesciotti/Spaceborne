@@ -3,6 +3,7 @@ import warnings
 
 import numpy as np
 from scipy.integrate import simpson as simps
+from scipy.interpolate import make_interp_spline
 
 from spaceborne import constants as const
 from spaceborne import cov_dict as cd
@@ -38,6 +39,8 @@ class CovCOSEBIs(CovarianceProjector):
         )
 
         self._ch = None
+        # (n_modes, nbl_proj_ng) NG projection matrix, see _proj_ng_cs_4d
+        self._proj_mat_ng = None
 
         self.n_modes = cfg['binning']['n_modes_cosebis']
         assert self.n_modes == self.nbs, 'n_modes_cosebis must equal nbs!'
@@ -58,15 +61,7 @@ class CovCOSEBIs(CovarianceProjector):
 
         # setters
         self._set_theta_binning()
-
-        # W_n(ell) projection kernels, shape (n_modes, nbl), on the ell grids of the
-        # G and NG projections. The NG grid is only needed if a NG term is requested
-        self.w_ells_arr_g = self._compute_w_ells(self.ells_proj_g)
-        self.w_ells_arr_ng = (
-            self._compute_w_ells(self.ells_proj_ng)
-            if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']
-            else None
-        )
+        self._set_w_ell_arrays()
 
     @property
     def ch(self):
@@ -112,18 +107,102 @@ class CovCOSEBIs(CovarianceProjector):
         np.ndarray, shape (n_modes, len(ells))
         """
 
-        with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {self.nbs} modes...'):
-            w_ells_dict = self.ch.get_W_ell(
-                thetagrid=self.theta_grid_rad,
-                Nmax=self.nbs,
-                ells=ells,
-                N_thread=self.n_jobs,
-            )
+        w_ells_dict = self.ch.get_W_ell(
+            thetagrid=self.theta_grid_rad,
+            Nmax=self.nbs,
+            ells=ells,
+            N_thread=self.n_jobs,
+        )
 
         # add a guard against non-int keys
         mode_keys = sorted(k for k in w_ells_dict if isinstance(k, (int, np.integer)))
         w_ells_arr = np.array([w_ells_dict[k] for k in mode_keys])
         return w_ells_arr
+
+    def _set_w_ell_arrays(self):
+        """Compute the W_n(ell) kernels on a fine ell grid, and spline them onto the
+        ell grid of the Gaussian projection.
+
+        W_n(ell) oscillates with period ~2pi/theta_min in ell, so the fine grid has to
+        resolve these oscillations: the NG projection is performed directly on it
+        (see ``_proj_ng_cs_4d``), while the (smooth) harmonic-space NG covariance can
+        be sampled on the much coarser ells_proj_ng.
+        """
+        assert np.isclose(self.ells_proj_g[0], self.ells_proj_ng[0]) and np.isclose(
+            self.ells_proj_g[-1], self.ells_proj_ng[-1]
+        ), 'ells_proj_g and ells_proj_ng must span the same ell range'
+
+        self.ells_w_fine = np.geomspace(
+            self.ells_proj_g[0],
+            self.ells_proj_g[-1],
+            self.cfg['precision']['ell_bins_proj_nongauss_cosebis'],
+        )
+        # shape (n_modes, len(self.ells_w_fine))
+        with sl.timer(f'Computing COSEBIs W_n(ell) kernels for {self.nbs} modes...'):
+            self.w_ells_arr_g = self._compute_w_ells(self.ells_proj_g)
+
+            self.w_ells_arr_fine = (
+                self._compute_w_ells(self.ells_w_fine)
+                if self.cfg['covariance']['SSC'] or self.cfg['covariance']['cNG']
+                else None
+            )
+
+    def _proj_ng_cs_4d(self, cov_hs_ng_4d: np.ndarray) -> np.ndarray:
+        r"""Project the harmonic-space NG covariance to COSEBIs space:
+
+            cov[n, m] = \int d\ell_1 d\ell_2 \ell_1 \ell_2 W_n(\ell_1) W_m(\ell_2)
+                        cov_hs(\ell_1, \ell_2)
+
+        (without the 1/(4 pi^2) prefactor). Since W_n(ell) is too oscillatory to be
+        integrated on ells_proj_ng, cov_hs is cubic-splined (in log ell) onto the fine
+        grid on which W_n(ell) is computed, and the integral is performed there.
+        Both the spline and the quadrature are linear in cov_hs, so they are
+        combined into a single (n_modes, nbl_proj_ng) projection matrix:
+
+            cov[n, m] = sum_ij P[n, i] P[m, j] cov_hs[i, j]
+
+        Parameters
+        ----------
+        cov_hs_ng_4d : np.ndarray, shape (nbl_proj_ng, nbl_proj_ng, zpairs_ab, zpairs_cd)
+
+        Returns
+        -------
+        np.ndarray, shape (n_modes, n_modes, zpairs_ab, zpairs_cd)
+        """
+        nbl_ng = len(self.ells_proj_ng)
+        if cov_hs_ng_4d.shape[:2] != (nbl_ng, nbl_ng):
+            raise ValueError(
+                f'cov_hs_ng_4d.shape={cov_hs_ng_4d.shape} inconsistent with '
+                f'len(ells_proj_ng)={nbl_ng}'
+            )
+
+        # the projection matrix only depends on the ell grids: compute it once
+        if self._proj_mat_ng is None:
+            ells_fine = self.ells_w_fine
+
+            # Same trick as real-space, mainly to save memory
+            # due to the size of the ell_fine grid (10^4 x 10^4 x zbins^4)
+            # (works both for simps and trapz)
+            # simps(y, x) == simps_weights @ y. Shape: (len(ells_fine),)
+            intgr_weights = np.trapezoid(y=np.eye(len(ells_fine)), x=ells_fine, axis=0)
+
+            # Same goes for the spline:
+            # spline_of_y(x_fine) = S @ y with S of shape (N_fine, N_coarse)
+            # evaluate on log grid, where the covariance is smooth
+            interp_op = make_interp_spline(
+                np.log(self.ells_proj_ng), np.eye(nbl_ng), k=3, axis=0
+            )(np.log(ells_fine))  # Shape (len(ells_fine), nbl_ng)
+
+            # batch together simpson weights, ells, and W_n(ell) into a single
+            # projection matrix, shape (n_modes, nbl_proj_ng)
+            self._proj_mat_ng = (
+                self.w_ells_arr_fine * ells_fine * intgr_weights
+            ) @ interp_op
+
+        proj_mat = self._proj_mat_ng
+
+        # L = ell1, M = ell2, p = zpairs_ab, q = zpairs_cd, n = mode_n, m = mode_m
+        return np.einsum('nL,mM,LMpq->nmpq', proj_mat, proj_mat, cov_hs_ng_4d)
 
     def cov_sn_cs(self, amax_abcd: float) -> np.ndarray:
         """Compute the COSEBIs shape noise covariance term."""
@@ -297,28 +376,8 @@ class CovCOSEBIs(CovarianceProjector):
             # project hs non-gaussian cov to COSEBIs space
             cov_hs_ng_4d = cov_hs_ng_dict[term][probe_ab_hs, probe_cd_hs]['4d']
 
-            # Loop over scale indices (mode_n, mode_m)
-            cov_cs_ng_4d = np.zeros((self.nbs, self.nbs, zpairs_ab, zpairs_cd))
-            for s1 in range(self.nbs):
-                for s2 in range(self.nbs):
-                    # Build projection kernels for s1 and s2 (mode_n, mode_m):
-                    # I need callables that are a function of ell,
-                    # even though they are not in this case
-                    def kernel_n(ell, n=s1):
-                        return self.w_ells_arr_ng[n, :]
-
-                    def kernel_m(ell, m=s2):
-                        return self.w_ells_arr_ng[m, :]
-
-                    # Integrate over (ell_1, ell_2) for all tomographic
-                    # bin combinations at once
-                    cov_cs_ng_4d[s1, s2, :, :] = cp.proj_cov_2d(
-                        ells_proj=self.ells_proj_ng,
-                        cov_hs_ng_4d=cov_hs_ng_4d,
-                        kernel_1_func_of_ell=kernel_n,
-                        kernel_2_func_of_ell=kernel_m,
-                        integration_method='simps',
-                    )
+            cov_cs_ng_4d = self._proj_ng_cs_4d(cov_hs_ng_4d)
+            assert cov_cs_ng_4d.shape == (self.nbs, self.nbs, zpairs_ab, zpairs_cd)
 
             # reshape to 6d and symmetrize if needed
             cov_ng_cs_6d = sl.cov_4D_to_6D_blocks(

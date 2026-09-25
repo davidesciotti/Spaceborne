@@ -398,6 +398,9 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['ell_bins_proj_nongauss'], int), (
             'precision: ell_bins_proj_nongauss must be an int'
         )
+        assert isinstance(precision_cfg['ell_bins_w_ell_cosebis'], int), (
+            'precision: ell_bins_w_ell_cosebis must be an int'
+        )
         assert isinstance(precision_cfg['proj_gauss_integration_method'], str), (
             'precision: proj_gauss_integration_method must be a string'
         )

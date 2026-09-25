@@ -631,13 +631,10 @@ class OneCovarianceInterface:
         # settings common to both observables
         cfg_oc_ini['covELLspace settings']['limber'] = str(True)
         cfg_oc_ini['covELLspace settings']['nglimber'] = str(True)
-        warnings.warn(
-            'delta_z comes from Spaceborne and is quite small, '
-            'increase in OneCovariance if runtime becomes an issue!',
-            stacklevel=2,
-        )
+        # * PRECISION PARAMETER MODIFIED IN THE PAST (SB delta_z, i.e. 3e-4 -> 1e-3)
+        # to speed up OC. Note that we never use the OC Cls, only the covariance
         cfg_oc_ini['covELLspace settings']['delta_z'] = str(
-            self.cfg['precision']['delta_z']
+            max(self.cfg['precision']['delta_z'], 1e-3)
         )  # used to be delta_z_trisp_cNG
         cfg_oc_ini['covELLspace settings']['tri_delta_z'] = str(
             self.cfg['precision']['delta_z_trisp_cNG']
@@ -672,8 +669,13 @@ class OneCovarianceInterface:
             cfg_oc_ini['covELLspace settings']['ell_max'] = str(
                 self.cfg['precision']['ell_max_proj']
             )
+            # * PRECISION PARAMETER MODIFIED IN THE PAST
+            # (ell_bins_proj_gauss, i.e. 2000 -> 500) to speed up OC: OC splines the
+            # (smooth) ell-space covariance and integrates the projection kernels with
+            # Levin, so it doesn't need as fine an ell grid as SB. The cost of the OC
+            # NG projection is linear in ell_bins
             cfg_oc_ini['covELLspace settings']['ell_bins'] = str(
-                self.cfg['precision']['ell_bins_proj_gauss']
+                min(self.cfg['precision']['ell_bins_proj_gauss'], 500)
             )
             cfg_oc_ini['covELLspace settings']['ell_type'] = 'log'
 
@@ -805,8 +807,8 @@ class OneCovarianceInterface:
                 f'and {self.cfg['halo_model']['halo_bias']=} instead'
             )
 
-        # * PRECISION PARAMETER MODIFIED IN THE PAST (900 -> 1500)
-        cfg_oc_ini['halomodel evaluation']['m_bins'] = str(900)
+        # * PRECISION PARAMETER MODIFIED IN THE PAST (900 -> 300), to speed up OC
+        cfg_oc_ini['halomodel evaluation']['m_bins'] = str(300)
         cfg_oc_ini['halomodel evaluation']['log10m_min'] = str(6)
         cfg_oc_ini['halomodel evaluation']['log10m_max'] = str(18)
         cfg_oc_ini['halomodel evaluation']['hmf_model'] = 'Tinker10'

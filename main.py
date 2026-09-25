@@ -287,8 +287,8 @@ cfg['misc']['save_output_as_benchmark'] = cfg['misc'].get(
     'save_output_as_benchmark', False
 )
 cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
-cfg['precision']['ell_bins_w_ell_cosebis'] = cfg['precision'].get(
-    'ell_bins_w_ell_cosebis', 10_000
+cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
+    'ell_bins_proj_nongauss_cosebis', 10_000
 )
 
 

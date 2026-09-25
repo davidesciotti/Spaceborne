@@ -392,7 +392,7 @@ precision:
   ell_bins_proj_gauss: 2000 # Type: int.
   ell_bins_proj_nongauss: 300 # Type: int.
 
-  # For COSEBIs, a finer grid is needed for the projection of the non-diagonal covariance.
+  # For COSEBIs, a finer grid is needed for the projection of the non-Gaussian covariance.
   # The grid is np.geomspace(ell_min_proj, ell_max_proj, ell_bins_proj_nongauss_cosebis).
   # [Note] the non-Gaussian harmonic-space covariance is still computed in ell_bins_proj_nongauss points.
   # It is then interpolated over the finer grid for the projection to COSEBIs, which is also 

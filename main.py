@@ -1002,9 +1002,9 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
 
-    # unbinned Cls on the NaMaster grid (0..ell_max_nmt)
+    # unbinned Cls on the NaMaster grid (from 0 to ell_max_nmt)
+    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
     ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
     nbl_3x2pt_nmt_unb = len(ells_3x2pt_nmt_unb)
 
@@ -1131,29 +1131,11 @@ if (
         )
     nbl_3x2pt_oc = len(ells_3x2pt_oc)
 
-    cl_ll_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_lensing_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gl_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gg_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_galaxy_obj,
-        cl_ccl_kwargs,
-    )
-    cl_3x2pt_5d_oc = sl.build_cl_3x2pt_5d(
-        cl_ll_3d=cl_ll_3d_oc, cl_gl_3d=cl_gl_3d_oc, cl_gg_3d=cl_gg_3d_oc
+    # same Cls as SB: input Cls (if provided) or CCL Cls including the
+    # multiplicative shear bias, which OC does not apply itself. These are simply
+    # recomputed/re-interpolated on the finer ells_3x2pt_oc grid
+    cl_3x2pt_5d_oc = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        ells_3x2pt_oc, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
 
     cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'

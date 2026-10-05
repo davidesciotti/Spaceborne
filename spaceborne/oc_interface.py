@@ -642,8 +642,11 @@ class OneCovarianceInterface:
         # * PRECISION PARAMETER MODIFIED IN THE PAST (500 -> 1000)
         cfg_oc_ini['covELLspace settings']['integration_steps'] = str(500)
         cfg_oc_ini['covELLspace settings']['nz_interpolation_polynom_order'] = str(1)
+        # OC's 'mult_shear_bias' is the *uncertainty* on m (sigma_m), which adds an extra
+        # sigma_m^2 C C term. The mean m is already applied to the input Cls, and SB has
+        # no sigma_m, so set it to zero.
         cfg_oc_ini['covELLspace settings']['mult_shear_bias'] = ', '.join(
-            map(str, mult_shear_bias_list)
+            map(str, np.zeros_like(mult_shear_bias_list))
         )
 
         if self.obs_space == 'harmonic':

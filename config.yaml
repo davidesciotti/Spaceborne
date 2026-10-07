@@ -359,6 +359,22 @@ precision:
   # [Note] N_modes = Delta_ell for integer ells
   cov_hs_g_ell_bin_average: True
 
+  # Binning method for the harmonic-space non-Gaussian (SSC, cNG) covariance:
+  # - True:  Average the covariance over each pair of ell bins, using
+  #          n_ell_nodes_ng_bin_average Gauss-Legendre nodes per bin (the cost of the
+  #          cNG projection grows as n_ell_nodes_ng_bin_average**2).
+  # - False: Evaluate at the bin centers (approximation; the error grows with the bin
+  #          width, up to tens of % for cNG in wide bins).
+  # Only used for space: harmonic (the real-space and COSEBIs projections already
+  # integrate over ell).
+  cov_hs_ng_ell_bin_average: True # Type: bool
+  n_ell_nodes_ng_bin_average: 4 # Type: int. 4 converges to ~1e-3 for log bins of width ~1.6
+  # Weight of the multipoles within each bin, for the non-Gaussian bin average:
+  # - 'uniform': plain mean over the bin, as for the Gaussian covariance
+  #              (cov_hs_g_ell_bin_average) and the default NaMaster bandpowers.
+  # - 'ell':     weighted by ell (area of the ell annulus), as in OneCovariance.
+  ng_ell_bin_average_weighting: uniform # Type: str. Options: ['uniform', 'ell']
+
   # k grid used for power spectrum and trispectrum computation
   log10_k_min: -5.0 # Type: float. Units: 1/Mpc
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc

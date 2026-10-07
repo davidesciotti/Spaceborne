@@ -401,6 +401,18 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['ell_bins_proj_nongauss_cosebis'], int), (
             'precision: ell_bins_proj_nongauss_cosebis must be an int'
         )
+        assert isinstance(precision_cfg['cov_hs_ng_ell_bin_average'], bool), (
+            'precision: cov_hs_ng_ell_bin_average must be a bool'
+        )
+        assert isinstance(precision_cfg['n_ell_nodes_ng_bin_average'], int), (
+            'precision: n_ell_nodes_ng_bin_average must be an int'
+        )
+        assert precision_cfg['n_ell_nodes_ng_bin_average'] >= 1, (
+            'precision: n_ell_nodes_ng_bin_average must be >= 1'
+        )
+        assert precision_cfg['ng_ell_bin_average_weighting'] in ('uniform', 'ell'), (
+            "precision: ng_ell_bin_average_weighting must be 'uniform' or 'ell'"
+        )
         assert isinstance(precision_cfg['proj_gauss_integration_method'], str), (
             'precision: proj_gauss_integration_method must be a string'
         )

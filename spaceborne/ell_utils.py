@@ -102,6 +102,64 @@ def compute_ells_oc(
     return ells, deltas
 
 
+def get_ng_bin_average_nodes(
+    ell_edges: np.ndarray, n_nodes: int, weighting: str
+) -> tuple[np.ndarray, np.ndarray]:
+    """Gauss-Legendre ell nodes and averaging matrix for the ell-bin average of
+    non-Gaussian (SSC, cNG) harmonic-space covariances.
+
+    The binned covariance is
+    Cov(C_b, C_b') = sum_ij A_bi A_b'j Cov(C(ell_i), C(ell_j)),
+    with ell_i the nodes and A the (block-diagonal) matrix of normalised quadrature
+    weights, i.e. the covariance of C_b = sum_i A_bi C(ell_i).
+
+    Parameters
+    ----------
+    ell_edges : np.ndarray
+        Bin edges, shape (nbl + 1,).
+    n_nodes : int
+        Number of Gauss-Legendre nodes per bin.
+    weighting : str
+        Weight of each multipole within the bin:
+        - 'uniform': C_b = mean of C_ell over the bin, as for the Gaussian covariance
+          (cov_hs_g_ell_bin_average) and the default NaMaster bandpowers
+        - 'ell': C_b weighted by ell, i.e. by the area of the ell annulus (as in
+          OneCovariance)
+
+    Returns
+    -------
+    ell_nodes : np.ndarray
+        Nodes, shape (nbl * n_nodes,), ordered by bin.
+    avg_matrix : np.ndarray
+        Averaging matrix, shape (nbl, nbl * n_nodes); each row sums to 1.
+    """
+    if weighting not in ('uniform', 'ell'):
+        raise ValueError(f"weighting must be 'uniform' or 'ell', got {weighting!r}")
+
+    nbl = len(ell_edges) - 1
+    x_gl, w_gl = np.polynomial.legendre.leggauss(n_nodes)
+
+    ell_nodes = np.zeros(nbl * n_nodes)
+    avg_matrix = np.zeros((nbl, nbl * n_nodes))
+    for b in range(nbl):
+        ell_lo, ell_hi = ell_edges[b], ell_edges[b + 1]
+        nodes = 0.5 * (ell_hi - ell_lo) * x_gl + 0.5 * (ell_hi + ell_lo)
+        weights = w_gl * nodes if weighting == 'ell' else w_gl.copy()
+        sl_b = slice(b * n_nodes, (b + 1) * n_nodes)
+        ell_nodes[sl_b] = nodes
+        avg_matrix[b, sl_b] = weights / weights.sum()
+
+    return ell_nodes, avg_matrix
+
+
+def bin_average_cov_4d(cov_4d: np.ndarray, avg_matrix: np.ndarray) -> np.ndarray:
+    """Average a (n_nodes_tot, n_nodes_tot, zpairs_AB, zpairs_CD) covariance over the
+    ell bins, returning shape (nbl, nbl, zpairs_AB, zpairs_CD).
+    See get_ng_bin_average_nodes.
+    """
+    return np.einsum('ai,bj,ijkl->abkl', avg_matrix, avg_matrix, cov_4d, optimize=True)
+
+
 class EllBinning:
     """Handles the setup of ell bins based on configuration.
 

@@ -290,6 +290,15 @@ cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
 cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
     'ell_bins_proj_nongauss_cosebis', 10_000
 )
+cfg['precision']['cov_hs_ng_ell_bin_average'] = cfg['precision'].get(
+    'cov_hs_ng_ell_bin_average', False
+)
+cfg['precision']['n_ell_nodes_ng_bin_average'] = cfg['precision'].get(
+    'n_ell_nodes_ng_bin_average', 4
+)
+cfg['precision']['ng_ell_bin_average_weighting'] = cfg['precision'].get(
+    'ng_ell_bin_average_weighting', 'uniform'
+)
 
 
 # Psi-statistics not implemented yet
@@ -706,6 +715,20 @@ else:
 pvt_cfg['nbl_3x2pt'] = bin_obj.nbl_3x2pt
 pvt_cfg['ell_min_3x2pt'] = bin_obj.ell_min_3x2pt
 pvt_cfg['nbs'] = nbs
+
+# ell grid for the harmonic-space SSC and cNG: either the bin centers, or quadrature
+# nodes within each bin, later averaged over the bin (see ell_utils)
+ng_ell_bin_average = (
+    obs_space == 'harmonic' and cfg['precision']['cov_hs_ng_ell_bin_average']
+)
+if ng_ell_bin_average:
+    ells_ng_hs, ng_bin_avg_matrix = ell_utils.get_ng_bin_average_nodes(
+        ell_edges=bin_obj.ell_edges_3x2pt,
+        n_nodes=cfg['precision']['n_ell_nodes_ng_bin_average'],
+        weighting=cfg['precision']['ng_ell_bin_average_weighting'],
+    )
+else:
+    ells_ng_hs = bin_obj.ells_3x2pt
 
 
 # ! ===================================== Mask =========================================
@@ -1374,7 +1397,7 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
     # ! prepare integrands (d2Cxx_dVddeltab)
     # the finer grid is needed for the non-Gaussian covariance projection
     if obs_space == 'harmonic':
-        ell_grid = bin_obj.ells_3x2pt
+        ell_grid = ells_ng_hs
     # in these two cases, I have to recompute the SSC over a larger and finer grid
     elif obs_space in ['real', 'cosebis']:
         ell_grid = bin_obj.ells_3x2pt_proj_ng
@@ -1427,6 +1450,13 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         nonreq_probe_combs_hs=nonreq_probe_combs_hs,
     )
 
+    if ng_ell_bin_average:
+        for block in cov_ssc_obj.cov_dict['ssc'].values():
+            if block['4d'] is not None:
+                block['4d'] = ell_utils.bin_average_cov_4d(
+                    block['4d'], ng_bin_avg_matrix
+                )
+
 
 # ! ========================================== PyCCL ===================================
 if compute_ccl_ssc:
@@ -1461,7 +1491,7 @@ if compute_ccl_ssc or compute_ccl_cng:
     # prepare ell grid: coarser if you want ell-space covariance, finer (and broader)
     # if it gets projected to real space or COSEBIs
     if obs_space == 'harmonic':
-        ell_grid = bin_obj.ells_3x2pt
+        ell_grid = ells_ng_hs
     elif obs_space in ['real', 'cosebis']:
         ell_grid = bin_obj.ells_3x2pt_proj_ng
 
@@ -1489,6 +1519,13 @@ if compute_ccl_ssc or compute_ccl_cng:
             ind_dict=ind_dict,
             mult_shear_bias=mult_shear_bias,
         )
+
+        if ng_ell_bin_average:
+            for block in ccl_obj.cov_dict[which_ng_cov.lower()].values():
+                if block['4d'] is not None:
+                    block['4d'] = ell_utils.bin_average_cov_4d(
+                        block['4d'], ng_bin_avg_matrix
+                    )
 
     # symmetry sanity check
     ccl_obj.check_cov_blocks_symmetry()

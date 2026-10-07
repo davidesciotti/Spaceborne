@@ -254,6 +254,26 @@ def nmt_gaussian_cov(
     return cov_dict
 
 
+def coupled_noise_factor(weight_maps, zbins: int) -> np.ndarray:
+    """Per-bin <w>^2 / <w^2> over the observed pixels (w > 0), shape (1, zbins, 1).
+
+    For catalogue-sum weight maps (e.g. Heracles `Weights`, W_p = sum_i w_i / wbar) or
+    selection-function visibility maps, the per-pixel noise variance scales like W_p, not
+    W_p^2 as for a homogeneous noise field multiplied by W. The noise level entering the
+    NaMaster covariance is then the coupled noise over <W^2> (full sky), i.e.
+    sigma_eps^2 / n_eff * <w>^2_obs / <w^2>_obs, with n_eff the density over the observed
+    area. Equals 1 for a binary mask. The noise matrix is diagonal in (zi, zj), so scaling
+    row zi is enough.
+    """
+    factor = np.ones(zbins)
+    for zi in range(zbins):
+        w = _weight_per_bin(weight_maps, zi)
+        obs = w > 0
+        if np.any(obs):
+            factor[zi] = np.mean(w[obs]) ** 2 / np.mean(w[obs] ** 2)
+    return factor[None, :, None]
+
+
 def _weight_per_bin(weight_maps, zi):
     """Returns the weight map for the given z bin index zi,
     whether we are using a footprint (1D array of shape (N_pix,))
@@ -308,7 +328,7 @@ def mask_maps_and_compute_alms(
             masked_U = hp.remove_monopole(masked_U)
 
         # map2alm_spin has no `iter` kwarg, so spin-2 alms are effectively iter=0
-        # while spin-0 uses n_iter. This seems irrelevant; in any case, symmetrising 
+        # while spin-0 uses n_iter. This seems irrelevant; in any case, symmetrising
         # is possible with hp.map2alm([T,Q,U], pol=True, iter=n_iter)
         # but would ~4x the spin-2 SHT cost for that.
         alms_T.append(hp.map2alm(masked_T, lmax=lmax, iter=n_iter))
@@ -1325,6 +1345,17 @@ class CovNaMaster:
         nl_gg_4covnmt = self.nl_3x2pt_unb_5d[1, 1, :, :, :].copy()
         nl_gl_4covnmt = self.nl_3x2pt_unb_5d[1, 0, :, :, :].copy()  # this is 0
         nl_ll_4covnmt = self.nl_3x2pt_unb_5d[0, 0, :, :, :].copy()
+
+        # rescale the noise for (non-binary) weight maps; this feeds both the analytic
+        # and the ensemble covariance, and the GL blocks through the GG and LL spectra
+        factor_gg = coupled_noise_factor(self.weight_maps_gg, self.zbins)
+        factor_ll = coupled_noise_factor(self.weight_maps_ll, self.zbins)
+        print(
+            f'Coupled-noise factor <w>^2/<w^2>: GG {factor_gg.ravel().round(4)}, '
+            f'LL {factor_ll.ravel().round(4)}'
+        )
+        nl_gg_4covnmt *= factor_gg
+        nl_ll_4covnmt *= factor_ll
         nl_ll_4covnmt[:2] = 0  # a spin-2 field has no monopole or dipole!
 
         # add noise to spectra to compute NMT cov

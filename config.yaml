@@ -98,6 +98,8 @@ nz:
   nz_lenses_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
+  # For weighted samples, use the effective density n_eff = (sum w)^2 / sum(w^2) / area,
+  # with area the observed (non-zero) area of the footprint (= Heracles `dens`).
   # Should be of length 'zbins'
   ngal_sources: [8.09216, 7.09215, 6.09215] # Type: list[float]
   ngal_lenses: [1.09216, 2.09215, 3.09215] # Type: list[float]
@@ -216,6 +218,10 @@ mask:
   # which should contain a number of maps equal to the number of redshift bins, for the 
   # given probe. If null, the weight maps will not be used. 
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
+  # They are assumed to be catalogue sums (e.g. Heracles `Weights`) or selection-function
+  # visibility maps, whose per-pixel noise variance scales like the map itself: the noise
+  # entering the NaMaster covariance is rescaled per bin by <w>^2/<w^2> over the observed
+  # pixels (no effect for binary footprints).
   LL:
     geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
@@ -263,6 +269,8 @@ covariance:
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
+  # For weighted samples, use the w^2-weighted dispersion
+  # sigma_eps_i^2 = sum(w^2 |e|^2) / (2 sum(w^2)) (= Heracles `musq` / 2), which goes with n_eff.
   # Should be of length 'zbins'
   sigma_eps_i: [0.26, 0.16, 0.36] # Type: list[float]
 

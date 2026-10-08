@@ -254,23 +254,24 @@ def nmt_gaussian_cov(
     return cov_dict
 
 
-def coupled_noise_factor(weight_maps, zbins: int) -> np.ndarray:
-    """Per-bin <w>^2 / <w^2> over the observed pixels (w > 0), shape (1, zbins, 1).
+def coupled_noise_factor(weight_maps, fsky: float, zbins: int) -> np.ndarray:
+    """Per-bin <w>^2 / (fsky <w^2>) (full-sky means), shape (1, zbins, 1).
 
     For catalogue-sum weight maps (e.g. Heracles `Weights`, W_p = sum_i w_i / wbar) or
     selection-function visibility maps, the per-pixel noise variance scales like W_p, not
     W_p^2 as for a homogeneous noise field multiplied by W. The noise level entering the
     NaMaster covariance is then the coupled noise over <W^2> (full sky), i.e.
-    sigma_eps^2 / n_eff * <w>^2_obs / <w^2>_obs, with n_eff the density over the observed
-    area. Equals 1 for a binary mask. The noise matrix is diagonal in (zi, zj), so scaling
-    row zi is enough.
+    sigma_eps^2 / n_eff * <w>^2 / (fsky <w^2>), with n_eff = N_eff / (4 pi fsky) the
+    density over the observed area and fsky the footprint sky fraction
+    (Mask.fsky_footprint, see mask_utils.combined_fsky). Independent of the
+    normalisation of w; equals 1 for a binary mask whose support is the footprint. The
+    noise matrix is diagonal in (zi, zj), so scaling row zi is enough.
     """
     factor = np.ones(zbins)
     for zi in range(zbins):
         w = _weight_per_bin(weight_maps, zi)
-        obs = w > 0
-        if np.any(obs):
-            factor[zi] = np.mean(w[obs]) ** 2 / np.mean(w[obs] ** 2)
+        if np.any(w > 0):
+            factor[zi] = np.mean(w) ** 2 / (fsky * np.mean(w**2))
     return factor[None, :, None]
 
 
@@ -1380,10 +1381,14 @@ class CovNaMaster:
 
         # rescale the noise for (non-binary) weight maps; this feeds both the analytic
         # and the ensemble covariance, and the GL blocks through the GG and LL spectra
-        factor_gg = coupled_noise_factor(self.weight_maps_gg, self.zbins)
-        factor_ll = coupled_noise_factor(self.weight_maps_ll, self.zbins)
+        factor_gg = coupled_noise_factor(
+            self.weight_maps_gg, self.mask_obj_gg.fsky_footprint, self.zbins
+        )
+        factor_ll = coupled_noise_factor(
+            self.weight_maps_ll, self.mask_obj_ll.fsky_footprint, self.zbins
+        )
         print(
-            f'Coupled-noise factor <w>^2/<w^2>: GG {factor_gg.ravel().round(4)}, '
+            f'Coupled-noise factor: GG {factor_gg.ravel().round(4)}, '
             f'LL {factor_ll.ravel().round(4)}'
         )
         nl_gg_4covnmt *= factor_gg

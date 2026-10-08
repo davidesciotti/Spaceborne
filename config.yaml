@@ -205,30 +205,33 @@ C_ell:
     non_limber_integration_method: FKEM # Type: str
     
 mask:
-  # Configs for the survey footprint and masks. The options outside of the 'LL' and 'GG'
-  # sections are common to both probes.
+  # Configs for the survey footprint and weight maps. 
+  
+  # The footprint can binary or fractional. In the latter case it is assumed that its
+  # value represents the observed fraction (coverage) of each pixel. It is a single map, common 
+  # to all redshift bins, and it is used to compute the fsky factors, as 
+  # fsky = mean(footprint). For the GL probe pair the window is
+  # min(footprint_LL, footprint_GG) (nested masks assumed).
   # The 'geometry' option determines how the footprint is defined:
-  # - If set to 'footprint_file', the footprint will be read from the file specified in
-  #   'footprint_filename'.
-  # - If set to 'polar_cap', the footprint will be generated as a polar cap with area
-  #   specified by 'survey_area_deg2'.
-  # The footprint is a single binary mask, common to all redshift bins,
-  # and it is used to compute the fsky factors.
+  # - 'footprint_file': the footprint will be read from the file specified in 'footprint_filename'.
+  # - 'polar_cap': the footprint will be generated as a polar cap with area specified by 'survey_area_deg2'.
+
   # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
   # which should contain a number of maps equal to the number of redshift bins, for the 
   # given probe. If null, the weight maps will not be used. 
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
-  # They are assumed to be catalogue sums (e.g. Heracles `Weights`) or selection-function
-  # visibility maps, whose per-pixel noise variance scales like the map itself: the noise
-  # entering the NaMaster covariance is rescaled per bin by <w>^2/<w^2> over the observed
-  # pixels (no effect for binary footprints).
+  # They are assumed to be catalogue sums (e.g. Heracles `Weights`) or visibility maps.
+  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), with
+  # full-sky means.
+  
+  # The options outside of the 'LL' and 'GG' sections are common to both probes.
   LL:
-    geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
+    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
   GG:
-    geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
-    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
+    geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
+    footprint_filename: /home/sciotti/code/DATA/Euclid_data/TR1/PIC_WebDAV/euclid_tr1_a_v1/aux/maps/EUC_LE3_HPEFFECTIVECOVERAGE-WL_TR1-V1-1_south_NSIDE1024.fits # Type: str.
     weight_maps_filename: null # Type: str | None
 
   # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.

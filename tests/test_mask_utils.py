@@ -76,7 +76,7 @@ class TestGetMapsCl:
 
 
 class TestCombinedFsky:
-    """Tests for combined_fsky (mean of the product of two masks)."""
+    """Tests for combined_fsky (mean of the joint coverage min(c_a, c_b))."""
 
     def test_full_sky(self):
         nside = 32
@@ -89,7 +89,7 @@ class TestCombinedFsky:
         npix = hp.nside2npix(nside)
         mask = np.zeros(npix)
         mask[: npix // 2] = 1.0
-        # mean(mask * mask) = 0.5 for a half-sky binary mask
+        # mean(min(mask, mask)) = 0.5 for a half-sky binary mask
         assert mask_utils.combined_fsky(mask, mask) == pytest.approx(0.5, abs=0.01)
 
     def test_uniform_partial_mask(self):
@@ -97,10 +97,19 @@ class TestCombinedFsky:
         npix = hp.nside2npix(nside)
         coverage = 0.7
         mask = np.full(npix, coverage)
-        # mean(mask * mask) = coverage**2 for a uniform mask
-        assert mask_utils.combined_fsky(mask, mask) == pytest.approx(
-            coverage**2, rel=1e-6
-        )
+        # a fractional coverage is the observed fraction of each pixel: fsky = coverage
+        assert mask_utils.combined_fsky(mask, mask) == pytest.approx(coverage, rel=1e-6)
+
+    def test_nested_overlap(self):
+        nside = 16
+        npix = hp.nside2npix(nside)
+        c_a = np.zeros(npix)
+        c_b = np.zeros(npix)
+        c_a[: npix // 2] = 0.9
+        c_b[: npix // 4] = 0.6
+        # joint coverage is the sparser map where both observe
+        expected = 0.6 * 0.25
+        assert mask_utils.combined_fsky(c_a, c_b) == pytest.approx(expected, rel=1e-6)
 
     def test_returns_python_float(self):
         nside = 16
@@ -112,7 +121,7 @@ class TestCombinedFsky:
 class TestFootprintFskyAb:
     """Tests for footprint_fsky_ab (probe-pair footprints and effective fskys)."""
 
-    def test_probe_pair_products_and_fskys(self):
+    def test_probe_pair_windows_and_fskys(self):
         nside = 16
         npix = hp.nside2npix(nside)
         m_ll = np.full(npix, 0.5)
@@ -125,15 +134,15 @@ class TestFootprintFskyAb:
             mask_obj_ll, mask_obj_gg
         )
 
-        # AB footprints are the product of the two single-probe masks
-        np.testing.assert_allclose(footp_ab_dict['LL'], m_ll * m_ll)
-        np.testing.assert_allclose(footp_ab_dict['GL'], m_ll * m_gg)
-        np.testing.assert_allclose(footp_ab_dict['GG'], m_gg * m_gg)
+        # AB windows are the joint coverage of the two single-probe masks
+        np.testing.assert_allclose(footp_ab_dict['LL'], m_ll)
+        np.testing.assert_allclose(footp_ab_dict['GL'], np.minimum(m_ll, m_gg))
+        np.testing.assert_allclose(footp_ab_dict['GG'], m_gg)
 
-        # fsky is the mean of the product of the *single* masks
-        assert fsky_ab_dict['LL'] == pytest.approx(0.5 * 0.5)
-        assert fsky_ab_dict['GL'] == pytest.approx(0.5 * 0.8)
-        assert fsky_ab_dict['GG'] == pytest.approx(0.8 * 0.8)
+        # fsky is the mean of the window
+        assert fsky_ab_dict['LL'] == pytest.approx(0.5)
+        assert fsky_ab_dict['GL'] == pytest.approx(0.5)
+        assert fsky_ab_dict['GG'] == pytest.approx(0.8)
 
 
 class TestGeneratePolarCapFunc:

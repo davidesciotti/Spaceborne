@@ -87,18 +87,20 @@ def plot_footprint(footprint: np.ndarray, probe: str):
 def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
     """
     Given the LL and GG mask objects, computes the AB masks and their fsky.
+
+    The footprints can be binary or fractional. In the second case, they are
+    interpreted as coverage maps with c_p = observed fraction ("covarage") of
+    pixel p.
+    The window of a probe AB is the region observed by both fields, given by
+    min(c_A, c_B).
+    Strictly speaking, this is only correct for nested masks.
+
+    The fsky used in various places in the code is the mean of these footprints.
     """
     m_ll = mask_obj_ll.footprint
     m_gg = mask_obj_gg.footprint
 
-    # The SSC window of a probe pair AB is the *product* of the two fields'
-    # masks, W_A * W_B (TJPCov convention, see covariance_fourier_ssc.py). For a
-    # non-binary mask (e.g. a fractional weight map) this differs from the single mask, so the
-    # auto-pairs must be squared too (W_A^2) to stay consistent with the
-    # mean(W_A * W_B) effective fsky used in the normalisation downstream.
-    footp_ab_dict = {'LL': m_ll * m_ll, 'GL': m_ll * m_gg, 'GG': m_gg * m_gg}
-    # NB: fsky is the mean of the product of the *single* masks, mean(W_A * W_B),
-    # NOT the mean of the squared window above (which would be mean(W_A^2 W_B^2)).
+    footp_ab_dict = {'LL': m_ll, 'GL': np.minimum(m_ll, m_gg), 'GG': m_gg}
     fsky_ab_dict = {
         'LL': combined_fsky(m_ll, m_ll),
         'GL': combined_fsky(m_ll, m_gg),
@@ -129,10 +131,8 @@ def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
 
 
 def combined_fsky(map1: np.ndarray, map2: np.ndarray) -> float:
-    """Combine two masks (e.g. footprint and weight map) by multiplying them
-    and compute the resulting fsky."""
-    fsky_combined = np.mean(map1 * map2)
-    return float(fsky_combined)
+    """Sky fraction observed by both of two (possibly fractional) coverage maps."""
+    return float(np.mean(np.minimum(map1, map2)))
 
 
 def get_maps_cl(map1: np.ndarray, map2: np.ndarray) -> tuple:
@@ -193,6 +193,7 @@ def _check_binary(footprint):
             'of non-binary values (not 0 or 1). Please check the footprint file.',
             stacklevel=2,
         )
+
 
 def check_binary(footprint):
     observed = footprint > 0

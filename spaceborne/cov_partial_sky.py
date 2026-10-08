@@ -1008,6 +1008,26 @@ class CovNaMaster:
         # ! the footprints are different (I'm not checking whether the weight maps
         # ! are different...)
         # TODO XXX leverage the remaining symmetry for other slow parts, e.g. cNG!!
+
+        # the coupling coefficients depend only on the four masks: compute them once per
+        # mask combination and reuse them across z quadruplets (e.g. all lens bins share
+        # the footprint when GG has no weight maps)
+        cw_cache = {}
+
+        def mask_key(probe, z):
+            if probe == 'G':
+                if self.use_weight_maps_gg:
+                    return ('G', z)
+                else:
+                    return ('G',)
+            elif probe == 'L':
+                if self.use_weight_maps_ll:
+                    return ('L', z)
+                else:
+                    return ('L',)
+            else:
+                raise ValueError('Probe not recognised')
+
         for probe_abcd in tqdm(unique_probe_combs):
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             self.cw_dict[probe_ab, probe_cd] = {}
@@ -1045,26 +1065,38 @@ class CovNaMaster:
 
                     # ! Case 3: compute from weight maps (probe- and bin-dependent)
                     if use_weight_maps and (not self.load_cached_wsp):
-                        _f1 = (
-                            self.fg_dict[zi] if probe_ab[0] == 'G' else self.fl_dict[zi]
+                        key = (
+                            mask_key(probe_ab[0], zi),
+                            mask_key(probe_ab[1], zj),
+                            mask_key(probe_cd[0], zk),
+                            mask_key(probe_cd[1], zl),
                         )
-                        _f2 = (
-                            self.fg_dict[zj] if probe_ab[1] == 'G' else self.fl_dict[zj]
-                        )
-                        _f3 = (
-                            self.fg_dict[zk] if probe_cd[0] == 'G' else self.fl_dict[zk]
-                        )
-                        _f4 = (
-                            self.fg_dict[zl] if probe_cd[1] == 'G' else self.fl_dict[zl]
-                        )
-                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = (
-                            nmt.NmtCovarianceWorkspace()
-                        )
-                        self.cw_dict[probe_ab, probe_cd][
-                            zi, zj, zk, zl
-                        ].compute_coupling_coefficients(
-                            _f1, _f2, _f3, _f4, spin0_only=spin0
-                        )
+                        if key not in cw_cache:
+                            _f1 = (
+                                self.fg_dict[zi]
+                                if probe_ab[0] == 'G'
+                                else self.fl_dict[zi]
+                            )
+                            _f2 = (
+                                self.fg_dict[zj]
+                                if probe_ab[1] == 'G'
+                                else self.fl_dict[zj]
+                            )
+                            _f3 = (
+                                self.fg_dict[zk]
+                                if probe_cd[0] == 'G'
+                                else self.fl_dict[zk]
+                            )
+                            _f4 = (
+                                self.fg_dict[zl]
+                                if probe_cd[1] == 'G'
+                                else self.fl_dict[zl]
+                            )
+                            cw_cache[key] = nmt.NmtCovarianceWorkspace()
+                            cw_cache[key].compute_coupling_coefficients(
+                                _f1, _f2, _f3, _f4, spin0_only=spin0
+                            )
+                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = cw_cache[key]
 
                     # ! Case 1-2: get from previous computation
                     elif (not use_weight_maps) and (not self.load_cached_wsp):

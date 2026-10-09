@@ -231,7 +231,7 @@ mask:
     weight_maps_filename: null # Type: str | None
   GG:
     geometry: footprint_file # Type: str. Options: [footprint_file, polar_cap]
-    footprint_filename: /home/sciotti/code/DATA/Euclid_data/TR1/PIC_WebDAV/euclid_tr1_a_v1/aux/maps/EUC_LE3_HPEFFECTIVECOVERAGE-WL_TR1-V1-1_south_NSIDE1024.fits # Type: str.
+    footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
     weight_maps_filename: null # Type: str | None
 
   # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.

@@ -463,3 +463,8 @@ misc:
 
   output_path: ../DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
+
+  # Check whether a newer version of the code is available on GitHub. If offline, it
+  # times out after 2 s, without interrupting the run.
+  # set to False if running a large batch of cases, or if working offline.
+  check_for_updates: True # Type: bool.

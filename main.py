@@ -63,7 +63,7 @@ else:
         'JAX 64-bit precision is disabled. This may lead to '
         'noticeable differences with respect to the numpy '
         'implementation, which uses 64-bit precision by default.',
-        stacklevel=2,
+        stacklevel=1,
     )
 
 # if using the CPU, set the number of threads
@@ -129,6 +129,7 @@ from spaceborne import (
     mask_utils,
     oc_interface,
     responses,
+    version_check,
     wf_cl_lib,
 )
 from spaceborne import constants as const
@@ -157,6 +158,9 @@ warnings.filterwarnings(
     message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
     category=UserWarning,
 )
+
+if cfg['misc'].get('check_for_updates', True):
+    version_check.check_for_updates()
 
 script_start_time = time.perf_counter()
 
@@ -555,7 +559,7 @@ if len(z_grid) < 500:
         'the number of steps in the redshift grid is small, '
         f'(len(z_grid)={len(z_grid)}) '
         'you may want to consider decreasing delta_z',
-        stacklevel=2,
+        stacklevel=1,
     )
 
 
@@ -579,7 +583,7 @@ if kmax_limber > k_max_cfg:
         f'{kmax_limber = :.2f} {_k_txt_label} > {k_max_cfg = :.2f} {_k_txt_label}\n'
         f'for ell_max = {_ell_max} and z_min = {_z_min}.\n'
         f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
-        stacklevel=2,
+        stacklevel=1
     )
     cfg['precision']['log10_k_max'] = float(np.log10(kmax_limber))
 
@@ -811,7 +815,7 @@ if cfg['nz']['normalize_nz']:
         warnings.warn(
             '\nThe lens n(z) are not normalized within atol=0, rtol=1e-3. '
             'Proceeding to normalize them',
-            stacklevel=2,
+            stacklevel=1,
         )
         nz_lns = wf_cl_lib.normalize_nz(nz_lns, zgrid_nz_lns)
     else:
@@ -821,7 +825,7 @@ if cfg['nz']['normalize_nz']:
         warnings.warn(
             '\nThe source n(z) are not normalized within atol=0, rtol=1e-3. '
             'Proceeding to normalize them',
-            stacklevel=2,
+            stacklevel=1,
         )
         nz_src = wf_cl_lib.normalize_nz(nz_src, zgrid_nz_src)
     else:
@@ -1167,7 +1171,7 @@ if (
         warnings.warn(
             'OneCovariance will use the HOD-derived galaxy bias '
             'for the Cls and responses',
-            stacklevel=2,
+            stacklevel=1,
         )
 
     # * 2. compute cov using the onecovariance interface class
@@ -1189,7 +1193,7 @@ if (
         warnings.warn(
             f'OneCovariance will not be re-run, loading existing files at '
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat',
-            stacklevel=2,
+            stacklevel=1,
         )
 
     # load output .list file (maybe the .mat format would be better, actually...)

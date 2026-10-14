@@ -50,69 +50,83 @@ def cloelib_to_spaceborne_params_mapping(
     )
 
     sigma8 = float(sigma8)
-    Omega_DE0 = 1.0 - Omega_m0 - cloelib_pars_dict['Omega_k0']
-    N_eff = cloelib_pars_dict['N_ur'] + cloelib_pars_dict['N_mnu']
+    # each massive species contributes (T_ncdm/T_cmb)^4 (11/4)^(4/3) = 1.0132 to N_eff
+    # while relativistic (T_ncdm = 0.71611, as in CLASS and CCL); this way CCL's
+    # N_nu_rel equals N_ur
+    neff_per_massive_nu = 0.71611**4 * (11 / 4) ** (4 / 3)
+    N_eff = cloelib_pars_dict['N_ur'] + cloelib_pars_dict['N_mnu'] * neff_per_massive_nu
 
     # Set some Spaceborne configs at runtime; the rest are in pipe_cfg.yaml
     sb_pars_dict = {}
-    sb_pars_dict['Om'] = Omega_m0
-    sb_pars_dict['Ob'] = cloelib_pars_dict['Omega_b0']
-    sb_pars_dict['wz'] = float(cloelib_pars_dict['w0'])
+    sb_pars_dict['Omega_m0'] = Omega_m0
+    sb_pars_dict['Omega_b0'] = cloelib_pars_dict['Omega_b0']
+    sb_pars_dict['Omega_k0'] = float(cloelib_pars_dict['Omega_k0'])
+    sb_pars_dict['w0'] = float(cloelib_pars_dict['w0'])
     sb_pars_dict['wa'] = float(cloelib_pars_dict['wa'])
     sb_pars_dict['h'] = h
     sb_pars_dict['ns'] = cloelib_pars_dict['ns']
-    sb_pars_dict['s8'] = sigma8
-    sb_pars_dict['ODE'] = Omega_DE0
+    sb_pars_dict['sigma8'] = sigma8
     sb_pars_dict['m_nu'] = cloelib_pars_dict['mnu']
-    sb_pars_dict['N_eff'] = N_eff
-    sb_pars_dict['Om_k0'] = float(cloelib_pars_dict['Omega_k0'])
+    sb_pars_dict['Neff'] = N_eff
 
     return sb_pars_dict
 
 
-def map_keys(input_dict, key_mapping):
-    """Maps the keys of a dictionary based on a given key mapping, while retaining
-    keys not specified in the mapping.
+def migrate_legacy_cosmo_cfg(cosmo_cfg: dict) -> dict:
+    """Renames the old cosmology config keys to the cosmology API/cloelib ones, and
+    removes ODE.
 
-    Parameters
-    ----------
-    input_dict : dict
-        The dictionary whose keys are to be mapped.
-    key_mapping : dict
-        A dictionary containing the mapping from the old keys to the new keys.
-
-    Returns
-    -------
-    new_dict : dict
-        A dictionary with keys mapped according to the key_mapping, and
-        with additional keys from the original dictionary.
-
+    The dark energy density is no longer an input (it is set by closure); an old ODE
+    is only accepted if consistent with Omega_m0 and Omega_k0, or used to derive
+    Omega_k0 if the latter is missing.
     """
-    # Mapping between flat_fid_pars_dict keys and instantiate_cosmo_ccl_obj
-    # expected keys
-    if key_mapping is None:
-        key_mapping = {
-            'Om': 'Om_m0',
-            'ODE': 'Om_Lambda0',
-            'Ob': 'Om_b0',
-            'wz': 'w_0',
-            'wa': 'w_a',
-            'h': 'h',
-            'ns': 'n_s',
-            's8': 'sigma_8',
-            'm_nu': 'm_nu',
-            'N_eff': 'N_eff',
-        }
 
-    new_dict = {}
-    for old_key, new_key in key_mapping.items():
-        if old_key in input_dict:
-            new_dict[new_key] = input_dict[old_key]
+    # old cosmology config keys -> cloelib/cosmology API names
+    LEGACY_COSMO_KEYS = {
+        'Om': 'Omega_m0',
+        'Ob': 'Omega_b0',
+        'Om_k0': 'Omega_k0',
+        'wz': 'w0',
+        's8': 'sigma8',
+        'N_eff': 'Neff',
+    }
+    cosmo_cfg = dict(cosmo_cfg)
+    renamed = []
+    for old, new in LEGACY_COSMO_KEYS.items():
+        if old not in cosmo_cfg:
+            continue
+        if new in cosmo_cfg:
+            raise ValueError(
+                f'cosmology: both {old!r} (old name) and {new!r} are given; '
+                f'please only use {new!r}'
+            )
+        cosmo_cfg[new] = cosmo_cfg.pop(old)
+        renamed.append(f'{old} -> {new}')
 
-    for key in set(input_dict.keys()) - set(key_mapping.keys()):
-        new_dict[key] = input_dict[key]
+    if 'ODE' in cosmo_cfg:
+        omega_de0 = cosmo_cfg.pop('ODE')
+        if 'Omega_k0' not in cosmo_cfg:
+            cosmo_cfg['Omega_k0'] = get_omega_k0(cosmo_cfg['Omega_m0'], omega_de0)
+            renamed.append('ODE -> Omega_k0 = 1 - Omega_m0 - ODE')
+        else:
+            closure = cosmo_cfg['Omega_m0'] + omega_de0 + cosmo_cfg['Omega_k0'] - 1
+            # the tolerance accounts for the radiation density (~1e-4)
+            if np.abs(closure) > 1e-3:
+                raise ValueError(
+                    'Inconsistent cosmology: Omega_m0 + ODE + Omega_k0 - 1 = '
+                    f'{closure:.4g}. ODE is no longer an input (it is set by '
+                    'closure): please remove it.'
+                )
+            renamed.append('ODE removed (set by closure)')
 
-    return new_dict
+    if renamed:
+        warnings.warn(
+            'Old cosmology config keys found, please update your config. '
+            f'Converted: {", ".join(renamed)}',
+            stacklevel=2,
+        )
+
+    return cosmo_cfg
 
 
 def ccl_comoving_distance(z, use_h_units, cosmo_ccl):
@@ -326,20 +340,22 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
     # flatten the dictionary if it's nested
     fiducial_pars_dict = sl.flatten_dict(fiducial_pars_dict)
 
-    Omega_nu = get_omega_nu0(
-        fiducial_pars_dict['m_nu'],
-        fiducial_pars_dict['h'],
-        n_eff=fiducial_pars_dict['N_eff'],
-    )
-    Omega_c = fiducial_pars_dict['Om_m0'] - fiducial_pars_dict['Om_b0'] - Omega_nu
+    # Take Omega_nu (massive) from CCL itself, so that the CCL Omega_m matches the
+    # requested Omega_m0 exactly (CCL: Omega_m = Omega_c + Omega_b + Omega_nu_mass)
+    omega_nu0 = ccl.Cosmology(
+        Omega_c=0.25,  # placeholder, Omega_nu_mass does not depend on it
+        Omega_b=fiducial_pars_dict['Omega_b0'],
+        h=fiducial_pars_dict['h'],
+        sigma8=fiducial_pars_dict['sigma8'],
+        n_s=fiducial_pars_dict['ns'],
+        m_nu=fiducial_pars_dict['m_nu'],
+        Neff=fiducial_pars_dict['Neff'],
+        mass_split='single',
+    )['Omega_nu_mass']
 
-    if 'Om_k0' in fiducial_pars_dict:
-        Omega_k = fiducial_pars_dict['Om_k0']
-    else:
-        Omega_k = get_omega_k0(
-            omega_m0=fiducial_pars_dict['Om_m0'],
-            omega_Lambda0=fiducial_pars_dict['Om_Lambda0'],
-        )
+    omega_cdm0 = (
+        fiducial_pars_dict['Omega_m0'] - fiducial_pars_dict['Omega_b0'] - omega_nu0
+    )
 
     if extra_parameters is None:
         try:
@@ -350,15 +366,17 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
             print('No extra parameters passed to CAMB in instantiate_cosmo_ccl_obj')
 
     cosmo_ccl = ccl.Cosmology(
-        Omega_c=Omega_c,
-        Omega_b=fiducial_pars_dict['Om_b0'],
-        w0=fiducial_pars_dict['w_0'],
-        wa=fiducial_pars_dict['w_a'],
+        Omega_c=omega_cdm0,
+        Omega_b=fiducial_pars_dict['Omega_b0'],
+        w0=fiducial_pars_dict['w0'],
+        wa=fiducial_pars_dict['wa'],
         h=fiducial_pars_dict['h'],
-        sigma8=fiducial_pars_dict['sigma_8'],
-        n_s=fiducial_pars_dict['n_s'],
+        sigma8=fiducial_pars_dict['sigma8'],
+        n_s=fiducial_pars_dict['ns'],
         m_nu=fiducial_pars_dict['m_nu'],
-        Omega_k=Omega_k,
+        Neff=fiducial_pars_dict['Neff'],
+        # the dark energy density is set by CCL by closure
+        Omega_k=fiducial_pars_dict['Omega_k0'],
         baryonic_effects=None,
         mass_split='single',
         matter_power_spectrum='camb',

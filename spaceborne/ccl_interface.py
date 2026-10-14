@@ -110,9 +110,8 @@ class CCLInterface:
                 ccl.gsl_params[key] = gsl_params[key]
 
         self.flat_fid_pars_dict = sl.flatten_dict(self.cosmology_dict)
-        cosmo_dict_ccl = cosmo_lib.map_keys(self.cosmology_dict, key_mapping=None)
         self.cosmo_ccl = cosmo_lib.instantiate_cosmo_ccl_obj(
-            cosmo_dict_ccl, self.extra_parameters_dict
+            self.cosmology_dict, self.extra_parameters_dict
         )
 
         self.gal_bias_func_dict = {

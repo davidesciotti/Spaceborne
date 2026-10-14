@@ -23,7 +23,17 @@ class SpaceborneConfigChecker:
 
     def check_types(self) -> None:
         # Cosmology
-        for par, val in self.cfg['cosmology'].items():
+        cosmo_cfg = self.cfg['cosmology']
+        required_cosmo_pars = [
+            'Omega_m0', 'Omega_b0', 'Omega_k0', 'w0', 'wa', 'h', 'ns', 'sigma8', 'm_nu',
+            'Neff',
+        ]  # fmt: skip
+        missing = [par for par in required_cosmo_pars if par not in cosmo_cfg]
+        assert not missing, f'cosmology: missing parameters {missing}'
+        assert 'ODE' not in cosmo_cfg, (
+            'cosmology: ODE is not an input, it is set by closure'
+        )
+        for par, val in cosmo_cfg.items():
             assert isinstance(val, float), f'Parameter {par} must be a float'
 
         # camb extra params

@@ -735,7 +735,10 @@ class OneCovarianceInterface:
             cfg_oc_ini['bias']['bias_files'] = gal_bias_ascii_filename
 
         # ! [IA]
-        cfg_oc_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['Aia'])
+        # OC has no IA switch: zero the amplitude to match has_IA: False in SB
+        has_ia = self.cfg['C_ell']['has_IA']
+        a_ia = self.cfg['intrinsic_alignment']['Aia'] if has_ia else 0.0
+        cfg_oc_ini['IA']['A_IA'] = str(a_ia)
         cfg_oc_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['eIA'])
         cfg_oc_ini['IA']['z_pivot_IA'] = str(
             self.cfg['intrinsic_alignment']['z_pivot_IA']

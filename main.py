@@ -162,6 +162,9 @@ warnings.filterwarnings(
 if cfg['misc'].get('check_for_updates', True):
     version_check.check_for_updates()
 
+# convert old cosmology keys (Om, s8, ODE, ...) to the cloelib ones, for old configs
+cfg['cosmology'] = cosmo_lib.migrate_legacy_cosmo_cfg(cfg['cosmology'])
+
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE

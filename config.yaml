@@ -1,6 +1,8 @@
 # Example configuration file for Spaceborne. A further explanation of the different
 # options can be found in the official documentation, at https://spaceborne.readthedocs.io/en/latest/
 # The type of the different values is given in the comments, and is checked at runtime.
+# [Note] The most up-to date information on the the settings is the one contained in this
+#        file, in case you find any discrepancy with the documentation.
 # [Note] When not on the same line, comments always refer to the option/section immediately below.
 # [Note] `None` is `null` in YAML
 # [Note] Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
@@ -15,18 +17,25 @@
 # mac: path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
 # mileva: path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
 
+########################################################################################
+########################################################################################
+########################################################################################
+
+# Parameter names follow the cosmology API and cloelib. See, e.g., 
+# https://cosmology.readthedocs.io/projects/api/latest/api/reference.html
+# The dark energy density is set by closure: 
+# Omega_de0 = 1 - Omega_m0 - Omega_k0 (- radiation)
 cosmology:
-  Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
-  Ob: 0.05 # Type: float. Baryonic density parameter Omega_b, at z=0
-  wz: -1.0 # Type: float. Dark energy equation of state parameter (w0)
+  Omega_m0: 0.32 # Type: float. Total matter density parameter (incl. massive neutrinos), at z=0
+  Omega_b0: 0.05 # Type: float. Baryonic density parameter, at z=0
+  Omega_k0: 0.0 # Type: float. Curvature density parameter, at z=0
+  w0: -1.0 # Type: float. Dark energy equation of state parameter
   wa: 0.0 # Type: float. Evolution of the dark energy equation of state parameter
   h: 0.6737 # Type: float. Dimensionless Hubble parameter (H0 / 100)
   ns: 0.966 # Type: float. Scalar spectral index of the primordial power spectrum
-  s8: 0.816 # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
-  ODE: 0.68 # Type: float. Dark energy density parameter Omega_DE, at z=0
+  sigma8: 0.816 # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
   m_nu: 0.06 # Type: float. Total mass of neutrinos in eV
-  N_eff: 3.046 # Type: float. Effective number of relativistic species
-  Om_k0: 0.0 # Type: float. Curvature density parameter Omega_k, at z=0
+  Neff: 3.046 # Type: float. Effective number of relativistic species
 
 intrinsic_alignment:
   Aia: 0.16 # Type: float.

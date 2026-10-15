@@ -717,16 +717,20 @@ class OneCovarianceInterface:
         cfg_oc_ini['redshift']['value_loc_in_lensbin'] = 'mid'
 
         # ! [cosmo]
-        cfg_oc_ini['cosmo']['h'] = str(self.cfg['cosmology']['h'])
-        cfg_oc_ini['cosmo']['ns'] = str(self.cfg['cosmology']['ns'])
-        cfg_oc_ini['cosmo']['omega_m'] = str(self.cfg['cosmology']['Om'])
-        cfg_oc_ini['cosmo']['omega_b'] = str(self.cfg['cosmology']['Ob'])
-        cfg_oc_ini['cosmo']['omega_de'] = str(self.cfg['cosmology']['ODE'])
-        cfg_oc_ini['cosmo']['sigma8'] = str(self.cfg['cosmology']['s8'])
-        cfg_oc_ini['cosmo']['w0'] = str(self.cfg['cosmology']['wz'])
-        cfg_oc_ini['cosmo']['wa'] = str(self.cfg['cosmology']['wa'])
-        cfg_oc_ini['cosmo']['neff'] = str(self.cfg['cosmology']['N_eff'])
-        cfg_oc_ini['cosmo']['m_nu'] = str(self.cfg['cosmology']['m_nu'])
+        cosmo = self.cfg['cosmology']
+        cfg_oc_ini['cosmo']['h'] = str(cosmo['h'])
+        cfg_oc_ini['cosmo']['ns'] = str(cosmo['ns'])
+        cfg_oc_ini['cosmo']['omega_m'] = str(cosmo['Omega_m0'])
+        cfg_oc_ini['cosmo']['omega_b'] = str(cosmo['Omega_b0'])
+        # OC takes Omega_DE (and derives the curvature), SB takes Omega_k0
+        cfg_oc_ini['cosmo']['omega_de'] = str(
+            1.0 - cosmo['Omega_m0'] - cosmo['Omega_k0']
+        )
+        cfg_oc_ini['cosmo']['sigma8'] = str(cosmo['sigma8'])
+        cfg_oc_ini['cosmo']['w0'] = str(cosmo['w0'])
+        cfg_oc_ini['cosmo']['wa'] = str(cosmo['wa'])
+        cfg_oc_ini['cosmo']['neff'] = str(cosmo['Neff'])
+        cfg_oc_ini['cosmo']['m_nu'] = str(cosmo['m_nu'])
         cfg_oc_ini['cosmo']['tcmb0'] = str(2.7255)
 
         # ! [bias]
@@ -735,7 +739,10 @@ class OneCovarianceInterface:
             cfg_oc_ini['bias']['bias_files'] = gal_bias_ascii_filename
 
         # ! [IA]
-        cfg_oc_ini['IA']['A_IA'] = str(self.cfg['intrinsic_alignment']['Aia'])
+        # OC has no IA switch: zero the amplitude to match has_IA: False in SB
+        has_ia = self.cfg['C_ell']['has_IA']
+        a_ia = self.cfg['intrinsic_alignment']['Aia'] if has_ia else 0.0
+        cfg_oc_ini['IA']['A_IA'] = str(a_ia)
         cfg_oc_ini['IA']['eta_IA'] = str(self.cfg['intrinsic_alignment']['eIA'])
         cfg_oc_ini['IA']['z_pivot_IA'] = str(
             self.cfg['intrinsic_alignment']['z_pivot_IA']

@@ -10,6 +10,15 @@ import numpy as np
 from spaceborne import constants as const
 
 
+def get_file_ext(path: str) -> str:
+    """Lowercase file extension, with gzipped FITS (.fits.gz) mapped to '.fits'
+    (fitsio/cfitsio, hence euclidlib, read these transparently)"""
+    suffixes = [s.lower() for s in Path(path).suffixes]
+    if suffixes[-2:] == ['.fits', '.gz']:
+        return '.fits'
+    return suffixes[-1] if suffixes else ''
+
+
 def load_weight_map_fits(path: str) -> np.ndarray:
 
     if not os.path.exists(path):
@@ -165,7 +174,7 @@ def load_cl_euclidlib(filename, key_a, key_b):
     import euclidlib as el
 
     # checks
-    assert filename.endswith('.fits'), 'filename must end with .fits'
+    assert get_file_ext(filename) == '.fits', 'filename must end with .fits(.gz)'
     assert key_a in ['SHE', 'POS'], 'key_a must be "SHE" or "POS"'
     assert key_b in ['SHE', 'POS'], 'key_b must be "SHE" or "POS"'
 
@@ -452,24 +461,20 @@ class IOHandler:
         """Get the format of the input nz files"""
         nz_cfg = self.cfg['nz']  # shorten name
 
-        if (
-            nz_cfg['nz_sources_filename'].endswith('.txt')
-            and nz_cfg['nz_lenses_filename'].endswith('.txt')
-            or nz_cfg['nz_sources_filename'].endswith('.dat')
-            and nz_cfg['nz_lenses_filename'].endswith('.dat')
-        ):
+        ext_src = get_file_ext(nz_cfg['nz_sources_filename'])
+        ext_lns = get_file_ext(nz_cfg['nz_lenses_filename'])
+
+        if ext_src == ext_lns and ext_src in ('.txt', '.dat'):
             self.nz_fmt = 'spaceborne'
 
-        elif nz_cfg['nz_sources_filename'].endswith('.fits') and nz_cfg[
-            'nz_lenses_filename'
-        ].endswith('.fits'):
+        elif ext_src == ext_lns == '.fits':
             self.nz_fmt = 'euclidlib'
 
         else:
             raise ValueError(
                 'Unsupported or inconsistent format for input nz: all input files '
-                'should use the .txt, .dat, or .fits extensions (and all extensions '
-                'must be the same)'
+                'should use the .txt, .dat, .fits or .fits.gz extensions (and all '
+                'extensions must be the same)'
             )
 
     def get_cl_fmt(self):
@@ -487,12 +492,9 @@ class IOHandler:
             assert cl_filenames_to_check, (
                 'No Cl filenames provided for the selected probes'
             )
-            extensions = [
-                Path(cl_filenames_to_check[i]).suffix.lower()
-                for i in range(len(cl_filenames_to_check))
-            ]
+            extensions = [get_file_ext(fname) for fname in cl_filenames_to_check]
             assert all(ext in ['.txt', '.dat', '.fits'] for ext in extensions), (
-                'Input Cl filenames must end with .txt, .dat, or .fits'
+                'Input Cl filenames must end with .txt, .dat, .fits or .fits.gz'
             )
             assert all(x == extensions[0] for x in extensions), (
                 'All input Cl files must have the same extension'
@@ -509,7 +511,7 @@ class IOHandler:
             else:
                 raise ValueError(
                     'Unsupported or inconsistent format for input cls: all input files '
-                    'should use the .txt, .dat, or .fits extensions (and all extensions'
+                    'should use the .txt, .dat, .fits or .fits.gz extensions (and all extensions'
                     ' must be the same)'
                 )
         else:

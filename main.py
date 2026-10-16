@@ -42,6 +42,9 @@ def load_config(_config_path):
 
 
 cfg = load_config('config.yaml')
+cfg = load_config(
+    '/Users/davidesciotti/Documents/Work/Code/Spaceborne_jobs_src/nowcasts/config.yaml'
+)
 
 with contextlib.suppress(ImportError):
     import pyfiglet
@@ -83,7 +86,7 @@ with contextlib.suppress(AttributeError, NotImplementedError):
 if num_threads > available_cpu_count:
     print(
         f'WARNING: num_threads={num_threads} exceeds available CPUs '
-        f'({affinity_source}={available_cpu_count})'
+        f'({affinity_source}={available_cpu_count}).'
     )
     print(
         f'         Capping at {available_cpu_count} to prevent thread oversubscription'

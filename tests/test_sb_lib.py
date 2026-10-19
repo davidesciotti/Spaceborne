@@ -621,6 +621,22 @@ class TestCheckInterpolateInputTab:
         with pytest.raises(AssertionError):
             sl.check_interpolate_input_tab(input_tab, z_in, zbins=2)
 
+    @pytest.mark.parametrize('kind', ['CubicSpline', 'linear', 'nearest'])
+    @pytest.mark.parametrize('z_out', [[0.5, 2.5], [-0.1, 1.0]])
+    def test_out_of_range_raises(self, kind, z_out):
+        z_in = np.linspace(0.0, 2.0, 10)
+        input_tab = np.column_stack([z_in, z_in])
+        with pytest.raises(ValueError, match='Extend the input table'):
+            sl.check_interpolate_input_tab(
+                input_tab, np.array(z_out), zbins=1, kind=kind
+            )
+
+    def test_full_range_accepted(self):
+        z_in = np.linspace(0.0, 2.0, 10)
+        input_tab = np.column_stack([z_in, z_in])
+        out_tab, _ = sl.check_interpolate_input_tab(input_tab, z_in, zbins=1)
+        np.testing.assert_allclose(out_tab[:, 0], z_in, atol=1e-12)
+
     def test_invalid_kind_raises(self):
         z_in = np.linspace(0.0, 2.0, 10)
         input_tab = np.column_stack([z_in, z_in])

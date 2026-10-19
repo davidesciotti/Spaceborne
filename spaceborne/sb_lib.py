@@ -1291,6 +1291,17 @@ def check_interpolate_input_tab(
     z_in = input_tab[:, 0]
     vals_in = input_tab[:, 1:]
 
+    # Guard against extrapolation outside the input table z range
+    if (
+        np.min(z_grid_out) < np.min(z_in)
+        or np.max(z_grid_out) > np.max(z_in)
+    ):
+        raise ValueError(
+            f'The input table covers z = [{np.min(z_in)}, {np.max(z_in)}], but '
+            f'it has to be evaluated on z = [{np.min(z_grid_out)}, '
+            f'{np.max(z_grid_out)}]. Extend the input table, or restrict z_min/z_max.'
+        )
+
     if kind == 'CubicSpline':
         interp_func = CubicSpline(x=z_in, y=vals_in, axis=0)
         output_tab = interp_func(z_grid_out)

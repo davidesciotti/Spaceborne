@@ -35,7 +35,7 @@ cosmology:
   ns: 0.966 # Type: float. Scalar spectral index of the primordial power spectrum
   sigma8: 0.816 # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
   m_nu: 0.06 # Type: float. Total mass of neutrinos in eV
-  Neff: 3.046 # Type: float. Effective number of relativistic species
+  Neff: 3.044 # Type: float. Effective number of relativistic species
 
 intrinsic_alignment:
   Aia: 0.16 # Type: float.

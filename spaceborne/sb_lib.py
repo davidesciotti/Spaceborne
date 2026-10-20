@@ -84,6 +84,38 @@ Naming conventions (just to ease the notation):
 """
 
 
+def assert_repo_branch(repo_path: str, expected_branch: str) -> None:
+    is_git_repo = subprocess.run(
+        ['git', '-C', repo_path, 'rev-parse', '--is-inside-work-tree'],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    if is_git_repo != 'true':
+        raise RuntimeError(f'{repo_path} is not a git repository')
+
+    current_branch = subprocess.run(
+        ['git', '-C', repo_path, 'rev-parse', '--abbrev-ref', 'HEAD'],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    if current_branch == 'HEAD':  # detached, e.g. checked out on a tag
+        current_branch = subprocess.run(
+            ['git', '-C', repo_path, 'describe', '--tags', '--exact-match'],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    if current_branch != expected_branch:
+        raise RuntimeError(
+            f'Repo at {repo_path} is on branch "{current_branch}", expected "{expected_branch}".'
+        )
+
+
 def cut_map_hemisphere(hp_map, nside, hemisphere_to_keep):
     npix = hp.nside2npix(nside)
     pixels = np.arange(npix)
@@ -1292,10 +1324,7 @@ def check_interpolate_input_tab(
     vals_in = input_tab[:, 1:]
 
     # Guard against extrapolation outside the input table z range
-    if (
-        np.min(z_grid_out) < np.min(z_in)
-        or np.max(z_grid_out) > np.max(z_in)
-    ):
+    if np.min(z_grid_out) < np.min(z_in) or np.max(z_grid_out) > np.max(z_in):
         raise ValueError(
             f'The input table covers z = [{np.min(z_in)}, {np.max(z_in)}], but '
             f'it has to be evaluated on z = [{np.min(z_grid_out)}, '

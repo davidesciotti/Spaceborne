@@ -179,7 +179,7 @@ if cfg['misc'].get('conda_env') is not None:
             f'Running in conda env "{current_env}" ({sys.prefix}), '
             f'expected "{cfg["misc"]["conda_env"]}"'
         )
-        
+
 if cfg['misc'].get('check_for_updates', True):
     version_check.check_for_updates()
 
@@ -607,7 +607,7 @@ if kmax_limber > k_max_cfg:
         f'{kmax_limber = :.2f} {_k_txt_label} > {k_max_cfg = :.2f} {_k_txt_label}\n'
         f'for ell_max = {_ell_max} and z_min = {_z_min}.\n'
         f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
-        stacklevel=1
+        stacklevel=1,
     )
     cfg['precision']['log10_k_max'] = float(np.log10(kmax_limber))
 
@@ -1029,7 +1029,6 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_gg=mask_obj_gg,
         mask_obj_ll=mask_obj_ll,
     )
-
 
     # unbinned Cls on the NaMaster grid (from 0 to ell_max_nmt)
     ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt

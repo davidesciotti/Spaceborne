@@ -436,7 +436,7 @@ class TestCheckLists:
     """Tests for check_lists."""
 
     def test_wrong_length_galaxy_bias_fit_coeff_raises(self, valid_cfg):
-        valid_cfg['C_ell']['galaxy_bias_fit_coeff'] = [1.0, 2.0, 3.0]
+        valid_cfg['C_ell']['gal_bias_fit_coeff'] = [1.0, 2.0, 3.0]
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_lists()
@@ -452,9 +452,20 @@ class TestCheckTypesMutations:
     """Tests for check_types with deliberately wrong types."""
 
     def test_non_float_cosmology_param_raises(self, valid_cfg):
-        valid_cfg['cosmology']['Om'] = 1  # int instead of float
+        valid_cfg['cosmology']['Omega_m0'] = 1  # int instead of float
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
+            checker.check_types()
+
+    @pytest.mark.parametrize('legacy', ['Om', 'ODE'])
+    def test_legacy_cosmology_keys_raise(self, valid_cfg, legacy):
+        """Old names must have been migrated (main.py) before the checker runs."""
+        if legacy == 'Om':
+            valid_cfg['cosmology']['Om'] = valid_cfg['cosmology'].pop('Omega_m0')
+        else:
+            valid_cfg['cosmology']['ODE'] = 0.68
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='cosmology'):
             checker.check_types()
 
     def test_non_bool_covariance_g_raises(self, valid_cfg):

@@ -23,7 +23,17 @@ class SpaceborneConfigChecker:
 
     def check_types(self) -> None:
         # Cosmology
-        for par, val in self.cfg['cosmology'].items():
+        cosmo_cfg = self.cfg['cosmology']
+        required_cosmo_pars = [
+            'Omega_m0', 'Omega_b0', 'Omega_k0', 'w0', 'wa', 'h', 'ns', 'sigma8', 'm_nu',
+            'Neff',
+        ]  # fmt: skip
+        missing = [par for par in required_cosmo_pars if par not in cosmo_cfg]
+        assert not missing, f'cosmology: missing parameters {missing}'
+        assert 'ODE' not in cosmo_cfg, (
+            'cosmology: ODE is not an input, it is set by closure'
+        )
+        for par, val in cosmo_cfg.items():
             assert isinstance(val, float), f'Parameter {par} must be a float'
 
         # camb extra params
@@ -104,18 +114,18 @@ class SpaceborneConfigChecker:
         assert isinstance(c_ell_cfg['which_mag_bias'], str), (
             'C_ell: which_mag_bias must be a string'
         )
-        assert isinstance(c_ell_cfg['galaxy_bias_fit_coeff'], list), (
-            'C_ell: galaxy_bias_fit_coeff must be a list'
+        assert isinstance(c_ell_cfg['gal_bias_fit_coeff'], list), (
+            'C_ell: gal_bias_fit_coeff must be a list'
         )
-        assert all(isinstance(x, float) for x in c_ell_cfg['galaxy_bias_fit_coeff']), (
-            'C_ell: All elements in galaxy_bias_fit_coeff must be floats'
+        assert all(isinstance(x, float) for x in c_ell_cfg['gal_bias_fit_coeff']), (
+            'C_ell: All elements in gal_bias_fit_coeff must be floats'
         )
-        assert isinstance(c_ell_cfg['magnification_bias_fit_coeff'], list), (
-            'C_ell: magnification_bias_fit_coeff must be a list'
+        assert isinstance(c_ell_cfg['mag_bias_fit_coeff'], list), (
+            'C_ell: mag_bias_fit_coeff must be a list'
         )
         assert all(
-            isinstance(x, float) for x in c_ell_cfg['magnification_bias_fit_coeff']
-        ), 'C_ell: All elements in magnification_bias_fit_coeff must be floats'
+            isinstance(x, float) for x in c_ell_cfg['mag_bias_fit_coeff']
+        ), 'C_ell: All elements in mag_bias_fit_coeff must be floats'
 
         assert isinstance(c_ell_cfg['gal_bias_table_filename'], str), (
             'C_ell: gal_bias_table_filename must be a string'
@@ -398,6 +408,9 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['ell_bins_proj_nongauss'], int), (
             'precision: ell_bins_proj_nongauss must be an int'
         )
+        assert isinstance(precision_cfg['ell_bins_proj_nongauss_cosebis'], int), (
+            'precision: ell_bins_proj_nongauss_cosebis must be an int'
+        )
         assert isinstance(precision_cfg['proj_gauss_integration_method'], str), (
             'precision: proj_gauss_integration_method must be a string'
         )
@@ -487,6 +500,9 @@ class SpaceborneConfigChecker:
         assert isinstance(misc_cfg['plot_probe_names'], bool), (
             'misc: plot_probe_names must be a boolean'
         )
+        assert isinstance(misc_cfg.get('check_for_updates', True), bool), (
+            'misc: check_for_updates must be a boolean'
+        )
 
     def check_misc(self) -> None:
         assert self.cfg['covariance']['n_probes'] == 2, (
@@ -517,11 +533,11 @@ class SpaceborneConfigChecker:
         )
 
     def check_lists(self) -> None:
-        assert len(self.cfg['C_ell']['galaxy_bias_fit_coeff']) == 4, (
-            'galaxy_bias_fit_coeff must be of length 4'
+        assert len(self.cfg['C_ell']['gal_bias_fit_coeff']) == 4, (
+            'gal_bias_fit_coeff must be of length 4'
         )
-        assert len(self.cfg['C_ell']['magnification_bias_fit_coeff']) == 4, (
-            'magnification_bias_fit_coeff must be of length 4'
+        assert len(self.cfg['C_ell']['mag_bias_fit_coeff']) == 4, (
+            'mag_bias_fit_coeff must be of length 4'
         )
 
         assert len(self.cfg['C_ell']['mult_shear_bias']) == self.zbins, (

@@ -1,23 +1,41 @@
 # Example configuration file for Spaceborne. A further explanation of the different
 # options can be found in the official documentation, at https://spaceborne.readthedocs.io/en/latest/
 # The type of the different values is given in the comments, and is checked at runtime.
+# [Note] The most up-to date information on the the settings is the one contained in this
+#        file, in case you find any discrepancy with the documentation.
 # [Note] When not on the same line, comments always refer to the option/section immediately below.
 # [Note] `None` is `null` in YAML
 # [Note] Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
 # [Note] Do *not* delete any option from the cfg file, even if you don't use it.
 
+# ROOTS:
+# pleiadi: /_u/dsciotti/code
+# thinkpad: /_home/davide/Documenti/Lavoro/Programmi
+# mac: /_Users/davidesciotti/Documents/Work/Code
+# melodie: /_home/cosmo/davide.sciotti/data
+# mileva: /_data/sciotti/DATA
+
+# mac: path_to_oc_env: /opt/miniconda3/envs/cov20_env/bin/python
+# mileva: path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
+
+########################################################################################
+########################################################################################
+########################################################################################
+
+# Parameter names follow the cosmology API and cloelib. See, e.g., 
+# https://cosmology.readthedocs.io/projects/api/latest/api/reference.html
+
 cosmology:
-  Om: 0.32 # Type: float. Total matter density parameter Omega_m, at z=0
-  Ob: 0.05 # Type: float. Baryonic density parameter Omega_b, at z=0
-  wz: -1.0 # Type: float. Dark energy equation of state parameter (w0)
+  Omega_m0: 0.32 # Type: float. Total matter density parameter (incl. massive neutrinos), at z=0
+  Omega_b0: 0.05 # Type: float. Baryonic density parameter, at z=0
+  Omega_k0: 0.0 # Type: float. Curvature density parameter, at z=0
+  w0: -1.0 # Type: float. Dark energy equation of state parameter
   wa: 0.0 # Type: float. Evolution of the dark energy equation of state parameter
   h: 0.6737 # Type: float. Dimensionless Hubble parameter (H0 / 100)
   ns: 0.966 # Type: float. Scalar spectral index of the primordial power spectrum
-  s8: 0.816 # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
-  ODE: 0.68 # Type: float. Dark energy density parameter Omega_DE, at z=0
+  sigma8: 0.816 # Type: float. Amplitude of matter density fluctuations on 8 Mpc/h scales
   m_nu: 0.06 # Type: float. Total mass of neutrinos in eV
-  N_eff: 3.046 # Type: float. Effective number of relativistic species
-  Om_k0: 0.0 # Type: float. Curvature density parameter Omega_k, at z=0
+  Neff: 3.044 # Type: float. Effective number of relativistic species
 
 intrinsic_alignment:
   Aia: 0.16 # Type: float.
@@ -47,6 +65,18 @@ halo_model:
   halo_bias: HaloBiasTinker10 # Type: str
   halo_profile_dm: HaloProfileNFW # Type: str. 'dm' = 'dark matter'
   halo_profile_hod: HaloProfileHOD # Type: str.
+
+OneCovariance:
+  # Path to Python executable in OneCovariance conda environment
+  # Update this to match your system's conda installation
+  path_to_oc_env: /home/sciotti/.conda/envs/cov20_env/bin/python
+  path_to_oc_executable: ../OneCovariance/covariance.py # Relative path to OneCovariance executable from Spaceborne root
+  consistency_checks: False
+  oc_output_filename: cov_oc
+  compare_against_oc: False # In this case, the output cov (2D/6D) is not overwritten by OC at all!
+  new_run: True
+  oc_format_to_compare_against: list
+  process_cov_from_mat_file: True
 
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
@@ -144,14 +174,14 @@ C_ell:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
   # - 'polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
   #                         The actual values of these coefficients can be changed by modifying the values of
-  #                         'galaxy_bias_fit_coeff' and 'magnification_bias_fit_coeff'.
+  #                         'gal_bias_fit_coeff' and 'mag_bias_fit_coeff'.
   which_gal_bias: polynomial_fit # Type: str.
   which_mag_bias: polynomial_fit # Type: str.
 
   # Coefficients of the third-order polynomial galaxy and magnification bias.
   # The order is [z^0, z^1, z^2, z^3]
-  galaxy_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
-  magnification_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
+  gal_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
+  mag_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
@@ -182,19 +212,26 @@ C_ell:
     non_limber_integration_method: FKEM # Type: str
     
 mask:
-  # Configs for the survey footprint and masks. The options outside of the 'LL' and 'GG'
-  # sections are common to both probes.
+  # Configs for the survey footprint and weight maps. 
+  
+  # The footprint can binary or fractional. In the latter case it is assumed that its
+  # value represents the observed fraction (coverage) of each pixel. It is a single map, common 
+  # to all redshift bins, and it is used to compute the fsky factors, as 
+  # fsky = mean(footprint). For the GL probe pair the window is
+  # min(footprint_LL, footprint_GG) (nested masks assumed).
   # The 'geometry' option determines how the footprint is defined:
-  # - If set to 'footprint_file', the footprint will be read from the file specified in
-  #   'footprint_filename'.
-  # - If set to 'polar_cap', the footprint will be generated as a polar cap with area
-  #   specified by 'survey_area_deg2'.
-  # The footprint is a single binary mask, common to all redshift bins,
-  # and it is used to compute the fsky factors.
+  # - 'footprint_file': the footprint will be read from the file specified in 'footprint_filename'.
+  # - 'polar_cap': the footprint will be generated as a polar cap with area specified by 'survey_area_deg2'.
+
   # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
   # which should contain a number of maps equal to the number of redshift bins, for the 
   # given probe. If null, the weight maps will not be used. 
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
+  # They are assumed to be catalogue sums (e.g. Heracles `Weights`) or visibility maps.
+  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), with
+  # full-sky means.
+  
+  # The options outside of the 'LL' and 'GG' sections are common to both probes.
   LL:
     geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
     footprint_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mask_stage4_nside2048.fits # Type: str.
@@ -365,11 +402,18 @@ precision:
 
   # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.
-  # the grid used is np.geomspace(ell_min, ell_max, ell_bins)
+  # the grid used is np.geomspace(ell_min_proj, ell_max_proj, ell_bins_proj_*)
   ell_min_proj: 2 # Type: int
   ell_max_proj: 50000 # Type: int
   ell_bins_proj_gauss: 2000 # Type: int.
   ell_bins_proj_nongauss: 300 # Type: int.
+
+  # For COSEBIs, a finer grid is needed for the projection of the non-Gaussian covariance.
+  # The grid is np.geomspace(ell_min_proj, ell_max_proj, ell_bins_proj_nongauss_cosebis).
+  # [Note] the non-Gaussian harmonic-space covariance is still computed in ell_bins_proj_nongauss points.
+  # It is then interpolated over the finer grid for the projection to COSEBIs, which is also 
+  # used to compute the W_n(\ell) projection kernels.
+  ell_bins_proj_nongauss_cosebis: 10000 # Type: int.
 
   # integration method for the projection of the Gaussian and non-Gaussian covariance
   # from harmonic to real space. In the case of COSEBIs, the projection is always
@@ -385,7 +429,7 @@ precision:
   # ==================================== NaMaster ======================================
   # Whether to treat all fields as having spin 0 in the NaMaster Gaussian covariance.
   # This is (significantly) faster, but less accurate.
-  spin0: True # Type: bool.
+  spin0: False # Type: bool.
   iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
 
   # ======================================= JAX ========================================
@@ -426,7 +470,7 @@ misc:
 
   # Whether to produce a triangle plot of the Cls, especially useful when using input
   # Cls for a quick visual comparison. Can be slow, set to False for a faster runtime.
-  cl_triangle_plot: True # Type: bool.
+  cl_triangle_plot: False # Type: bool.
 
   # If the covariance_ordering_2D starts with 'probe', setting this to True
   # automatically displays the labels and limits for the different probe blocks.
@@ -435,3 +479,8 @@ misc:
 
   output_path: ../DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
+
+  # Check whether a newer version of the code is available on GitHub. If offline, it
+  # times out after 2 s, without interrupting the run.
+  # set to False if running a large batch of cases, or if working offline.
+  check_for_updates: True # Type: bool.

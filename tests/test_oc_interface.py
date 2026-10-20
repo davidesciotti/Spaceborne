@@ -1,10 +1,14 @@
 """Unit tests for the pure-numpy (non-I/O) reshuffling helpers in
 spaceborne.oc_interface: reorder_block_cov and cov_ggglll_to_llglgg, which
 translate OneCovariance's 2D matrices into Spaceborne's probe ordering.
+Also checks selected entries of the OneCovariance .ini built by build_save_oc_ini.
 """
+
+import os
 
 import numpy as np
 import pytest
+import yaml
 
 from spaceborne import oc_interface as oc
 
@@ -114,3 +118,32 @@ class TestCovGggllToLlglgg:
     def test_invalid_obs_space_raises(self):
         with pytest.raises(ValueError, match='obs_space'):
             oc.cov_ggglll_to_llglgg(np.zeros((2, 2)), 1, 1, 'invalid_space', [], [], [])
+
+
+class TestBuildSaveOcIniIA:
+    """N15: OneCovariance must not re-enable IA when has_IA is False."""
+
+    @staticmethod
+    def _build_ini(tmp_path, has_ia, aia):
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(repo_root, 'config.yaml')) as f:
+            cfg = yaml.safe_load(f)
+        cfg['C_ell']['has_IA'] = has_ia
+        cfg['intrinsic_alignment']['Aia'] = aia
+
+        # bypass __init__, which needs the full pvt_cfg
+        obj = object.__new__(oc.OneCovarianceInterface)
+        obj.cfg = cfg
+        obj.oc_path = str(tmp_path)
+        obj.obs_space = 'harmonic'
+        obj.compute_g, obj.compute_ssc, obj.compute_cng = True, False, False
+        obj.fsky_ab_dict = {'LL': 0.1, 'GL': 0.1, 'GG': 0.1}
+        names = ['cl_ll', 'cl_gl', 'cl_gg', 'nz_src', 'nz_lns', 'gal_bias']
+        fnames = {f'{n}_ascii_filename': f'{n}.ascii' for n in names}
+        obj.build_save_oc_ini(fnames, h=0.67, print_ini=False)
+        return obj.cfg_onecov_ini
+
+    @pytest.mark.parametrize(('has_ia', 'expected'), [(True, 0.16), (False, 0.0)])
+    def test_a_ia_follows_has_ia(self, tmp_path, has_ia, expected):
+        ini = self._build_ini(tmp_path, has_ia=has_ia, aia=0.16)
+        assert float(ini['IA']['A_IA']) == expected

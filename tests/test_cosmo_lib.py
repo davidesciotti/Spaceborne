@@ -1,12 +1,14 @@
 """Unit tests for the spaceborne.cosmo_lib module.
 
 These cover the pure helper functions (unit conversions, closed-form density and
-ell prefactor formulas, dict key remapping) and the CCL-backed cosmology
+ell prefactor formulas, legacy cosmology-key migration) and the CCL-backed cosmology
 quantities (comoving distance, growth, Limber-k, integral prefactor conventions,
 cosmology instantiation). Expected values for the closed-form helpers are
 hard-coded literals so that an accidental change to a formula is actually caught
 (re-deriving with the same formula in the test would be circular).
 """
+
+import warnings
 
 import numpy as np
 import pyccl as ccl
@@ -158,31 +160,44 @@ class TestEllPrefactors:
 
 
 # ----------------------------------------------------------------------------- #
-# map_keys
+# migrate_legacy_cosmo_cfg
 # ----------------------------------------------------------------------------- #
-class TestMapKeys:
-    def test_default_mapping_renames_known_keys(self):
-        out = cl.map_keys({'Om': 0.3, 's8': 0.8, 'h': 0.67}, key_mapping=None)
-        assert out['Om_m0'] == 0.3
-        assert out['sigma_8'] == 0.8
-        assert out['h'] == 0.67
+class TestMigrateLegacyCosmoCfg:
+    LEGACY = {
+        'Om': 0.32, 'Ob': 0.05, 'wz': -1.0, 'wa': 0.0, 'h': 0.6737, 'ns': 0.966,
+        's8': 0.816, 'ODE': 0.68, 'm_nu': 0.06, 'N_eff': 3.046, 'Om_k0': 0.0,
+    }  # fmt: skip
 
-    def test_retains_unmapped_keys(self):
-        """Keys absent from the mapping are passed through unchanged."""
-        out = cl.map_keys({'Om': 0.3, 'extra_param': 42}, key_mapping=None)
-        assert out['extra_param'] == 42
-        assert out['Om_m0'] == 0.3
+    def test_renames_old_keys_and_drops_ode(self):
+        with pytest.warns(UserWarning, match='Old cosmology config keys'):
+            out = cl.migrate_legacy_cosmo_cfg(self.LEGACY)
+        assert out == {
+            'Omega_m0': 0.32, 'Omega_b0': 0.05, 'w0': -1.0, 'wa': 0.0, 'h': 0.6737,
+            'ns': 0.966, 'sigma8': 0.816, 'm_nu': 0.06, 'Neff': 3.046,
+            'Omega_k0': 0.0,
+        }  # fmt: skip
+        assert 'Om' in self.LEGACY  # the input is not modified
 
-    def test_missing_keys_not_added(self):
-        """Mapping keys not present in the input do not appear in the output."""
-        out = cl.map_keys({'Om': 0.3}, key_mapping=None)
-        assert 'sigma_8' not in out
-        assert 'Om_Lambda0' not in out
+    def test_new_keys_pass_through_silently(self):
+        new = {'Omega_m0': 0.32, 'Omega_k0': 0.0, 'sigma8': 0.8, 'logT': 7.75}
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            assert cl.migrate_legacy_cosmo_cfg(new) == new
 
-    def test_custom_mapping(self):
-        out = cl.map_keys({'a': 1, 'b': 2}, key_mapping={'a': 'alpha'})
-        assert out['alpha'] == 1
-        assert out['b'] == 2  # unmapped, retained
+    def test_omega_k0_derived_from_ode_if_missing(self):
+        old = {'Om': 0.3, 'ODE': 0.6}
+        with pytest.warns(UserWarning):
+            out = cl.migrate_legacy_cosmo_cfg(old)
+        np.testing.assert_allclose(out['Omega_k0'], 0.1)
+
+    def test_inconsistent_ode_raises(self):
+        """An old ODE must not be silently ignored when Omega_k0 is given."""
+        with pytest.raises(ValueError, match='Inconsistent cosmology'):
+            cl.migrate_legacy_cosmo_cfg({**self.LEGACY, 'ODE': 0.5})
+
+    def test_old_and_new_name_together_raises(self):
+        with pytest.raises(ValueError, match='both'):
+            cl.migrate_legacy_cosmo_cfg({'Om': 0.3, 'Omega_m0': 0.3})
 
 
 # ----------------------------------------------------------------------------- #
@@ -329,16 +344,16 @@ class TestInstantiateCosmoCcl:
     @pytest.fixture
     def fiducial(self):
         return {
-            'Om_m0': 0.32,
-            'Om_b0': 0.05,
-            'Om_k0': 0.0,
-            'w_0': -1.0,
-            'w_a': 0.0,
+            'Omega_m0': 0.32,
+            'Omega_b0': 0.05,
+            'Omega_k0': 0.0,
+            'w0': -1.0,
+            'wa': 0.0,
             'h': 0.6737,
-            'sigma_8': 0.816,
-            'n_s': 0.966,
+            'sigma8': 0.816,
+            'ns': 0.966,
             'm_nu': 0.06,
-            'N_eff': 3.046,
+            'Neff': 3.046,
         }
 
     def test_returns_ccl_cosmology(self, fiducial):
@@ -349,15 +364,22 @@ class TestInstantiateCosmoCcl:
         cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_parameters=None)
         p = cosmo.cosmo.params
         np.testing.assert_allclose(p.h, fiducial['h'])
-        np.testing.assert_allclose(p.Omega_b, fiducial['Om_b0'])
-        np.testing.assert_allclose(p.sigma8, fiducial['sigma_8'])
-        np.testing.assert_allclose(p.n_s, fiducial['n_s'])
+        np.testing.assert_allclose(p.Omega_b, fiducial['Omega_b0'])
+        np.testing.assert_allclose(p.sigma8, fiducial['sigma8'])
+        np.testing.assert_allclose(p.n_s, fiducial['ns'])
 
-    def test_omega_c_excludes_baryons_and_neutrinos(self, fiducial):
-        """Omega_c = Om_m0 - Om_b0 - Omega_nu (cold dark matter only)."""
+    @pytest.mark.parametrize('n_eff', [2.0, 3.046, 4.0])
+    def test_omega_m_and_neff_reach_ccl(self, fiducial, n_eff):
+        """N06: CCL's Omega_m equals the requested Omega_m0 and Neff is propagated."""
+        fiducial['Neff'] = n_eff
         cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_parameters=None)
-        omega_nu = cl.get_omega_nu0(
-            fiducial['m_nu'], fiducial['h'], n_eff=fiducial['N_eff']
-        )
-        expected_omega_c = fiducial['Om_m0'] - fiducial['Om_b0'] - omega_nu
-        np.testing.assert_allclose(cosmo.cosmo.params.Omega_c, expected_omega_c)
+        np.testing.assert_allclose(cosmo['Omega_m'], fiducial['Omega_m0'], rtol=1e-12)
+        np.testing.assert_allclose(cosmo['Neff'], n_eff)
+
+    @pytest.mark.parametrize('omega_k0', [-0.05, 0.0, 0.05])
+    def test_dark_energy_set_by_closure(self, fiducial, omega_k0):
+        fiducial['Omega_k0'] = omega_k0
+        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_parameters=None)
+        np.testing.assert_allclose(cosmo['Omega_k'], omega_k0)
+        # CCL's Omega_l differs from 1 - Omega_m - Omega_k by the radiation density
+        np.testing.assert_allclose(cosmo['Omega_l'], 0.68 - omega_k0, atol=2e-4)

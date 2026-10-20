@@ -63,7 +63,7 @@ else:
         'JAX 64-bit precision is disabled. This may lead to '
         'noticeable differences with respect to the numpy '
         'implementation, which uses 64-bit precision by default.',
-        stacklevel=2,
+        stacklevel=1,
     )
 
 # if using the CPU, set the number of threads
@@ -129,6 +129,7 @@ from spaceborne import (
     mask_utils,
     oc_interface,
     responses,
+    version_check,
     wf_cl_lib,
 )
 from spaceborne import constants as const
@@ -179,6 +180,12 @@ if cfg['misc'].get('conda_env') is not None:
             f'expected "{cfg["misc"]["conda_env"]}"'
         )
         
+if cfg['misc'].get('check_for_updates', True):
+    version_check.check_for_updates()
+
+# convert old cosmology keys (Om, s8, ODE, ...) to the cloelib ones, for old configs
+cfg['cosmology'] = cosmo_lib.migrate_legacy_cosmo_cfg(cfg['cosmology'])
+
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE
@@ -249,10 +256,8 @@ def triangle_plot_cls_wrapper():
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
-galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
-magnification_bias_fit_fiducials = np.array(
-    cfg['C_ell']['magnification_bias_fit_coeff']
-)
+galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['gal_bias_fit_coeff'])
+magnification_bias_fit_fiducials = np.array(cfg['C_ell']['mag_bias_fit_coeff'])
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
 output_path = cfg['misc']['output_path']
@@ -310,6 +315,9 @@ cfg['misc']['save_output_as_benchmark'] = cfg['misc'].get(
     'save_output_as_benchmark', False
 )
 cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
+cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
+    'ell_bins_proj_nongauss_cosebis', 10_000
+)
 
 
 # Psi-statistics not implemented yet
@@ -575,7 +583,7 @@ if len(z_grid) < 500:
         'the number of steps in the redshift grid is small, '
         f'(len(z_grid)={len(z_grid)}) '
         'you may want to consider decreasing delta_z',
-        stacklevel=2,
+        stacklevel=1,
     )
 
 
@@ -599,7 +607,7 @@ if kmax_limber > k_max_cfg:
         f'{kmax_limber = :.2f} {_k_txt_label} > {k_max_cfg = :.2f} {_k_txt_label}\n'
         f'for ell_max = {_ell_max} and z_min = {_z_min}.\n'
         f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
-        stacklevel=2,
+        stacklevel=1
     )
     cfg['precision']['log10_k_max'] = float(np.log10(kmax_limber))
 
@@ -831,7 +839,7 @@ if cfg['nz']['normalize_nz']:
         warnings.warn(
             '\nThe lens n(z) are not normalized within atol=0, rtol=1e-3. '
             'Proceeding to normalize them',
-            stacklevel=2,
+            stacklevel=1,
         )
         nz_lns = wf_cl_lib.normalize_nz(nz_lns, zgrid_nz_lns)
     else:
@@ -841,7 +849,7 @@ if cfg['nz']['normalize_nz']:
         warnings.warn(
             '\nThe source n(z) are not normalized within atol=0, rtol=1e-3. '
             'Proceeding to normalize them',
-            stacklevel=2,
+            stacklevel=1,
         )
         nz_src = wf_cl_lib.normalize_nz(nz_src, zgrid_nz_src)
     else:
@@ -1022,9 +1030,9 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
 
-    # unbinned Cls on the NaMaster grid (0..ell_max_nmt)
+    # unbinned Cls on the NaMaster grid (from 0 to ell_max_nmt)
+    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
     ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
     nbl_3x2pt_nmt_unb = len(ells_3x2pt_nmt_unb)
 
@@ -1151,29 +1159,11 @@ if (
         )
     nbl_3x2pt_oc = len(ells_3x2pt_oc)
 
-    cl_ll_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_lensing_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gl_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gg_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_galaxy_obj,
-        cl_ccl_kwargs,
-    )
-    cl_3x2pt_5d_oc = sl.build_cl_3x2pt_5d(
-        cl_ll_3d=cl_ll_3d_oc, cl_gl_3d=cl_gl_3d_oc, cl_gg_3d=cl_gg_3d_oc
+    # same Cls as SB: input Cls (if provided) or CCL Cls including the
+    # multiplicative shear bias, which OC does not apply itself. These are simply
+    # recomputed/re-interpolated on the finer ells_3x2pt_oc grid
+    cl_3x2pt_5d_oc = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        ells_3x2pt_oc, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
 
     cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'
@@ -1205,7 +1195,7 @@ if (
         warnings.warn(
             'OneCovariance will use the HOD-derived galaxy bias '
             'for the Cls and responses',
-            stacklevel=2,
+            stacklevel=1,
         )
 
     # * 2. compute cov using the onecovariance interface class
@@ -1227,7 +1217,7 @@ if (
         warnings.warn(
             f'OneCovariance will not be re-run, loading existing files at '
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat',
-            stacklevel=2,
+            stacklevel=1,
         )
 
     # load output .list file (maybe the .mat format would be better, actually...)

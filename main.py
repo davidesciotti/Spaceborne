@@ -174,7 +174,7 @@ if cfg['misc'].get('conda_env') is not None:
     # sys.prefix is the env of the interpreter actually running, even when python is
     # called by full path without activating the env (unlike CONDA_DEFAULT_ENV)
     current_env = os.path.basename(sys.prefix)
-    if current_env != cfg['misc']['conda_env']:
+    if cfg['misc']['conda_env'] not in (current_env, sys.prefix):
         raise RuntimeError(
             f'Running in conda env "{current_env}" ({sys.prefix}), '
             f'expected "{cfg["misc"]["conda_env"]}"'

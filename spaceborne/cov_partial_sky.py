@@ -1387,10 +1387,6 @@ class CovNaMaster:
         factor_ll = coupled_noise_factor(
             self.weight_maps_ll, self.mask_obj_ll.fsky_footprint, self.zbins
         )
-        print(
-            f'Coupled-noise factor: GG {factor_gg.ravel().round(4)}, '
-            f'LL {factor_ll.ravel().round(4)}'
-        )
         nl_gg_4covnmt *= factor_gg
         nl_ll_4covnmt *= factor_ll
         nl_ll_4covnmt[:2] = 0  # a spin-2 field has no monopole or dipole!

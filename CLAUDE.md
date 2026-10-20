@@ -23,8 +23,9 @@ implementation. Reading order to understand a run:
 
 1. **Config** (`config.yaml`) is the single source of truth. Every option is documented inline with its
    type. There is no hidden default file — the YAML *is* the API. `config_checker.py` validates it.
-2. **Geometry**: `mask_utils.py` — `Mask` objects per probe. Distinguishes the **binary footprint**
-   (used for `fsky` scalars) from fractional **weight maps** (per-bin, per-probe; used only by the
+2. **Geometry**: `mask_utils.py` — `Mask` objects per probe. Distinguishes the **footprint**
+   (binary or fractional coverage; fsky = mean, probe-pair windows = min) from fractional
+   **weight maps** (per-bin, per-probe; used only by the
    NaMaster partial-sky cov). `footprint_fsky_ab` builds the probe-pair effective fskys.
 3. **Covariance terms** (each builds a nested `cov_dict`):
    - **Gaussian**: `cov_harmonic_space.py::CovHarmonicSpace.set_gauss_cov` dispatches on

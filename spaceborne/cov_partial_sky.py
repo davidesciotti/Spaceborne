@@ -254,6 +254,27 @@ def nmt_gaussian_cov(
     return cov_dict
 
 
+def coupled_noise_factor(weight_maps, fsky: float, zbins: int) -> np.ndarray:
+    """Per-bin <w>^2 / (fsky <w^2>) (full-sky means), shape (1, zbins, 1).
+
+    For catalogue-sum weight maps (e.g. Heracles `Weights`, W_p = sum_i w_i / wbar) or
+    selection-function visibility maps, the per-pixel noise variance scales like W_p, not
+    W_p^2 as for a homogeneous noise field multiplied by W. The noise level entering the
+    NaMaster covariance is then the coupled noise over <W^2> (full sky), i.e.
+    sigma_eps^2 / n_eff * <w>^2 / (fsky <w^2>), with n_eff = N_eff / (4 pi fsky) the
+    density over the observed area and fsky the footprint sky fraction
+    (Mask.fsky_footprint, see mask_utils.combined_fsky). Independent of the
+    normalisation of w; equals 1 for a binary mask whose support is the footprint. The
+    noise matrix is diagonal in (zi, zj), so scaling row zi is enough.
+    """
+    factor = np.ones(zbins)
+    for zi in range(zbins):
+        w = _weight_per_bin(weight_maps, zi)
+        if np.any(w > 0):
+            factor[zi] = np.mean(w) ** 2 / (fsky * np.mean(w**2))
+    return factor[None, :, None]
+
+
 def _weight_per_bin(weight_maps, zi):
     """Returns the weight map for the given z bin index zi,
     whether we are using a footprint (1D array of shape (N_pix,))
@@ -308,7 +329,7 @@ def mask_maps_and_compute_alms(
             masked_U = hp.remove_monopole(masked_U)
 
         # map2alm_spin has no `iter` kwarg, so spin-2 alms are effectively iter=0
-        # while spin-0 uses n_iter. This seems irrelevant; in any case, symmetrising 
+        # while spin-0 uses n_iter. This seems irrelevant; in any case, symmetrising
         # is possible with hp.map2alm([T,Q,U], pol=True, iter=n_iter)
         # but would ~4x the spin-2 SHT cost for that.
         alms_T.append(hp.map2alm(masked_T, lmax=lmax, iter=n_iter))
@@ -988,6 +1009,26 @@ class CovNaMaster:
         # ! the footprints are different (I'm not checking whether the weight maps
         # ! are different...)
         # TODO XXX leverage the remaining symmetry for other slow parts, e.g. cNG!!
+
+        # the coupling coefficients depend only on the four masks: compute them once per
+        # mask combination and reuse them across z quadruplets (e.g. all lens bins share
+        # the footprint when GG has no weight maps)
+        cw_cache = {}
+
+        def mask_key(probe, z):
+            if probe == 'G':
+                if self.use_weight_maps_gg:
+                    return ('G', z)
+                else:
+                    return ('G',)
+            elif probe == 'L':
+                if self.use_weight_maps_ll:
+                    return ('L', z)
+                else:
+                    return ('L',)
+            else:
+                raise ValueError('Probe not recognised')
+
         for probe_abcd in tqdm(unique_probe_combs):
             probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
             self.cw_dict[probe_ab, probe_cd] = {}
@@ -1025,26 +1066,38 @@ class CovNaMaster:
 
                     # ! Case 3: compute from weight maps (probe- and bin-dependent)
                     if use_weight_maps and (not self.load_cached_wsp):
-                        _f1 = (
-                            self.fg_dict[zi] if probe_ab[0] == 'G' else self.fl_dict[zi]
+                        key = (
+                            mask_key(probe_ab[0], zi),
+                            mask_key(probe_ab[1], zj),
+                            mask_key(probe_cd[0], zk),
+                            mask_key(probe_cd[1], zl),
                         )
-                        _f2 = (
-                            self.fg_dict[zj] if probe_ab[1] == 'G' else self.fl_dict[zj]
-                        )
-                        _f3 = (
-                            self.fg_dict[zk] if probe_cd[0] == 'G' else self.fl_dict[zk]
-                        )
-                        _f4 = (
-                            self.fg_dict[zl] if probe_cd[1] == 'G' else self.fl_dict[zl]
-                        )
-                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = (
-                            nmt.NmtCovarianceWorkspace()
-                        )
-                        self.cw_dict[probe_ab, probe_cd][
-                            zi, zj, zk, zl
-                        ].compute_coupling_coefficients(
-                            _f1, _f2, _f3, _f4, spin0_only=spin0
-                        )
+                        if key not in cw_cache:
+                            _f1 = (
+                                self.fg_dict[zi]
+                                if probe_ab[0] == 'G'
+                                else self.fl_dict[zi]
+                            )
+                            _f2 = (
+                                self.fg_dict[zj]
+                                if probe_ab[1] == 'G'
+                                else self.fl_dict[zj]
+                            )
+                            _f3 = (
+                                self.fg_dict[zk]
+                                if probe_cd[0] == 'G'
+                                else self.fl_dict[zk]
+                            )
+                            _f4 = (
+                                self.fg_dict[zl]
+                                if probe_cd[1] == 'G'
+                                else self.fl_dict[zl]
+                            )
+                            cw_cache[key] = nmt.NmtCovarianceWorkspace()
+                            cw_cache[key].compute_coupling_coefficients(
+                                _f1, _f2, _f3, _f4, spin0_only=spin0
+                            )
+                        self.cw_dict[probe_ab, probe_cd][zi, zj, zk, zl] = cw_cache[key]
 
                     # ! Case 1-2: get from previous computation
                     elif (not use_weight_maps) and (not self.load_cached_wsp):
@@ -1325,6 +1378,21 @@ class CovNaMaster:
         nl_gg_4covnmt = self.nl_3x2pt_unb_5d[1, 1, :, :, :].copy()
         nl_gl_4covnmt = self.nl_3x2pt_unb_5d[1, 0, :, :, :].copy()  # this is 0
         nl_ll_4covnmt = self.nl_3x2pt_unb_5d[0, 0, :, :, :].copy()
+
+        # rescale the noise for (non-binary) weight maps; this feeds both the analytic
+        # and the ensemble covariance, and the GL blocks through the GG and LL spectra
+        factor_gg = coupled_noise_factor(
+            self.weight_maps_gg, self.mask_obj_gg.fsky_footprint, self.zbins
+        )
+        factor_ll = coupled_noise_factor(
+            self.weight_maps_ll, self.mask_obj_ll.fsky_footprint, self.zbins
+        )
+        print(
+            f'Coupled-noise factor: GG {factor_gg.ravel().round(4)}, '
+            f'LL {factor_ll.ravel().round(4)}'
+        )
+        nl_gg_4covnmt *= factor_gg
+        nl_ll_4covnmt *= factor_ll
         nl_ll_4covnmt[:2] = 0  # a spin-2 field has no monopole or dipole!
 
         # add noise to spectra to compute NMT cov

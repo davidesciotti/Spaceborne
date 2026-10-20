@@ -42,9 +42,6 @@ def load_config(_config_path):
 
 
 cfg = load_config('config.yaml')
-cfg = load_config(
-    '/Users/davidesciotti/Documents/Work/Code/Spaceborne_jobs_src/nowcasts/config.yaml'
-)
 
 with contextlib.suppress(ImportError):
     import pyfiglet
@@ -161,6 +158,27 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
+# ! check that we're running on the expected branch/tag and conda env
+if '__file__' in globals():
+    sb_root_path = os.path.dirname(os.path.abspath(__file__))
+else:  # interactive (ipykernel): no __file__
+    sb_root_path = os.getcwd()
+
+if cfg['misc'].get('Spaceborne_branch') is not None:
+    sl.assert_repo_branch(
+        repo_path=sb_root_path, expected_branch=cfg['misc']['Spaceborne_branch']
+    )
+
+if cfg['misc'].get('conda_env') is not None:
+    # sys.prefix is the env of the interpreter actually running, even when python is
+    # called by full path without activating the env (unlike CONDA_DEFAULT_ENV)
+    current_env = os.path.basename(sys.prefix)
+    if current_env != cfg['misc']['conda_env']:
+        raise RuntimeError(
+            f'Running in conda env "{current_env}" ({sys.prefix}), '
+            f'expected "{cfg["misc"]["conda_env"]}"'
+        )
+        
 script_start_time = time.perf_counter()
 
 # UNCOMMENT TO MONITOR CPU COUNT USAGE

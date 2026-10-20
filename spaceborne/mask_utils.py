@@ -267,8 +267,8 @@ class Mask:
         #     self.cl_mask = None
         #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
-        print(f'fsky = {self.fsky_footprint:.4f}')
-        print(f'survey area [deg^2] = {self.survey_area_deg2:.4f}\n')
+        print(f'fsky: {self.fsky_footprint:.4f}')
+        print(f'survey area: {self.survey_area_deg2:.4f} [deg^2]\n')
 
     def process(self):
         self.load()

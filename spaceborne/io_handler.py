@@ -363,11 +363,11 @@ def cov_sb_10d_to_heracles_dict(cov_term_dict, squeeze):
             #     zi, zj, zk, zl)
             # ] = arr_out
 
-            # new
+            # new. Heracles/euclidlib tomographic bin keys are 1-based
             cov_dict_out[
-                (probe_a_hc, probe_b_hc, 
-                probe_c_hc, probe_d_hc, 
-                zi, zj, zk, zl)
+                (probe_a_hc, probe_b_hc,
+                probe_c_hc, probe_d_hc,
+                zi + 1, zj + 1, zk + 1, zl + 1)
             ] = Result(arr_out, axis=(ax1, ax2))  # fmt: skip
 
     return cov_dict_out

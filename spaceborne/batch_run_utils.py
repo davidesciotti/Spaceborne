@@ -112,7 +112,7 @@ def run_spaceborne(
                 continue
             print(f'\n🚜 Running job with config: 🚜\n{path}')
             try:
-                subprocess.run(['python', 'main.py', '--config', path], check=True)
+                subprocess.run(['python', '-u', 'main.py', '--config', path], check=True)
             except subprocess.CalledProcessError as exc:
                 if not continue_on_error:
                     raise

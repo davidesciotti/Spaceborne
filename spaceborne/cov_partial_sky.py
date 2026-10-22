@@ -1,4 +1,5 @@
 import itertools
+import multiprocessing as mp
 import os
 import time
 import warnings
@@ -8,6 +9,7 @@ import healpy as hp
 import numpy as np
 import pymaster as nmt
 from joblib import Parallel, delayed, parallel_backend
+from threadpoolctl import threadpool_limits
 from tqdm import tqdm
 
 from spaceborne import constants, ell_utils, mask_utils
@@ -64,6 +66,16 @@ def bin_mcm(mbm_unbinned: np.ndarray, nmt_bin_obj) -> np.ndarray:
     return mcm_binned
 
 
+# set by nmt_gaussian_cov before forking, so that the workers inherit it
+_nmt_cov_block = None
+
+
+def _nmt_cov_block_in_worker(zij, zkl):
+    # pymaster's OpenMP hangs in a forked worker if it uses more than one thread
+    with threadpool_limits(limits=1, user_api='openmp'):
+        return _nmt_cov_block(zij, zkl)
+
+
 def nmt_gaussian_cov(
     cov_dict: dict,
     spin0: bool,
@@ -89,6 +101,7 @@ def nmt_gaussian_cov(
     ells_out_edges: np.ndarray,
     which_binning: str,
     weights: np.ndarray | None,
+    n_jobs: int = 1,
 ):
     """Unified function to compute Gaussian covariance using NaMaster.
 
@@ -111,6 +124,7 @@ def nmt_gaussian_cov(
     - ells_in, ells_out, ells_out_edges: Binning parameters for coupled covariance.
     - which_binning: Binning method for coupled covariance.
     - weights: Weights for binning.
+    - n_jobs: Number of forked worker processes running the z-pair loop.
 
     """
 
@@ -201,42 +215,67 @@ def nmt_gaussian_cov(
             (nbl, nbl, zpairs_cd, zpairs_ab)
         )
 
-        for zij in range(zpairs_ab):
-            for zkl in range(zpairs_cd):
-                _, _, zi, zj = ind_dict[probe_ab][zij]
-                _, _, zk, zl = ind_dict[probe_cd][zkl]
+        def cov_block(zij, zkl):
+            _, _, zi, zj = ind_dict[probe_ab][zij]
+            _, _, zk, zl = ind_dict[probe_cd][zkl]
 
-                # I think this casting is required by nmt objects...
-                zi, zj, zk, zl = int(zi), int(zj), int(zk), int(zl)
+            # I think this casting is required by nmt objects...
+            zi, zj, zk, zl = int(zi), int(zj), int(zk), int(zl)
 
-                cov_l1l2 = nmt.gaussian_covariance(
-                    cw=cw_dict[probe_ab, probe_cd][zi, zj, zk, zl],
-                    spin_a1=0 if spin0 else s1,
-                    spin_a2=0 if spin0 else s2,
-                    spin_b1=0 if spin0 else s3,
-                    spin_b2=0 if spin0 else s4,
-                    cla1b1=cl_list_dict[f'{probe_a}{probe_c}'](zi, zk, spin0),
-                    cla1b2=cl_list_dict[f'{probe_a}{probe_d}'](zi, zl, spin0),
-                    cla2b1=cl_list_dict[f'{probe_b}{probe_c}'](zj, zk, spin0),
-                    cla2b2=cl_list_dict[f'{probe_b}{probe_d}'](zj, zl, spin0),
-                    coupled=coupled,
-                    wa=wsp_dict[f'{probe_a}{probe_b}'][zi, zj],
-                    wb=wsp_dict[f'{probe_c}{probe_d}'][zk, zl],
-                )
+            cov_l1l2 = nmt.gaussian_covariance(
+                cw=cw_dict[probe_ab, probe_cd][zi, zj, zk, zl],
+                spin_a1=0 if spin0 else s1,
+                spin_a2=0 if spin0 else s2,
+                spin_b1=0 if spin0 else s3,
+                spin_b2=0 if spin0 else s4,
+                cla1b1=cl_list_dict[f'{probe_a}{probe_c}'](zi, zk, spin0),
+                cla1b2=cl_list_dict[f'{probe_a}{probe_d}'](zi, zl, spin0),
+                cla2b1=cl_list_dict[f'{probe_b}{probe_c}'](zj, zk, spin0),
+                cla2b2=cl_list_dict[f'{probe_b}{probe_d}'](zj, zl, spin0),
+                coupled=coupled,
+                wa=wsp_dict[f'{probe_a}{probe_b}'][zi, zj],
+                wb=wsp_dict[f'{probe_c}{probe_d}'][zk, zl],
+            )
 
-                if not spin0:
-                    cov_l1l2 = cov_l1l2.reshape([nell, reshape_ab, nell, reshape_cd])
+            if not spin0:
+                cov_l1l2 = cov_l1l2.reshape([nell, reshape_ab, nell, reshape_cd])
 
-                    # ! important note: I always take the [:, 0, :, 0] slice because
-                    # ! I'm never interested in the off-diagonal elements of the spin
-                    # ! blocks, but this is not the most general case
-                    cov_l1l2 = cov_l1l2[:, 0, :, 0]
+                # ! important note: I always take the [:, 0, :, 0] slice because
+                # ! I'm never interested in the off-diagonal elements of the spin
+                # ! blocks, but this is not the most general case
+                cov_l1l2 = cov_l1l2[:, 0, :, 0]
 
-                # in the coupled case, namaster returns unbinned covariance matrices
-                if coupled:
-                    cov_l1l2 = sl.bin_2d_array_vectorized(cov_l1l2, **bin_cov_kw)
+            # in the coupled case, namaster returns unbinned covariance matrices
+            if coupled:
+                cov_l1l2 = sl.bin_2d_array_vectorized(cov_l1l2, **bin_cov_kw)
 
-                cov_dict['g'][probe_ab, probe_cd]['4d'][:, :, zij, zkl] = cov_l1l2
+            return cov_l1l2
+
+        zpair_list = list(itertools.product(range(zpairs_ab), range(zpairs_cd)))
+
+        # nmt.gaussian_covariance holds the GIL and its OpenMP scales poorly beyond
+        # ~10 threads, so run the calls in parallel processes. The NaMaster objects
+        # can't be pickled: the workers must be forked, to inherit them.
+        # Each worker holds the unbinned NaMaster output: cap n_jobs to fit in RAM
+        # (a worker killed by the OOM killer makes joblib hang forever)
+        n_jobs_probe = 1
+        if n_jobs > 1 and mp.get_start_method() == 'fork':
+            ncomp_ab, ncomp_cd = (1, 1) if spin0 else (reshape_ab, reshape_cd)
+            mem_per_job = 2 * 8 * (nell * ncomp_ab) * (nell * ncomp_cd)
+            mem_free = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_AVPHYS_PAGES')
+            n_jobs_probe = int(max(1, min(n_jobs, mem_free // mem_per_job)))
+
+        if n_jobs_probe == 1:
+            cov_blocks = [cov_block(zij, zkl) for zij, zkl in zpair_list]
+        else:
+            global _nmt_cov_block
+            _nmt_cov_block = cov_block
+            cov_blocks = Parallel(n_jobs=n_jobs_probe, backend='multiprocessing')(
+                delayed(_nmt_cov_block_in_worker)(zij, zkl) for zij, zkl in zpair_list
+            )
+
+        for (zij, zkl), cov_l1l2 in zip(zpair_list, cov_blocks, strict=True):
+            cov_dict['g'][probe_ab, probe_cd]['4d'][:, :, zij, zkl] = cov_l1l2
 
     # * symmetrize and set to 0 the remaining probe blocks
     sl.symmetrize_and_fill_probe_blocks(
@@ -1438,6 +1477,7 @@ class CovNaMaster:
                     ells_out_edges=ells_eff_edges,
                     weights=None,
                     which_binning='sum',
+                    n_jobs=self.cfg['misc']['num_threads'],
                 )
 
             # ! convert probe blocks from 4d to 6d and remove the 4d ones

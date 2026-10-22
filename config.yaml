@@ -22,7 +22,7 @@
 ########################################################################################
 ########################################################################################
 
-# Parameter names follow the cosmology API and cloelib. See, e.g., 
+# Parameter names follow the cosmology API and cloelib. See, e.g.,
 # https://cosmology.readthedocs.io/projects/api/latest/api/reference.html
 
 cosmology:
@@ -106,7 +106,7 @@ nz:
   nz_sources_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nzTab-EP03-zedMin02-zedMax25-mag245.txt # Type: str
   nz_lenses_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
-  # Number of galaxies per arcmin**2 for each redshift bin.
+  # Effective number of galaxies per arcmin**2 for each redshift bin.
   # Should be of length 'zbins'
   ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
   ngal_lenses: [4.09216, 4.09215, 4.09215] # Type: list[float]
@@ -170,7 +170,11 @@ C_ell:
   cl_GL_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
   cl_GG_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
-  # Which galaxy and magnification bias to use. Options:
+  # Which galaxy and magnification bias to use.
+  # The magnification bias coefficients are the b_mag defined in
+  # https://arxiv.org/pdf/2510.09118, i.e., b_mag(z) = 5*s(z) - 2,
+  # where s(z) is the logarithmic slope of the lenses’ luminosity function
+  # Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
   # - 'polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
   #                         The actual values of these coefficients can be changed by modifying the values of
@@ -210,27 +214,27 @@ C_ell:
     l_limber: -1 # Type: int
     limber_integration_method: spline # Type: str
     non_limber_integration_method: FKEM # Type: str
-    
+
 mask:
-  # Configs for the survey footprint and weight maps. 
-  
+  # Configs for the survey footprint and weight maps.
+
   # The footprint can binary or fractional. In the latter case it is assumed that its
-  # value represents the observed fraction (coverage) of each pixel. It is a single map, common 
-  # to all redshift bins, and it is used to compute the fsky factors, as 
+  # value represents the observed fraction (coverage) of each pixel. It is a single map, common
+  # to all redshift bins, and it is used to compute the fsky factors, as
   # fsky = mean(footprint). For the GL probe pair the window is
   # min(footprint_LL, footprint_GG) (nested masks assumed).
   # The 'geometry' option determines how the footprint is defined:
-  # - 'footprint_file': the footprint will be read from the file specified in 'footprint_filename'.
+  # - 'footprint_file': the footprint ill be read from the file specified in 'footprint_filename'.
   # - 'polar_cap': the footprint will be generated as a polar cap with area specified by 'survey_area_deg2'.
 
   # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
-  # which should contain a number of maps equal to the number of redshift bins, for the 
-  # given probe. If null, the weight maps will not be used. 
+  # which should contain a number of maps equal to the number of redshift bins, for the
+  # given probe. If null, the weight maps will not be used.
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
   # They are assumed to be catalogue sums (e.g. Heracles `Weights`) or visibility maps.
   # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), with
   # full-sky means.
-  
+
   # The options outside of the 'LL' and 'GG' sections are common to both probes.
   LL:
     geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
@@ -295,7 +299,7 @@ covariance:
   # GL and GG SSC responses and in the cNG trispectrum.
   # Options:
   # - 'linear_bias': galaxies are linearly biased tracers of matter, with b1 taken from
-  #                  the input tabulated values/third order polynomial computed in SB. 
+  #                  the input tabulated values/third order polynomial computed in SB.
   #                  This is consistent with the C_ells. The PyCCL cNG uses the matter
   #                  trispectrum, with the galaxy bias entering through the kernels.
   # - 'HOD': the galaxy field is described by the Halo Occupation Distribution (HOD)
@@ -411,7 +415,7 @@ precision:
   # For COSEBIs, a finer grid is needed for the projection of the non-Gaussian covariance.
   # The grid is np.geomspace(ell_min_proj, ell_max_proj, ell_bins_proj_nongauss_cosebis).
   # [Note] the non-Gaussian harmonic-space covariance is still computed in ell_bins_proj_nongauss points.
-  # It is then interpolated over the finer grid for the projection to COSEBIs, which is also 
+  # It is then interpolated over the finer grid for the projection to COSEBIs, which is also
   # used to compute the W_n(\ell) projection kernels.
   ell_bins_proj_nongauss_cosebis: 10000 # Type: int.
 
@@ -449,8 +453,8 @@ precision:
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 
-  # (from CCL docs): whether a separable growth function approximation can be used to 
-  # calculate the isotropized power spectrum. 
+  # (from CCL docs): whether a separable growth function approximation can be used to
+  # calculate the isotropized power spectrum.
   # Set to True for lower accuracy and (much) faster computation
   separable_growth: True # Type: bool
 

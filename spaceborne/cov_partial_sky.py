@@ -275,6 +275,21 @@ def coupled_noise_factor(weight_maps, fsky: float, zbins: int) -> np.ndarray:
     return factor[None, :, None]
 
 
+def noise_pixwin_deconv_factor(nside: int, lmax: int) -> tuple[np.ndarray, np.ndarray]:
+    """1 / p_ell^2 for the spin-0 (GG) and spin-2 (LL) noise, shape (lmax + 1, 1, 1).
+
+    Heracles-like estimators divide the measured alms by the HEALPix pixel window
+    p_ell, so the white, pixel-level noise in the measured spectra (and the noise bias
+    they subtract) is N / p_ell^2 instead of N. The spin-2 factor uses the polarisation
+    (E) window, which is 0 at ell < 2; the factor is set to 0 there, where the spin-2
+    noise vanishes anyway.
+    """
+    pw_t, pw_p = hp.pixwin(nside, pol=True, lmax=lmax)
+    inv_pw2_t = 1 / pw_t**2
+    inv_pw2_p = np.divide(1, pw_p**2, out=np.zeros_like(pw_p), where=pw_p > 0)
+    return inv_pw2_t[:, None, None], inv_pw2_p[:, None, None]
+
+
 def _weight_per_bin(weight_maps, zi):
     """Returns the weight map for the given z bin index zi,
     whether we are using a footprint (1D array of shape (N_pix,))
@@ -1389,6 +1404,14 @@ class CovNaMaster:
         )
         nl_gg_4covnmt *= factor_gg
         nl_ll_4covnmt *= factor_ll
+
+        # spectra measured with the pixel window deconvolved (e.g. Heracles) contain
+        # the noise as N / p_ell^2; GL has no noise
+        if self.cfg['precision'].get('noise_pixwin_deconv', False):
+            inv_pw2_gg, inv_pw2_ll = noise_pixwin_deconv_factor(self.nside, ell_max_eff)
+            nl_gg_4covnmt *= inv_pw2_gg
+            nl_ll_4covnmt *= inv_pw2_ll
+
         nl_ll_4covnmt[:2] = 0  # a spin-2 field has no monopole or dipole!
 
         # add noise to spectra to compute NMT cov

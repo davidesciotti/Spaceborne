@@ -453,6 +453,9 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['spin0'], bool), (
             'precision: spin0 must be a boolean'
         )
+        assert isinstance(precision_cfg.get('noise_pixwin_deconv', False), bool), (
+            'precision: noise_pixwin_deconv must be a boolean'
+        )
         assert isinstance(precision_cfg['n_samples_wf'], int), (
             'precision: n_samples_wf must be an int'
         )
@@ -679,6 +682,11 @@ class SpaceborneConfigChecker:
             raise ValueError(
                 'If computing the partial-sky covariance with NaMaster, '
                 '`covariance: G_code` should not be set (or set to "Spaceborne").'
+            )
+        # the ensemble injects white noise, and Knox has no pixel window
+        if self.cfg['precision'].get('noise_pixwin_deconv', False):
+            assert self.cfg['covariance']['partial_sky_method'] == 'NaMaster', (
+                'precision: noise_pixwin_deconv requires partial_sky_method: NaMaster'
             )
 
     def check_onecov(self) -> None:

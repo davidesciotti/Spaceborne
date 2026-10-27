@@ -435,6 +435,11 @@ precision:
   # This is (significantly) faster, but less accurate.
   spin0: False # Type: bool.
   iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
+  # NaMaster only. Whether the noise in the covariance is N / p_ell^2, with p_ell the
+  # HEALPix pixel window at mask.nside (scalar for GG, E-mode for LL). Use it for spectra
+  # measured with the pixel window deconvolved, as Heracles does by default; mask.nside
+  # must then be the nside at which the data were mapped. False: white noise N.
+  noise_pixwin_deconv: False # Type: bool.
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

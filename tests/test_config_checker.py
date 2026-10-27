@@ -334,6 +334,21 @@ class TestCheckNmt:
         with pytest.raises(ValueError):
             checker.check_nmt()
 
+    @pytest.mark.parametrize('method', ['Knox', 'ensemble'])
+    def test_noise_pixwin_deconv_requires_namaster(self, valid_cfg, method):
+        valid_cfg['covariance']['partial_sky_method'] = method
+        valid_cfg['precision']['noise_pixwin_deconv'] = True
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError):
+            checker.check_nmt()
+
+    def test_noise_pixwin_deconv_with_namaster_ok(self, valid_cfg):
+        valid_cfg['covariance']['partial_sky_method'] = 'NaMaster'
+        valid_cfg['covariance']['G_code'] = 'Spaceborne'
+        valid_cfg['precision']['noise_pixwin_deconv'] = True
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_nmt()
+
 
 class TestCheckOnecov:
     """Tests for check_onecov."""

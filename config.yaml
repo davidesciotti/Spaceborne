@@ -364,6 +364,16 @@ ensemble_covariance:
   nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
+  # Band limit of the simulated signal; null = ell_max. The mask couples power above
+  # ell_max into the science band, so set it > ell_max (max 3*nside-1) for a truth sim.
+  ell_max_sim: null # Type: int | None
+  # Shape noise in the sims:
+  # - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
+  #   is the analytic model, so the noise part of the comparison is circular.
+  # - catalogue: per-pixel variance ∝ w, as for catalogue-sum weight maps (Heracles),
+  #   with the same coupled noise level as the analytic covariance.
+  # The two coincide for a binary mask.
+  noise_model: painted # Type: str. Options: ['painted', 'catalogue']
 
 precision:
   # =============================== harmonic-space cov =================================

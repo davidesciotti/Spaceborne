@@ -1047,6 +1047,21 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_obj.nbl_3x2pt_unb = nbl_3x2pt_nmt_unb
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_nmt_unb_5d
     cov_nmt_obj.nl_3x2pt_unb_5d = nl_3x2pt_nmt_unb_5d
+
+    # signal Cls for the ensemble sims, band-limited at ell_max_sim >= ell_max_3x2pt:
+    # the mask couples signal power above ell_max into the science band, as in the data
+    if cfg['covariance']['partial_sky_method'] == 'ensemble':
+        ell_max_sim = cfg['ensemble_covariance'].get('ell_max_sim')
+        if ell_max_sim is None or ell_max_sim == ell_max_3x2pt_nmt:
+            ell_max_sim = ell_max_3x2pt_nmt
+            cl_3x2pt_sim_unb_5d = cl_3x2pt_nmt_unb_5d
+        else:
+            cl_3x2pt_sim_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+                np.arange(ell_max_sim + 1), io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+            )
+        cov_nmt_obj.ell_max_sim = ell_max_sim
+        cov_nmt_obj.cl_3x2pt_sim_unb_5d = cl_3x2pt_sim_unb_5d
+
     # and additional useful ones
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
 

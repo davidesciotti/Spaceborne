@@ -473,3 +473,19 @@ class TestCheckTypesMutations:
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_types()
+
+    @pytest.mark.parametrize(
+        ('key', 'value'), [('noise_model', 'poisson'), ('ell_max_sim', 3000.0)]
+    )
+    def test_invalid_ensemble_option_raises(self, valid_cfg, key, value):
+        valid_cfg['ensemble_covariance'][key] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError):
+            checker.check_types()
+
+    def test_ensemble_options_optional(self, valid_cfg):
+        """Configs written before noise_model / ell_max_sim existed still pass."""
+        del valid_cfg['ensemble_covariance']['noise_model']
+        del valid_cfg['ensemble_covariance']['ell_max_sim']
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_types()

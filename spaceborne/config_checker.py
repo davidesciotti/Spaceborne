@@ -235,6 +235,13 @@ class SpaceborneConfigChecker:
         assert isinstance(ensemble_cov_cfg['save_sim_cls'], bool), (
             'ensemble_covariance: save_sim_cls must be a boolean'
         )
+        ell_max_sim = ensemble_cov_cfg.get('ell_max_sim')
+        assert ell_max_sim is None or isinstance(ell_max_sim, int), (
+            'ensemble_covariance: ell_max_sim must be an int or None'
+        )
+        assert ensemble_cov_cfg.get('noise_model', 'painted') in ('painted', 'catalogue'), (
+            "ensemble_covariance: noise_model must be 'painted' or 'catalogue'"
+        )
 
         # OneCovariance
         if 'OneCovariance' in self.cfg:

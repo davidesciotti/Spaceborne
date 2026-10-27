@@ -292,6 +292,8 @@ def mask_maps_and_compute_alms(
     lmax: int,
     n_iter: int = 3,
     remove_monopole: bool = True,
+    noise_amp_gg: np.ndarray | None = None,
+    noise_amp_ll: np.ndarray | None = None,
 ) -> tuple[list, list, list]:
     """Pre-compute masked alms for all zbins in one realization.
 
@@ -305,6 +307,9 @@ def mask_maps_and_compute_alms(
     weight_maps_gg : Per-bin weight maps for spin-0 (GG), indexed by z bin.
     weight_maps_ll : Per-bin weight maps for spin-2 (LL), indexed by z bin.
     lmax         : maximum multipole
+    noise_amp_gg, noise_amp_ll : per-bin amplitudes A_i for catalogue-sum noise,
+        added *after* masking with per-pixel std A_i * sqrt(w_p) (variance ∝ w).
+        None means the noise was already added to the unmasked maps (painted).
 
     Returns
     -------
@@ -322,6 +327,12 @@ def mask_maps_and_compute_alms(
         masked_T = map_T * weight_gg
         masked_Q = map_Q * weight_ll
         masked_U = map_U * weight_ll
+
+        if noise_amp_gg is not None:
+            npix = len(weight_gg)
+            masked_T += np.random.randn(npix) * noise_amp_gg[zi] * np.sqrt(weight_gg)
+            masked_Q += np.random.randn(npix) * noise_amp_ll[zi] * np.sqrt(weight_ll)
+            masked_U += np.random.randn(npix) * noise_amp_ll[zi] * np.sqrt(weight_ll)
 
         if remove_monopole:
             masked_T = hp.remove_monopole(masked_T)
@@ -399,6 +410,24 @@ def pcls_from_maps(
     return np.array(cl_tt_out), np.array(cl_te_out), np.array(cl_ee_out)
 
 
+def catalogue_noise_amplitude(weight_maps, nl_diag, nside: int, zbins: int) -> np.ndarray:
+    """Per-bin amplitude A_i of catalogue-sum noise, shape (zbins,).
+
+    The noise of a catalogue-sum map (e.g. Heracles `Weights`, W_p = sum_i w_i / wbar) has
+    per-pixel variance A_i^2 w_p, i.e. proportional to the weight map, not to its square
+    as for a homogeneous noise field multiplied by w ("painted"). A_i^2 is set so that the
+    coupled noise level, A_i^2 Omega_pix <w>, equals the analytic one, nl_diag[i] <w^2>
+    (full-sky means; nl_diag already includes the coupled-noise factor).
+    """
+    omega_pix = 4.0 * np.pi / hp.nside2npix(nside)
+    amp = np.zeros(zbins)
+    for zi in range(zbins):
+        w = _weight_per_bin(weight_maps, zi)
+        assert np.all(w >= 0), 'catalogue noise needs non-negative weights'
+        amp[zi] = np.sqrt(nl_diag[zi] * np.mean(w**2) / np.mean(w) / omega_pix)
+    return amp
+
+
 def compute_ensemble_covariance_parallel(
     cov_dict: cd.FrozenDict,
     cl_GG_unbinned: np.ndarray,
@@ -422,10 +451,21 @@ def compute_ensemble_covariance_parallel(
     lmax: int | float,
     n_jobs: int,
     fix_seed=True,
+    lmax_sim: int | None = None,
+    noise_model: str = 'painted',
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Computes the ensemble covariance from a set of simulated power spectra"""
 
     SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
+    lmax_sim = lmax if lmax_sim is None else lmax_sim
+    assert lmax <= lmax_sim <= 3 * nside - 1, 'need lmax <= lmax_sim <= 3*nside-1'
+
+    noise_amp_gg = noise_amp_ll = None
+    if noise_model == 'catalogue':
+        noise_amp_gg = catalogue_noise_amplitude(weight_maps_gg, nl_gg_diag, nside, zbins)
+        noise_amp_ll = catalogue_noise_amplitude(weight_maps_ll, nl_ll_diag, nside, zbins)
+    elif noise_model != 'painted':
+        raise ValueError(f'unknown noise_model {noise_model!r}')
 
     # instantiate arrays in cov_dict
     for probe_2tpl in cov_dict['g']:
@@ -476,6 +516,9 @@ def compute_ensemble_covariance_parallel(
                 seed=SEEDVALUE[i],
                 cl_ring_big_list=cl_ring_big_list,
                 lmax=lmax,
+                lmax_sim=lmax_sim,
+                noise_amp_gg=noise_amp_gg,
+                noise_amp_ll=noise_amp_ll,
                 nside=nside,
                 zbins=zbins,
                 weight_maps_gg=weight_maps_gg,
@@ -522,6 +565,9 @@ def _compute_one_realization(
     seed,
     cl_ring_big_list: list,
     lmax: int,
+    lmax_sim: int,
+    noise_amp_gg: np.ndarray | None,
+    noise_amp_ll: np.ndarray | None,
     nside: int,
     zbins: int,
     weight_maps_gg: np.ndarray,
@@ -557,14 +603,15 @@ def _compute_one_realization(
     nmt_bin_obj = nmt.NmtBin.from_edges(ell_min_edges, ell_max_edges)
 
     # ! 1. Generate alms from input Cls
-    corr_alms_tot = hp.synalm(cl_ring_big_list, lmax=lmax, new=True)
+    # signal is band-limited at lmax_sim >= lmax; the estimator below stops at lmax
+    corr_alms_tot = hp.synalm(cl_ring_big_list, lmax=lmax_sim, new=True)
     corr_alms_T = corr_alms_tot[::3]
     corr_alms_E_B = list(zip(corr_alms_tot[1::3], corr_alms_tot[2::3], strict=True))
 
     # ! 2. Generate (correlated) maps from alms
-    corr_maps_gg = [hp.alm2map(alm, nside, lmax=lmax) for alm in corr_alms_T]
+    corr_maps_gg = [hp.alm2map(alm, nside, lmax=lmax_sim) for alm in corr_alms_T]
     corr_maps_ll = [
-        hp.alm2map_spin([E, B], nside=nside, spin=2, lmax=lmax)
+        hp.alm2map_spin([E, B], nside=nside, spin=2, lmax=lmax_sim)
         for E, B in corr_alms_E_B
     ]
     # free alms
@@ -575,16 +622,19 @@ def _compute_one_realization(
     # leaks power from high-ell into the "nmt band" [ell_min, ell_max_eff]. This is
     # important for a white spectrum, which has non-negligible power at high-ell.
     # Note: per-pixel variance is sigma^2 = N_ell / Omega_pix.
+    # This is the painted model (homogeneous noise, then masked -> variance ∝ w^2);
+    # the catalogue model adds the noise after masking, in mask_maps_and_compute_alms.
 
-    npix = hp.nside2npix(nside)
-    omega_pix = 4.0 * np.pi / npix  # pixel solid angle (in steradians)
-    for zi, m in enumerate(corr_maps_gg):
-        sigma_pix = np.sqrt(nl_gg_diag[zi] / omega_pix)
-        m += np.random.randn(npix) * sigma_pix
-    for zi, qu in enumerate(corr_maps_ll):
-        sigma_pix = np.sqrt(nl_ll_diag[zi] / omega_pix)
-        qu[0] += np.random.randn(npix) * sigma_pix
-        qu[1] += np.random.randn(npix) * sigma_pix
+    if noise_amp_gg is None:
+        npix = hp.nside2npix(nside)
+        omega_pix = 4.0 * np.pi / npix  # pixel solid angle (in steradians)
+        for zi, m in enumerate(corr_maps_gg):
+            sigma_pix = np.sqrt(nl_gg_diag[zi] / omega_pix)
+            m += np.random.randn(npix) * sigma_pix
+        for zi, qu in enumerate(corr_maps_ll):
+            sigma_pix = np.sqrt(nl_ll_diag[zi] / omega_pix)
+            qu[0] += np.random.randn(npix) * sigma_pix
+            qu[1] += np.random.randn(npix) * sigma_pix
 
     # ! 4. Mask each map (there are zbins of them) and compute ("masked") alms
     alms_T, alms_E, alms_B = mask_maps_and_compute_alms(
@@ -593,6 +643,8 @@ def _compute_one_realization(
         weight_maps_gg=weight_maps_gg,
         weight_maps_ll=weight_maps_ll,
         lmax=lmax,
+        noise_amp_gg=noise_amp_gg,
+        noise_amp_ll=noise_amp_ll,
     )
 
     # free maps
@@ -802,6 +854,8 @@ class CovNaMaster:
             )
 
         self.cl_3x2pt_unb_5d = _UNSET
+        self.cl_3x2pt_sim_unb_5d = _UNSET
+        self.ell_max_sim = _UNSET
         self.ells_3x2pt_unb = _UNSET
         self.nbl_3x2pt_unb = _UNSET
         self.fsky_ab_dict = _UNSET
@@ -1476,9 +1530,9 @@ class CovNaMaster:
             # pixel scale (~3*nside). I instead inject it as full-band per-pixel white
             # noise inside each realization (see _compute_one_realization). The mask
             # then couples its high-ell power down into the science band, as in the data.
-            cl_tt_4covens = self.cl_3x2pt_unb_5d[1, 1, :, :, :]
-            cl_te_4covens = self.cl_3x2pt_unb_5d[1, 0, :, :, :]
-            cl_ee_4covens = self.cl_3x2pt_unb_5d[0, 0, :, :, :]
+            cl_tt_4covens = self.cl_3x2pt_sim_unb_5d[1, 1, :, :, :]
+            cl_te_4covens = self.cl_3x2pt_sim_unb_5d[1, 0, :, :, :]
+            cl_ee_4covens = self.cl_3x2pt_sim_unb_5d[0, 0, :, :, :]
             cl_tb_4covens = np.zeros_like(cl_tt_4covens)
             cl_eb_4covens = np.zeros_like(cl_tt_4covens)
             cl_bb_4covens = np.zeros_like(cl_tt_4covens)
@@ -1517,6 +1571,8 @@ class CovNaMaster:
                 spin0=self.spin0,
                 nmt_bin_obj=self.nmt_bin_obj,
                 lmax=ell_max_eff,
+                lmax_sim=self.ell_max_sim,
+                noise_model=self.cfg['ensemble_covariance'].get('noise_model', 'painted'),
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['ensemble_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],

@@ -235,9 +235,8 @@ class SpaceborneConfigChecker:
         assert isinstance(ensemble_cov_cfg['save_sim_cls'], bool), (
             'ensemble_covariance: save_sim_cls must be a boolean'
         )
-        ell_max_sim = ensemble_cov_cfg.get('ell_max_sim')
-        assert ell_max_sim is None or isinstance(ell_max_sim, int), (
-            'ensemble_covariance: ell_max_sim must be an int or None'
+        assert isinstance(ensemble_cov_cfg.get('nbar_from_data', False), bool), (
+            'ensemble_covariance: nbar_from_data must be a boolean'
         )
         assert ensemble_cov_cfg.get('noise_model', 'painted') in ('painted', 'catalogue'), (
             "ensemble_covariance: noise_model must be 'painted' or 'catalogue'"
@@ -460,8 +459,20 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['spin0'], bool), (
             'precision: spin0 must be a boolean'
         )
-        assert isinstance(precision_cfg.get('noise_pixwin_deconv', False), bool), (
-            'precision: noise_pixwin_deconv must be a boolean'
+        pixwin_nside = precision_cfg.get('pixwin_nside')
+        assert pixwin_nside is None or (
+            isinstance(pixwin_nside, int)
+            and pixwin_nside > 0
+            and pixwin_nside & (pixwin_nside - 1) == 0
+        ), 'precision: pixwin_nside must be None or a power of 2'
+        buffer_nmt = precision_cfg.get('ell_max_buffer_nmt', 0)
+        assert buffer_nmt == 'auto' or (
+            isinstance(buffer_nmt, int) and not isinstance(buffer_nmt, bool)
+            and buffer_nmt >= 0
+        ), "precision: ell_max_buffer_nmt must be 'auto' or an int >= 0"
+        buffer_tol = precision_cfg.get('ell_max_buffer_tol', 2e-3)
+        assert isinstance(buffer_tol, float) and 0 < buffer_tol < 1, (
+            'precision: ell_max_buffer_tol must be a float in (0, 1)'
         )
         assert isinstance(precision_cfg['n_samples_wf'], int), (
             'precision: n_samples_wf must be an int'
@@ -690,11 +701,12 @@ class SpaceborneConfigChecker:
                 'If computing the partial-sky covariance with NaMaster, '
                 '`covariance: G_code` should not be set (or set to "Spaceborne").'
             )
-        # the ensemble injects white noise, and Knox has no pixel window
-        if self.cfg['precision'].get('noise_pixwin_deconv', False):
-            assert self.cfg['covariance']['partial_sky_method'] == 'NaMaster', (
-                'precision: noise_pixwin_deconv requires partial_sky_method: NaMaster'
-            )
+        # Knox has no pixel window
+        if self.cfg['precision'].get('pixwin_nside') is not None:
+            assert self.cfg['covariance']['partial_sky_method'] in (
+                'NaMaster',
+                'ensemble',
+            ), 'precision: pixwin_nside requires partial_sky_method NaMaster or ensemble'
 
     def check_onecov(self) -> None:
         # The 'OneCovariance' section is optional (see check_types); if it is

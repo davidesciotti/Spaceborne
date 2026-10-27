@@ -55,3 +55,74 @@ class TestCatalogueNoiseAmplitude:
         w[0, 0] = -0.1
         with pytest.raises(AssertionError):
             cov_partial_sky.catalogue_noise_amplitude(w, np.array([1e-8]), nside, 1)
+
+
+class TestNbarFromData:
+    """Tests for the footprint-mean normalisation in mask_maps_and_compute_alms."""
+
+    def test_constant_overdensity_is_absorbed(self):
+        # a constant delta is fully absorbed by the measured mean density
+        nside = 16
+        w = _fractional_weights(nside, 1)[0]
+        npix = w.size
+        alms_t, _, _, eps = cov_partial_sky.mask_maps_and_compute_alms(
+            corr_maps_gg=[np.full(npix, 0.3)],
+            corr_maps_ll=[(np.zeros(npix), np.zeros(npix))],
+            weight_maps_gg=w,
+            weight_maps_ll=w,
+            lmax=2 * nside,
+            nbar_from_data=True,
+        )
+        np.testing.assert_allclose(eps, [0.3], rtol=1e-12)
+        np.testing.assert_allclose(np.abs(alms_t[0]), 0.0, atol=1e-12)
+
+    def test_off_by_default(self):
+        nside = 16
+        w = _fractional_weights(nside, 1)[0]
+        npix = w.size
+        alms_t, _, _, eps = cov_partial_sky.mask_maps_and_compute_alms(
+            corr_maps_gg=[np.full(npix, 0.3)],
+            corr_maps_ll=[(np.zeros(npix), np.zeros(npix))],
+            weight_maps_gg=w,
+            weight_maps_ll=w,
+            lmax=2 * nside,
+        )
+        np.testing.assert_array_equal(eps, [0.0])
+        assert np.abs(alms_t[0]).max() > 0
+
+
+class TestPixwinEmulation:
+    """The emulated pixel-window deconvolution turns white pixel noise into N / p^2."""
+
+    def _noise_only_pcl(self, nside, pw, seed):
+        lmax, lmax_sim = 2 * nside - 1, 3 * nside - 1
+        zero = np.zeros((lmax_sim + 1, 1, 1))
+        cl_ring = cov_partial_sky.build_cl_tomo_TEB_ring_ord(
+            cl_TT=zero, cl_EE=zero, cl_BB=zero, cl_TE=zero, cl_EB=zero, cl_TB=zero,
+            zbins=1, spectra_types=['T', 'E', 'B'],
+        )
+        w = np.ones(hp.nside2npix(nside))
+        pw_t, pw_e = pw if pw is not None else (None, None)
+        cl_gg, _, cl_ll = cov_partial_sky._compute_one_realization(
+            seed=seed, cl_ring_big_list=cl_ring, lmax=lmax, lmax_sim=lmax_sim,
+            noise_amp_gg=None, noise_amp_ll=None, nside=nside, zbins=1,
+            weight_maps_gg=w, weight_maps_ll=w, nl_gg_diag=np.array([2e-8]),
+            nl_ll_diag=np.array([2e-8]), coupled_cls=True, spin0=False,
+            wsp_path_template='', nbl=1, ell_min_edges=np.array([10]),
+            ell_max_edges=np.array([2 * nside]), pw_t=pw_t, pw_e=pw_e,
+        )
+        return cl_gg[0, 0, 0], cl_ll[0, 0, 0]
+
+    def test_noise_level(self):
+        nside = 64
+        lmax = 3 * nside - 1
+        pw_t, pw_e = cov_partial_sky.pixel_windows(nside, lmax)
+        band = slice(10, 2 * nside)
+        expected_t = 2e-8 * np.mean(1 / pw_t[band] ** 2)
+        expected_e = 2e-8 * np.mean(1 / pw_e[band] ** 2)
+        got = np.mean(
+            [self._noise_only_pcl(nside, (pw_t, pw_e), s) for s in range(4)], axis=0
+        )
+        np.testing.assert_allclose(got, [expected_t, expected_e], rtol=0.03)
+        got_white = np.mean([self._noise_only_pcl(nside, None, s) for s in range(4)], 0)
+        np.testing.assert_allclose(got_white, [2e-8, 2e-8], rtol=0.03)

@@ -1030,14 +1030,63 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    # unbinned Cls on the NaMaster grid (from 0 to ell_max_nmt)
-    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
-    ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
+    # unbinned Cls on the NaMaster grid, from 0 to ell_max_nmt = ell_max + buffer: the
+    # mask couples the signal above ell_max into the science bands
+    ell_max_3x2pt = bin_obj.ell_max_3x2pt
+    buffer_nmt = cfg['precision'].get('ell_max_buffer_nmt', 0)
+    if buffer_nmt != 0 and cfg['covariance']['cov_type'] != 'coupled':
+        warnings.warn(
+            'precision.ell_max_buffer_nmt is only used for the coupled covariance '
+            '(a decoupled estimator is defined by its own ell range); setting it to 0',
+            stacklevel=1,
+        )
+        buffer_nmt = 0
+
+    # the largest multipole available: what the fields can represent and, for input
+    # Cls, what they cover (they are not extrapolated over the buffer)
+    ell_max_cap = 3 * cfg['mask']['nside'] - 1
+    for need_input, ells_in in (
+        (io_obj.need_input_cl_ll, io_obj.ells_WL_in),
+        (io_obj.need_input_cl_gl, io_obj.ells_XC_in),
+        (io_obj.need_input_cl_gg, io_obj.ells_GC_in),
+    ):
+        if need_input:
+            ell_max_cap = min(ell_max_cap, int(np.max(ells_in)))
+    ell_max_cap = max(ell_max_cap, ell_max_3x2pt)
+
+    cl_cap_5d = None
+    if buffer_nmt == 'auto':
+        cl_cap_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+            np.arange(ell_max_cap + 1), io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+        )
+        buffer_tol = cfg['precision'].get('ell_max_buffer_tol', 2e-3)
+        buffer_nmt, buffer_report = cov_nmt_obj.auto_ell_max_buffer(
+            cl_cap_5d, ell_max_cap, buffer_tol
+        )
+        print(
+            f'\nNaMaster ell_max buffer (auto, tol {buffer_tol}): {buffer_nmt}. '
+            f'Leakage into the top band from ell > {ell_max_3x2pt} without buffer, '
+            'and buffer needed, per probe and bin:'
+        )
+        for probe, zi, leak, b_zi in buffer_report:
+            print(f'  {probe} z{zi}: {leak:.2e}, {b_zi}')
+
+    ell_max_nmt = min(ell_max_3x2pt + buffer_nmt, ell_max_cap)
+    if ell_max_nmt < ell_max_3x2pt + buffer_nmt:
+        warnings.warn(
+            f'NaMaster ell_max buffer truncated to {ell_max_nmt - ell_max_3x2pt} '
+            f'(requested {buffer_nmt}) by 3 * nside - 1 or by the range of the input Cls',
+            stacklevel=1,
+        )
+    ells_3x2pt_nmt_unb = np.arange(ell_max_nmt + 1)
     nbl_3x2pt_nmt_unb = len(ells_3x2pt_nmt_unb)
 
-    cl_3x2pt_nmt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-        ells_3x2pt_nmt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
-    )
+    if cl_cap_5d is not None:
+        cl_3x2pt_nmt_unb_5d = cl_cap_5d[:, :, :nbl_3x2pt_nmt_unb]
+    else:
+        cl_3x2pt_nmt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+            ells_3x2pt_nmt_unb, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
+        )
     nl_3x2pt_nmt_unb_5d = np.repeat(
         nl_3x2pt_4d[:, :, np.newaxis, :, :], nbl_3x2pt_nmt_unb, axis=2
     )
@@ -1047,20 +1096,7 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_obj.nbl_3x2pt_unb = nbl_3x2pt_nmt_unb
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_nmt_unb_5d
     cov_nmt_obj.nl_3x2pt_unb_5d = nl_3x2pt_nmt_unb_5d
-
-    # signal Cls for the ensemble sims, band-limited at ell_max_sim >= ell_max_3x2pt:
-    # the mask couples signal power above ell_max into the science band, as in the data
-    if cfg['covariance']['partial_sky_method'] == 'ensemble':
-        ell_max_sim = cfg['ensemble_covariance'].get('ell_max_sim')
-        if ell_max_sim is None or ell_max_sim == ell_max_3x2pt_nmt:
-            ell_max_sim = ell_max_3x2pt_nmt
-            cl_3x2pt_sim_unb_5d = cl_3x2pt_nmt_unb_5d
-        else:
-            cl_3x2pt_sim_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
-                np.arange(ell_max_sim + 1), io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
-            )
-        cov_nmt_obj.ell_max_sim = ell_max_sim
-        cov_nmt_obj.cl_3x2pt_sim_unb_5d = cl_3x2pt_sim_unb_5d
+    cov_nmt_obj.ell_max_nmt = ell_max_nmt
 
     # and additional useful ones
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict

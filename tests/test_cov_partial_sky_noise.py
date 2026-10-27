@@ -2,6 +2,7 @@
 
 import healpy as hp
 import numpy as np
+import pytest
 
 from spaceborne import cov_partial_sky
 
@@ -43,32 +44,27 @@ class TestCoupledNoiseFactor:
         np.testing.assert_allclose(factor, factor_scaled, rtol=1e-14)
 
 
-class TestNoisePixwinDeconvFactor:
-    """Tests for noise_pixwin_deconv_factor."""
+class TestPixelWindows:
+    """Tests for pixel_windows and _safe_inverse."""
 
     def test_matches_healpy_pixwin(self):
         nside, lmax = 64, 150
-        inv_pw2_gg, inv_pw2_ll = cov_partial_sky.noise_pixwin_deconv_factor(
-            nside, lmax
-        )
-        pw_t, pw_p = hp.pixwin(nside, pol=True, lmax=lmax)
+        pw_t, pw_e = cov_partial_sky.pixel_windows(nside, lmax)
+        ref_t, ref_e = hp.pixwin(nside, pol=True, lmax=lmax)
+        assert pw_t.shape == pw_e.shape == (lmax + 1,)
+        np.testing.assert_array_equal(pw_t, ref_t)
+        np.testing.assert_array_equal(pw_e, ref_e)
+        np.testing.assert_array_equal(pw_e[:2], 0.0)
 
-        assert inv_pw2_gg.shape == inv_pw2_ll.shape == (lmax + 1, 1, 1)
-        np.testing.assert_allclose(inv_pw2_gg[:, 0, 0] * pw_t**2, 1.0, rtol=1e-14)
-        np.testing.assert_allclose(
-            inv_pw2_ll[2:, 0, 0] * pw_p[2:] ** 2, 1.0, rtol=1e-14
-        )
-        # no spin-2 monopole/dipole
-        np.testing.assert_array_equal(inv_pw2_ll[:2], 0.0)
+    def test_beyond_tabulated_range_raises(self):
+        # healpy silently truncates the window at 4 * nside
+        with pytest.raises(ValueError):
+            cov_partial_sky.pixel_windows(16, 65)
+
+    def test_safe_inverse(self):
+        _, pw_e = cov_partial_sky.pixel_windows(32, 60)
+        inv = cov_partial_sky._safe_inverse(pw_e**2)
+        np.testing.assert_array_equal(inv[:2], 0.0)
+        np.testing.assert_allclose(inv[2:] * pw_e[2:] ** 2, 1.0, rtol=1e-14)
         # the deconvolved noise grows with ell
-        assert np.all(np.diff(inv_pw2_gg[:, 0, 0]) > 0)
-
-    def test_broadcasts_on_noise_array(self):
-        nside, lmax, zbins = 32, 60, 3
-        nl = np.zeros((lmax + 1, zbins, zbins))
-        nl[:, range(zbins), range(zbins)] = [1.0, 2.0, 3.0]
-        inv_pw2_gg, _ = cov_partial_sky.noise_pixwin_deconv_factor(nside, lmax)
-        nl_pw = nl * inv_pw2_gg
-        # off-diagonals stay zero, each diagonal is scaled by the same 1 / p_ell^2
-        np.testing.assert_array_equal(nl_pw[:, 0, 1], 0.0)
-        np.testing.assert_allclose(nl_pw[:, 2, 2], 3.0 * inv_pw2_gg[:, 0, 0])
+        assert np.all(np.diff(inv[2:]) > 0)

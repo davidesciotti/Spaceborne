@@ -334,18 +334,18 @@ class TestCheckNmt:
         with pytest.raises(ValueError):
             checker.check_nmt()
 
-    @pytest.mark.parametrize('method', ['Knox', 'ensemble'])
-    def test_noise_pixwin_deconv_requires_namaster(self, valid_cfg, method):
-        valid_cfg['covariance']['partial_sky_method'] = method
-        valid_cfg['precision']['noise_pixwin_deconv'] = True
+    def test_pixwin_nside_requires_namaster_or_ensemble(self, valid_cfg):
+        valid_cfg['covariance']['partial_sky_method'] = 'Knox'
+        valid_cfg['precision']['pixwin_nside'] = 1024
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_nmt()
 
-    def test_noise_pixwin_deconv_with_namaster_ok(self, valid_cfg):
-        valid_cfg['covariance']['partial_sky_method'] = 'NaMaster'
+    @pytest.mark.parametrize('method', ['NaMaster', 'ensemble'])
+    def test_pixwin_nside_ok(self, valid_cfg, method):
+        valid_cfg['covariance']['partial_sky_method'] = method
         valid_cfg['covariance']['G_code'] = 'Spaceborne'
-        valid_cfg['precision']['noise_pixwin_deconv'] = True
+        valid_cfg['precision']['pixwin_nside'] = 1024
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         checker.check_nmt()
 
@@ -490,17 +490,35 @@ class TestCheckTypesMutations:
             checker.check_types()
 
     @pytest.mark.parametrize(
-        ('key', 'value'), [('noise_model', 'poisson'), ('ell_max_sim', 3000.0)]
+        ('section', 'key', 'value'),
+        [
+            ('ensemble_covariance', 'noise_model', 'poisson'),
+            ('ensemble_covariance', 'nbar_from_data', 1),
+            ('precision', 'pixwin_nside', 1000),
+            ('precision', 'pixwin_nside', 1024.0),
+            ('precision', 'ell_max_buffer_nmt', -1),
+            ('precision', 'ell_max_buffer_nmt', 'yes'),
+            ('precision', 'ell_max_buffer_nmt', True),
+            ('precision', 'ell_max_buffer_tol', 0.0),
+        ],
     )
-    def test_invalid_ensemble_option_raises(self, valid_cfg, key, value):
-        valid_cfg['ensemble_covariance'][key] = value
+    def test_invalid_psky_option_raises(self, valid_cfg, section, key, value):
+        valid_cfg[section][key] = value
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_types()
 
-    def test_ensemble_options_optional(self, valid_cfg):
-        """Configs written before noise_model / ell_max_sim existed still pass."""
-        del valid_cfg['ensemble_covariance']['noise_model']
-        del valid_cfg['ensemble_covariance']['ell_max_sim']
+    @pytest.mark.parametrize('value', ['auto', 0, 500])
+    def test_valid_ell_max_buffer(self, valid_cfg, value):
+        valid_cfg['precision']['ell_max_buffer_nmt'] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_types()
+
+    def test_psky_options_optional(self, valid_cfg):
+        """Configs written before these options existed still pass."""
+        for key in ('noise_model', 'nbar_from_data'):
+            del valid_cfg['ensemble_covariance'][key]
+        for key in ('pixwin_nside', 'ell_max_buffer_nmt', 'ell_max_buffer_tol'):
+            del valid_cfg['precision'][key]
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         checker.check_types()

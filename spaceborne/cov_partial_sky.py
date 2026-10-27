@@ -275,19 +275,75 @@ def coupled_noise_factor(weight_maps, fsky: float, zbins: int) -> np.ndarray:
     return factor[None, :, None]
 
 
-def noise_pixwin_deconv_factor(nside: int, lmax: int) -> tuple[np.ndarray, np.ndarray]:
-    """1 / p_ell^2 for the spin-0 (GG) and spin-2 (LL) noise, shape (lmax + 1, 1, 1).
+def pixel_windows(nside: int, lmax: int) -> tuple[np.ndarray, np.ndarray]:
+    """HEALPix pixel windows at `nside`, scalar (GG) and E-mode (LL), shape (lmax + 1,).
 
-    Heracles-like estimators divide the measured alms by the HEALPix pixel window
-    p_ell, so the white, pixel-level noise in the measured spectra (and the noise bias
-    they subtract) is N / p_ell^2 instead of N. The spin-2 factor uses the polarisation
-    (E) window, which is 0 at ell < 2; the factor is set to 0 there, where the spin-2
-    noise vanishes anyway.
+    Used for spectra measured with the pixel window deconvolved (e.g. Heracles): the
+    pixel averaging acts on the field (before the mask, for a mask constant within
+    the pixels) and the measured pseudo-alms are then divided by p_ell. The signal
+    therefore enters the coupling as C_l' p_l'^2 and the coupled result is divided by
+    p_l^2, while the white pixel noise becomes N / p_l^2. The E-mode window is 0 at
+    ell < 2. healpy tabulates the windows up to 4 * nside.
     """
-    pw_t, pw_p = hp.pixwin(nside, pol=True, lmax=lmax)
-    inv_pw2_t = 1 / pw_t**2
-    inv_pw2_p = np.divide(1, pw_p**2, out=np.zeros_like(pw_p), where=pw_p > 0)
-    return inv_pw2_t[:, None, None], inv_pw2_p[:, None, None]
+    if lmax > 4 * nside:
+        raise ValueError(
+            f'The pixel window at nside {nside} is tabulated up to 4 * nside = '
+            f'{4 * nside}, below lmax = {lmax}'
+        )
+    pw_t, pw_e = hp.pixwin(nside, pol=True, lmax=lmax)
+    return pw_t, pw_e
+
+
+def _safe_inverse(x: np.ndarray) -> np.ndarray:
+    """1 / x, set to 0 where x = 0 (e.g. the E-mode pixel window at ell < 2)."""
+    return np.divide(1, x, out=np.zeros_like(x), where=x > 0)
+
+
+def mcm_rows_spin0(ells_row, mask_cl: np.ndarray, lmax_col: int) -> np.ndarray:
+    """Rows of the spin-0 mode-coupling matrix of a pair of masks, shape
+    (len(ells_row), lmax_col + 1), in the NaMaster convention
+
+        M_{l l'} = (2 l' + 1) / (4 pi) sum_L (2 L + 1) W_L (l l' L; 0 0 0)^2,
+
+    with W_L the cross power spectrum of the two masks (taken as 0 above
+    len(mask_cl) - 1, as NaMaster does above its lmax_mask). The squared Wigner 3j
+    symbols use the closed form for zero m's, through log-factorials.
+    """
+    ells_row = np.atleast_1d(ells_row).astype(int)
+    lmax_w = len(mask_cl) - 1
+    n = 2 * (int(ells_row.max()) + lmax_col) + 2
+    logfact = np.concatenate([[0.0], np.cumsum(np.log(np.arange(1, n + 1)))])
+    rows = np.zeros((len(ells_row), lmax_col + 1))
+    for i, l1 in enumerate(ells_row):
+        for l2 in range(lmax_col + 1):
+            # (l1 l2 L; 0 0 0) vanishes unless |l1 - l2| <= L <= l1 + l2, sum even
+            big_l = np.arange(abs(l1 - l2), min(l1 + l2, lmax_w) + 1, 2)
+            if big_l.size == 0:
+                continue
+            j = l1 + l2 + big_l
+            g = j // 2
+            log_w3j2 = (
+                logfact[j - 2 * l1]
+                + logfact[j - 2 * l2]
+                + logfact[j - 2 * big_l]
+                - logfact[j + 1]
+                + 2
+                * (logfact[g] - logfact[g - l1] - logfact[g - l2] - logfact[g - big_l])
+            )
+            rows[i, l2] = (
+                (2 * l2 + 1)
+                / (4 * np.pi)
+                * np.sum((2 * big_l + 1) * mask_cl[big_l] * np.exp(log_w3j2))
+            )
+    return rows
+
+
+def coupled_leakage_above(rows: np.ndarray, cl: np.ndarray) -> np.ndarray:
+    """f[L] = fraction of the coupled spectrum sum_rows M_{l l'} C_l' coming from
+    multipoles l' > L, for L = 0..rows.shape[1] - 1 (cl must be non-negative)."""
+    contrib = rows.sum(0) * cl[: rows.shape[1]]
+    total = contrib.sum()
+    return (total - np.cumsum(contrib)) / total
 
 
 def _weight_per_bin(weight_maps, zi):
@@ -306,10 +362,10 @@ def mask_maps_and_compute_alms(
     weight_maps_ll: dict | np.ndarray,
     lmax: int,
     n_iter: int = 3,
-    remove_monopole: bool = True,
     noise_amp_gg: np.ndarray | None = None,
     noise_amp_ll: np.ndarray | None = None,
-) -> tuple[list, list, list]:
+    nbar_from_data: bool = False,
+) -> tuple[list, list, list, np.ndarray]:
     """Pre-compute masked alms for all zbins in one realization.
 
     Replaces the per-(zi,zj) SHT inside pcls_from_maps with 3*zbins SHTs done
@@ -325,14 +381,19 @@ def mask_maps_and_compute_alms(
     noise_amp_gg, noise_amp_ll : per-bin amplitudes A_i for catalogue-sum noise,
         added *after* masking with per-pixel std A_i * sqrt(w_p) (variance ∝ w).
         None means the noise was already added to the unmasked maps (painted).
+    nbar_from_data : emulate an overdensity normalised by the mean density measured
+        in the footprint (Heracles' default for positions): with T = w (delta + noise)
+        the masked map, d = (w + T) / (1 + eps) - w, eps = sum(T) / sum(w).
 
     Returns
     -------
     alms_T, alms_E, alms_B : lists of length zbins, alm arrays
+    eps_gg : (zbins,) footprint-mean of each GG map (0 unless nbar_from_data)
     """
     # Keep peak memory low: process one z-bin at a time instead of materializing
     # masked copies for all bins at once.
     alms_T, alms_E, alms_B = [], [], []
+    eps_gg = np.zeros(len(corr_maps_gg))
     for zi, (map_T, (map_Q, map_U)) in enumerate(
         zip(corr_maps_gg, corr_maps_ll, strict=True)
     ):
@@ -349,10 +410,9 @@ def mask_maps_and_compute_alms(
             masked_Q += np.random.randn(npix) * noise_amp_ll[zi] * np.sqrt(weight_ll)
             masked_U += np.random.randn(npix) * noise_amp_ll[zi] * np.sqrt(weight_ll)
 
-        if remove_monopole:
-            masked_T = hp.remove_monopole(masked_T)
-            masked_Q = hp.remove_monopole(masked_Q)
-            masked_U = hp.remove_monopole(masked_U)
+        if nbar_from_data:
+            eps_gg[zi] = masked_T.sum() / weight_gg.sum()
+            masked_T = (weight_gg + masked_T) / (1 + eps_gg[zi]) - weight_gg
 
         # map2alm_spin has no `iter` kwarg, so spin-2 alms are effectively iter=0
         # while spin-0 uses n_iter. This seems irrelevant; in any case, symmetrising
@@ -363,7 +423,7 @@ def mask_maps_and_compute_alms(
         alms_E.append(alm_E)
         alms_B.append(alm_B)
 
-    return alms_T, alms_E, alms_B
+    return alms_T, alms_E, alms_B, eps_gg
 
 
 def pcls_from_maps(
@@ -378,8 +438,12 @@ def pcls_from_maps(
     alms_T: list | None = None,
     alms_E: list | None = None,
     alms_B: list | None = None,
+    pcl_tt_offset: np.ndarray | None = None,
 ):
     """Compute binned pseudo-Cls for a single (zi, zj) pair.
+
+    pcl_tt_offset, if given, is subtracted from the unbinned TT pseudo-Cl (e.g. the
+    realisation-dependent part of a noise bias).
 
     Healpy anafast returns the coupled
     ("pseudo") cls. Dividing by fsky gives a rough approximation of the true Cls.
@@ -398,6 +462,8 @@ def pcls_from_maps(
     # ! compute (coupled) Cls with healpy
     # Fast branch: use pre-computed alms to compute cls
     pcl_tt = hp.alm2cl(alms_T[zi], alms_T[zj])
+    if pcl_tt_offset is not None:
+        pcl_tt = pcl_tt - pcl_tt_offset
     pcl_te = hp.alm2cl(alms_T[zi], alms_E[zj])
     pcl_tb = hp.alm2cl(alms_T[zi], alms_B[zj])
     pcl_ee = hp.alm2cl(alms_E[zi], alms_E[zj])
@@ -468,8 +534,20 @@ def compute_ensemble_covariance_parallel(
     fix_seed=True,
     lmax_sim: int | None = None,
     noise_model: str = 'painted',
+    pixwin_nside: int | None = None,
+    nbar_from_data: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Computes the ensemble covariance from a set of simulated power spectra"""
+    """Computes the ensemble covariance from a set of simulated power spectra.
+
+    lmax_sim : band limit of the simulated signal (>= lmax, the estimator's).
+    pixwin_nside : emulate spectra measured at this nside with the pixel window
+        deconvolved: the signal alms are multiplied by p_ell before the maps are made
+        (pixel averaging) and the measured pseudo-alms are divided by it, so the white
+        pixel noise ends up as N / p_ell^2, as in the analytic covariance.
+    nbar_from_data : normalise the GG overdensity by the mean density measured in the
+        footprint, and subtract the corresponding noise bias, N <w^2> / (1 + eps)^2,
+        from the GG auto-spectra (Heracles' default for positions).
+    """
 
     SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
     lmax_sim = lmax if lmax_sim is None else lmax_sim
@@ -481,6 +559,22 @@ def compute_ensemble_covariance_parallel(
         noise_amp_ll = catalogue_noise_amplitude(weight_maps_ll, nl_ll_diag, nside, zbins)
     elif noise_model != 'painted':
         raise ValueError(f'unknown noise_model {noise_model!r}')
+
+    pw_t = pw_e = None
+    if pixwin_nside is not None:
+        pw_t, pw_e = pixel_windows(pixwin_nside, lmax_sim)
+
+    # coupled GG noise level per bin, N <w^2> (/ p_ell^2), for the noise bias of an
+    # overdensity normalised by the measured mean density
+    gg_noise_bias = None
+    if nbar_from_data:
+        inv_pw2_t = np.ones(lmax + 1) if pw_t is None else 1 / pw_t[: lmax + 1] ** 2
+        gg_noise_bias = np.array(
+            [
+                nl_gg_diag[zi] * np.mean(_weight_per_bin(weight_maps_gg, zi) ** 2)
+                for zi in range(zbins)
+            ]
+        )[:, None] * inv_pw2_t[None, :]
 
     # instantiate arrays in cov_dict
     for probe_2tpl in cov_dict['g']:
@@ -546,6 +640,9 @@ def compute_ensemble_covariance_parallel(
                 nbl=nbl,
                 ell_min_edges=ell_min_edges,
                 ell_max_edges=ell_max_edges,
+                pw_t=pw_t,
+                pw_e=pw_e,
+                gg_noise_bias=gg_noise_bias,
             )
             for i in range(nreal)
         )
@@ -595,8 +692,16 @@ def _compute_one_realization(
     nbl: int,
     ell_min_edges: np.ndarray,
     ell_max_edges: np.ndarray,
+    pw_t: np.ndarray | None = None,
+    pw_e: np.ndarray | None = None,
+    gg_noise_bias: np.ndarray | None = None,
 ):
-    """Worker: one realization → Cls only. Maps are discarded before return."""
+    """Worker: one realization → Cls only. Maps are discarded before return.
+
+    pw_t, pw_e: pixel windows (to lmax_sim) of the emulated measurement, or None;
+    gg_noise_bias: (zbins, lmax + 1) GG noise bias if the overdensity is normalised by
+    the measured mean density, or None (see compute_ensemble_covariance_parallel).
+    """
 
     # Set seed for reproducibility (must be set inside each worker for
     # parallel execution)
@@ -622,6 +727,12 @@ def _compute_one_realization(
     corr_alms_tot = hp.synalm(cl_ring_big_list, lmax=lmax_sim, new=True)
     corr_alms_T = corr_alms_tot[::3]
     corr_alms_E_B = list(zip(corr_alms_tot[1::3], corr_alms_tot[2::3], strict=True))
+    if pw_t is not None:
+        # pixel averaging of the measured maps acts on the field (before the mask)
+        corr_alms_T = [hp.almxfl(alm, pw_t) for alm in corr_alms_T]
+        corr_alms_E_B = [
+            (hp.almxfl(E, pw_e), hp.almxfl(B, pw_e)) for E, B in corr_alms_E_B
+        ]
 
     # ! 2. Generate (correlated) maps from alms
     corr_maps_gg = [hp.alm2map(alm, nside, lmax=lmax_sim) for alm in corr_alms_T]
@@ -652,7 +763,7 @@ def _compute_one_realization(
             qu[1] += np.random.randn(npix) * sigma_pix
 
     # ! 4. Mask each map (there are zbins of them) and compute ("masked") alms
-    alms_T, alms_E, alms_B = mask_maps_and_compute_alms(
+    alms_T, alms_E, alms_B, eps_gg = mask_maps_and_compute_alms(
         corr_maps_gg=corr_maps_gg,
         corr_maps_ll=corr_maps_ll,
         weight_maps_gg=weight_maps_gg,
@@ -660,10 +771,19 @@ def _compute_one_realization(
         lmax=lmax,
         noise_amp_gg=noise_amp_gg,
         noise_amp_ll=noise_amp_ll,
+        nbar_from_data=gg_noise_bias is not None,
     )
 
     # free maps
     del corr_maps_gg, corr_maps_ll
+
+    # pixel-window deconvolution of the measured pseudo-alms
+    if pw_t is not None:
+        inv_pw_t = _safe_inverse(pw_t[: lmax + 1])
+        inv_pw_e = _safe_inverse(pw_e[: lmax + 1])
+        alms_T = [hp.almxfl(alm, inv_pw_t) for alm in alms_T]
+        alms_E = [hp.almxfl(alm, inv_pw_e) for alm in alms_E]
+        alms_B = [hp.almxfl(alm, inv_pw_e) for alm in alms_B]
 
     # ! 5. Compute Cls *for all (zi, zj) pairs*
     # [Note]: these are coupled by default (they are computed from the masked maps),
@@ -676,6 +796,11 @@ def _compute_one_realization(
     cl_ll_3d = np.zeros((nbl, zbins, zbins))
 
     for zi, zj in itertools.product(range(zbins), repeat=2):
+        # with the mean density measured in the footprint, the subtracted noise bias
+        # is N <w^2> / (1 + eps)^2; the constant N <w^2> drops out of the covariance
+        pcl_tt_offset = None
+        if gg_noise_bias is not None and zi == zj:
+            pcl_tt_offset = gg_noise_bias[zi] * ((1 + eps_gg[zi]) ** -2 - 1)
         cl_gg_1d, cl_gl_1d, cl_ll_1d = pcls_from_maps(
             zi=zi,
             zj=zj,
@@ -687,6 +812,7 @@ def _compute_one_realization(
             alms_T=alms_T,
             alms_E=alms_E,
             alms_B=alms_B,
+            pcl_tt_offset=pcl_tt_offset,
         )
         if len(cl_gg_1d) != nbl:
             cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d)
@@ -869,8 +995,7 @@ class CovNaMaster:
             )
 
         self.cl_3x2pt_unb_5d = _UNSET
-        self.cl_3x2pt_sim_unb_5d = _UNSET
-        self.ell_max_sim = _UNSET
+        self.ell_max_nmt = _UNSET
         self.ells_3x2pt_unb = _UNSET
         self.nbl_3x2pt_unb = _UNSET
         self.fsky_ab_dict = _UNSET
@@ -940,17 +1065,17 @@ class CovNaMaster:
             if not self.use_weight_maps_gg:
                 self.wgg_ftp = nmt.NmtWorkspace()
                 self.wgg_ftp.compute_coupling_matrix(
-                    self.fg_ftp, self.fg_ftp, self.nmt_bin_obj
+                    self.fg_ftp, self.fg_ftp, self.nmt_bin_obj_wsp
                 )
             if (not self.use_weight_maps_ll) and (not self.use_weight_maps_gg):
                 self.wgl_ftp = nmt.NmtWorkspace()
                 self.wgl_ftp.compute_coupling_matrix(
-                    self.fg_ftp, self.fl_ftp, self.nmt_bin_obj
+                    self.fg_ftp, self.fl_ftp, self.nmt_bin_obj_wsp
                 )
             if not self.use_weight_maps_ll:
                 self.wll_ftp = nmt.NmtWorkspace()
                 self.wll_ftp.compute_coupling_matrix(
-                    self.fl_ftp, self.fl_ftp, self.nmt_bin_obj
+                    self.fl_ftp, self.fl_ftp, self.nmt_bin_obj_wsp
                 )
 
         # ! Regardless of the presence of weight maps, build wsp dictionaries
@@ -975,7 +1100,7 @@ class CovNaMaster:
                 if self.use_weight_maps_gg:
                     self.wgg_dict[zi, zj] = nmt.NmtWorkspace()
                     self.wgg_dict[zi, zj].compute_coupling_matrix(
-                        self.fg_dict[zi], self.fg_dict[zj], self.nmt_bin_obj
+                        self.fg_dict[zi], self.fg_dict[zj], self.nmt_bin_obj_wsp
                     )
                 else:
                     self.wgg_dict[zi, zj] = self.wgg_ftp
@@ -983,7 +1108,7 @@ class CovNaMaster:
                 if self.use_weight_maps_gg or self.use_weight_maps_ll:
                     self.wgl_dict[zi, zj] = nmt.NmtWorkspace()
                     self.wgl_dict[zi, zj].compute_coupling_matrix(
-                        self.fg_dict[zi], self.fl_dict[zj], self.nmt_bin_obj
+                        self.fg_dict[zi], self.fl_dict[zj], self.nmt_bin_obj_wsp
                     )
                 else:
                     self.wgl_dict[zi, zj] = self.wgl_ftp
@@ -991,7 +1116,7 @@ class CovNaMaster:
                 if self.use_weight_maps_ll:
                     self.wll_dict[zi, zj] = nmt.NmtWorkspace()
                     self.wll_dict[zi, zj].compute_coupling_matrix(
-                        self.fl_dict[zi], self.fl_dict[zj], self.nmt_bin_obj
+                        self.fl_dict[zi], self.fl_dict[zj], self.nmt_bin_obj_wsp
                     )
                 else:
                     self.wll_dict[zi, zj] = self.wll_ftp
@@ -1251,7 +1376,7 @@ class CovNaMaster:
                         f'{self.cache_path}/{cw_name}'
                     )
 
-    def compute_and_save_mcms(self, nbl_unb: int, spin0: bool):
+    def compute_and_save_mcms(self, nbl_sci: int, spin0: bool):
         """Explicitly computes and bins the mode coupling matrices.
         The guards below ensure this function is called only in the following cases:
 
@@ -1262,8 +1387,13 @@ class CovNaMaster:
         In the second case, the MCMs are needed to "manually" couple the SSC and cNG
         terms, since these are not handled by nmt.
 
+        The unbinned MCMs are saved with the science multipoles 0..ell_max_eff as rows
+        and all multipoles 0..ell_max_nmt as columns, so that a theory vector coupled
+        with them includes the power above ell_max (the buffer). The binned MCMs are
+        restricted to the science bands.
+
         Args:
-            nbl_unb (int): number of unbinned multipoles (i.e., lmax_eff + 1)
+            nbl_sci (int): number of science multipoles (i.e., ell_max_eff + 1)
         """
 
         # guards
@@ -1286,8 +1416,9 @@ class CovNaMaster:
         # (zi, zj) grid is dense (full product), so an ndarray is the natural
         # container (nbl-first axes, consistent with the rest of the code).
         nbl = self.nmt_bin_obj.get_n_bands()
+        nbl_nmt = self.nmt_bin_obj_wsp.lmax + 1
         mcm_shape = (nbl, nbl, self.zbins, self.zbins)
-        mcm_unb_shape = (nbl_unb, nbl_unb, self.zbins, self.zbins)
+        mcm_unb_shape = (nbl_sci, nbl_nmt, self.zbins, self.zbins)
         mcm_tt_unb = np.zeros(mcm_unb_shape)
         mcm_te_unb = np.zeros(mcm_unb_shape)
         mcm_ee_unb = np.zeros(mcm_unb_shape)
@@ -1304,23 +1435,23 @@ class CovNaMaster:
             # is stored with index L * n_cls + i.
             mcm_tt_unb[:, :, zi, zj] = self.wgg_dict[zi, zj].get_coupling_matrix()[
                 0::ix_s0s0, 0::ix_s0s0
-            ]
+            ][:nbl_sci]
             mcm_te_unb[:, :, zi, zj] = self.wgl_dict[zi, zj].get_coupling_matrix()[
                 0::ix_s0s2, 0::ix_s0s2
-            ]
+            ][:nbl_sci]
             mcm_ee_unb[:, :, zi, zj] = self.wll_dict[zi, zj].get_coupling_matrix()[
                 0::ix_s2s2, 0::ix_s2s2
-            ]
+            ][:nbl_sci]
 
             # bin (and store in self)
             self.mcm_tt_binned[:, :, zi, zj] = bin_mcm(
-                mcm_tt_unb[:, :, zi, zj], self.nmt_bin_obj
+                mcm_tt_unb[:, :nbl_sci, zi, zj], self.nmt_bin_obj
             )
             self.mcm_te_binned[:, :, zi, zj] = bin_mcm(
-                mcm_te_unb[:, :, zi, zj], self.nmt_bin_obj
+                mcm_te_unb[:, :nbl_sci, zi, zj], self.nmt_bin_obj
             )
             self.mcm_ee_binned[:, :, zi, zj] = bin_mcm(
-                mcm_ee_unb[:, :, zi, zj], self.nmt_bin_obj
+                mcm_ee_unb[:, :nbl_sci, zi, zj], self.nmt_bin_obj
             )
 
         if save_mcms:
@@ -1334,6 +1465,57 @@ class CovNaMaster:
                 mcm_ll_binned=self.mcm_ee_binned,
             )
             print(f'\nMode coupling matrices saved in {self.output_path}')
+
+    def auto_ell_max_buffer(self, cl_5d: np.ndarray, ell_max_cap: int, tol: float):
+        """Smallest buffer b such that, for every bin and probe, at most a fraction tol
+        of the coupled signal in the top science band comes from multipoles above
+        ell_max + b (ell_max + b <= ell_max_cap).
+
+        The coupled signal is sum_l' M_ll' C_l' with the exact spin-0 coupling kernel
+        of each bin's mask (a proxy for the spin-2 kernel too) and the theory
+        auto-spectra, times p_l'^2 if precision.pixwin_nside is set, summed up to
+        ell_max_cap: the largest multipole the fields can represent (3 nside - 1) or
+        the input Cls cover. Returns the buffer and, per (probe, bin), the leakage
+        without any buffer and the buffer that bin needs.
+
+        cl_5d: unbinned Cls, shape (n_probes, n_probes, ell_max_cap + 1, zbins, zbins).
+        """
+        ell_max = self.ell_obj.ell_max_3x2pt
+        bins = self.ell_obj.nmt_bin_obj_GC
+        top_lo = bins.get_ell_min(bins.get_n_bands() - 1)
+        top_hi = bins.get_ell_max(bins.get_n_bands() - 1)
+        ells_row = np.unique([top_lo, (top_lo + top_hi) // 2, top_hi])
+
+        pixwin_nside = self.cfg['precision'].get('pixwin_nside')
+        if pixwin_nside is None:
+            pw_t = pw_e = np.ones(ell_max_cap + 1)
+        else:
+            pw_t, pw_e = pixel_windows(pixwin_nside, ell_max_cap)
+        probe_sel = self.cfg['probe_selection']
+        probes = []
+        if probe_sel['GG'] or probe_sel['GL']:
+            probes.append(('GG', self.weight_maps_gg, 1, pw_t**2))
+        if probe_sel['LL'] or probe_sel['GL']:
+            probes.append(('LL', self.weight_maps_ll, 0, pw_e**2))
+
+        buffer, report = 0, []
+        for probe, weight_maps, ix, pw2 in probes:
+            rows = {}  # a footprint is shared by all bins: one kernel per probe
+            shared = isinstance(weight_maps, np.ndarray) and weight_maps.ndim == 1
+            for zi in range(self.zbins):
+                key = 'footprint' if shared else zi
+                if key not in rows:
+                    mask = _weight_per_bin(weight_maps, zi)
+                    mask_cl = hp.anafast(mask, lmax=3 * self.nside - 1, iter=3)
+                    rows[key] = mcm_rows_spin0(ells_row, mask_cl, ell_max_cap)
+                cl = cl_5d[ix, ix, :, zi, zi] * pw2
+                if not np.any(cl[ell_max + 1 :] > 0):
+                    continue
+                leak = coupled_leakage_above(rows[key], cl)
+                b_zi = int(np.argmax(leak[ell_max:] <= tol))
+                report.append((probe, zi, float(leak[ell_max]), b_zi))
+                buffer = max(buffer, b_zi)
+        return buffer, report
 
     def build_psky_cov(self):
         # TODO again, here I'm using 3x2pt = GC
@@ -1365,9 +1547,24 @@ class CovNaMaster:
         # )  # careful f the +1!
         # ell_min_eff = ells_eff_edges[0]
 
-        ells_unb = np.arange(ell_max_eff + 1)
+        # fields, workspaces and Cls extend to ell_max_nmt = ell_max_eff + buffer (see
+        # precision.ell_max_buffer_nmt); the covariance is then binned on the science
+        # bands only
+        ell_max_nmt = ell_max_eff if self.ell_max_nmt is _UNSET else self.ell_max_nmt
+        ells_unb = np.arange(ell_max_nmt + 1)
         nbl_unb = len(ells_unb)
-        assert nbl_unb == ell_max_eff + 1, 'nbl_tot does not match lmax_eff + 1'
+        assert self.cl_3x2pt_unb_5d.shape[2] == nbl_unb, (
+            'the unbinned Cls must extend to ell_max_nmt'
+        )
+        if ell_max_nmt > ell_max_eff:
+            # NaMaster needs bins up to the field lmax: add the buffer as an extra band
+            lo = [self.nmt_bin_obj.get_ell_min(i) for i in range(nbl_eff)]
+            hi = [self.nmt_bin_obj.get_ell_max(i) + 1 for i in range(nbl_eff)]
+            self.nmt_bin_obj_wsp = nmt.NmtBin.from_edges(
+                np.append(lo, ell_max_eff + 1), np.append(hi, ell_max_nmt + 1)
+            )
+        else:
+            self.nmt_bin_obj_wsp = self.nmt_bin_obj
 
         # ells_bpw = ells_unb[ell_min_eff : lmax_eff + 1]
         # delta_ells_bpw = np.diff(
@@ -1379,11 +1576,21 @@ class CovNaMaster:
         # ! (there will be no maps associated to the fields)
         # TODO maks=None (as in the example) or maps=[mask]? I think None
 
-        self.build_fields(ell_max_eff, spin0=self.spin0)
+        self.build_fields(ell_max_nmt, spin0=self.spin0)
         self.build_wsp()
         self.build_cw(unique_probe_combs, spin0=self.spin0)
         self.save_to_cache(unique_probe_combs)
-        self.compute_and_save_mcms(nbl_unb=nbl_unb, spin0=self.spin0)
+        self.compute_and_save_mcms(nbl_sci=ell_max_eff + 1, spin0=self.spin0)
+
+        # pixel window of the measured spectra (precision.pixwin_nside): weight of the
+        # signal in the coupling and of the white noise, per probe (see pixel_windows)
+        pixwin_nside = self.cfg['precision'].get('pixwin_nside')
+        if pixwin_nside is None:
+            pw_t = pw_e = np.ones(nbl_unb)
+        else:
+            pw_t, pw_e = pixel_windows(pixwin_nside, ell_max_nmt)
+        pw2 = {'GG': pw_t**2, 'GL': pw_t * pw_e, 'LL': pw_e**2}
+        inv_pw2 = {probe: _safe_inverse(pw2_probe) for probe, pw2_probe in pw2.items()}
 
         # if the coupled covariance is required, I'll later need to convolve the
         # non-Gaussian terms. For this, I'll need the binned mode coupling matrices
@@ -1418,30 +1625,28 @@ class CovNaMaster:
                 fsky_ll_zij = float(np.mean(w_ll_zi * w_ll_zj))
 
                 # prepare inputs for couple_cell function
-                list_gg = [self.cl_3x2pt_unb_5d[1, 1, :, zi, zj]]
+                cl_gg = self.cl_3x2pt_unb_5d[1, 1, :, zi, zj] * pw2['GG']
+                cl_gl = self.cl_3x2pt_unb_5d[1, 0, :, zi, zj] * pw2['GL']
+                cl_ll = self.cl_3x2pt_unb_5d[0, 0, :, zi, zj] * pw2['LL']
+                zero = np.zeros_like(cl_gg)
+                list_gg = [cl_gg]
+                list_gl = [cl_gl] if self.spin0 else [cl_gl, zero]
+                list_ll = [cl_ll] if self.spin0 else [cl_ll, zero, zero, zero]
 
-                list_gl = [self.cl_3x2pt_unb_5d[1, 0, :, zi, zj]]
-                if not self.spin0:
-                    list_gl.extend(
-                        [np.zeros_like(self.cl_3x2pt_unb_5d[1, 0, :, zi, zj])]
-                    )
-                list_ll = [self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]]
-                if not self.spin0:
-                    list_ll.extend(
-                        [
-                            np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
-                            np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
-                            np.zeros_like(self.cl_3x2pt_unb_5d[0, 0, :, zi, zj]),
-                        ]
-                    )
                 cl_gg_4covnmt[:, zi, zj] = (
-                    self.wgg_dict[zi, zj].couple_cell(list_gg)[0] / fsky_gg_zij
+                    self.wgg_dict[zi, zj].couple_cell(list_gg)[0]
+                    / fsky_gg_zij
+                    * inv_pw2['GG']
                 )
                 cl_gl_4covnmt[:, zi, zj] = (
-                    self.wgl_dict[zi, zj].couple_cell(list_gl)[0] / fsky_gl_zij
+                    self.wgl_dict[zi, zj].couple_cell(list_gl)[0]
+                    / fsky_gl_zij
+                    * inv_pw2['GL']
                 )
                 cl_ll_4covnmt[:, zi, zj] = (
-                    self.wll_dict[zi, zj].couple_cell(list_ll)[0] / fsky_ll_zij
+                    self.wll_dict[zi, zj].couple_cell(list_ll)[0]
+                    / fsky_ll_zij
+                    * inv_pw2['LL']
                 )
 
         nl_gg_4covnmt = self.nl_3x2pt_unb_5d[1, 1, :, :, :].copy()
@@ -1458,15 +1663,22 @@ class CovNaMaster:
         )
         nl_gg_4covnmt *= factor_gg
         nl_ll_4covnmt *= factor_ll
-
-        # spectra measured with the pixel window deconvolved (e.g. Heracles) contain
-        # the noise as N / p_ell^2; GL has no noise
-        if self.cfg['precision'].get('noise_pixwin_deconv', False):
-            inv_pw2_gg, inv_pw2_ll = noise_pixwin_deconv_factor(self.nside, ell_max_eff)
-            nl_gg_4covnmt *= inv_pw2_gg
-            nl_ll_4covnmt *= inv_pw2_ll
-
         nl_ll_4covnmt[:2] = 0  # a spin-2 field has no monopole or dipole!
+
+        # white noise levels for the ensemble, which injects the noise at the pixel
+        # level and emulates the pixel window itself
+        for nl, name in [(nl_gg_4covnmt, 'GG'), (nl_ll_4covnmt, 'LL')]:
+            if not np.allclose(nl[2:], nl[2], rtol=1e-5, atol=0.0):
+                raise ValueError(
+                    f'The {name} noise spectra are not white; the ensemble '
+                    'covariance and the coupled-noise factor assume white noise.'
+                )
+        nl_gg_4covens = np.diagonal(nl_gg_4covnmt[0]).copy()
+        nl_ll_4covens = np.diagonal(nl_ll_4covnmt[2]).copy()
+
+        # with the pixel window deconvolved the white noise is N / p_ell^2; GL has none
+        nl_gg_4covnmt *= inv_pw2['GG'][:, None, None]
+        nl_ll_4covnmt *= inv_pw2['LL'][:, None, None]
 
         # add noise to spectra to compute NMT cov
         cl_tt_4covnmt = cl_gg_4covnmt + nl_gg_4covnmt
@@ -1553,24 +1765,15 @@ class CovNaMaster:
             # pixel scale (~3*nside). I instead inject it as full-band per-pixel white
             # noise inside each realization (see _compute_one_realization). The mask
             # then couples its high-ell power down into the science band, as in the data.
-            cl_tt_4covens = self.cl_3x2pt_sim_unb_5d[1, 1, :, :, :]
-            cl_te_4covens = self.cl_3x2pt_sim_unb_5d[1, 0, :, :, :]
-            cl_ee_4covens = self.cl_3x2pt_sim_unb_5d[0, 0, :, :, :]
+            # The signal itself extends to ell_max_nmt (the same buffer as the analytic
+            # covariance), while the pseudo-Cls are measured up to ell_max_eff.
+            cl_tt_4covens = self.cl_3x2pt_unb_5d[1, 1, :, :, :]
+            cl_te_4covens = self.cl_3x2pt_unb_5d[1, 0, :, :, :]
+            cl_ee_4covens = self.cl_3x2pt_unb_5d[0, 0, :, :, :]
             cl_tb_4covens = np.zeros_like(cl_tt_4covens)
             cl_eb_4covens = np.zeros_like(cl_tt_4covens)
             cl_bb_4covens = np.zeros_like(cl_tt_4covens)
-
-            # check that the noise spectra are white
-            for nl, name in [(nl_gg_4covnmt, 'GG'), (nl_ll_4covnmt, 'LL')]:
-                if not np.allclose(nl[2:], nl[2], rtol=1e-5, atol=0.0):
-                    raise ValueError(
-                        f'The {name} noise spectra are not white; the ensemble '
-                        'covariance assumes white noise.'
-                    )
-
-            # extract the zi-zj diagonal of noise arrays
-            nl_gg_4covens = np.diagonal(nl_gg_4covnmt[0]).copy()
-            nl_ll_4covens = np.diagonal(nl_ll_4covnmt[2]).copy()
+            ens_cfg = self.cfg['ensemble_covariance']
 
             # ! note that self.cov_dict is mutated in-place, no need to return it
             start = time.perf_counter()
@@ -1594,8 +1797,10 @@ class CovNaMaster:
                 spin0=self.spin0,
                 nmt_bin_obj=self.nmt_bin_obj,
                 lmax=ell_max_eff,
-                lmax_sim=self.ell_max_sim,
-                noise_model=self.cfg['ensemble_covariance'].get('noise_model', 'painted'),
+                lmax_sim=ell_max_nmt,
+                noise_model=ens_cfg.get('noise_model', 'painted'),
+                pixwin_nside=pixwin_nside,
+                nbar_from_data=ens_cfg.get('nbar_from_data', False),
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['ensemble_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],

@@ -107,6 +107,14 @@ nz:
   nz_lenses_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
   # Effective number of galaxies per arcmin**2 for each redshift bin.
+  # This is the density over the area 4 pi fsky, with fsky the mean of the probe's
+  # footprint map: the effective area 4 pi <V> for a fractional coverage V, the observed
+  # area for a binary footprint. For weighted samples, use the effective (Kish) density
+  # n_eff = (sum w)^2 / sum(w^2) / area. From Heracles field metadata,
+  # ngal = dens * fsky_H / fsky, with fsky_H the mean of the catalogue visibility
+  # (= dens if the footprint is the catalogue visibility). With these inputs, and the
+  # weight maps exactly as Heracles maps them, the noise in the NaMaster covariance
+  # equals the Heracles noise bias over <w^2>.
   # Should be of length 'zbins'
   ngal_sources: [8.09216, 8.09215, 8.09215] # Type: list[float]
   ngal_lenses: [4.09216, 4.09215, 4.09215] # Type: list[float]
@@ -283,6 +291,7 @@ covariance:
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
+  # For weighted samples, sigma_eps_i^2 = sum(w^2 |e|^2) / (2 sum(w^2)) (= Heracles musq / 2).
   # Should be of length 'zbins'
   sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float]
 

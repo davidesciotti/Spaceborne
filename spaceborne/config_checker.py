@@ -68,6 +68,10 @@ class SpaceborneConfigChecker:
         assert isinstance(camb_params['num_massive_neutrinos'], int), (
             'extra_parameters: camb: num_massive_neutrinos must be an int'
         )
+        assert camb_params['num_massive_neutrinos'] in (1, 3), (
+            'extra_parameters: camb: num_massive_neutrinos must be 1 (single) '
+            'or 3 (equal mass split)'
+        )
         assert isinstance(camb_params['dark_energy_model'], str), (
             'extra_parameters: camb: dark_energy_model must be a string'
         )

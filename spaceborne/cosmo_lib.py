@@ -332,6 +332,19 @@ def get_omega_k0(omega_m0, omega_Lambda0):
     return omega_k0
 
 
+def get_mass_split(extra_parameters):
+    """Map camb's num_massive_neutrinos to CCL's mass_split ('single' if unset)."""
+    try:
+        num_massive_nu = extra_parameters['camb']['num_massive_neutrinos']
+    except (KeyError, TypeError):
+        return 'single'
+    mass_split_dict = {1: 'single', 3: 'equal'}
+    assert num_massive_nu in mass_split_dict, (
+        f'num_massive_neutrinos must be 1 or 3, got {num_massive_nu}'
+    )
+    return mass_split_dict[num_massive_nu]
+
+
 def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
     # example extra_parameters:
     # extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
@@ -339,6 +352,18 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
 
     # flatten the dictionary if it's nested
     fiducial_pars_dict = sl.flatten_dict(fiducial_pars_dict)
+
+    if extra_parameters is None:
+        try:
+            extra_parameters = fiducial_pars_dict['other_params'][
+                'camb_extra_parameters'
+            ]
+        except KeyError:
+            print('No extra parameters passed to CAMB in instantiate_cosmo_ccl_obj')
+
+    # CCL ignores camb's num_massive_neutrinos: the number of massive species is set
+    # by mass_split only
+    mass_split = get_mass_split(extra_parameters)
 
     # Take Omega_nu (massive) from CCL itself, so that the CCL Omega_m matches the
     # requested Omega_m0 exactly (CCL: Omega_m = Omega_c + Omega_b + Omega_nu_mass)
@@ -350,20 +375,12 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
         n_s=fiducial_pars_dict['ns'],
         m_nu=fiducial_pars_dict['m_nu'],
         Neff=fiducial_pars_dict['Neff'],
-        mass_split='single',
+        mass_split=mass_split,
     )['Omega_nu_mass']
 
     omega_cdm0 = (
         fiducial_pars_dict['Omega_m0'] - fiducial_pars_dict['Omega_b0'] - omega_nu0
     )
-
-    if extra_parameters is None:
-        try:
-            extra_parameters = fiducial_pars_dict['other_params'][
-                'camb_extra_parameters'
-            ]
-        except KeyError:
-            print('No extra parameters passed to CAMB in instantiate_cosmo_ccl_obj')
 
     cosmo_ccl = ccl.Cosmology(
         Omega_c=omega_cdm0,
@@ -378,7 +395,7 @@ def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
         # the dark energy density is set by CCL by closure
         Omega_k=fiducial_pars_dict['Omega_k0'],
         baryonic_effects=None,
-        mass_split='single',
+        mass_split=mass_split,
         matter_power_spectrum='camb',
         extra_parameters=extra_parameters,
     )

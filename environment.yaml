@@ -8,7 +8,7 @@ dependencies:
   - python=3.13.*
   - pip
   - numpy
-  - scipy<1.17 # due to potential conflicts with heracles 25.1
+  - scipy
   - matplotlib
   - healpy
 
@@ -22,7 +22,7 @@ dependencies:
   - fftw
   - namaster
 
-  # uncommenting these may help in case of issues with the pylevin installation
+  # pylevin dependencies - optional
   - c-compiler
   - cxx-compiler
   - llvm-openmp
@@ -35,10 +35,10 @@ dependencies:
       - euclidlib>=2026.4
         # optional dependency, only used to read the n(z) and C(l)
         # in the official Euclid LE3 format
-      - heracles>=25.1
+      - "heracles @ git+https://github.com/heracles-ec/heracles.git@v26.10"
         # optional dependency, only used to save the covariance
         # in the official Euclid LE3 format
-      - "cloelib[pylevin,mpmath] @ git+https://github.com/cloe-org/cloelib.git@v0.10"
+      - "cloelib[pylevin,mpmath] @ git+https://github.com/cloe-org/cloelib.git@v0.11"
         # optional dependency, only used to compute the COSEBIs covariance
       - pyyaml
       - joblib

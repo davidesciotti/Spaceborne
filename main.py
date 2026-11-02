@@ -319,10 +319,17 @@ cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
     'ell_bins_proj_nongauss_cosebis', 10_000
 )
 
-
 # Psi-statistics not implemented yet
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
+
+# Shape noise in the sims:
+# - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
+#   is the analytic model, so the noise part of the comparison is circular.
+# - catalogue: per-pixel variance ∝ w, as for catalogue-sum weight maps (Heracles),
+#   with the same coupled noise level as the analytic covariance.
+# The two coincide for a binary mask.
+cfg['ensemble_covariance'].get('noise_model', 'catalogue')
 
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 

@@ -232,16 +232,16 @@ mask:
   # fsky = mean(footprint). For the GL probe pair the window is
   # min(footprint_LL, footprint_GG) (nested masks assumed).
   # The 'geometry' option determines how the footprint is defined:
-  # - 'footprint_file': the footprint ill be read from the file specified in 'footprint_filename'.
+  # - 'footprint_file': the footprint will be read from the file specified in 'footprint_filename'.
   # - 'polar_cap': the footprint will be generated as a polar cap with area specified by 'survey_area_deg2'.
 
   # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
   # which should contain a number of maps equal to the number of redshift bins, for the
   # given probe. If null, the weight maps will not be used.
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
-  # They are assumed to be catalogue sums (e.g. Heracles `Weights`) or visibility maps.
-  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), with
-  # full-sky means.
+  # They are assumed to be catalogue sums or visibility maps.
+  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), 
+  # where the mean <•> is over the full sky
 
   # The options outside of the 'LL' and 'GG' sections are common to both probes.
   LL:
@@ -373,14 +373,6 @@ ensemble_covariance:
   nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
-  
-  # Shape noise in the sims:
-  # - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
-  #   is the analytic model, so the noise part of the comparison is circular.
-  # - catalogue: per-pixel variance ∝ w, as for catalogue-sum weight maps (Heracles),
-  #   with the same coupled noise level as the analytic covariance.
-  # The two coincide for a binary mask.
-  noise_model: painted # Type: str. Options: ['painted', 'catalogue']
 
 precision:
   # =============================== harmonic-space cov =================================

@@ -224,7 +224,7 @@ mask:
   # fsky = mean(footprint). For the GL probe pair the window is
   # min(footprint_LL, footprint_GG) (nested masks assumed).
   # The 'geometry' option determines how the footprint is defined:
-  # - 'footprint_file': the footprint ill be read from the file specified in 'footprint_filename'.
+  # - 'footprint_file': the footprint will be read from the file specified in 'footprint_filename'.
   # - 'polar_cap': the footprint will be generated as a polar cap with area specified by 'survey_area_deg2'.
 
   # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,

@@ -145,6 +145,62 @@ class TestFootprintFskyAb:
         assert fsky_ab_dict['GG'] == pytest.approx(0.8)
 
 
+class TestSscWindowAb:
+    """Tests for ssc_window_ab and the normalised SSC window spectra."""
+
+    def test_product_windows(self):
+        npix = hp.nside2npix(16)
+        rng = np.random.default_rng(0)
+        m_ll = rng.uniform(0.2, 1.0, npix)
+        m_gg = rng.uniform(0.2, 1.0, npix)
+        windows = mask_utils.ssc_window_ab(
+            types.SimpleNamespace(footprint=m_ll), types.SimpleNamespace(footprint=m_gg)
+        )
+        np.testing.assert_allclose(windows['LL'], m_ll**2)
+        np.testing.assert_allclose(windows['GL'], m_ll * m_gg)
+        np.testing.assert_allclose(windows['GG'], m_gg**2)
+
+    def test_binary_matches_overlap_convention(self):
+        """For binary masks the product window is the overlap of footprint_fsky_ab,
+        and the normalisation is its fsky."""
+        nside = 32
+        npix = hp.nside2npix(nside)
+        theta, _ = hp.pix2ang(nside, np.arange(npix))
+        m_ll = (theta < np.radians(60)).astype(float)
+        m_gg = (theta < np.radians(40)).astype(float)
+        obj_ll = types.SimpleNamespace(footprint=m_ll)
+        obj_gg = types.SimpleNamespace(footprint=m_gg)
+
+        footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(obj_ll, obj_gg)
+        windows = mask_utils.ssc_window_ab(obj_ll, obj_gg)
+        for ab in ('LL', 'GL', 'GG'):
+            np.testing.assert_array_equal(windows[ab], footp_ab_dict[ab])
+            assert np.mean(windows[ab]) == pytest.approx(fsky_ab_dict[ab])
+
+        _, cl_norm = mask_utils.get_footprint_cl_abcd_dicts(windows, ['GLGG'])
+        ells, cls = mask_utils.get_maps_cl(footp_ab_dict['GL'], footp_ab_dict['GG'])
+        expected = (
+            cls
+            * (2 * ells + 1)
+            / ((4 * np.pi) ** 2 * fsky_ab_dict['GL'] * fsky_ab_dict['GG'])
+        )
+        np.testing.assert_allclose(cl_norm['GL', 'GG'][1], expected)
+
+    def test_fractional_normalisation(self):
+        """Uniform fractional coverage c: the normalised spectrum does not depend
+        on c (window c^2 normalised by mean(c^2))."""
+        nside = 16
+        npix = hp.nside2npix(nside)
+        theta, _ = hp.pix2ang(nside, np.arange(npix))
+        cap = (theta < np.radians(50)).astype(float)
+        out = []
+        for c in (1.0, 0.6):
+            obj = types.SimpleNamespace(footprint=c * cap)
+            windows = mask_utils.ssc_window_ab(obj, obj)
+            out.append(mask_utils.get_footprint_cl_abcd_dicts(windows, ['LLLL'])[1])
+        np.testing.assert_allclose(out[1]['LL', 'LL'][1], out[0]['LL', 'LL'][1])
+
+
 class TestGeneratePolarCapFunc:
     """Tests for generate_polar_cap_func function."""
 

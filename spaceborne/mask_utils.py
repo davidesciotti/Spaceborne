@@ -9,28 +9,32 @@ from spaceborne import sb_lib as sl
 
 
 def get_footprint_cl_abcd_dicts(
-    footp_ab_dict: dict, fsky_ab_dict: dict, unique_probe_combs_hs: list
+    ssc_window_ab_dict: dict, unique_probe_combs_hs: list
 ) -> tuple:
-    """Compute the Cls and the normalised Cls for all footprints in
-    unique_probe_combs_hs"""
+    """Compute the Cls and the normalised Cls of the SSC windows for all probe
+    combinations in unique_probe_combs_hs.
+
+    Each cross-spectrum is normalised by the means of the two windows, so that
+    sum_L (2L+1) C_L^norm P_L is the variance of the window-averaged background mode.
+    """
 
     footp_cl_abcd_dict = {}
     footp_cl_norm_abcd_dict = {}
     for probe_abcd in unique_probe_combs_hs:
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        w_ab = ssc_window_ab_dict[probe_ab]
+        w_cd = ssc_window_ab_dict[probe_cd]
 
-        # compute and store the footprint cross-spectrum...
-        _ells, _cls = get_maps_cl(footp_ab_dict[probe_ab], footp_ab_dict[probe_cd])
+        # compute and store the window cross-spectrum...
+        _ells, _cls = get_maps_cl(w_ab, w_cd)
 
         # ...and its normalised version
         footp_cl_abcd_dict[probe_ab, probe_cd] = (_ells, _cls)
-        denominator = (4 * np.pi) ** 2 * fsky_ab_dict[probe_ab] * fsky_ab_dict[probe_cd]
+        denominator = (4 * np.pi) ** 2 * np.mean(w_ab) * np.mean(w_cd)
         _cls_norm = _cls * (2 * _ells + 1) / denominator
         footp_cl_norm_abcd_dict[probe_ab, probe_cd] = (_ells, _cls_norm)
 
-        check_footprint_cl_band_limit(
-            _ells, _cls, footp_ab_dict[probe_ab], footp_ab_dict[probe_cd], probe_abcd
-        )
+        check_footprint_cl_band_limit(_ells, _cls, w_ab, w_cd, probe_abcd)
     return footp_cl_abcd_dict, footp_cl_norm_abcd_dict
 
 
@@ -128,6 +132,23 @@ def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
         )
 
     return footp_ab_dict, fsky_ab_dict
+
+
+def ssc_window_ab(mask_obj_ll, mask_obj_gg) -> dict:
+    """SSC windows W_A * W_B of the probe pairs AB (W_A^2 for the auto-pairs).
+
+    A long-wavelength mode modulates the local power, and the pseudo-Cl of two fields
+    with masks W_A, W_B weights the local power by W_A W_B. The response is therefore
+    the W_A W_B-weighted mean of the background mode (TJPCov convention,
+    covariance_fourier_ssc.py), normalised by mean(W_A W_B) in
+    get_footprint_cl_abcd_dicts. For binary footprints this equals the overlap
+    min(W_A, W_B) used in footprint_fsky_ab; for fractional coverage maps it differs,
+    since the field masks (and hence the NaMaster mode-coupling matrices) are the
+    coverage maps themselves.
+    """
+    m_ll = mask_obj_ll.footprint
+    m_gg = mask_obj_gg.footprint
+    return {'LL': m_ll * m_ll, 'GL': m_ll * m_gg, 'GG': m_gg * m_gg}
 
 
 def combined_fsky(map1: np.ndarray, map2: np.ndarray) -> float:

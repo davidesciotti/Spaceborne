@@ -299,51 +299,42 @@ def _safe_inverse(x: np.ndarray) -> np.ndarray:
     return np.divide(1, x, out=np.zeros_like(x), where=x > 0)
 
 
-def mcm_rows_spin0(ells_row, mask_cl: np.ndarray, lmax_col: int) -> np.ndarray:
-    """Rows of the spin-0 mode-coupling matrix of a pair of masks, shape
-    (len(ells_row), lmax_col + 1), in the NaMaster convention
+def resolve_ell_max_nmt(
+    ell_max_nmt: int | None, ell_max: int, ell_max_cap: int, coupled: bool
+) -> int:
+    """Maximum multipole of the NaMaster fields, workspaces and Cls.
 
-        M_{l l'} = (2 l' + 1) / (4 pi) sum_L (2 L + 1) W_L (l l' L; 0 0 0)^2,
-
-    with W_L the cross power spectrum of the two masks (taken as 0 above
-    len(mask_cl) - 1, as NaMaster does above its lmax_mask). The squared Wigner 3j
-    symbols use the closed form for zero m's, through log-factorials.
+    The mask couples the signal above ell_max into the science bands, so the coupled
+    covariance needs the Cls beyond it: up to ell_max_nmt (precision.ell_max_nmt) or,
+    if None, to 1.5 * ell_max. This is capped at ell_max_cap, the largest multipole
+    the fields can represent (3 * nside - 1) or the input Cls cover. A decoupled
+    covariance is defined by its own ell range, so it stops at ell_max.
     """
-    ells_row = np.atleast_1d(ells_row).astype(int)
-    lmax_w = len(mask_cl) - 1
-    n = 2 * (int(ells_row.max()) + lmax_col) + 2
-    logfact = np.concatenate([[0.0], np.cumsum(np.log(np.arange(1, n + 1)))])
-    rows = np.zeros((len(ells_row), lmax_col + 1))
-    for i, l1 in enumerate(ells_row):
-        for l2 in range(lmax_col + 1):
-            # (l1 l2 L; 0 0 0) vanishes unless |l1 - l2| <= L <= l1 + l2, sum even
-            big_l = np.arange(abs(l1 - l2), min(l1 + l2, lmax_w) + 1, 2)
-            if big_l.size == 0:
-                continue
-            j = l1 + l2 + big_l
-            g = j // 2
-            log_w3j2 = (
-                logfact[j - 2 * l1]
-                + logfact[j - 2 * l2]
-                + logfact[j - 2 * big_l]
-                - logfact[j + 1]
-                + 2
-                * (logfact[g] - logfact[g - l1] - logfact[g - l2] - logfact[g - big_l])
+    if not coupled:
+        if ell_max_nmt is not None and ell_max_nmt != ell_max:
+            warnings.warn(
+                'precision.ell_max_nmt is only used for the coupled covariance '
+                '(a decoupled estimator is defined by its own ell range); '
+                f'using ell_max = {ell_max}',
+                stacklevel=2,
             )
-            rows[i, l2] = (
-                (2 * l2 + 1)
-                / (4 * np.pi)
-                * np.sum((2 * big_l + 1) * mask_cl[big_l] * np.exp(log_w3j2))
-            )
-    return rows
+        return ell_max
 
-
-def coupled_leakage_above(rows: np.ndarray, cl: np.ndarray) -> np.ndarray:
-    """f[L] = fraction of the coupled spectrum sum_rows M_{l l'} C_l' coming from
-    multipoles l' > L, for L = 0..rows.shape[1] - 1 (cl must be non-negative)."""
-    contrib = rows.sum(0) * cl[: rows.shape[1]]
-    total = contrib.sum()
-    return (total - np.cumsum(contrib)) / total
+    requested = (
+        int(np.ceil(1.5 * ell_max)) if ell_max_nmt is None else int(ell_max_nmt)
+    )
+    if requested < ell_max:
+        raise ValueError(
+            f'precision.ell_max_nmt = {requested} is below ell_max = {ell_max}'
+        )
+    capped = max(min(requested, ell_max_cap), ell_max)
+    if capped < requested:
+        warnings.warn(
+            f'precision.ell_max_nmt truncated to {capped} (requested {requested}) '
+            'by 3 * nside - 1 or by the range of the input Cls',
+            stacklevel=2,
+        )
+    return capped
 
 
 def _weight_per_bin(weight_maps, zi):
@@ -1466,57 +1457,6 @@ class CovNaMaster:
             )
             print(f'\nMode coupling matrices saved in {self.output_path}')
 
-    def auto_ell_max_buffer(self, cl_5d: np.ndarray, ell_max_cap: int, tol: float):
-        """Smallest buffer b such that, for every bin and probe, at most a fraction tol
-        of the coupled signal in the top science band comes from multipoles above
-        ell_max + b (ell_max + b <= ell_max_cap).
-
-        The coupled signal is sum_l' M_ll' C_l' with the exact spin-0 coupling kernel
-        of each bin's mask (a proxy for the spin-2 kernel too) and the theory
-        auto-spectra, times p_l'^2 if precision.pixwin_nside is set, summed up to
-        ell_max_cap: the largest multipole the fields can represent (3 nside - 1) or
-        the input Cls cover. Returns the buffer and, per (probe, bin), the leakage
-        without any buffer and the buffer that bin needs.
-
-        cl_5d: unbinned Cls, shape (n_probes, n_probes, ell_max_cap + 1, zbins, zbins).
-        """
-        ell_max = self.ell_obj.ell_max_3x2pt
-        bins = self.ell_obj.nmt_bin_obj_GC
-        top_lo = bins.get_ell_min(bins.get_n_bands() - 1)
-        top_hi = bins.get_ell_max(bins.get_n_bands() - 1)
-        ells_row = np.unique([top_lo, (top_lo + top_hi) // 2, top_hi])
-
-        pixwin_nside = self.cfg['precision'].get('pixwin_nside')
-        if pixwin_nside is None:
-            pw_t = pw_e = np.ones(ell_max_cap + 1)
-        else:
-            pw_t, pw_e = pixel_windows(pixwin_nside, ell_max_cap)
-        probe_sel = self.cfg['probe_selection']
-        probes = []
-        if probe_sel['GG'] or probe_sel['GL']:
-            probes.append(('GG', self.weight_maps_gg, 1, pw_t**2))
-        if probe_sel['LL'] or probe_sel['GL']:
-            probes.append(('LL', self.weight_maps_ll, 0, pw_e**2))
-
-        buffer, report = 0, []
-        for probe, weight_maps, ix, pw2 in probes:
-            rows = {}  # a footprint is shared by all bins: one kernel per probe
-            shared = isinstance(weight_maps, np.ndarray) and weight_maps.ndim == 1
-            for zi in range(self.zbins):
-                key = 'footprint' if shared else zi
-                if key not in rows:
-                    mask = _weight_per_bin(weight_maps, zi)
-                    mask_cl = hp.anafast(mask, lmax=3 * self.nside - 1, iter=3)
-                    rows[key] = mcm_rows_spin0(ells_row, mask_cl, ell_max_cap)
-                cl = cl_5d[ix, ix, :, zi, zi] * pw2
-                if not np.any(cl[ell_max + 1 :] > 0):
-                    continue
-                leak = coupled_leakage_above(rows[key], cl)
-                b_zi = int(np.argmax(leak[ell_max:] <= tol))
-                report.append((probe, zi, float(leak[ell_max]), b_zi))
-                buffer = max(buffer, b_zi)
-        return buffer, report
-
     def build_psky_cov(self):
         # TODO again, here I'm using 3x2pt = GC
         # 1. ell binning
@@ -1547,24 +1487,20 @@ class CovNaMaster:
         # )  # careful f the +1!
         # ell_min_eff = ells_eff_edges[0]
 
-        # fields, workspaces and Cls extend to ell_max_nmt = ell_max_eff + buffer (see
-        # precision.ell_max_buffer_nmt); the covariance is then binned on the science
-        # bands only
+        # fields, workspaces and Cls extend to ell_max_nmt >= ell_max_eff (see
+        # precision.ell_max_nmt); the covariance is then binned on the science bands
         ell_max_nmt = ell_max_eff if self.ell_max_nmt is _UNSET else self.ell_max_nmt
         ells_unb = np.arange(ell_max_nmt + 1)
         nbl_unb = len(ells_unb)
         assert self.cl_3x2pt_unb_5d.shape[2] == nbl_unb, (
             'the unbinned Cls must extend to ell_max_nmt'
         )
+        # the workspace lmax is that of its bins: ell_max_eff + 1..ell_max_nmt is an
+        # extra band, never used in the science binning
+        edges_wsp = ells_eff_edges
         if ell_max_nmt > ell_max_eff:
-            # NaMaster needs bins up to the field lmax: add the buffer as an extra band
-            lo = [self.nmt_bin_obj.get_ell_min(i) for i in range(nbl_eff)]
-            hi = [self.nmt_bin_obj.get_ell_max(i) + 1 for i in range(nbl_eff)]
-            self.nmt_bin_obj_wsp = nmt.NmtBin.from_edges(
-                np.append(lo, ell_max_eff + 1), np.append(hi, ell_max_nmt + 1)
-            )
-        else:
-            self.nmt_bin_obj_wsp = self.nmt_bin_obj
+            edges_wsp = np.append(ells_eff_edges, ell_max_nmt + 1)
+        self.nmt_bin_obj_wsp = nmt.NmtBin.from_edges(edges_wsp[:-1], edges_wsp[1:])
 
         # ells_bpw = ells_unb[ell_min_eff : lmax_eff + 1]
         # delta_ells_bpw = np.diff(
@@ -1606,6 +1542,12 @@ class CovNaMaster:
         cl_gg_4covnmt = self.cl_3x2pt_unb_5d[1, 1, :, :, :].copy()
         cl_gl_4covnmt = self.cl_3x2pt_unb_5d[1, 0, :, :, :].copy()
         cl_ll_4covnmt = self.cl_3x2pt_unb_5d[0, 0, :, :, :].copy()
+        # E->B leakage of the iNKA spectra (spin-2 only): the BB part of
+        # couple_cell([EE, 0, 0, 0]) / fsky. Dropped by default (BB = noise only);
+        # EE->EB and TE->TB couplings vanish by parity, so BB is
+        # the only non-zero leakage term.
+        eb_leakage = self.cfg['precision'].get('iNKA_eb_leakage', False)
+        cl_bb_leak = np.zeros_like(cl_ll_4covnmt)
         if self.cfg['precision']['iNKA']:
             # TODO XXX this could be made more efficient by only looping over the auto-combs
             # TODO XXX for ll and gg
@@ -1643,11 +1585,14 @@ class CovNaMaster:
                     / fsky_gl_zij
                     * inv_pw2['GL']
                 )
-                cl_ll_4covnmt[:, zi, zj] = (
-                    self.wll_dict[zi, zj].couple_cell(list_ll)[0]
+                cl_ll_cpl = (
+                    self.wll_dict[zi, zj].couple_cell(list_ll)
                     / fsky_ll_zij
                     * inv_pw2['LL']
                 )
+                cl_ll_4covnmt[:, zi, zj] = cl_ll_cpl[0]
+                if eb_leakage and not self.spin0:
+                    cl_bb_leak[:, zi, zj] = cl_ll_cpl[3]
 
         nl_gg_4covnmt = self.nl_3x2pt_unb_5d[1, 1, :, :, :].copy()
         nl_gl_4covnmt = self.nl_3x2pt_unb_5d[1, 0, :, :, :].copy()  # this is 0
@@ -1686,7 +1631,7 @@ class CovNaMaster:
         cl_ee_4covnmt = cl_ll_4covnmt + nl_ll_4covnmt
         cl_tb_4covnmt = np.zeros_like(cl_tt_4covnmt)
         cl_eb_4covnmt = np.zeros_like(cl_tt_4covnmt)
-        cl_bb_4covnmt = nl_ll_4covnmt
+        cl_bb_4covnmt = nl_ll_4covnmt + cl_bb_leak
 
         # ! Finally, compute covariance
         if self.cfg['covariance']['partial_sky_method'] == 'NaMaster':

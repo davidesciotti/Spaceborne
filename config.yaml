@@ -373,9 +373,7 @@ ensemble_covariance:
   nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
-  # The simulated signal extends to ell_max + precision.ell_max_buffer_nmt (the mask
-  # couples the power above ell_max into the science bands, as in the data), and the
-  # pixel window of precision.pixwin_nside is emulated if set.
+  
   # Shape noise in the sims:
   # - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
   #   is the analytic model, so the noise part of the comparison is circular.
@@ -383,6 +381,7 @@ ensemble_covariance:
   #   with the same coupled noise level as the analytic covariance.
   # The two coincide for a binary mask.
   noise_model: painted # Type: str. Options: ['painted', 'catalogue']
+
   # Whether to normalise the GG overdensity by the mean density measured in the footprint
   # (subtracting the corresponding noise bias), as Heracles does for positions by
   # default. This adds the integral-constraint term to the GG and GL covariance, which is
@@ -459,22 +458,20 @@ precision:
   # This is (significantly) faster, but less accurate.
   spin0: False # Type: bool.
   iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-  # NaMaster and ensemble. nside at which the data were mapped, for spectra measured with
-  # the HEALPix pixel window deconvolved (Heracles does it by default; NaMaster only if
-  # the window is passed as a beam). The signal then enters the mode coupling as
-  # C_l' p_l'^2 / p_l^2 and the white noise as N / p_l^2 (scalar window for GG, E-mode
-  # for LL). It can differ from mask.nside. null: no pixel window.
+  
+  # nside at which the data were mapped, for spectra measured with the HEALPix 
+  # pixel window deconvolved. It can differ from mask.nside. null: no pixel window.
   pixwin_nside: null # Type: int | None
-  # NaMaster and ensemble, coupled covariance only. The mask couples the signal above
-  # ell_max into the science bands: fields, mode-coupling matrices and Cls are extended
-  # to ell_max + buffer, then the covariance is binned on the science bands. 'auto'
-  # takes the smallest buffer for which at most a fraction ell_max_buffer_tol of the
-  # coupled signal in the top band comes from multipoles above ell_max + buffer (exact
-  # spin-0 kernel of each mask and the theory auto-spectra, up to 3*nside-1 or the
-  # range of the input Cls). An int sets it; 0 is no buffer. The cost of the
-  # covariance workspaces grows roughly as (ell_max + buffer)^3.
-  ell_max_buffer_nmt: auto # Type: str | int. Options: ['auto', int >= 0]
-  ell_max_buffer_tol: 2.0e-3 # Type: float.
+  
+  # For `NaMaster` and `ensemble` coupled covariances. 
+  # The mask couples signal ab2ove ell_max into the desired range. To capture this, add
+  # a buffer to the ell range of the input Cls, namaster workspaces and mode-coupling 
+  # matrices. The buffer is capped at 3 * nside - 1. Default (null) is such that
+  # ell_max_nmt = 1.5 * ell_max. Set to 0 to disable the buffer.
+  ell_max_nmt: null # Type: int | None
+  
+  # Whether to keep the E->B leakage in the coupled spectra passed to the iNKA.
+  iNKA_eb_leakage: False # Type: bool.
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

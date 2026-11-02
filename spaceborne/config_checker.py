@@ -465,14 +465,14 @@ class SpaceborneConfigChecker:
             and pixwin_nside > 0
             and pixwin_nside & (pixwin_nside - 1) == 0
         ), 'precision: pixwin_nside must be None or a power of 2'
-        buffer_nmt = precision_cfg.get('ell_max_buffer_nmt', 0)
-        assert buffer_nmt == 'auto' or (
-            isinstance(buffer_nmt, int) and not isinstance(buffer_nmt, bool)
-            and buffer_nmt >= 0
-        ), "precision: ell_max_buffer_nmt must be 'auto' or an int >= 0"
-        buffer_tol = precision_cfg.get('ell_max_buffer_tol', 2e-3)
-        assert isinstance(buffer_tol, float) and 0 < buffer_tol < 1, (
-            'precision: ell_max_buffer_tol must be a float in (0, 1)'
+        ell_max_nmt = precision_cfg.get('ell_max_nmt')
+        assert ell_max_nmt is None or (
+            isinstance(ell_max_nmt, int)
+            and not isinstance(ell_max_nmt, bool)
+            and ell_max_nmt > 0
+        ), 'precision: ell_max_nmt must be None or a positive int'
+        assert isinstance(precision_cfg.get('iNKA_eb_leakage', False), bool), (
+            'precision: iNKA_eb_leakage must be a boolean'
         )
         assert isinstance(precision_cfg['n_samples_wf'], int), (
             'precision: n_samples_wf must be an int'

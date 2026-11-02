@@ -496,10 +496,11 @@ class TestCheckTypesMutations:
             ('ensemble_covariance', 'nbar_from_data', 1),
             ('precision', 'pixwin_nside', 1000),
             ('precision', 'pixwin_nside', 1024.0),
-            ('precision', 'ell_max_buffer_nmt', -1),
-            ('precision', 'ell_max_buffer_nmt', 'yes'),
-            ('precision', 'ell_max_buffer_nmt', True),
-            ('precision', 'ell_max_buffer_tol', 0.0),
+            ('precision', 'ell_max_nmt', 0),
+            ('precision', 'ell_max_nmt', 'auto'),
+            ('precision', 'ell_max_nmt', True),
+            ('precision', 'ell_max_nmt', 2000.0),
+            ('precision', 'iNKA_eb_leakage', 1),
         ],
     )
     def test_invalid_psky_option_raises(self, valid_cfg, section, key, value):
@@ -508,9 +509,9 @@ class TestCheckTypesMutations:
         with pytest.raises(AssertionError):
             checker.check_types()
 
-    @pytest.mark.parametrize('value', ['auto', 0, 500])
-    def test_valid_ell_max_buffer(self, valid_cfg, value):
-        valid_cfg['precision']['ell_max_buffer_nmt'] = value
+    @pytest.mark.parametrize('value', [None, 500])
+    def test_valid_ell_max_nmt(self, valid_cfg, value):
+        valid_cfg['precision']['ell_max_nmt'] = value
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         checker.check_types()
 
@@ -518,7 +519,7 @@ class TestCheckTypesMutations:
         """Configs written before these options existed still pass."""
         for key in ('noise_model', 'nbar_from_data'):
             del valid_cfg['ensemble_covariance'][key]
-        for key in ('pixwin_nside', 'ell_max_buffer_nmt', 'ell_max_buffer_tol'):
+        for key in ('pixwin_nside', 'ell_max_nmt', 'iNKA_eb_leakage'):
             del valid_cfg['precision'][key]
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         checker.check_types()

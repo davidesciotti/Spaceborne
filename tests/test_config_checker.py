@@ -493,7 +493,6 @@ class TestCheckTypesMutations:
         ('section', 'key', 'value'),
         [
             ('ensemble_covariance', 'noise_model', 'poisson'),
-            ('ensemble_covariance', 'nbar_from_data', 1),
             ('precision', 'pixwin_nside', 1000),
             ('precision', 'pixwin_nside', 1024.0),
             ('precision', 'ell_max_nmt', 0),
@@ -517,8 +516,7 @@ class TestCheckTypesMutations:
 
     def test_psky_options_optional(self, valid_cfg):
         """Configs written before these options existed still pass."""
-        for key in ('noise_model', 'nbar_from_data'):
-            del valid_cfg['ensemble_covariance'][key]
+        del valid_cfg['ensemble_covariance']['noise_model']
         for key in ('pixwin_nside', 'ell_max_nmt', 'iNKA_eb_leakage'):
             del valid_cfg['precision'][key]
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))

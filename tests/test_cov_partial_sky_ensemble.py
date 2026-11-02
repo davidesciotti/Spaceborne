@@ -57,40 +57,6 @@ class TestCatalogueNoiseAmplitude:
             cov_partial_sky.catalogue_noise_amplitude(w, np.array([1e-8]), nside, 1)
 
 
-class TestNbarFromData:
-    """Tests for the footprint-mean normalisation in mask_maps_and_compute_alms."""
-
-    def test_constant_overdensity_is_absorbed(self):
-        # a constant delta is fully absorbed by the measured mean density
-        nside = 16
-        w = _fractional_weights(nside, 1)[0]
-        npix = w.size
-        alms_t, _, _, eps = cov_partial_sky.mask_maps_and_compute_alms(
-            corr_maps_gg=[np.full(npix, 0.3)],
-            corr_maps_ll=[(np.zeros(npix), np.zeros(npix))],
-            weight_maps_gg=w,
-            weight_maps_ll=w,
-            lmax=2 * nside,
-            nbar_from_data=True,
-        )
-        np.testing.assert_allclose(eps, [0.3], rtol=1e-12)
-        np.testing.assert_allclose(np.abs(alms_t[0]), 0.0, atol=1e-12)
-
-    def test_off_by_default(self):
-        nside = 16
-        w = _fractional_weights(nside, 1)[0]
-        npix = w.size
-        alms_t, _, _, eps = cov_partial_sky.mask_maps_and_compute_alms(
-            corr_maps_gg=[np.full(npix, 0.3)],
-            corr_maps_ll=[(np.zeros(npix), np.zeros(npix))],
-            weight_maps_gg=w,
-            weight_maps_ll=w,
-            lmax=2 * nside,
-        )
-        np.testing.assert_array_equal(eps, [0.0])
-        assert np.abs(alms_t[0]).max() > 0
-
-
 class TestPixwinEmulation:
     """The emulated pixel-window deconvolution turns white pixel noise into N / p^2."""
 

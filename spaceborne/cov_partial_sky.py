@@ -355,8 +355,7 @@ def mask_maps_and_compute_alms(
     n_iter: int = 3,
     noise_amp_gg: np.ndarray | None = None,
     noise_amp_ll: np.ndarray | None = None,
-    nbar_from_data: bool = False,
-) -> tuple[list, list, list, np.ndarray]:
+) -> tuple[list, list, list]:
     """Pre-compute masked alms for all zbins in one realization.
 
     Replaces the per-(zi,zj) SHT inside pcls_from_maps with 3*zbins SHTs done
@@ -372,19 +371,14 @@ def mask_maps_and_compute_alms(
     noise_amp_gg, noise_amp_ll : per-bin amplitudes A_i for catalogue-sum noise,
         added *after* masking with per-pixel std A_i * sqrt(w_p) (variance ∝ w).
         None means the noise was already added to the unmasked maps (painted).
-    nbar_from_data : emulate an overdensity normalised by the mean density measured
-        in the footprint (Heracles' default for positions): with T = w (delta + noise)
-        the masked map, d = (w + T) / (1 + eps) - w, eps = sum(T) / sum(w).
 
     Returns
     -------
     alms_T, alms_E, alms_B : lists of length zbins, alm arrays
-    eps_gg : (zbins,) footprint-mean of each GG map (0 unless nbar_from_data)
     """
     # Keep peak memory low: process one z-bin at a time instead of materializing
     # masked copies for all bins at once.
     alms_T, alms_E, alms_B = [], [], []
-    eps_gg = np.zeros(len(corr_maps_gg))
     for zi, (map_T, (map_Q, map_U)) in enumerate(
         zip(corr_maps_gg, corr_maps_ll, strict=True)
     ):
@@ -401,10 +395,6 @@ def mask_maps_and_compute_alms(
             masked_Q += np.random.randn(npix) * noise_amp_ll[zi] * np.sqrt(weight_ll)
             masked_U += np.random.randn(npix) * noise_amp_ll[zi] * np.sqrt(weight_ll)
 
-        if nbar_from_data:
-            eps_gg[zi] = masked_T.sum() / weight_gg.sum()
-            masked_T = (weight_gg + masked_T) / (1 + eps_gg[zi]) - weight_gg
-
         # map2alm_spin has no `iter` kwarg, so spin-2 alms are effectively iter=0
         # while spin-0 uses n_iter. This seems irrelevant; in any case, symmetrising
         # is possible with hp.map2alm([T,Q,U], pol=True, iter=n_iter)
@@ -414,7 +404,7 @@ def mask_maps_and_compute_alms(
         alms_E.append(alm_E)
         alms_B.append(alm_B)
 
-    return alms_T, alms_E, alms_B, eps_gg
+    return alms_T, alms_E, alms_B
 
 
 def pcls_from_maps(
@@ -429,12 +419,8 @@ def pcls_from_maps(
     alms_T: list | None = None,
     alms_E: list | None = None,
     alms_B: list | None = None,
-    pcl_tt_offset: np.ndarray | None = None,
 ):
     """Compute binned pseudo-Cls for a single (zi, zj) pair.
-
-    pcl_tt_offset, if given, is subtracted from the unbinned TT pseudo-Cl (e.g. the
-    realisation-dependent part of a noise bias).
 
     Healpy anafast returns the coupled
     ("pseudo") cls. Dividing by fsky gives a rough approximation of the true Cls.
@@ -453,8 +439,6 @@ def pcls_from_maps(
     # ! compute (coupled) Cls with healpy
     # Fast branch: use pre-computed alms to compute cls
     pcl_tt = hp.alm2cl(alms_T[zi], alms_T[zj])
-    if pcl_tt_offset is not None:
-        pcl_tt = pcl_tt - pcl_tt_offset
     pcl_te = hp.alm2cl(alms_T[zi], alms_E[zj])
     pcl_tb = hp.alm2cl(alms_T[zi], alms_B[zj])
     pcl_ee = hp.alm2cl(alms_E[zi], alms_E[zj])
@@ -526,7 +510,6 @@ def compute_ensemble_covariance_parallel(
     lmax_sim: int | None = None,
     noise_model: str = 'painted',
     pixwin_nside: int | None = None,
-    nbar_from_data: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Computes the ensemble covariance from a set of simulated power spectra.
 
@@ -535,9 +518,6 @@ def compute_ensemble_covariance_parallel(
         deconvolved: the signal alms are multiplied by p_ell before the maps are made
         (pixel averaging) and the measured pseudo-alms are divided by it, so the white
         pixel noise ends up as N / p_ell^2, as in the analytic covariance.
-    nbar_from_data : normalise the GG overdensity by the mean density measured in the
-        footprint, and subtract the corresponding noise bias, N <w^2> / (1 + eps)^2,
-        from the GG auto-spectra (Heracles' default for positions).
     """
 
     SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
@@ -554,18 +534,6 @@ def compute_ensemble_covariance_parallel(
     pw_t = pw_e = None
     if pixwin_nside is not None:
         pw_t, pw_e = pixel_windows(pixwin_nside, lmax_sim)
-
-    # coupled GG noise level per bin, N <w^2> (/ p_ell^2), for the noise bias of an
-    # overdensity normalised by the measured mean density
-    gg_noise_bias = None
-    if nbar_from_data:
-        inv_pw2_t = np.ones(lmax + 1) if pw_t is None else 1 / pw_t[: lmax + 1] ** 2
-        gg_noise_bias = np.array(
-            [
-                nl_gg_diag[zi] * np.mean(_weight_per_bin(weight_maps_gg, zi) ** 2)
-                for zi in range(zbins)
-            ]
-        )[:, None] * inv_pw2_t[None, :]
 
     # instantiate arrays in cov_dict
     for probe_2tpl in cov_dict['g']:
@@ -633,7 +601,6 @@ def compute_ensemble_covariance_parallel(
                 ell_max_edges=ell_max_edges,
                 pw_t=pw_t,
                 pw_e=pw_e,
-                gg_noise_bias=gg_noise_bias,
             )
             for i in range(nreal)
         )
@@ -685,13 +652,10 @@ def _compute_one_realization(
     ell_max_edges: np.ndarray,
     pw_t: np.ndarray | None = None,
     pw_e: np.ndarray | None = None,
-    gg_noise_bias: np.ndarray | None = None,
 ):
     """Worker: one realization → Cls only. Maps are discarded before return.
 
-    pw_t, pw_e: pixel windows (to lmax_sim) of the emulated measurement, or None;
-    gg_noise_bias: (zbins, lmax + 1) GG noise bias if the overdensity is normalised by
-    the measured mean density, or None (see compute_ensemble_covariance_parallel).
+    pw_t, pw_e: pixel windows (to lmax_sim) of the emulated measurement, or None.
     """
 
     # Set seed for reproducibility (must be set inside each worker for
@@ -754,7 +718,7 @@ def _compute_one_realization(
             qu[1] += np.random.randn(npix) * sigma_pix
 
     # ! 4. Mask each map (there are zbins of them) and compute ("masked") alms
-    alms_T, alms_E, alms_B, eps_gg = mask_maps_and_compute_alms(
+    alms_T, alms_E, alms_B = mask_maps_and_compute_alms(
         corr_maps_gg=corr_maps_gg,
         corr_maps_ll=corr_maps_ll,
         weight_maps_gg=weight_maps_gg,
@@ -762,7 +726,6 @@ def _compute_one_realization(
         lmax=lmax,
         noise_amp_gg=noise_amp_gg,
         noise_amp_ll=noise_amp_ll,
-        nbar_from_data=gg_noise_bias is not None,
     )
 
     # free maps
@@ -787,11 +750,6 @@ def _compute_one_realization(
     cl_ll_3d = np.zeros((nbl, zbins, zbins))
 
     for zi, zj in itertools.product(range(zbins), repeat=2):
-        # with the mean density measured in the footprint, the subtracted noise bias
-        # is N <w^2> / (1 + eps)^2; the constant N <w^2> drops out of the covariance
-        pcl_tt_offset = None
-        if gg_noise_bias is not None and zi == zj:
-            pcl_tt_offset = gg_noise_bias[zi] * ((1 + eps_gg[zi]) ** -2 - 1)
         cl_gg_1d, cl_gl_1d, cl_ll_1d = pcls_from_maps(
             zi=zi,
             zj=zj,
@@ -803,7 +761,6 @@ def _compute_one_realization(
             alms_T=alms_T,
             alms_E=alms_E,
             alms_B=alms_B,
-            pcl_tt_offset=pcl_tt_offset,
         )
         if len(cl_gg_1d) != nbl:
             cl_gg_1d = nmt_bin_obj.bin_cell(cl_gg_1d)
@@ -1745,7 +1702,6 @@ class CovNaMaster:
                 lmax_sim=ell_max_nmt,
                 noise_model=ens_cfg.get('noise_model', 'painted'),
                 pixwin_nside=pixwin_nside,
-                nbar_from_data=ens_cfg.get('nbar_from_data', False),
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['ensemble_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],

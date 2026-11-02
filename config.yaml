@@ -382,12 +382,6 @@ ensemble_covariance:
   # The two coincide for a binary mask.
   noise_model: painted # Type: str. Options: ['painted', 'catalogue']
 
-  # Whether to normalise the GG overdensity by the mean density measured in the footprint
-  # (subtracting the corresponding noise bias), as Heracles does for positions by
-  # default. This adds the integral-constraint term to the GG and GL covariance, which is
-  # absent from the analytic Gaussian covariance (it is part of the SSC counterterm).
-  nbar_from_data: False # Type: bool.
-
 precision:
   # =============================== harmonic-space cov =================================
   # Binning method for the Knox ('1/fsky') harmonic-space Gaussian covariance

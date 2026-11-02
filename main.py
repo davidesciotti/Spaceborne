@@ -755,10 +755,9 @@ footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
 mask_utils.plot_footprint(footp_ab_dict['GL'], probe='GL')
 
 
-# compute footprint spectra
+# compute SSC window spectra
 footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
-    footp_ab_dict=footp_ab_dict,
-    fsky_ab_dict=fsky_ab_dict,
+    ssc_window_ab_dict=mask_utils.ssc_window_ab(mask_obj_ll, mask_obj_gg),
     unique_probe_combs_hs=unique_probe_combs_hs,
 )
 

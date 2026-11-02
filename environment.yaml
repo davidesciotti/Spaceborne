@@ -42,6 +42,7 @@ dependencies:
         # optional dependency, only used to compute the COSEBIs covariance
       - pyyaml
       - joblib
+      - threadpoolctl
       - tqdm
       - pyfiglet # optional dependency, for the ASCII art
 

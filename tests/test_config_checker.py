@@ -334,6 +334,21 @@ class TestCheckNmt:
         with pytest.raises(ValueError):
             checker.check_nmt()
 
+    def test_pixwin_nside_requires_namaster_or_ensemble(self, valid_cfg):
+        valid_cfg['covariance']['partial_sky_method'] = 'Knox'
+        valid_cfg['precision']['pixwin_nside'] = 1024
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError):
+            checker.check_nmt()
+
+    @pytest.mark.parametrize('method', ['NaMaster', 'ensemble'])
+    def test_pixwin_nside_ok(self, valid_cfg, method):
+        valid_cfg['covariance']['partial_sky_method'] = method
+        valid_cfg['covariance']['G_code'] = 'Spaceborne'
+        valid_cfg['precision']['pixwin_nside'] = 1024
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_nmt()
+
 
 class TestCheckOnecov:
     """Tests for check_onecov."""
@@ -473,3 +488,36 @@ class TestCheckTypesMutations:
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_types()
+
+    @pytest.mark.parametrize(
+        ('section', 'key', 'value'),
+        [
+            ('ensemble_covariance', 'noise_model', 'poisson'),
+            ('precision', 'pixwin_nside', 1000),
+            ('precision', 'pixwin_nside', 1024.0),
+            ('precision', 'ell_max_nmt', 0),
+            ('precision', 'ell_max_nmt', 'auto'),
+            ('precision', 'ell_max_nmt', True),
+            ('precision', 'ell_max_nmt', 2000.0),
+            ('precision', 'iNKA_eb_leakage', 1),
+        ],
+    )
+    def test_invalid_psky_option_raises(self, valid_cfg, section, key, value):
+        valid_cfg[section][key] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError):
+            checker.check_types()
+
+    @pytest.mark.parametrize('value', [None, 500])
+    def test_valid_ell_max_nmt(self, valid_cfg, value):
+        valid_cfg['precision']['ell_max_nmt'] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_types()
+
+    def test_psky_options_optional(self, valid_cfg):
+        """Configs written before these options existed still pass."""
+        del valid_cfg['ensemble_covariance']['noise_model']
+        for key in ('pixwin_nside', 'ell_max_nmt', 'iNKA_eb_leakage'):
+            del valid_cfg['precision'][key]
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_types()

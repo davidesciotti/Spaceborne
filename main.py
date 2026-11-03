@@ -319,10 +319,17 @@ cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
     'ell_bins_proj_nongauss_cosebis', 10_000
 )
 
-
 # Psi-statistics not implemented yet
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
+
+# Shape noise in the sims:
+# - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
+#   is the analytic model, so the noise part of the comparison is circular.
+# - catalogue: per-pixel variance ∝ w, as for catalogue-sum weight maps (Heracles),
+#   with the same coupled noise level as the analytic covariance.
+# The two coincide for a binary mask.
+cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
 
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
@@ -1029,9 +1036,28 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    # unbinned Cls on the NaMaster grid (from 0 to ell_max_nmt)
-    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
-    ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
+    # unbinned Cls on the NaMaster grid, from 0 to ell_max_nmt: the mask couples the
+    # signal above ell_max into the science bands
+    ell_max_3x2pt = bin_obj.ell_max_3x2pt
+
+    # the largest multipole available: what the fields can represent and, for input
+    # Cls, what they cover (they are not extrapolated above it)
+    ell_max_cap = 3 * cfg['mask']['nside'] - 1
+    for need_input, ells_in in (
+        (io_obj.need_input_cl_ll, io_obj.ells_WL_in),
+        (io_obj.need_input_cl_gl, io_obj.ells_XC_in),
+        (io_obj.need_input_cl_gg, io_obj.ells_GC_in),
+    ):
+        if need_input:
+            ell_max_cap = min(ell_max_cap, int(np.max(ells_in)))
+
+    ell_max_nmt = cov_partial_sky.resolve_ell_max_nmt(
+        cfg['precision'].get('ell_max_nmt'),
+        ell_max_3x2pt,
+        ell_max_cap,
+        coupled=cfg['covariance']['cov_type'] == 'coupled',
+    )
+    ells_3x2pt_nmt_unb = np.arange(ell_max_nmt + 1)
     nbl_3x2pt_nmt_unb = len(ells_3x2pt_nmt_unb)
 
     cl_3x2pt_nmt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
@@ -1046,6 +1072,8 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_obj.nbl_3x2pt_unb = nbl_3x2pt_nmt_unb
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_nmt_unb_5d
     cov_nmt_obj.nl_3x2pt_unb_5d = nl_3x2pt_nmt_unb_5d
+    cov_nmt_obj.ell_max_nmt = ell_max_nmt
+
     # and additional useful ones
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
 

@@ -231,9 +231,9 @@ mask:
   # which should contain a number of maps equal to the number of redshift bins, for the
   # given probe. If null, the weight maps will not be used.
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
-  # They are assumed to be catalogue sums (e.g. Heracles `Weights`) or visibility maps.
-  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), with
-  # full-sky means.
+  # They are assumed to be catalogue sums or visibility maps.
+  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), 
+  # where the mean <•> is over the full sky
 
   # The options outside of the 'LL' and 'GG' sections are common to both probes.
   LL:
@@ -435,6 +435,20 @@ precision:
   # This is (significantly) faster, but less accurate.
   spin0: False # Type: bool.
   iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
+  
+  # nside at which the data were mapped, for spectra measured with the HEALPix 
+  # pixel window deconvolved. It can differ from mask.nside. null: no pixel window.
+  pixwin_nside: null # Type: int | None
+  
+  # For `NaMaster` and `ensemble` coupled covariances. 
+  # The mask couples signal above ell_max into the desired range. To capture this, add
+  # a buffer to the ell range of the input Cls, namaster workspaces and mode-coupling 
+  # matrices. The buffer is capped at 3 * nside - 1. Default (null) is such that
+  # ell_max_nmt = 1.5 * ell_max. Set to 0 to disable the buffer.
+  ell_max_nmt: null # Type: int | None
+  
+  # Whether to keep the E->B leakage in the coupled spectra passed to the iNKA.
+  iNKA_eb_leakage: False # Type: bool.
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result

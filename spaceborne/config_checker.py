@@ -127,9 +127,9 @@ class SpaceborneConfigChecker:
         assert isinstance(c_ell_cfg['mag_bias_fit_coeff'], list), (
             'C_ell: mag_bias_fit_coeff must be a list'
         )
-        assert all(
-            isinstance(x, float) for x in c_ell_cfg['mag_bias_fit_coeff']
-        ), 'C_ell: All elements in mag_bias_fit_coeff must be floats'
+        assert all(isinstance(x, float) for x in c_ell_cfg['mag_bias_fit_coeff']), (
+            'C_ell: All elements in mag_bias_fit_coeff must be floats'
+        )
 
         assert isinstance(c_ell_cfg['gal_bias_table_filename'], str), (
             'C_ell: gal_bias_table_filename must be a string'
@@ -239,9 +239,10 @@ class SpaceborneConfigChecker:
         assert isinstance(ensemble_cov_cfg['save_sim_cls'], bool), (
             'ensemble_covariance: save_sim_cls must be a boolean'
         )
-        assert ensemble_cov_cfg.get('noise_model', 'painted') in ('painted', 'catalogue'), (
-            "ensemble_covariance: noise_model must be 'painted' or 'catalogue'"
-        )
+        assert ensemble_cov_cfg.get('noise_model', 'painted') in (
+            'painted',
+            'catalogue',
+        ), "ensemble_covariance: noise_model must be 'painted' or 'catalogue'"
 
         # OneCovariance
         if 'OneCovariance' in self.cfg:
@@ -707,7 +708,10 @@ class SpaceborneConfigChecker:
             assert self.cfg['covariance']['partial_sky_method'] in (
                 'NaMaster',
                 'ensemble',
-            ), 'precision: pixwin_nside requires partial_sky_method NaMaster or ensemble'
+            ), (
+                'precision: pixwin_nside requires partial_sky_method `NaMaster` '
+                'or `ensemble`'
+            )
 
     def check_onecov(self) -> None:
         # The 'OneCovariance' section is optional (see check_types); if it is

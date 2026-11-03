@@ -215,34 +215,40 @@ class TestLoadWeightMapFits:
 
 
 class TestLoadNzEuclidlib:
-    """Tests for load_nz_euclidlib, using euclidlib's fixed PHZ FITS format:
-    a binary table with 'bin_id' and 'n_z' (shape (3000,)) columns, on the
-    fixed z grid np.linspace(0, 6, 3001).
+    """Tests for load_nz_euclidlib, using euclidlib's DR1 PHZ FITS format
+    (euclidlib >= 2026.11): a binary table with 'bin_id' and 'n_z' columns, on
+    the grid z = Z_STEP * arange(Z_STEP_NUMBER) given in the header. 'n_z' can be
+    zero-padded beyond Z_STEP_NUMBER, as in the DR1 nowcast files.
     """
 
     def test_basic_round_trip(self, tmp_path):
         fitsio = pytest.importorskip('fitsio')
         pytest.importorskip('euclidlib')
 
-        z = np.linspace(0.0, 6.0, 3001)
-        n_hist = z.size - 1
+        # DR1 nowcast layout: 600 bins of width 0.01, zero-padded to 3000 entries
+        z_step, z_size, n_col = 0.01, 600, 3000
         zbins = 2
 
-        dtype = [('bin_id', 'i4'), ('n_z', 'f8', (n_hist,))]
+        dtype = [('bin_id', 'i4'), ('n_z', 'f8', (n_col,))]
         data = np.zeros(zbins, dtype=dtype)
         for i in range(zbins):
             data['bin_id'][i] = i + 1
-            hist = np.zeros(n_hist)
+            hist = np.zeros(n_col)
             hist[100:200] = 1.0
             data['n_z'][i] = hist
 
         path = tmp_path / 'nz.fits'
-        fitsio.write(str(path), data, clobber=True)
+        header = {'Z_STEP': z_step, 'Z_STEP_NUMBER': z_size}
+        fitsio.write(str(path), data, header=header, clobber=True)
 
         z_out, nztab = io_handler.load_nz_euclidlib(str(path))
 
-        np.testing.assert_allclose(z_out, z)
-        assert nztab.shape == (len(z), zbins)
+        # the grid comes from the header, not from the column length (older
+        # euclidlib releases assumed 3000 bins over 0-6, squeezing n(z) by 5x)
+        np.testing.assert_allclose(z_out, z_step * np.arange(z_size))
+        assert nztab.shape == (z_size, zbins)
+        np.testing.assert_array_equal(nztab[100:200], 1.0)
+        np.testing.assert_array_equal(nztab[200:], 0.0)
 
 
 class TestLoadClEuclidlib:

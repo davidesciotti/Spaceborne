@@ -37,6 +37,7 @@ def _apply_main_hardcoded_overrides(cfg):
     cfg['covariance'].setdefault('cNG_code', 'PyCCL')
     cfg['probe_selection']['Psigl'] = False
     cfg['probe_selection']['Psigg'] = False
+    cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
     return cfg
 
 

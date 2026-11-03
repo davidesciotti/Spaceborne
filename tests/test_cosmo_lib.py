@@ -357,11 +357,11 @@ class TestInstantiateCosmoCcl:
         }
 
     def test_returns_ccl_cosmology(self, fiducial):
-        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_parameters=None)
+        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_pars=None)
         assert isinstance(cosmo, ccl.Cosmology)
 
     def test_passed_parameters_match(self, fiducial):
-        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_parameters=None)
+        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_pars=None)
         p = cosmo.cosmo.params
         np.testing.assert_allclose(p.h, fiducial['h'])
         np.testing.assert_allclose(p.Omega_b, fiducial['Omega_b0'])
@@ -372,14 +372,14 @@ class TestInstantiateCosmoCcl:
     def test_omega_m_and_neff_reach_ccl(self, fiducial, n_eff):
         """N06: CCL's Omega_m equals the requested Omega_m0 and Neff is propagated."""
         fiducial['Neff'] = n_eff
-        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_parameters=None)
+        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_pars=None)
         np.testing.assert_allclose(cosmo['Omega_m'], fiducial['Omega_m0'], rtol=1e-12)
         np.testing.assert_allclose(cosmo['Neff'], n_eff)
 
     @pytest.mark.parametrize('omega_k0', [-0.05, 0.0, 0.05])
     def test_dark_energy_set_by_closure(self, fiducial, omega_k0):
         fiducial['Omega_k0'] = omega_k0
-        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_parameters=None)
+        cosmo = cl.instantiate_cosmo_ccl_obj(fiducial, extra_pars=None)
         np.testing.assert_allclose(cosmo['Omega_k'], omega_k0)
         # CCL's Omega_l differs from 1 - Omega_m - Omega_k by the radiation density
         np.testing.assert_allclose(cosmo['Omega_l'], 0.68 - omega_k0, atol=2e-4)

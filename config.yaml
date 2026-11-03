@@ -444,7 +444,7 @@ precision:
   # The mask couples signal above ell_max into the desired range. To capture this, add
   # a buffer to the ell range of the input Cls, namaster workspaces and mode-coupling 
   # matrices. The buffer is capped at 3 * nside - 1. Default (null) is such that
-  # ell_max_nmt = 1.5 * ell_max. Set to 0 to disable the buffer.
+  # ell_max_nmt = 1.5 * ell_max. Set equal to ell_max to disable the buffer.
   ell_max_nmt: null # Type: int | None
   
   # Whether to keep the E->B leakage in the coupled spectra passed to the iNKA.

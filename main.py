@@ -83,7 +83,7 @@ with contextlib.suppress(AttributeError, NotImplementedError):
 if num_threads > available_cpu_count:
     print(
         f'WARNING: num_threads={num_threads} exceeds available CPUs '
-        f'({affinity_source}={available_cpu_count})'
+        f'({affinity_source}={available_cpu_count}).'
     )
     print(
         f'         Capping at {available_cpu_count} to prevent thread oversubscription'
@@ -158,6 +158,27 @@ warnings.filterwarnings(
     message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
     category=UserWarning,
 )
+
+# ! check that we're running on the expected branch/tag and conda env
+if '__file__' in globals():
+    sb_root_path = os.path.dirname(os.path.abspath(__file__))
+else:  # interactive (ipykernel): no __file__
+    sb_root_path = os.getcwd()
+
+if cfg['misc'].get('Spaceborne_branch') is not None:
+    sl.assert_repo_branch(
+        repo_path=sb_root_path, expected_branch=cfg['misc']['Spaceborne_branch']
+    )
+
+if cfg['misc'].get('conda_env') is not None:
+    # sys.prefix is the env of the interpreter actually running, even when python is
+    # called by full path without activating the env (unlike CONDA_DEFAULT_ENV)
+    current_env = os.path.basename(sys.prefix)
+    if cfg['misc']['conda_env'] not in (current_env, sys.prefix):
+        raise RuntimeError(
+            f'Running in conda env "{current_env}" ({sys.prefix}), '
+            f'expected "{cfg["misc"]["conda_env"]}"'
+        )
 
 if cfg['misc'].get('check_for_updates', True):
     version_check.check_for_updates()
@@ -298,10 +319,17 @@ cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
     'ell_bins_proj_nongauss_cosebis', 10_000
 )
 
-
 # Psi-statistics not implemented yet
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
+
+# Shape noise in the sims:
+# - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
+#   is the analytic model, so the noise part of the comparison is circular.
+# - catalogue: per-pixel variance ∝ w, as for catalogue-sum weight maps (Heracles),
+#   with the same coupled noise level as the analytic covariance.
+# The two coincide for a binary mask.
+cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
 
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
@@ -586,7 +614,7 @@ if kmax_limber > k_max_cfg:
         f'{kmax_limber = :.2f} {_k_txt_label} > {k_max_cfg = :.2f} {_k_txt_label}\n'
         f'for ell_max = {_ell_max} and z_min = {_z_min}.\n'
         f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
-        stacklevel=1
+        stacklevel=1,
     )
     cfg['precision']['log10_k_max'] = float(np.log10(kmax_limber))
 
@@ -734,10 +762,9 @@ footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
 mask_utils.plot_footprint(footp_ab_dict['GL'], probe='GL')
 
 
-# compute footprint spectra
+# compute SSC window spectra
 footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
-    footp_ab_dict=footp_ab_dict,
-    fsky_ab_dict=fsky_ab_dict,
+    ssc_window_ab_dict=mask_utils.ssc_window_ab(mask_obj_ll, mask_obj_gg),
     unique_probe_combs_hs=unique_probe_combs_hs,
 )
 
@@ -1009,10 +1036,28 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
+    # unbinned Cls on the NaMaster grid, from 0 to ell_max_nmt: the mask couples the
+    # signal above ell_max into the science bands
+    ell_max_3x2pt = bin_obj.ell_max_3x2pt
 
-    # unbinned Cls on the NaMaster grid (from 0 to ell_max_nmt)
-    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
-    ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
+    # the largest multipole available: what the fields can represent and, for input
+    # Cls, what they cover (they are not extrapolated above it)
+    ell_max_cap = 3 * cfg['mask']['nside'] - 1
+    for need_input, ells_in in (
+        (io_obj.need_input_cl_ll, io_obj.ells_WL_in),
+        (io_obj.need_input_cl_gl, io_obj.ells_XC_in),
+        (io_obj.need_input_cl_gg, io_obj.ells_GC_in),
+    ):
+        if need_input:
+            ell_max_cap = min(ell_max_cap, int(np.max(ells_in)))
+
+    ell_max_nmt = cov_partial_sky.resolve_ell_max_nmt(
+        cfg['precision'].get('ell_max_nmt'),
+        ell_max_3x2pt,
+        ell_max_cap,
+        coupled=cfg['covariance']['cov_type'] == 'coupled',
+    )
+    ells_3x2pt_nmt_unb = np.arange(ell_max_nmt + 1)
     nbl_3x2pt_nmt_unb = len(ells_3x2pt_nmt_unb)
 
     cl_3x2pt_nmt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
@@ -1027,6 +1072,8 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_obj.nbl_3x2pt_unb = nbl_3x2pt_nmt_unb
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_nmt_unb_5d
     cov_nmt_obj.nl_3x2pt_unb_5d = nl_3x2pt_nmt_unb_5d
+    cov_nmt_obj.ell_max_nmt = ell_max_nmt
+
     # and additional useful ones
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
 

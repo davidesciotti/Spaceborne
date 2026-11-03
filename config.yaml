@@ -6,6 +6,7 @@
 # [Note] When not on the same line, comments always refer to the option/section immediately below.
 # [Note] `None` is `null` in YAML
 # [Note] Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
+# [Note] Do *not* delete any option from the cfg file, even if you don't use it.
 
 # ROOTS:
 # pleiadi: /_u/dsciotti/code
@@ -21,10 +22,8 @@
 ########################################################################################
 ########################################################################################
 
-# Parameter names follow the cosmology API and cloelib. See, e.g., 
+# Parameter names follow the cosmology API and cloelib. See, e.g.,
 # https://cosmology.readthedocs.io/projects/api/latest/api/reference.html
-# The dark energy density is set by closure: 
-# Omega_de0 = 1 - Omega_m0 - Omega_k0 (- radiation)
 cosmology:
   Omega_m0: 0.32 # Type: float. Total matter density parameter (incl. massive neutrinos), at z=0
   Omega_b0: 0.05 # Type: float. Baryonic density parameter, at z=0
@@ -81,7 +80,7 @@ OneCovariance:
 probe_selection:
   # Whether to compute the covariance matrix in real or harmonic space.
   # Options: ['harmonic', 'real', 'cosebis'].
-  space: real # Type: str.
+  space: harmonic # Type: str.
 
   LL: True # Type: bool. Whether to compute the weak lensing ('LL') covariance
   GL: True # Type: bool. Whether to compute the galaxy-galaxy lensing ('GL') covariance
@@ -108,7 +107,7 @@ nz:
 
   # Number of galaxies per arcmin**2 for each redshift bin.
   # For weighted samples, use the effective density n_eff = (sum w)^2 / sum(w^2) / area,
-  # with area the observed (non-zero) area of the footprint (= Heracles `dens`).
+  # with area the observed (non-zero) area of the footprint.
   # Should be of length 'zbins'
   ngal_sources: [8.09216, 7.09215, 6.09215] # Type: list[float]
   ngal_lenses: [1.09216, 2.09215, 3.09215] # Type: list[float]
@@ -133,7 +132,7 @@ binning:
   # [Note] In the 'unbinned' case, the code will use np.arange(ell_min, ell_max + 1),
   # so ell_bins is ignored and ell_max is included in the grid.
   ell_min: 10 # Type: int | float. Minimum ell
-  ell_max: 1500 # Type: int | float. Maximum ell
+  ell_max: 3000 # Type: int | float. Maximum ell
   ell_bins: 20 # Type: int. Number of ell bins. Not used in the 'unbinned' case
 
   # Path to user-provided ell binning scheme. Used only if 'binning_type' is set to 'from_input'.
@@ -172,7 +171,11 @@ C_ell:
   cl_GL_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gl.txt # Type: str. Path to the galaxy-shear angular PS.
   cl_GG_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
-  # Which galaxy and magnification bias to use. Options:
+  # Which galaxy and magnification bias to use.
+  # The magnification bias coefficients are the b_mag defined in
+  # https://arxiv.org/pdf/2510.09118, i.e., b_mag(z) = 5*s(z) - 2,
+  # where s(z) is the logarithmic slope of the lenses’ luminosity function
+  # Options:
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
   # - 'polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
   #                         The actual values of these coefficients can be changed by modifying the values of
@@ -212,13 +215,13 @@ C_ell:
     l_limber: -1 # Type: int
     limber_integration_method: spline # Type: str
     non_limber_integration_method: FKEM # Type: str
-    
+
 mask:
-  # Configs for the survey footprint and weight maps. 
-  
+  # Configs for the survey footprint and weight maps.
+
   # The footprint can binary or fractional. In the latter case it is assumed that its
-  # value represents the observed fraction (coverage) of each pixel. It is a single map, common 
-  # to all redshift bins, and it is used to compute the fsky factors, as 
+  # value represents the observed fraction (coverage) of each pixel. It is a single map, common
+  # to all redshift bins, and it is used to compute the fsky factors, as
   # fsky = mean(footprint). For the GL probe pair the window is
   # min(footprint_LL, footprint_GG) (nested masks assumed).
   # The 'geometry' option determines how the footprint is defined:
@@ -226,13 +229,13 @@ mask:
   # - 'polar_cap': the footprint will be generated as a polar cap with area specified by 'survey_area_deg2'.
 
   # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
-  # which should contain a number of maps equal to the number of redshift bins, for the 
-  # given probe. If null, the weight maps will not be used. 
+  # which should contain a number of maps equal to the number of redshift bins, for the
+  # given probe. If null, the weight maps will not be used.
   # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
-  # They are assumed to be catalogue sums (e.g. Heracles `Weights`) or visibility maps.
-  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), with
-  # full-sky means.
-  
+  # They are assumed to be catalogue sums or visibility maps.
+  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), 
+  # where the mean <•> is over the full sky
+
   # The options outside of the 'LL' and 'GG' sections are common to both probes.
   LL:
     geometry: polar_cap # Type: str. Options: [footprint_file, polar_cap]
@@ -282,7 +285,7 @@ covariance:
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
   # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.16, 0.36] # Type: list[float]
+  sigma_eps_i: [0.26, 0.27, 0.28] # Type: list[float]
 
   # Whether to include the noise power spectra in the computation of the
   # Gaussian covariance matrix.
@@ -297,7 +300,7 @@ covariance:
   # GL and GG SSC responses and in the cNG trispectrum.
   # Options:
   # - 'linear_bias': galaxies are linearly biased tracers of matter, with b1 taken from
-  #                  the input tabulated values/third order polynomial computed in SB. 
+  #                  the input tabulated values/third order polynomial computed in SB.
   #                  This is consistent with the C_ells. The PyCCL cNG uses the matter
   #                  trispectrum, with the galaxy bias entering through the kernels.
   # - 'HOD': the galaxy field is described by the Halo Occupation Distribution (HOD)
@@ -413,7 +416,7 @@ precision:
   # For COSEBIs, a finer grid is needed for the projection of the non-Gaussian covariance.
   # The grid is np.geomspace(ell_min_proj, ell_max_proj, ell_bins_proj_nongauss_cosebis).
   # [Note] the non-Gaussian harmonic-space covariance is still computed in ell_bins_proj_nongauss points.
-  # It is then interpolated over the finer grid for the projection to COSEBIs, which is also 
+  # It is then interpolated over the finer grid for the projection to COSEBIs, which is also
   # used to compute the W_n(\ell) projection kernels.
   ell_bins_proj_nongauss_cosebis: 10000 # Type: int.
 
@@ -433,6 +436,20 @@ precision:
   # This is (significantly) faster, but less accurate.
   spin0: False # Type: bool.
   iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
+  
+  # nside at which the data were mapped, for spectra measured with the HEALPix 
+  # pixel window deconvolved. It can differ from mask.nside. null: no pixel window.
+  pixwin_nside: null # Type: int | None
+  
+  # For `NaMaster` and `ensemble` coupled covariances. 
+  # The mask couples signal above ell_max into the desired range. To capture this, add
+  # a buffer to the ell range of the input Cls, namaster workspaces and mode-coupling 
+  # matrices. The buffer is capped at 3 * nside - 1. Default (null) is such that
+  # ell_max_nmt = 1.5 * ell_max. Set to 0 to disable the buffer.
+  ell_max_nmt: null # Type: int | None
+  
+  # Whether to keep the E->B leakage in the coupled spectra passed to the iNKA.
+  iNKA_eb_leakage: False # Type: bool.
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can result
@@ -451,15 +468,15 @@ precision:
     A_SPLINE_NA_PK: 200 # Type: int
   gsl_params: null # Type: dict | None
 
-  # (from CCL docs): whether a separable growth function approximation can be used to 
-  # calculate the isotropized power spectrum. 
+  # (from CCL docs): whether a separable growth function approximation can be used to
+  # calculate the isotropized power spectrum.
   # Set to True for lower accuracy and (much) faster computation
   separable_growth: True # Type: bool
 
 misc:
   # [Note] If you work from an interactive environment (e.g. jupyter notebook), you might
   #        have to restart the kernel after changing the num_threads, and jax_platform
-  num_threads: 20 # Type: int. How many threads to use for the parallel computations
+  num_threads: 50 # Type: int. How many threads to use for the parallel computations
 
   # Device used for JAX-accelerated computation. Can be one of 'auto', 'cpu' or 'gpu'
   jax_platform: auto # Type: str.

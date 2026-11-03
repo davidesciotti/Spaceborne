@@ -84,6 +84,44 @@ Naming conventions (just to ease the notation):
 """
 
 
+def _git(repo_path: str, *args: str) -> str:
+    return subprocess.run(
+        ['git', '-C', repo_path, *args], check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
+def assert_repo_branch(repo_path: str, expected_branch: str) -> None:
+    try:
+        is_git_repo = _git(repo_path, 'rev-parse', '--is-inside-work-tree')
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise RuntimeError(
+            f'Cannot check the Spaceborne branch: {repo_path} is not a git repository '
+            'or git is not installed. Set misc.Spaceborne_branch: null to skip the '
+            'check.'
+        ) from e
+
+    if is_git_repo != 'true':  # e.g. inside the .git directory
+        raise RuntimeError(f'{repo_path} is not a git work tree')
+
+    current_branch = _git(repo_path, 'rev-parse', '--abbrev-ref', 'HEAD')
+
+    if current_branch == 'HEAD':  # detached, e.g. checked out on a tag
+        try:
+            current_branch = _git(repo_path, 'describe', '--tags', '--exact-match')
+        except subprocess.CalledProcessError as e:
+            commit = _git(repo_path, 'rev-parse', '--short', 'HEAD')
+            raise RuntimeError(
+                f'Repo at {repo_path} is in detached HEAD at untagged commit {commit}, '
+                f'expected "{expected_branch}".'
+            ) from e
+
+    if current_branch != expected_branch:
+        raise RuntimeError(
+            f'Repo at {repo_path} is on branch "{current_branch}", '
+            f'expected "{expected_branch}".'
+        )
+
+
 def cut_map_hemisphere(hp_map, nside, hemisphere_to_keep):
     npix = hp.nside2npix(nside)
     pixels = np.arange(npix)
@@ -1290,6 +1328,14 @@ def check_interpolate_input_tab(
 
     z_in = input_tab[:, 0]
     vals_in = input_tab[:, 1:]
+
+    # Guard against extrapolation outside the input table z range
+    if np.min(z_grid_out) < np.min(z_in) or np.max(z_grid_out) > np.max(z_in):
+        raise ValueError(
+            f'The input table covers z = [{np.min(z_in)}, {np.max(z_in)}], but '
+            f'it has to be evaluated on z = [{np.min(z_grid_out)}, '
+            f'{np.max(z_grid_out)}]. Extend the input table, or restrict z_min/z_max.'
+        )
 
     if kind == 'CubicSpline':
         interp_func = CubicSpline(x=z_in, y=vals_in, axis=0)

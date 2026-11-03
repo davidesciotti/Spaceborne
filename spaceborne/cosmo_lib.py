@@ -320,8 +320,8 @@ def get_omega_nu0_new(m_nu, h, neutrino_mass_fac=93.14):
     return m_nu / (neutrino_mass_fac * h**2)
 
 
-def get_omega_k0(omega_m0, omega_Lambda0):
-    omega_k0 = 1 - omega_m0 - omega_Lambda0
+def get_omega_k0(omega_m0, omega_lambda0):
+    omega_k0 = 1 - omega_m0 - omega_lambda0
     if np.abs(omega_k0) < 1e-10:
         warnings.warn(
             'Omega_k is very small but not exactly 0, probably due to numerical '
@@ -332,55 +332,70 @@ def get_omega_k0(omega_m0, omega_Lambda0):
     return omega_k0
 
 
-def instantiate_cosmo_ccl_obj(fiducial_pars_dict, extra_parameters):
-    # example extra_parameters:
-    # extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
-    #                              "HMCode_logT_AGN": 7.75}}
 
+def get_mass_split(extra_pars: dict):
+    """Map camb's num_massive_neutrinos to CCL's mass_split ('single' if unset)."""
+    mass_split_dict = {1: 'single', 3: 'equal'}
+
+    try:
+        num_massive_nu = extra_pars['camb']['num_massive_neutrinos']
+    except (KeyError, TypeError):
+        return 'single'
+
+    assert num_massive_nu in mass_split_dict, (
+        f'num_massive_neutrinos must be 1 or 3, got {num_massive_nu}'
+    )
+
+    return mass_split_dict[num_massive_nu]
+
+
+def instantiate_cosmo_ccl_obj(fiducial_pars: dict, extra_pars: dict):
+    """Instantiate a CCL cosmology object from the parameters in the Spaceborne basis.
+    extra_pars is a dictionary with thie structure:
+    extra_pars = {"camb": {"halofit_version": "mead2020_feedback",
+                                 "HMCode_logT_AGN": 7.75}}
+    """
+    
     # flatten the dictionary if it's nested
-    fiducial_pars_dict = sl.flatten_dict(fiducial_pars_dict)
+    fiducial_pars = sl.flatten_dict(fiducial_pars)
+
+    # CCL ignores camb's num_massive_neutrinos: the number of massive species is set
+    # by mass_split only
+    mass_split = get_mass_split(extra_pars)
 
     # Take Omega_nu (massive) from CCL itself, so that the CCL Omega_m matches the
     # requested Omega_m0 exactly (CCL: Omega_m = Omega_c + Omega_b + Omega_nu_mass)
     omega_nu0 = ccl.Cosmology(
         Omega_c=0.25,  # placeholder, Omega_nu_mass does not depend on it
-        Omega_b=fiducial_pars_dict['Omega_b0'],
-        h=fiducial_pars_dict['h'],
-        sigma8=fiducial_pars_dict['sigma8'],
-        n_s=fiducial_pars_dict['ns'],
-        m_nu=fiducial_pars_dict['m_nu'],
-        Neff=fiducial_pars_dict['Neff'],
-        mass_split='single',
+        Omega_b=fiducial_pars['Omega_b0'],
+        h=fiducial_pars['h'],
+        sigma8=fiducial_pars['sigma8'],
+        n_s=fiducial_pars['ns'],
+        m_nu=fiducial_pars['m_nu'],
+        Neff=fiducial_pars['Neff'],
+        mass_split=mass_split,
     )['Omega_nu_mass']
 
     omega_cdm0 = (
-        fiducial_pars_dict['Omega_m0'] - fiducial_pars_dict['Omega_b0'] - omega_nu0
+        fiducial_pars['Omega_m0'] - fiducial_pars['Omega_b0'] - omega_nu0
     )
-
-    if extra_parameters is None:
-        try:
-            extra_parameters = fiducial_pars_dict['other_params'][
-                'camb_extra_parameters'
-            ]
-        except KeyError:
-            print('No extra parameters passed to CAMB in instantiate_cosmo_ccl_obj')
 
     cosmo_ccl = ccl.Cosmology(
         Omega_c=omega_cdm0,
-        Omega_b=fiducial_pars_dict['Omega_b0'],
-        w0=fiducial_pars_dict['w0'],
-        wa=fiducial_pars_dict['wa'],
-        h=fiducial_pars_dict['h'],
-        sigma8=fiducial_pars_dict['sigma8'],
-        n_s=fiducial_pars_dict['ns'],
-        m_nu=fiducial_pars_dict['m_nu'],
-        Neff=fiducial_pars_dict['Neff'],
+        Omega_b=fiducial_pars['Omega_b0'],
+        w0=fiducial_pars['w0'],
+        wa=fiducial_pars['wa'],
+        h=fiducial_pars['h'],
+        sigma8=fiducial_pars['sigma8'],
+        n_s=fiducial_pars['ns'],
+        m_nu=fiducial_pars['m_nu'],
+        Neff=fiducial_pars['Neff'],
         # the dark energy density is set by CCL by closure
-        Omega_k=fiducial_pars_dict['Omega_k0'],
+        Omega_k=fiducial_pars['Omega_k0'],
         baryonic_effects=None,
-        mass_split='single',
+        mass_split=mass_split,
         matter_power_spectrum='camb',
-        extra_parameters=extra_parameters,
+        extra_parameters=extra_pars,
     )
 
     return cosmo_ccl

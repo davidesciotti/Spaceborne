@@ -68,6 +68,10 @@ class SpaceborneConfigChecker:
         assert isinstance(camb_params['num_massive_neutrinos'], int), (
             'extra_parameters: camb: num_massive_neutrinos must be an int'
         )
+        assert camb_params['num_massive_neutrinos'] in (1, 3), (
+            'extra_parameters: camb: num_massive_neutrinos must be 1 (single) '
+            'or 3 (equal mass split)'
+        )
         assert isinstance(camb_params['dark_energy_model'], str), (
             'extra_parameters: camb: dark_energy_model must be a string'
         )
@@ -123,9 +127,9 @@ class SpaceborneConfigChecker:
         assert isinstance(c_ell_cfg['mag_bias_fit_coeff'], list), (
             'C_ell: mag_bias_fit_coeff must be a list'
         )
-        assert all(
-            isinstance(x, float) for x in c_ell_cfg['mag_bias_fit_coeff']
-        ), 'C_ell: All elements in mag_bias_fit_coeff must be floats'
+        assert all(isinstance(x, float) for x in c_ell_cfg['mag_bias_fit_coeff']), (
+            'C_ell: All elements in mag_bias_fit_coeff must be floats'
+        )
 
         assert isinstance(c_ell_cfg['gal_bias_table_filename'], str), (
             'C_ell: gal_bias_table_filename must be a string'
@@ -235,6 +239,10 @@ class SpaceborneConfigChecker:
         assert isinstance(ensemble_cov_cfg['save_sim_cls'], bool), (
             'ensemble_covariance: save_sim_cls must be a boolean'
         )
+        assert ensemble_cov_cfg.get('noise_model', 'catalogue') in (
+            'painted',
+            'catalogue',
+        ), "ensemble_covariance: noise_model must be 'painted' or 'catalogue'"
 
         # OneCovariance
         if 'OneCovariance' in self.cfg:
@@ -452,6 +460,21 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(precision_cfg['spin0'], bool), (
             'precision: spin0 must be a boolean'
+        )
+        pixwin_nside = precision_cfg.get('pixwin_nside')
+        assert pixwin_nside is None or (
+            isinstance(pixwin_nside, int)
+            and pixwin_nside > 0
+            and pixwin_nside & (pixwin_nside - 1) == 0
+        ), 'precision: pixwin_nside must be None or a power of 2'
+        ell_max_nmt = precision_cfg.get('ell_max_nmt')
+        assert ell_max_nmt is None or (
+            isinstance(ell_max_nmt, int)
+            and not isinstance(ell_max_nmt, bool)
+            and ell_max_nmt > 0
+        ), 'precision: ell_max_nmt must be None or a positive int'
+        assert isinstance(precision_cfg.get('iNKA_eb_leakage', False), bool), (
+            'precision: iNKA_eb_leakage must be a boolean'
         )
         assert isinstance(precision_cfg['n_samples_wf'], int), (
             'precision: n_samples_wf must be an int'
@@ -679,6 +702,15 @@ class SpaceborneConfigChecker:
             raise ValueError(
                 'If computing the partial-sky covariance with NaMaster, '
                 '`covariance: G_code` should not be set (or set to "Spaceborne").'
+            )
+        # Knox has no pixel window
+        if self.cfg['precision'].get('pixwin_nside') is not None:
+            assert self.cfg['covariance']['partial_sky_method'] in (
+                'NaMaster',
+                'ensemble',
+            ), (
+                'precision: pixwin_nside requires partial_sky_method `NaMaster` '
+                'or `ensemble`'
             )
 
     def check_onecov(self) -> None:

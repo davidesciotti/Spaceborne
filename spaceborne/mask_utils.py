@@ -14,8 +14,9 @@ def get_footprint_cl_abcd_dicts(
     """Compute the Cls and the normalised Cls of the SSC windows for all probe
     combinations in unique_probe_combs_hs.
 
-    Each cross-spectrum is normalised by the means of the two windows, so that
-    sum_L (2L+1) C_L^norm P_L is the variance of the window-averaged background mode.
+    Each cross-spectrum is normalised by the means of the two windows and includes the
+    (2L+1) factor, so that sum_L C_L^norm C_L^delta is the variance of the
+    window-averaged background mode (CCL's mask_wl convention).
     """
 
     footp_cl_abcd_dict = {}

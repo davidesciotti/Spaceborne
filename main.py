@@ -329,7 +329,7 @@ cfg['probe_selection']['Psigg'] = False
 # - catalogue: per-pixel variance ∝ w, as for catalogue-sum weight maps (Heracles),
 #   with the same coupled noise level as the analytic covariance.
 # The two coincide for a binary mask.
-cfg['ensemble_covariance'].get('noise_model', 'catalogue')
+cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
 
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 

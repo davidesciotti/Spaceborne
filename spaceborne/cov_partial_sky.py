@@ -554,7 +554,7 @@ def compute_ensemble_covariance_parallel(
     n_jobs: int,
     fix_seed=True,
     lmax_sim: int | None = None,
-    noise_model: str = 'painted',
+    noise_model: str = 'catalogue',
     pixwin_nside: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Computes the ensemble covariance from a set of simulated power spectra.
@@ -1745,7 +1745,7 @@ class CovNaMaster:
                 nmt_bin_obj=self.nmt_bin_obj,
                 lmax=ell_max_3x2pt,
                 lmax_sim=ell_max_nmt,
-                noise_model=ens_cfg.get('noise_model', 'painted'),
+                noise_model=ens_cfg['noise_model'],
                 pixwin_nside=pixwin_nside,
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['ensemble_covariance']['fix_seed'],

@@ -20,7 +20,7 @@ dependencies:
   # pymaster dependencies - optional
   - cfitsio
   - fftw
-  - namaster
+  - namaster==2.7
 
   # pylevin dependencies - optional
   - c-compiler
@@ -32,7 +32,7 @@ dependencies:
   - pip:
       - pytest # required to run the test suite (CI and local)
       - jax
-      - euclidlib>=2026.4
+      - euclidlib>=2026.11
         # optional dependency, only used to read the n(z) and C(l)
         # in the official Euclid LE3 format
       - "heracles @ git+https://github.com/heracles-ec/heracles.git@v26.10"

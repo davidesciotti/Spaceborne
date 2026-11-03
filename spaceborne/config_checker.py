@@ -239,7 +239,7 @@ class SpaceborneConfigChecker:
         assert isinstance(ensemble_cov_cfg['save_sim_cls'], bool), (
             'ensemble_covariance: save_sim_cls must be a boolean'
         )
-        assert ensemble_cov_cfg.get('noise_model', 'painted') in (
+        assert ensemble_cov_cfg.get('noise_model', 'catalogue') in (
             'painted',
             'catalogue',
         ), "ensemble_covariance: noise_model must be 'painted' or 'catalogue'"

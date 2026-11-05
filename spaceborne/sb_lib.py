@@ -664,6 +664,35 @@ def split_probe_name(
     )
 
 
+def plot_split_corr(cov_a, cov_b, name_a, name_b, title=None, ax=None):
+    """Plot the correlation matrix of cov_a in the upper triangle and the one of cov_b
+    in the lower triangle of the same image (the diagonal, all ones, is from cov_a)."""
+    assert cov_a.shape == cov_b.shape, 'the two covariances must have the same shape'
+
+    corr_a = cov2corr(cov_a)
+    corr_b = cov2corr(cov_b)
+    split = np.triu(corr_a) + np.tril(corr_b, k=-1)
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.figure
+
+    im = ax.matshow(split, cmap='RdBu_r', vmin=-1, vmax=1)
+    fig.colorbar(im, ax=ax, label='correlation')
+
+    # which triangle is which
+    text_kw = {'transform': ax.transAxes, 'fontsize': 9}
+    text_kw['bbox'] = {'facecolor': 'white', 'alpha': 0.8, 'edgecolor': 'none'}
+    ax.text(0.97, 0.97, name_a, ha='right', va='top', **text_kw)
+    ax.text(0.03, 0.03, name_b, ha='left', va='bottom', **text_kw)
+
+    if title is not None:
+        ax.set_title(title)
+
+    return fig, ax
+
+
 def compare_2d_covs(
     cov_a,
     cov_b,
@@ -1253,11 +1282,12 @@ def compare_funcs(
         ax[0].plot(x, _y, label=names[i], c=colors[i], ls=ls, **plt_kw)
     ax[0].legend()
 
+    # every curve is compared with the first one: y_i / y_0 - 1
     for i in range(1, len(y_tuple)):
         ax[1].plot(
             x, percent_diff(y_tuple[i], y_tuple[0]), c=colors[i], ls='-', **plt_kw
         )
-    ax[1].set_ylabel('A/B - 1 [%]')
+    ax[1].set_ylabel('B/A - 1 [%]')
     ax[1].axhspan(-10, 10, alpha=0.2, color='gray')
 
     for i in range(2):

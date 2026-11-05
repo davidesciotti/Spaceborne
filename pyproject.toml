@@ -40,7 +40,7 @@ ignore = [
     #"E501", # Line too long
     "PLR0913", # too many args in function
     "PLR2004", # Magic value used in comparison
-    "PLR0912",  # Too many branches
+    "PLR0912",  # Too many branches 
     "PLC0415", # `import` should be at the top-level of a file
     "D103", # Missing docstring in public function
     "D104", # missing docstring in package

@@ -38,7 +38,7 @@ dependencies:
       - "heracles @ git+https://github.com/heracles-ec/heracles.git@v26.10"
         # optional dependency, only used to save the covariance
         # in the official Euclid LE3 format
-      - "cloelib[pylevin,mpmath] @ git+https://github.com/cloe-org/cloelib.git@v0.11"
+      - "cloelib[pylevin,mpmath]==0.11"
         # optional dependency, only used to compute the COSEBIs covariance
       - pyyaml
       - joblib

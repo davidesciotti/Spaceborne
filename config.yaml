@@ -78,9 +78,9 @@ nz:
   nz_lenses_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
-  # For weighted samples, use the effective density 
+  # For weighted samples, use the effective density
   # n_eff = (sum w)^2 / sum(w^2) / A_eff,
-  # with A_eff = fsky * 4pi sr [to be converted to arcmin^2] and fsky calculated 
+  # with A_eff = fsky * 4pi sr [to be converted to arcmin^2] and fsky calculated
   # as the mean of the footprint (binary or fractional) over the whole sky
   ngal_sources: [8.09215, 8.09215, 8.09215] # Type: list[float], len = 'zbins'
   ngal_lenses: [4.09216, 4.09215, 4.09215] # Type: list[float], len = 'zbins'
@@ -202,11 +202,12 @@ mask:
   # - 'polar_cap': the footprint will be generated as a polar cap with area specified by 'survey_area_deg2'.
 
   # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
-  # which should contain a number of maps equal to the number of redshift bins, for the
-  # given probe. If null, the weight maps will not be used.
-  # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
+  # which should contain a number of maps equal to the number of redshift bins for the
+  # given probe. If `null`, the weight maps will not be used.
+  # Note that the weight maps are only used to compute the partial-sky Gaussian
+  # covariance (`partial_sky_method` = 'NaMaster' or 'ensemble')
   # They are assumed to be catalogue sums or visibility maps.
-  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), 
+  # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>),
   # where the mean <•> is over the full sky
 
   # The options outside of the 'LL' and 'GG' sections are common to both probes.
@@ -408,18 +409,18 @@ precision:
   # This is (significantly) faster, but less accurate.
   spin0: False # Type: bool.
   iNKA: True # Type: bool. Whether to use the improved Narrow Kernel Approximation
-  
-  # nside at which the data were mapped, for spectra measured with the HEALPix 
+
+  # nside at which the data were mapped, for spectra measured with the HEALPix
   # pixel window deconvolved. It can differ from mask.nside. null: no pixel window.
   pixwin_nside: null # Type: int | None
-  
-  # For `NaMaster` and `ensemble` coupled covariances. 
+
+  # For `NaMaster` and `ensemble` coupled covariances.
   # The mask couples signal above ell_max into the desired range. To capture this, add
-  # a buffer to the ell range of the input Cls, namaster workspaces and mode-coupling 
+  # a buffer to the ell range of the input Cls, namaster workspaces and mode-coupling
   # matrices. The buffer is capped at 3 * nside - 1. Default (null) is such that
   # ell_max_nmt = 1.5 * ell_max. Set equal to ell_max to disable the buffer.
   ell_max_nmt: null # Type: int | None
-  
+
   # Whether to keep the E->B leakage in the coupled spectra passed to the iNKA.
   iNKA_eb_leakage: False # Type: bool.
 

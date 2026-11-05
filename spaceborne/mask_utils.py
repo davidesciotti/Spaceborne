@@ -9,28 +9,33 @@ from spaceborne import sb_lib as sl
 
 
 def get_footprint_cl_abcd_dicts(
-    footp_ab_dict: dict, fsky_ab_dict: dict, unique_probe_combs_hs: list
+    ssc_window_ab_dict: dict, unique_probe_combs_hs: list
 ) -> tuple:
-    """Compute the Cls and the normalised Cls for all footprints in
-    unique_probe_combs_hs"""
+    """Compute the Cls and the normalised Cls of the SSC windows for all probe
+    combinations in unique_probe_combs_hs.
+
+    Each cross-spectrum is normalised by the means of the two windows and includes the
+    (2L+1) factor, so that sum_L C_L^norm C_L^delta is the variance of the
+    window-averaged background mode (CCL's mask_wl convention).
+    """
 
     footp_cl_abcd_dict = {}
     footp_cl_norm_abcd_dict = {}
     for probe_abcd in unique_probe_combs_hs:
         probe_ab, probe_cd = sl.split_probe_name(probe_abcd, space='harmonic')
+        w_ab = ssc_window_ab_dict[probe_ab]
+        w_cd = ssc_window_ab_dict[probe_cd]
 
-        # compute and store the footprint cross-spectrum...
-        _ells, _cls = get_maps_cl(footp_ab_dict[probe_ab], footp_ab_dict[probe_cd])
+        # compute and store the window cross-spectrum...
+        _ells, _cls = get_maps_cl(w_ab, w_cd)
 
         # ...and its normalised version
         footp_cl_abcd_dict[probe_ab, probe_cd] = (_ells, _cls)
-        denominator = (4 * np.pi) ** 2 * fsky_ab_dict[probe_ab] * fsky_ab_dict[probe_cd]
+        denominator = (4 * np.pi) ** 2 * np.mean(w_ab) * np.mean(w_cd)
         _cls_norm = _cls * (2 * _ells + 1) / denominator
         footp_cl_norm_abcd_dict[probe_ab, probe_cd] = (_ells, _cls_norm)
 
-        check_footprint_cl_band_limit(
-            _ells, _cls, footp_ab_dict[probe_ab], footp_ab_dict[probe_cd], probe_abcd
-        )
+        check_footprint_cl_band_limit(_ells, _cls, w_ab, w_cd, probe_abcd)
     return footp_cl_abcd_dict, footp_cl_norm_abcd_dict
 
 
@@ -84,18 +89,20 @@ def plot_footprint(footprint: np.ndarray, probe: str):
 def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
     """
     Given the LL and GG mask objects, computes the AB masks and their fsky.
+
+    The footprints can be binary or fractional. In the second case, they are
+    interpreted as coverage maps with c_p = observed fraction ("covarage") of
+    pixel p.
+    The window of a probe AB is the region observed by both fields, given by
+    min(c_A, c_B).
+    Strictly speaking, this is only correct for nested masks.
+
+    The fsky used in various places in the code is the mean of these footprints.
     """
     m_ll = mask_obj_ll.footprint
     m_gg = mask_obj_gg.footprint
 
-    # The SSC window of a probe pair AB is the *product* of the two fields'
-    # masks, W_A * W_B (TJPCov convention, see covariance_fourier_ssc.py). For a
-    # non-binary mask (e.g. a fractional weight map) this differs from the single mask, so the
-    # auto-pairs must be squared too (W_A^2) to stay consistent with the
-    # mean(W_A * W_B) effective fsky used in the normalisation downstream.
-    footp_ab_dict = {'LL': m_ll * m_ll, 'GL': m_ll * m_gg, 'GG': m_gg * m_gg}
-    # NB: fsky is the mean of the product of the *single* masks, mean(W_A * W_B),
-    # NOT the mean of the squared window above (which would be mean(W_A^2 W_B^2)).
+    footp_ab_dict = {'LL': m_ll, 'GL': np.minimum(m_ll, m_gg), 'GG': m_gg}
     fsky_ab_dict = {
         'LL': combined_fsky(m_ll, m_ll),
         'GL': combined_fsky(m_ll, m_gg),
@@ -125,11 +132,26 @@ def footprint_fsky_ab(mask_obj_ll, mask_obj_gg):
     return footp_ab_dict, fsky_ab_dict
 
 
+def ssc_window_ab(mask_obj_ll, mask_obj_gg) -> dict:
+    """SSC windows W_A * W_B of the probe pairs AB (W_A^2 for the auto-pairs).
+
+    A long-wavelength mode modulates the local power, and the pseudo-Cl of two fields
+    with masks W_A, W_B weights the local power by W_A W_B. The response is therefore
+    the W_A W_B-weighted mean of the background mode (TJPCov convention,
+    covariance_fourier_ssc.py), normalised by mean(W_A W_B) in
+    get_footprint_cl_abcd_dicts. For binary footprints this equals the overlap
+    min(W_A, W_B) used in footprint_fsky_ab; for fractional coverage maps it differs,
+    since the field masks (and hence the NaMaster mode-coupling matrices) are the
+    coverage maps themselves.
+    """
+    m_ll = mask_obj_ll.footprint
+    m_gg = mask_obj_gg.footprint
+    return {'LL': m_ll * m_ll, 'GL': m_ll * m_gg, 'GG': m_gg * m_gg}
+
+
 def combined_fsky(map1: np.ndarray, map2: np.ndarray) -> float:
-    """Combine two masks (e.g. footprint and weight map) by multiplying them
-    and compute the resulting fsky."""
-    fsky_combined = np.mean(map1 * map2)
-    return float(fsky_combined)
+    """Sky fraction observed by both of two (possibly fractional) coverage maps."""
+    return float(np.mean(np.minimum(map1, map2)))
 
 
 def get_maps_cl(map1: np.ndarray, map2: np.ndarray) -> tuple:
@@ -178,6 +200,20 @@ def up_downgrade_map(map_in, nside_out):
         return map_out
     else:
         return map_in
+
+
+def check_binary(footprint):
+    observed = footprint > 0
+    n_obs = np.sum(observed)
+    frac_nonbinary = 1 - np.sum(np.isclose(footprint[observed], 1.0)) / n_obs
+    if frac_nonbinary > 0.05:
+        warnings.warn(
+            f'{frac_nonbinary:.1%} of the observed pixels are neither 0 nor 1. The '
+            'footprint should be binary; fractional values are interpreted as '
+            'weights (effective fsky = mean(W_a * W_b)). Please check the '
+            'footprint file.',
+            stacklevel=2,
+        )
 
 
 class Mask:
@@ -267,9 +303,8 @@ class Mask:
         #     self.cl_mask = None
         #     self.fsky = self.survey_area_deg2 / constants.DEG2_IN_SPHERE
 
-        print(f'fsky = {self.fsky_footprint:.4f}')
-        print(f'survey_area_sr = {self.survey_area_sr:.4f}')
-        print(f'survey_area_deg2 = {self.survey_area_deg2:.4f}\n')
+        print(f'fsky: {self.fsky_footprint:.4f}')
+        print(f'survey area: {self.survey_area_deg2:.4f} [deg^2]\n')
 
     def process(self):
         self.load()

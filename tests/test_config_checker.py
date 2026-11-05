@@ -37,6 +37,7 @@ def _apply_main_hardcoded_overrides(cfg):
     cfg['covariance'].setdefault('cNG_code', 'PyCCL')
     cfg['probe_selection']['Psigl'] = False
     cfg['probe_selection']['Psigg'] = False
+    cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
     return cfg
 
 
@@ -334,12 +335,27 @@ class TestCheckNmt:
         with pytest.raises(ValueError):
             checker.check_nmt()
 
+    def test_pixwin_nside_requires_namaster_or_ensemble(self, valid_cfg):
+        valid_cfg['covariance']['partial_sky_method'] = 'Knox'
+        valid_cfg['precision']['pixwin_nside'] = 1024
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError):
+            checker.check_nmt()
+
+    @pytest.mark.parametrize('method', ['NaMaster', 'ensemble'])
+    def test_pixwin_nside_ok(self, valid_cfg, method):
+        valid_cfg['covariance']['partial_sky_method'] = method
+        valid_cfg['covariance']['G_code'] = 'Spaceborne'
+        valid_cfg['precision']['pixwin_nside'] = 1024
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_nmt()
+
 
 class TestCheckOnecov:
     """Tests for check_onecov."""
 
     def test_magnification_bias_with_oc_raises(self, valid_cfg):
-        valid_cfg['C_ell']['has_magnification_bias'] = True
+        valid_cfg['C_ell']['has_mag_bias'] = True
         valid_cfg['OneCovariance']['compare_against_oc'] = True
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(ValueError):
@@ -360,7 +376,7 @@ class TestCheckPyccl:
     @staticmethod
     def _pyccl_cfg(cfg, ssc, cng, has_mag, has_rsd):
         cfg['covariance'].update(SSC=ssc, cNG=cng, SSC_code='PyCCL', cNG_code='PyCCL')
-        cfg['C_ell']['has_magnification_bias'] = has_mag
+        cfg['C_ell']['has_mag_bias'] = has_mag
         cfg['C_ell']['has_rsd'] = has_rsd
         return config_checker.SpaceborneConfigChecker(cfg, _zbins(cfg))
 
@@ -436,7 +452,7 @@ class TestCheckLists:
     """Tests for check_lists."""
 
     def test_wrong_length_galaxy_bias_fit_coeff_raises(self, valid_cfg):
-        valid_cfg['C_ell']['galaxy_bias_fit_coeff'] = [1.0, 2.0, 3.0]
+        valid_cfg['C_ell']['gal_bias_fit_coeff'] = [1.0, 2.0, 3.0]
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_lists()
@@ -452,9 +468,20 @@ class TestCheckTypesMutations:
     """Tests for check_types with deliberately wrong types."""
 
     def test_non_float_cosmology_param_raises(self, valid_cfg):
-        valid_cfg['cosmology']['Om'] = 1  # int instead of float
+        valid_cfg['cosmology']['Omega_m0'] = 1  # int instead of float
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
+            checker.check_types()
+
+    @pytest.mark.parametrize('legacy', ['Om', 'ODE'])
+    def test_legacy_cosmology_keys_raise(self, valid_cfg, legacy):
+        """Old names must have been migrated (main.py) before the checker runs."""
+        if legacy == 'Om':
+            valid_cfg['cosmology']['Om'] = valid_cfg['cosmology'].pop('Omega_m0')
+        else:
+            valid_cfg['cosmology']['ODE'] = 0.68
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='cosmology'):
             checker.check_types()
 
     def test_non_bool_covariance_g_raises(self, valid_cfg):
@@ -462,3 +489,36 @@ class TestCheckTypesMutations:
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_types()
+
+    @pytest.mark.parametrize(
+        ('section', 'key', 'value'),
+        [
+            ('ensemble_covariance', 'noise_model', 'poisson'),
+            ('precision', 'pixwin_nside', 1000),
+            ('precision', 'pixwin_nside', 1024.0),
+            ('precision', 'ell_max_nmt', 0),
+            ('precision', 'ell_max_nmt', 'auto'),
+            ('precision', 'ell_max_nmt', True),
+            ('precision', 'ell_max_nmt', 2000.0),
+            ('precision', 'iNKA_eb_leakage', 1),
+        ],
+    )
+    def test_invalid_psky_option_raises(self, valid_cfg, section, key, value):
+        valid_cfg[section][key] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError):
+            checker.check_types()
+
+    @pytest.mark.parametrize('value', [None, 500])
+    def test_valid_ell_max_nmt(self, valid_cfg, value):
+        valid_cfg['precision']['ell_max_nmt'] = value
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_types()
+
+    def test_psky_options_optional(self, valid_cfg):
+        """Configs written before these options existed still pass."""
+        del valid_cfg['ensemble_covariance']['noise_model']
+        for key in ('pixwin_nside', 'ell_max_nmt', 'iNKA_eb_leakage'):
+            del valid_cfg['precision'][key]
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_types()

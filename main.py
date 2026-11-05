@@ -63,7 +63,7 @@ else:
         'JAX 64-bit precision is disabled. This may lead to '
         'noticeable differences with respect to the numpy '
         'implementation, which uses 64-bit precision by default.',
-        stacklevel=2,
+        stacklevel=1,
     )
 
 # if using the CPU, set the number of threads
@@ -83,7 +83,7 @@ with contextlib.suppress(AttributeError, NotImplementedError):
 if num_threads > available_cpu_count:
     print(
         f'WARNING: num_threads={num_threads} exceeds available CPUs '
-        f'({affinity_source}={available_cpu_count})'
+        f'({affinity_source}={available_cpu_count}).'
     )
     print(
         f'         Capping at {available_cpu_count} to prevent thread oversubscription'
@@ -129,6 +129,7 @@ from spaceborne import (
     mask_utils,
     oc_interface,
     responses,
+    version_check,
     wf_cl_lib,
 )
 from spaceborne import constants as const
@@ -157,6 +158,33 @@ warnings.filterwarnings(
     message='.*FigureCanvasAgg is non-interactive, and thus cannot be shown.*',
     category=UserWarning,
 )
+
+# ! check that we're running on the expected branch/tag and conda env
+if '__file__' in globals():
+    sb_root_path = os.path.dirname(os.path.abspath(__file__))
+else:  # interactive (ipykernel): no __file__
+    sb_root_path = os.getcwd()
+
+if cfg['misc'].get('Spaceborne_branch') is not None:
+    sl.assert_repo_branch(
+        repo_path=sb_root_path, expected_branch=cfg['misc']['Spaceborne_branch']
+    )
+
+if cfg['misc'].get('conda_env') is not None:
+    # sys.prefix is the env of the interpreter actually running, even when python is
+    # called by full path without activating the env (unlike CONDA_DEFAULT_ENV)
+    current_env = os.path.basename(sys.prefix)
+    if cfg['misc']['conda_env'] not in (current_env, sys.prefix):
+        raise RuntimeError(
+            f'Running in conda env "{current_env}" ({sys.prefix}), '
+            f'expected "{cfg["misc"]["conda_env"]}"'
+        )
+
+if cfg['misc'].get('check_for_updates', True):
+    version_check.check_for_updates()
+
+# convert old cosmology keys (Om, s8, ODE, ...) to the cloelib ones, for old configs
+cfg['cosmology'] = cosmo_lib.migrate_legacy_cosmo_cfg(cfg['cosmology'])
 
 script_start_time = time.perf_counter()
 
@@ -228,10 +256,8 @@ def triangle_plot_cls_wrapper():
 
 # ! set some convenence variables, just to make things more readable
 h = cfg['cosmology']['h']
-galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['galaxy_bias_fit_coeff'])
-magnification_bias_fit_fiducials = np.array(
-    cfg['C_ell']['magnification_bias_fit_coeff']
-)
+galaxy_bias_fit_fiducials = np.array(cfg['C_ell']['gal_bias_fit_coeff'])
+magnification_bias_fit_fiducials = np.array(cfg['C_ell']['mag_bias_fit_coeff'])
 # this has the same length as ngal_sources, as checked below
 zbins = len(cfg['nz']['ngal_lenses'])
 output_path = cfg['misc']['output_path']
@@ -289,11 +315,21 @@ cfg['misc']['save_output_as_benchmark'] = cfg['misc'].get(
     'save_output_as_benchmark', False
 )
 cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
-
+cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
+    'ell_bins_proj_nongauss_cosebis', 10_000
+)
 
 # Psi-statistics not implemented yet
 cfg['probe_selection']['Psigl'] = False
 cfg['probe_selection']['Psigg'] = False
+
+# Shape noise in the sims:
+# - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
+#   is the analytic model, so the noise part of the comparison is circular.
+# - catalogue: per-pixel variance ∝ w, as for catalogue-sum weight maps (Heracles),
+#   with the same coupled noise level as the analytic covariance.
+# The two coincide for a binary mask.
+cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
 
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
@@ -554,7 +590,7 @@ if len(z_grid) < 500:
         'the number of steps in the redshift grid is small, '
         f'(len(z_grid)={len(z_grid)}) '
         'you may want to consider decreasing delta_z',
-        stacklevel=2,
+        stacklevel=1,
     )
 
 
@@ -578,7 +614,7 @@ if kmax_limber > k_max_cfg:
         f'{kmax_limber = :.2f} {_k_txt_label} > {k_max_cfg = :.2f} {_k_txt_label}\n'
         f'for ell_max = {_ell_max} and z_min = {_z_min}.\n'
         f'Increasing k_max_cfg to {kmax_limber:.2f} {_k_txt_label}.',
-        stacklevel=2,
+        stacklevel=1,
     )
     cfg['precision']['log10_k_max'] = float(np.log10(kmax_limber))
 
@@ -726,10 +762,9 @@ footp_ab_dict, fsky_ab_dict = mask_utils.footprint_fsky_ab(
 mask_utils.plot_footprint(footp_ab_dict['GL'], probe='GL')
 
 
-# compute footprint spectra
+# compute SSC window spectra
 footp_cl_abcd_dict, footp_cl_norm_abcd_dict = mask_utils.get_footprint_cl_abcd_dicts(
-    footp_ab_dict=footp_ab_dict,
-    fsky_ab_dict=fsky_ab_dict,
+    ssc_window_ab_dict=mask_utils.ssc_window_ab(mask_obj_ll, mask_obj_gg),
     unique_probe_combs_hs=unique_probe_combs_hs,
 )
 
@@ -810,7 +845,7 @@ if cfg['nz']['normalize_nz']:
         warnings.warn(
             '\nThe lens n(z) are not normalized within atol=0, rtol=1e-3. '
             'Proceeding to normalize them',
-            stacklevel=2,
+            stacklevel=1,
         )
         nz_lns = wf_cl_lib.normalize_nz(nz_lns, zgrid_nz_lns)
     else:
@@ -820,7 +855,7 @@ if cfg['nz']['normalize_nz']:
         warnings.warn(
             '\nThe source n(z) are not normalized within atol=0, rtol=1e-3. '
             'Proceeding to normalize them',
-            stacklevel=2,
+            stacklevel=1,
         )
         nz_src = wf_cl_lib.normalize_nz(nz_src, zgrid_nz_src)
     else:
@@ -877,7 +912,7 @@ if (
     )
 
 # ! ============================ Magnification bias ====================================
-if cfg['C_ell']['has_magnification_bias']:
+if cfg['C_ell']['has_mag_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
         # it's safer to use a linear interpolation, in case these functions are top-hats
@@ -892,7 +927,7 @@ if cfg['C_ell']['has_magnification_bias']:
     elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':
         ccl_obj.set_mag_bias_tuple(
             z_grid_lns=z_grid,
-            has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
+            has_mag_bias=cfg['C_ell']['has_mag_bias'],
             magcut_lens=None,
             poly_fit_values=magnification_bias_fit_fiducials,
         )
@@ -912,7 +947,7 @@ plt.legend()
 # ! ============================ Radial kernels ========================================
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['precision']['n_samples_wf'])
 ccl_obj.set_kernel_arr(
-    z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
+    z_grid_wf=z_grid, has_mag_bias=cfg['C_ell']['has_mag_bias']
 )
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
@@ -1001,10 +1036,28 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
         mask_obj_ll=mask_obj_ll,
     )
 
-    ell_max_3x2pt_nmt = bin_obj.ell_max_3x2pt
+    # unbinned Cls on the NaMaster grid, from 0 to ell_max_nmt: the mask couples the
+    # signal above ell_max into the science bands
+    ell_max_3x2pt = bin_obj.ell_max_3x2pt
 
-    # unbinned Cls on the NaMaster grid (0..ell_max_nmt)
-    ells_3x2pt_nmt_unb = np.arange(ell_max_3x2pt_nmt + 1)
+    # the largest multipole available: what the fields can represent and, for input
+    # Cls, what they cover (they are not extrapolated above it)
+    ell_max_cap = 3 * cfg['mask']['nside'] - 1
+    for need_input, ells_in in (
+        (io_obj.need_input_cl_ll, io_obj.ells_WL_in),
+        (io_obj.need_input_cl_gl, io_obj.ells_XC_in),
+        (io_obj.need_input_cl_gg, io_obj.ells_GC_in),
+    ):
+        if need_input:
+            ell_max_cap = min(ell_max_cap, int(np.max(ells_in)))
+
+    ell_max_nmt = cov_partial_sky.resolve_ell_max_nmt(
+        cfg['precision'].get('ell_max_nmt'),
+        ell_max_3x2pt,
+        ell_max_cap,
+        coupled=cfg['covariance']['cov_type'] == 'coupled',
+    )
+    ells_3x2pt_nmt_unb = np.arange(ell_max_nmt + 1)
     nbl_3x2pt_nmt_unb = len(ells_3x2pt_nmt_unb)
 
     cl_3x2pt_nmt_unb_5d = wf_cl_lib.compute_cls_or_interpolate_input_cls(
@@ -1019,6 +1072,8 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     cov_nmt_obj.nbl_3x2pt_unb = nbl_3x2pt_nmt_unb
     cov_nmt_obj.cl_3x2pt_unb_5d = cl_3x2pt_nmt_unb_5d
     cov_nmt_obj.nl_3x2pt_unb_5d = nl_3x2pt_nmt_unb_5d
+    cov_nmt_obj.ell_max_nmt = ell_max_nmt
+
     # and additional useful ones
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
 
@@ -1130,29 +1185,11 @@ if (
         )
     nbl_3x2pt_oc = len(ells_3x2pt_oc)
 
-    cl_ll_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_lensing_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gl_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_lensing_obj,
-        cl_ccl_kwargs,
-    )
-    cl_gg_3d_oc = ccl_obj.compute_cls(
-        ells_3x2pt_oc,
-        ccl_obj.p_of_k_a,
-        ccl_obj.wf_galaxy_obj,
-        ccl_obj.wf_galaxy_obj,
-        cl_ccl_kwargs,
-    )
-    cl_3x2pt_5d_oc = sl.build_cl_3x2pt_5d(
-        cl_ll_3d=cl_ll_3d_oc, cl_gl_3d=cl_gl_3d_oc, cl_gg_3d=cl_gg_3d_oc
+    # same Cls as SB: input Cls (if provided) or CCL Cls including the
+    # multiplicative shear bias, which OC does not apply itself. These are simply
+    # recomputed/re-interpolated on the finer ells_3x2pt_oc grid
+    cl_3x2pt_5d_oc = wf_cl_lib.compute_cls_or_interpolate_input_cls(
+        ells_3x2pt_oc, io_obj, ccl_obj, cfg, zbins, cl_ccl_kwargs
     )
 
     cl_ll_ascii_filename = f'Cell_ll_nbl{nbl_3x2pt_oc}'
@@ -1184,7 +1221,7 @@ if (
         warnings.warn(
             'OneCovariance will use the HOD-derived galaxy bias '
             'for the Cls and responses',
-            stacklevel=2,
+            stacklevel=1,
         )
 
     # * 2. compute cov using the onecovariance interface class
@@ -1206,7 +1243,7 @@ if (
         warnings.warn(
             f'OneCovariance will not be re-run, loading existing files at '
             f'{oc_path}/{cfg["OneCovariance"]["oc_output_filename"]}_list.dat',
-            stacklevel=2,
+            stacklevel=1,
         )
 
     # load output .list file (maybe the .mat format would be better, actually...)
@@ -1960,7 +1997,7 @@ if cfg['misc']['save_output_as_benchmark']:
 
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
-        ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
+        ccl_obj.mag_bias_2d if cfg['C_ell']['has_mag_bias'] else np.array([])
     )
 
     _ell_dict = {k: v for k, v in vars(bin_obj).items() if isinstance(v, np.ndarray)}

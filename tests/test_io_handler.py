@@ -2,6 +2,8 @@
 the IOHandler class itself needs a full pipeline config and is not covered here).
 """
 
+import itertools
+
 import numpy as np
 import pytest
 
@@ -213,34 +215,40 @@ class TestLoadWeightMapFits:
 
 
 class TestLoadNzEuclidlib:
-    """Tests for load_nz_euclidlib, using euclidlib's fixed PHZ FITS format:
-    a binary table with 'bin_id' and 'n_z' (shape (3000,)) columns, on the
-    fixed z grid np.linspace(0, 6, 3001).
+    """Tests for load_nz_euclidlib, using euclidlib's DR1 PHZ FITS format
+    (euclidlib >= 2026.11): a binary table with 'bin_id' and 'n_z' columns, on
+    the grid z = Z_STEP * arange(Z_STEP_NUMBER) given in the header. 'n_z' can be
+    zero-padded beyond Z_STEP_NUMBER, as in the DR1 nowcast files.
     """
 
     def test_basic_round_trip(self, tmp_path):
         fitsio = pytest.importorskip('fitsio')
         pytest.importorskip('euclidlib')
 
-        z = np.linspace(0.0, 6.0, 3001)
-        n_hist = z.size - 1
+        # DR1 nowcast layout: 600 bins of width 0.01, zero-padded to 3000 entries
+        z_step, z_size, n_col = 0.01, 600, 3000
         zbins = 2
 
-        dtype = [('bin_id', 'i4'), ('n_z', 'f8', (n_hist,))]
+        dtype = [('bin_id', 'i4'), ('n_z', 'f8', (n_col,))]
         data = np.zeros(zbins, dtype=dtype)
         for i in range(zbins):
             data['bin_id'][i] = i + 1
-            hist = np.zeros(n_hist)
+            hist = np.zeros(n_col)
             hist[100:200] = 1.0
             data['n_z'][i] = hist
 
         path = tmp_path / 'nz.fits'
-        fitsio.write(str(path), data, clobber=True)
+        header = {'Z_STEP': z_step, 'Z_STEP_NUMBER': z_size}
+        fitsio.write(str(path), data, header=header, clobber=True)
 
         z_out, nztab = io_handler.load_nz_euclidlib(str(path))
 
-        np.testing.assert_allclose(z_out, z)
-        assert nztab.shape == (len(z), zbins)
+        # the grid comes from the header, not from the column length (older
+        # euclidlib releases assumed 3000 bins over 0-6, squeezing n(z) by 5x)
+        np.testing.assert_allclose(z_out, z_step * np.arange(z_size))
+        assert nztab.shape == (z_size, zbins)
+        np.testing.assert_array_equal(nztab[100:200], 1.0)
+        np.testing.assert_array_equal(nztab[200:], 0.0)
 
 
 class TestLoadClEuclidlib:
@@ -287,3 +295,64 @@ class TestLoadClEuclidlib:
         pytest.importorskip('euclidlib.le3.pk_wl')
         with pytest.raises(AssertionError, match='SHE.*POS'):
             io_handler.load_cl_euclidlib('cls.fits', 'INVALID', 'POS')
+
+
+class TestCovSb10dToHeraclesDict:
+    """Round trip SB 6d cov blocks -> heracles dict -> FITS -> heracles reader."""
+
+    @staticmethod
+    def _cov_term_dict(nbl, zbins, probes):
+        rng = np.random.default_rng(0)
+        shape = (nbl, nbl, zbins, zbins, zbins, zbins)
+        cov_term_dict = {
+            probe_2tpl: {'6d': rng.normal(size=shape)} for probe_2tpl in probes
+        }
+        cov_term_dict['3x2pt'] = {'6d': None}  # must be skipped
+        return cov_term_dict
+
+    def test_fits_round_trip_1based_keys(self, tmp_path):
+        heracles = pytest.importorskip('heracles')
+        pytest.importorskip('fitsio')
+
+        nbl, zbins = 3, 2
+        probes = [('LL', 'LL'), ('GL', 'GL'), ('GG', 'LL'), ('GG', 'GG')]
+        cov_term_dict = self._cov_term_dict(nbl, zbins, probes)
+
+        cov_hc = io_handler.cov_sb_10d_to_heracles_dict(cov_term_dict, squeeze=True)
+        path = tmp_path / 'cov.fits'
+        heracles.io.write(str(path), cov_hc)
+        cov_read = heracles.io.read(str(path))
+
+        assert set(cov_read) == set(cov_hc)
+        assert len(cov_read) == len(probes) * zbins**4
+
+        bins = range(1, zbins + 1)
+        for zi, zj, zk, zl in itertools.product(bins, repeat=4):
+            # GL = (POS of lens bin zi) x (SHE of source bin zj)
+            result = cov_read['POS', 'SHE', 'POS', 'SHE', zi, zj, zk, zl]
+            assert result.shape == (2, 2, nbl, nbl)
+            assert result.axis == (2, 3)
+
+            for (probe_ab, probe_cd), hc_probes in zip(
+                probes,
+                [
+                    ('SHE', 'SHE', 'SHE', 'SHE'),
+                    ('POS', 'SHE', 'POS', 'SHE'),
+                    ('POS', 'POS', 'SHE', 'SHE'),
+                    ('POS', 'POS', 'POS', 'POS'),
+                ],
+                strict=True,
+            ):
+                arr = np.asarray(cov_read[(*hc_probes, zi, zj, zk, zl)])
+                expected = cov_term_dict[probe_ab, probe_cd]['6d'][
+                    :, :, zi - 1, zj - 1, zk - 1, zl - 1
+                ]
+                # E modes in the 0-th spin index, B modes are zero
+                np.testing.assert_array_equal(
+                    io_handler.first_element_of_leading_axes(arr), expected
+                )
+                np.testing.assert_array_equal(
+                    arr.sum(axis=tuple(range(arr.ndim - 2))), expected
+                )
+
+        assert not any(0 in key[4:] for key in cov_read)

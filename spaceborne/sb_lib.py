@@ -84,6 +84,44 @@ Naming conventions (just to ease the notation):
 """
 
 
+def _git(repo_path: str, *args: str) -> str:
+    return subprocess.run(
+        ['git', '-C', repo_path, *args], check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
+def assert_repo_branch(repo_path: str, expected_branch: str) -> None:
+    try:
+        is_git_repo = _git(repo_path, 'rev-parse', '--is-inside-work-tree')
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise RuntimeError(
+            f'Cannot check the Spaceborne branch: {repo_path} is not a git repository '
+            'or git is not installed. Set misc.Spaceborne_branch: null to skip the '
+            'check.'
+        ) from e
+
+    if is_git_repo != 'true':  # e.g. inside the .git directory
+        raise RuntimeError(f'{repo_path} is not a git work tree')
+
+    current_branch = _git(repo_path, 'rev-parse', '--abbrev-ref', 'HEAD')
+
+    if current_branch == 'HEAD':  # detached, e.g. checked out on a tag
+        try:
+            current_branch = _git(repo_path, 'describe', '--tags', '--exact-match')
+        except subprocess.CalledProcessError as e:
+            commit = _git(repo_path, 'rev-parse', '--short', 'HEAD')
+            raise RuntimeError(
+                f'Repo at {repo_path} is in detached HEAD at untagged commit {commit}, '
+                f'expected "{expected_branch}".'
+            ) from e
+
+    if current_branch != expected_branch:
+        raise RuntimeError(
+            f'Repo at {repo_path} is on branch "{current_branch}", '
+            f'expected "{expected_branch}".'
+        )
+
+
 def cut_map_hemisphere(hp_map, nside, hemisphere_to_keep):
     npix = hp.nside2npix(nside)
     pixels = np.arange(npix)
@@ -624,6 +662,35 @@ def split_probe_name(
         f'Invalid probe name: {full_probe_name}. '
         f'Expected two of {valid_probes} concatenated.'
     )
+
+
+def plot_split_corr(cov_a, cov_b, name_a, name_b, title=None, ax=None):
+    """Plot the correlation matrix of cov_a in the upper triangle and the one of cov_b
+    in the lower triangle of the same image (the diagonal, all ones, is from cov_a)."""
+    assert cov_a.shape == cov_b.shape, 'the two covariances must have the same shape'
+
+    corr_a = cov2corr(cov_a)
+    corr_b = cov2corr(cov_b)
+    split = np.triu(corr_a) + np.tril(corr_b, k=-1)
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.figure
+
+    im = ax.matshow(split, cmap='RdBu_r', vmin=-1, vmax=1)
+    fig.colorbar(im, ax=ax, label='correlation')
+
+    # which triangle is which
+    text_kw = {'transform': ax.transAxes, 'fontsize': 9}
+    text_kw['bbox'] = {'facecolor': 'white', 'alpha': 0.8, 'edgecolor': 'none'}
+    ax.text(0.97, 0.97, name_a, ha='right', va='top', **text_kw)
+    ax.text(0.03, 0.03, name_b, ha='left', va='bottom', **text_kw)
+
+    if title is not None:
+        ax.set_title(title)
+
+    return fig, ax
 
 
 def compare_2d_covs(
@@ -1215,11 +1282,12 @@ def compare_funcs(
         ax[0].plot(x, _y, label=names[i], c=colors[i], ls=ls, **plt_kw)
     ax[0].legend()
 
+    # every curve is compared with the first one: y_i / y_0 - 1
     for i in range(1, len(y_tuple)):
         ax[1].plot(
             x, percent_diff(y_tuple[i], y_tuple[0]), c=colors[i], ls='-', **plt_kw
         )
-    ax[1].set_ylabel('A/B - 1 [%]')
+    ax[1].set_ylabel('B/A - 1 [%]')
     ax[1].axhspan(-10, 10, alpha=0.2, color='gray')
 
     for i in range(2):
@@ -1290,6 +1358,14 @@ def check_interpolate_input_tab(
 
     z_in = input_tab[:, 0]
     vals_in = input_tab[:, 1:]
+
+    # Guard against extrapolation outside the input table z range
+    if np.min(z_grid_out) < np.min(z_in) or np.max(z_grid_out) > np.max(z_in):
+        raise ValueError(
+            f'The input table covers z = [{np.min(z_in)}, {np.max(z_in)}], but '
+            f'it has to be evaluated on z = [{np.min(z_grid_out)}, '
+            f'{np.max(z_grid_out)}]. Extend the input table, or restrict z_min/z_max.'
+        )
 
     if kind == 'CubicSpline':
         interp_func = CubicSpline(x=z_in, y=vals_in, axis=0)

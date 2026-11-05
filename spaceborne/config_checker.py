@@ -23,7 +23,17 @@ class SpaceborneConfigChecker:
 
     def check_types(self) -> None:
         # Cosmology
-        for par, val in self.cfg['cosmology'].items():
+        cosmo_cfg = self.cfg['cosmology']
+        required_cosmo_pars = [
+            'Omega_m0', 'Omega_b0', 'Omega_k0', 'w0', 'wa', 'h', 'ns', 'sigma8', 'm_nu',
+            'Neff',
+        ]  # fmt: skip
+        missing = [par for par in required_cosmo_pars if par not in cosmo_cfg]
+        assert not missing, f'cosmology: missing parameters {missing}'
+        assert 'ODE' not in cosmo_cfg, (
+            'cosmology: ODE is not an input, it is set by closure'
+        )
+        for par, val in cosmo_cfg.items():
             assert isinstance(val, float), f'Parameter {par} must be a float'
 
         # camb extra params
@@ -57,6 +67,10 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(camb_params['num_massive_neutrinos'], int), (
             'extra_parameters: camb: num_massive_neutrinos must be an int'
+        )
+        assert camb_params['num_massive_neutrinos'] in (1, 3), (
+            'extra_parameters: camb: num_massive_neutrinos must be 1 (single) '
+            'or 3 (equal mass split)'
         )
         assert isinstance(camb_params['dark_energy_model'], str), (
             'extra_parameters: camb: dark_energy_model must be a string'
@@ -104,18 +118,18 @@ class SpaceborneConfigChecker:
         assert isinstance(c_ell_cfg['which_mag_bias'], str), (
             'C_ell: which_mag_bias must be a string'
         )
-        assert isinstance(c_ell_cfg['galaxy_bias_fit_coeff'], list), (
-            'C_ell: galaxy_bias_fit_coeff must be a list'
+        assert isinstance(c_ell_cfg['gal_bias_fit_coeff'], list), (
+            'C_ell: gal_bias_fit_coeff must be a list'
         )
-        assert all(isinstance(x, float) for x in c_ell_cfg['galaxy_bias_fit_coeff']), (
-            'C_ell: All elements in galaxy_bias_fit_coeff must be floats'
+        assert all(isinstance(x, float) for x in c_ell_cfg['gal_bias_fit_coeff']), (
+            'C_ell: All elements in gal_bias_fit_coeff must be floats'
         )
-        assert isinstance(c_ell_cfg['magnification_bias_fit_coeff'], list), (
-            'C_ell: magnification_bias_fit_coeff must be a list'
+        assert isinstance(c_ell_cfg['mag_bias_fit_coeff'], list), (
+            'C_ell: mag_bias_fit_coeff must be a list'
         )
-        assert all(
-            isinstance(x, float) for x in c_ell_cfg['magnification_bias_fit_coeff']
-        ), 'C_ell: All elements in magnification_bias_fit_coeff must be floats'
+        assert all(isinstance(x, float) for x in c_ell_cfg['mag_bias_fit_coeff']), (
+            'C_ell: All elements in mag_bias_fit_coeff must be floats'
+        )
 
         assert isinstance(c_ell_cfg['gal_bias_table_filename'], str), (
             'C_ell: gal_bias_table_filename must be a string'
@@ -135,8 +149,8 @@ class SpaceborneConfigChecker:
             'C_ell: has_rsd must be a boolean'
         )
         assert isinstance(c_ell_cfg['has_IA'], bool), 'C_ell: has_IA must be a boolean'
-        assert isinstance(c_ell_cfg['has_magnification_bias'], bool), (
-            'C_ell: has_magnification_bias must be a boolean'
+        assert isinstance(c_ell_cfg['has_mag_bias'], bool), (
+            'C_ell: has_mag_bias must be a boolean'
         )
 
         assert isinstance(c_ell_cfg['cl_CCL_kwargs'], dict), (
@@ -225,6 +239,10 @@ class SpaceborneConfigChecker:
         assert isinstance(ensemble_cov_cfg['save_sim_cls'], bool), (
             'ensemble_covariance: save_sim_cls must be a boolean'
         )
+        assert ensemble_cov_cfg.get('noise_model', 'catalogue') in (
+            'painted',
+            'catalogue',
+        ), "ensemble_covariance: noise_model must be 'painted' or 'catalogue'"
 
         # OneCovariance
         if 'OneCovariance' in self.cfg:
@@ -398,6 +416,9 @@ class SpaceborneConfigChecker:
         assert isinstance(precision_cfg['ell_bins_proj_nongauss'], int), (
             'precision: ell_bins_proj_nongauss must be an int'
         )
+        assert isinstance(precision_cfg['ell_bins_proj_nongauss_cosebis'], int), (
+            'precision: ell_bins_proj_nongauss_cosebis must be an int'
+        )
         assert isinstance(precision_cfg['proj_gauss_integration_method'], str), (
             'precision: proj_gauss_integration_method must be a string'
         )
@@ -439,6 +460,21 @@ class SpaceborneConfigChecker:
         )
         assert isinstance(precision_cfg['spin0'], bool), (
             'precision: spin0 must be a boolean'
+        )
+        pixwin_nside = precision_cfg.get('pixwin_nside')
+        assert pixwin_nside is None or (
+            isinstance(pixwin_nside, int)
+            and pixwin_nside > 0
+            and pixwin_nside & (pixwin_nside - 1) == 0
+        ), 'precision: pixwin_nside must be None or a power of 2'
+        ell_max_nmt = precision_cfg.get('ell_max_nmt')
+        assert ell_max_nmt is None or (
+            isinstance(ell_max_nmt, int)
+            and not isinstance(ell_max_nmt, bool)
+            and ell_max_nmt > 0
+        ), 'precision: ell_max_nmt must be None or a positive int'
+        assert isinstance(precision_cfg.get('iNKA_eb_leakage', False), bool), (
+            'precision: iNKA_eb_leakage must be a boolean'
         )
         assert isinstance(precision_cfg['n_samples_wf'], int), (
             'precision: n_samples_wf must be an int'
@@ -487,6 +523,9 @@ class SpaceborneConfigChecker:
         assert isinstance(misc_cfg['plot_probe_names'], bool), (
             'misc: plot_probe_names must be a boolean'
         )
+        assert isinstance(misc_cfg.get('check_for_updates', True), bool), (
+            'misc: check_for_updates must be a boolean'
+        )
 
     def check_misc(self) -> None:
         assert self.cfg['covariance']['n_probes'] == 2, (
@@ -517,11 +556,11 @@ class SpaceborneConfigChecker:
         )
 
     def check_lists(self) -> None:
-        assert len(self.cfg['C_ell']['galaxy_bias_fit_coeff']) == 4, (
-            'galaxy_bias_fit_coeff must be of length 4'
+        assert len(self.cfg['C_ell']['gal_bias_fit_coeff']) == 4, (
+            'gal_bias_fit_coeff must be of length 4'
         )
-        assert len(self.cfg['C_ell']['magnification_bias_fit_coeff']) == 4, (
-            'magnification_bias_fit_coeff must be of length 4'
+        assert len(self.cfg['C_ell']['mag_bias_fit_coeff']) == 4, (
+            'mag_bias_fit_coeff must be of length 4'
         )
 
         assert len(self.cfg['C_ell']['mult_shear_bias']) == self.zbins, (
@@ -664,6 +703,15 @@ class SpaceborneConfigChecker:
                 'If computing the partial-sky covariance with NaMaster, '
                 '`covariance: G_code` should not be set (or set to "Spaceborne").'
             )
+        # Knox has no pixel window
+        if self.cfg['precision'].get('pixwin_nside') is not None:
+            assert self.cfg['covariance']['partial_sky_method'] in (
+                'NaMaster',
+                'ensemble',
+            ), (
+                'precision: pixwin_nside requires partial_sky_method `NaMaster` '
+                'or `ensemble`'
+            )
 
     def check_onecov(self) -> None:
         # The 'OneCovariance' section is optional (see check_types); if it is
@@ -680,7 +728,7 @@ class SpaceborneConfigChecker:
             or self.cfg['covariance']['cNG_code'] == 'OneCovariance'
         )
 
-        if self.cfg['C_ell']['has_magnification_bias'] and uses_oc:
+        if self.cfg['C_ell']['has_mag_bias'] and uses_oc:
             raise ValueError(
                 'Magnification bias is enabled in the configuration, '
                 'but OneCovariance does not include it. '
@@ -703,7 +751,7 @@ class SpaceborneConfigChecker:
         cov_cfg = self.cfg['covariance']
         pyccl_ssc = cov_cfg['SSC'] and cov_cfg['SSC_code'] == 'PyCCL'
         pyccl_cng = cov_cfg['cNG'] and cov_cfg['cNG_code'] == 'PyCCL'
-        has_mag = self.cfg['C_ell']['has_magnification_bias']
+        has_mag = self.cfg['C_ell']['has_mag_bias']
 
         # the magnification component of the galaxy tracers would need the matter
         # response, while the PyCCL SSC pairs the galaxy legs with the galaxy one
@@ -764,7 +812,7 @@ class SpaceborneConfigChecker:
                 assert os.path.isfile(fp), f'Footprint file for {probe} not found: {fp}'
 
     def check_options(self) -> None:
-        if self.cfg['C_ell']['has_magnification_bias']:
+        if self.cfg['C_ell']['has_mag_bias']:
             assert self.cfg['C_ell']['which_mag_bias'] in [
                 'from_input',
                 'polynomial_fit',

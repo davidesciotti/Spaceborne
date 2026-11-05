@@ -36,7 +36,7 @@ mpl_other_dict = {
     # 'galaxy_bias_labels_TeX': build_labels_TeX(zbins)[0],
     # 'shear_bias_labels_TeX': build_labels_TeX(zbins)[1],
     # 'zmean_shift_labels_TeX': build_labels_TeX(zbins)[2],
-    'cosmo_labels': ['Om', 'Ob', 'wz', 'wa', 'h', 'ns', 's8', 'logT'],
+    'cosmo_labels': ['Omega_m0', 'Omega_b0', 'w0', 'wa', 'h', 'ns', 'sigma8', 'logT'],
     'IA_labels': ['AIA', 'etaIA', 'betaIA'],
     # 'galaxy_bias_labels': build_labels(zbins)[0],
     # 'shear_bias_labels': build_labels(zbins)[1],

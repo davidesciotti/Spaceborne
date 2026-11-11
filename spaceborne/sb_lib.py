@@ -2077,6 +2077,24 @@ def _expand_diagonal_to_full(cov_diag):
     return cov_full
 
 
+def ell_edges_to_int(ell_edges, atol: float = 1e-8) -> np.ndarray:
+    """Integer edges of the multipole bands defined by `ell_edges`.
+
+    Band k contains the integer multipoles with
+    ell_edges[k] <= ell < ell_edges[k + 1], so its integer edges are the ceiling of
+    the input ones: [15.9, 23.3) holds ell = 16, ..., 23, i.e. [16, 24). Rounding or
+    truncating the edges would instead move the band boundaries by one multipole.
+    Integer edges are returned unchanged.
+
+    Edges within `atol` of an integer are taken to be that integer, to absorb
+    floating-point noise (e.g. np.sqrt(10) ** 2 = 10.000000000000002).
+    """
+    ell_edges = np.asarray(ell_edges, dtype=float)
+    nearest = np.round(ell_edges)
+    is_int = np.isclose(ell_edges, nearest, rtol=0, atol=atol)
+    return np.where(is_int, nearest, np.ceil(ell_edges)).astype(int)
+
+
 def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     """Bin covariance computed at integer ell modes into ell bins.
 
@@ -2085,7 +2103,8 @@ def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     cov_ell_modes : np.ndarray
         Covariance computed at integer ell modes, shape (A, B, C, D, n_ell_modes, i, j, k, l)
     ell_edges : np.ndarray
-        Bin edges, shape (nbl + 1,)
+        Bin edges, shape (nbl + 1,). Bin k contains the integer multipoles with
+        ell_edges[k] <= ell < ell_edges[k + 1] (see `ell_edges_to_int`)
     ell_values : np.ndarray
         Integer ell values, shape (n_ell_modes,)
 
@@ -2107,11 +2126,14 @@ def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     output_shape = (*cov_ell_modes.shape[:4], nbl, *cov_ell_modes.shape[5:])
     cov_binned = np.zeros(output_shape)
 
+    # same convention as the NaMaster bands (ell_utils.EllBinning)
+    ell_edges = ell_edges_to_int(ell_edges)
+
     # Sum over ell modes in each bin and divide by n_modes**2 (i.e., average over the
     # given ell bin)
     for bin_idx in range(nbl):
-        ell_lower = int(ell_edges[bin_idx])
-        ell_upper = int(ell_edges[bin_idx + 1])
+        ell_lower = ell_edges[bin_idx]
+        ell_upper = ell_edges[bin_idx + 1]
 
         # Find which ell modes fall in this bin
         mask = (ell_values >= ell_lower) & (ell_values < ell_upper)

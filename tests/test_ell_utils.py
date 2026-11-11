@@ -182,28 +182,102 @@ class TestEllBinning:
         expected = np.arange(10, 21)
         np.testing.assert_array_equal(ell_obj.ells_WL, expected)
 
-    def test_namaster_binning_rounds_edges(self, basic_config):
-        """NaMaster path: bin edges are rounded (not truncated) to strictly
-        increasing ints, and the NmtBin objects are built."""
+    def test_namaster_binning_int_edges(self, basic_config):
+        """NaMaster path: band k holds the integers edge[k] <= ell < edge[k + 1],
+        i.e. the int edges are the ceiling of the float ones, and the NmtBin objects
+        are built."""
         basic_config['covariance']['partial_sky_method'] = 'NaMaster'
+        edges_float = np.geomspace(10, 1000, 11)
         ell_obj = ell_utils.EllBinning(basic_config)
-        ell_obj.build_ell_bins()
+        with pytest.warns(UserWarning, match='ell bin edges are not integers'):
+            ell_obj.build_ell_bins()
 
         for edges in (ell_obj.ell_edges_WL, ell_obj.ell_edges_GC):
             assert np.issubdtype(edges.dtype, np.integer)
             assert np.all(np.diff(edges) > 0), 'edges must be strictly increasing'
-        assert ell_obj.nmt_bin_obj_WL is not None
-        assert ell_obj.nmt_bin_obj_GC is not None
+            # the end points are integers and must not move
+            np.testing.assert_array_equal(edges[[0, -1]], [10, 1000])
+            np.testing.assert_array_equal(edges[1:-1], np.ceil(edges_float[1:-1]))
+        for k in range(10):
+            ells_k = ell_obj.nmt_bin_obj_GC.get_ell_list(k)
+            in_band = (ells_k >= edges_float[k] - 1e-8) & (ells_k < edges_float[k + 1])
+            assert in_band.all()
 
     def test_namaster_binning_raises_on_colliding_edges(self, basic_config):
-        """NaMaster path: a fine/low-ell binning whose edges collide after
-        rounding to int raises a clear ValueError instead of the opaque
+        """NaMaster path: a fine/low-ell binning whose edges collide after the
+        conversion to int raises a clear ValueError instead of the opaque
         ZeroDivisionError that NmtBin.from_edges would throw on a zero-width bin."""
         basic_config['covariance']['partial_sky_method'] = 'NaMaster'
         basic_config['binning'].update(ell_min=2, ell_max=12, ell_bins=13)
         ell_obj = ell_utils.EllBinning(basic_config)
         with pytest.raises(ValueError, match='not strictly increasing'):
             ell_obj.build_ell_bins()
+
+    @staticmethod
+    def _write_bins_file(path, edges, centres=None):
+        """ell, delta_ell, lower edge, upper edge. The centres default to the mean
+        of the integer multipoles with lower <= ell < upper."""
+        lo, hi = np.asarray(edges[:-1], float), np.asarray(edges[1:], float)
+        if centres is None:
+            centres = [
+                np.arange(np.ceil(_lo), np.ceil(_hi)).mean()
+                for _lo, _hi in zip(lo, hi, strict=True)
+            ]
+        np.savetxt(path, np.column_stack((centres, hi - lo, lo, hi)))
+
+    def _from_input_config(self, basic_config, path):
+        basic_config['covariance']['partial_sky_method'] = 'NaMaster'
+        basic_config['binning'].update(
+            binning_type='from_input', ell_bins_filename=str(path)
+        )
+        return basic_config
+
+    def test_namaster_from_input_float_edges(self, basic_config, tmp_path):
+        """Float edges from file give the bands that the edges describe, with the
+        centres of the file: [15.9, 23.3) is ell = 16, ..., 23, not 16, ..., 22."""
+        path = tmp_path / 'ell_bins.txt'
+        self._write_bins_file(path, [10.0, 15.9, 23.3, 32.0, 42.1])
+        ell_obj = ell_utils.EllBinning(self._from_input_config(basic_config, path))
+        with pytest.warns(UserWarning) as record:
+            ell_obj.build_ell_bins()
+
+        assert not any('bin centres' in str(w.message) for w in record)
+        np.testing.assert_array_equal(ell_obj.ell_edges_GC, [10, 16, 24, 32, 43])
+        np.testing.assert_allclose(ell_obj.ells_GC, [12.5, 19.5, 27.5, 37.0])
+        np.testing.assert_array_equal(ell_obj.delta_l_GC, [6, 8, 8, 11])
+        assert ell_obj.ell_max_GC == 42
+
+    def test_namaster_from_input_int_edges_no_warning(self, basic_config, tmp_path):
+        """Integer edges with consistent centres: nothing to report."""
+        import warnings
+
+        path = tmp_path / 'ell_bins.txt'
+        self._write_bins_file(path, [11, 16, 24, 32, 43])
+        ell_obj = ell_utils.EllBinning(self._from_input_config(basic_config, path))
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            ell_obj.build_ell_bins()
+
+        np.testing.assert_array_equal(ell_obj.ell_edges_GC, [11, 16, 24, 32, 43])
+        np.testing.assert_allclose(ell_obj.ells_GC, [13.0, 19.5, 27.5, 37.0])
+
+    def test_namaster_from_input_warns_on_centre_mismatch(self, basic_config, tmp_path):
+        """The centres of the file are those of other bands (here the first band
+        was meant to start at ell = 11): the mismatch is reported, once."""
+        path = tmp_path / 'ell_bins.txt'
+        self._write_bins_file(
+            path, [10.0, 15.9, 23.3, 32.0, 42.1], centres=[13.0, 19.5, 27.5, 37.0]
+        )
+        ell_obj = ell_utils.EllBinning(self._from_input_config(basic_config, path))
+        with pytest.warns(UserWarning, match='WL/GC bin centres in') as record:
+            ell_obj.build_ell_bins()
+
+        msgs = [str(w.message) for w in record if 'bin centres' in str(w.message)]
+        assert len(msgs) == 1
+        assert '1 of 4 bands' in msgs[0]
+        assert '13.0 in the file, 12.5 used, for the multipoles 10-15' in msgs[0]
+        # the centres used are the effective ones, not those of the file
+        np.testing.assert_allclose(ell_obj.ells_GC, [12.5, 19.5, 27.5, 37.0])
 
     def test_3x2pt_follows_gc(self, basic_config):
         """Test that 3x2pt binning follows GC."""

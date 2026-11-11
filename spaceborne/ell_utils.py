@@ -2,6 +2,7 @@ import warnings
 import numpy as np
 
 from spaceborne import cosmo_lib
+from spaceborne import sb_lib as sl
 
 
 def get_lmid(ells, k):
@@ -268,28 +269,31 @@ class EllBinning:
             # TODO what about WL?
             import pymaster as nmt
 
-            warnings.warn(
-                'Instantiating namaster bin object from the provided bin edges. '
-                'Please make note that in order to do this, these are rounded to int.',
-                stacklevel=2,
-            )
-
-            # NmtBin.from_edges requires int edges. Rounding and casting is more
-            # accurate than casting directly to int, which truncates the values.
-            self.ell_edges_WL = np.round(self.ell_edges_WL).astype(int)
-            self.ell_edges_GC = np.round(self.ell_edges_GC).astype(int)
-
-            for _probe, _edges in (
-                ('WL', self.ell_edges_WL),
-                ('GC', self.ell_edges_GC),
-            ):
+            # NmtBin.from_edges requires int edges. Band k contains the integer
+            # multipoles with edge[k] <= ell < edge[k + 1], i.e. the int edges are the
+            # ceiling of the input ones (rounding or truncating them would move the
+            # band boundaries by one multipole)
+            # WL and GC usually share the binning: collect the messages, to warn once
+            _msgs = {}
+            for _probe in ('WL', 'GC'):
+                _edges_in = getattr(self, f'ell_edges_{_probe}')
+                _edges = sl.ell_edges_to_int(_edges_in)
+                if not np.array_equal(_edges, _edges_in):
+                    warnings.warn(
+                        f'probe {_probe} ell bin edges are not integers. '
+                        'Band k contains the integer '
+                        'multipoles with edge[k] <= ell < edge[k + 1]: the integer '
+                        f'edges used are {_edges}',
+                        stacklevel=1,
+                    )
                 if np.any(np.diff(_edges) <= 0):
                     raise ValueError(
                         f'{_probe} ell bin edges are not strictly increasing after '
-                        f'rounding to int (required by NmtBin.from_edges): {_edges}. '
+                        f'conversion to int (required by NmtBin.from_edges): {_edges}. '
                         'This usually means the binning is too fine at low ell for '
                         'integer edges; use fewer / coarser bins or a higher ell_min.'
                     )
+                setattr(self, f'ell_edges_{_probe}', _edges)
 
             self.nmt_bin_obj_WL = nmt.NmtBin.from_edges(
                 self.ell_edges_WL[:-1],
@@ -299,6 +303,36 @@ class EllBinning:
                 self.ell_edges_GC[:-1],
                 self.ell_edges_GC[1:],  # CHANGED, had + 1
             )
+
+            # the bin centres of an input file are replaced by the effective ells of
+            # the bands: a difference means that the file describes other bands (or
+            # another definition of the centre) than the ones used here
+            if self.binning_type == 'from_input':
+                for _probe, _fname in (
+                    ('WL', self.wl_bins_filename),
+                    ('GC', self.gc_bins_filename),
+                ):
+                    _ells_in = getattr(self, f'ells_{_probe}')
+                    _nmt_bin_obj = getattr(self, f'nmt_bin_obj_{_probe}')
+                    _ells_eff = _nmt_bin_obj.get_effective_ells()
+                    _diff = np.abs(_ells_in - _ells_eff)
+                    if np.any(_diff > 0.05):
+                        _k = int(np.argmax(_diff))
+                        _msg = (
+                            f'bin centres in {_fname} differ from the effective ells '
+                            'of the bands built from its edges, in '
+                            f'{np.sum(_diff > 0.05)} of {len(_diff)} bands (largest '
+                            f'difference in band {_k}: {_ells_in[_k]} in the file, '
+                            f'{_ells_eff[_k]} used, for the multipoles '
+                            f'{_nmt_bin_obj.get_ell_min(_k)}-'
+                            f'{_nmt_bin_obj.get_ell_max(_k)}). The centres in the file '
+                            'are ignored: please check that the bands are the '
+                            'intended ones.'
+                        )
+                        _msgs.setdefault(_msg, []).append(_probe)
+
+            for _msg, _probes in _msgs.items():
+                warnings.warn(f'{"/".join(_probes)} {_msg}', stacklevel=2)
 
             self.ells_WL = self.nmt_bin_obj_WL.get_effective_ells()
             self.ells_GC = self.nmt_bin_obj_GC.get_effective_ells()

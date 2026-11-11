@@ -103,8 +103,9 @@ class CovHarmonicSpace:
 
         if self.cfg['precision']['cov_hs_g_ell_bin_average']:
             # unbinned cls and noise; need the edges to compute the number of modes
-            # (after casting them to int. n_modes is equivalent to delta_ell modulo the
-            # fact that for delta_ell we consider non-integer ell values)
+            # (after converting them to int, see sl.ell_edges_to_int. n_modes is
+            # equivalent to delta_ell modulo the fact that for delta_ell we consider
+            # non-integer ell values)
             _cl_5d = cl_3x2pt_unb_5d
             _nl_5d = nl_3x2pt_unb_5d
             _ell_values = self.bin_obj.ells_3x2pt_unb

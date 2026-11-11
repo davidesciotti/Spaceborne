@@ -50,8 +50,7 @@ cd Spaceborne
 # Checkout the latest release (version tag); e.g., git checkout v2025.07.1
 git checkout <latest_version_tag>
 
-# Create the conda environment. This step can be slow; add --solver=libmamba 
-# to speed it up (see below for more details)
+# Create the conda environment.
 conda env create -f environment.yaml
 
 # activate the newly created conda environment
@@ -66,14 +65,6 @@ pip install .
 ❗ The only stable versions you should consider are the code releases. Please avoid simply cloning and installing the code from the `main` branch.
 **As the code is evolving quite quickly at the moment, please make sure to check for new [releases](https://github.com/davidesciotti/Spaceborne/releases) periodically**
 Moreover, installation is only supported in a dedicated Conda environment, for the time being (installation via PyPI is work in progress).
-
-🐍 To significantly speed up the environment creation, install `mamba` by running `conda install mamba` in your `base` environment, then do
-
-```bash
-mamba env create -f environment.yaml 
-# or
-conda env create -f environment.yaml --solver=libmamba 
-```
 
 🔵🟢🟣 Spaceborne leverages `JAX` for computationally intensive tasks. This is included as 
 a `pip` dependency in the `environment.yaml` file. If you want to run the jax-optimised 

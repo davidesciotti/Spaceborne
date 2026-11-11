@@ -912,7 +912,7 @@ if (
     )
 
 # ! ============================ Magnification bias ====================================
-if cfg['C_ell']['has_magnification_bias']:
+if cfg['C_ell']['has_mag_bias']:
     if cfg['C_ell']['which_mag_bias'] == 'from_input':
         mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
         # it's safer to use a linear interpolation, in case these functions are top-hats
@@ -927,7 +927,7 @@ if cfg['C_ell']['has_magnification_bias']:
     elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':
         ccl_obj.set_mag_bias_tuple(
             z_grid_lns=z_grid,
-            has_magnification_bias=cfg['C_ell']['has_magnification_bias'],
+            has_mag_bias=cfg['C_ell']['has_mag_bias'],
             magcut_lens=None,
             poly_fit_values=magnification_bias_fit_fiducials,
         )
@@ -947,7 +947,7 @@ plt.legend()
 # ! ============================ Radial kernels ========================================
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['precision']['n_samples_wf'])
 ccl_obj.set_kernel_arr(
-    z_grid_wf=z_grid, has_magnification_bias=cfg['C_ell']['has_magnification_bias']
+    z_grid_wf=z_grid, has_mag_bias=cfg['C_ell']['has_mag_bias']
 )
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
@@ -1997,7 +1997,7 @@ if cfg['misc']['save_output_as_benchmark']:
 
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
     _mag_bias_2d = (
-        ccl_obj.mag_bias_2d if cfg['C_ell']['has_magnification_bias'] else np.array([])
+        ccl_obj.mag_bias_2d if cfg['C_ell']['has_mag_bias'] else np.array([])
     )
 
     _ell_dict = {k: v for k, v in vars(bin_obj).items() if isinstance(v, np.ndarray)}

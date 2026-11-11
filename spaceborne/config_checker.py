@@ -149,8 +149,8 @@ class SpaceborneConfigChecker:
             'C_ell: has_rsd must be a boolean'
         )
         assert isinstance(c_ell_cfg['has_IA'], bool), 'C_ell: has_IA must be a boolean'
-        assert isinstance(c_ell_cfg['has_magnification_bias'], bool), (
-            'C_ell: has_magnification_bias must be a boolean'
+        assert isinstance(c_ell_cfg['has_mag_bias'], bool), (
+            'C_ell: has_mag_bias must be a boolean'
         )
 
         assert isinstance(c_ell_cfg['cl_CCL_kwargs'], dict), (
@@ -728,7 +728,7 @@ class SpaceborneConfigChecker:
             or self.cfg['covariance']['cNG_code'] == 'OneCovariance'
         )
 
-        if self.cfg['C_ell']['has_magnification_bias'] and uses_oc:
+        if self.cfg['C_ell']['has_mag_bias'] and uses_oc:
             raise ValueError(
                 'Magnification bias is enabled in the configuration, '
                 'but OneCovariance does not include it. '
@@ -751,7 +751,7 @@ class SpaceborneConfigChecker:
         cov_cfg = self.cfg['covariance']
         pyccl_ssc = cov_cfg['SSC'] and cov_cfg['SSC_code'] == 'PyCCL'
         pyccl_cng = cov_cfg['cNG'] and cov_cfg['cNG_code'] == 'PyCCL'
-        has_mag = self.cfg['C_ell']['has_magnification_bias']
+        has_mag = self.cfg['C_ell']['has_mag_bias']
 
         # the magnification component of the galaxy tracers would need the matter
         # response, while the PyCCL SSC pairs the galaxy legs with the galaxy one
@@ -812,7 +812,7 @@ class SpaceborneConfigChecker:
                 assert os.path.isfile(fp), f'Footprint file for {probe} not found: {fp}'
 
     def check_options(self) -> None:
-        if self.cfg['C_ell']['has_magnification_bias']:
+        if self.cfg['C_ell']['has_mag_bias']:
             assert self.cfg['C_ell']['which_mag_bias'] in [
                 'from_input',
                 'polynomial_fit',

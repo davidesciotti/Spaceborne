@@ -128,6 +128,10 @@ class TestBuildSaveOcIniIA:
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(repo_root, 'config.yaml')) as f:
             cfg = yaml.safe_load(f)
+        # the 'OneCovariance' section is optional in config.yaml (main.py fills
+        # the defaults at runtime); mock the keys used by build_save_oc_ini
+        oc_cfg = cfg.setdefault('OneCovariance', {})
+        oc_cfg.setdefault('oc_output_filename', 'cov_oc')
         cfg['C_ell']['has_IA'] = has_ia
         cfg['intrinsic_alignment']['Aia'] = aia
 

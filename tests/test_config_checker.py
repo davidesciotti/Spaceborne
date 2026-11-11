@@ -355,7 +355,7 @@ class TestCheckOnecov:
     """Tests for check_onecov."""
 
     def test_magnification_bias_with_oc_raises(self, valid_cfg):
-        valid_cfg['C_ell']['has_magnification_bias'] = True
+        valid_cfg['C_ell']['has_mag_bias'] = True
         valid_cfg['OneCovariance']['compare_against_oc'] = True
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(ValueError):
@@ -376,7 +376,7 @@ class TestCheckPyccl:
     @staticmethod
     def _pyccl_cfg(cfg, ssc, cng, has_mag, has_rsd):
         cfg['covariance'].update(SSC=ssc, cNG=cng, SSC_code='PyCCL', cNG_code='PyCCL')
-        cfg['C_ell']['has_magnification_bias'] = has_mag
+        cfg['C_ell']['has_mag_bias'] = has_mag
         cfg['C_ell']['has_rsd'] = has_rsd
         return config_checker.SpaceborneConfigChecker(cfg, _zbins(cfg))
 

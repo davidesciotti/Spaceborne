@@ -218,7 +218,7 @@ class CCLInterface:
         np.savetxt(filename, gal_bias_table)
 
     def set_mag_bias_tuple(
-        self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values
+        self, z_grid_lns, has_mag_bias, magcut_lens, poly_fit_values
     ):
         """
         Set the magnification bias values and store in a tuple. In this function,
@@ -229,7 +229,7 @@ class CCLInterface:
         thus the use of np.repeat to construct the 2d array.
         """
 
-        if has_magnification_bias:
+        if has_mag_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality,
             # the same array is given for each bin
             mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(
@@ -320,7 +320,7 @@ class CCLInterface:
 
         return cl_ab_3d
 
-    def set_kernel_arr(self, z_grid_wf, has_magnification_bias):
+    def set_kernel_arr(self, z_grid_wf, has_mag_bias):
         self.z_grid_wf = z_grid_wf
         a_arr = cosmo_lib.z_to_a(z_grid_wf)
         comoving_distance = ccl.comoving_radial_distance(self.cosmo_ccl, a_arr)
@@ -356,7 +356,7 @@ class CCLInterface:
         self.wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
         self.wf_mu_arr = (
             wf_galaxy_tot_arr[:, -1, :].T
-            if has_magnification_bias
+            if has_mag_bias
             else np.zeros_like(self.wf_delta_arr)
         )
 

@@ -263,8 +263,8 @@ zbins = len(cfg['nz']['ngal_lenses'])
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
 shift_nz = cfg['nz']['shift_nz']
-
-obs_space = cfg['probe_selection']['space']
+_cfgps = cfg['probe_selection']
+obs_space = _cfgps['space']
 
 
 # ! check/create paths
@@ -320,8 +320,8 @@ cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
 )
 
 # Psi-statistics not implemented yet
-cfg['probe_selection']['Psigl'] = False
-cfg['probe_selection']['Psigg'] = False
+_cfgps['Psigl'] = False
+_cfgps['Psigg'] = False
 
 # Shape noise in the sims:
 # - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
@@ -359,45 +359,37 @@ n_probes = cfg['covariance']['n_probes']
 # req_probe_combs_2d = ['LLLL', 'LLGL', 'GLLL', 'GLGL']
 
 probe_combs_dict_hs = sl.get_probe_combs_wrapper(
-    obs_space='harmonic',
-    probe_selection=cfg['probe_selection'],
-    cross_cov=cfg['probe_selection']['cross_cov'],
+    obs_space='harmonic', probe_selection=_cfgps, cross_cov=_cfgps['cross_cov']
 )
 probe_combs_dict_rs = sl.get_probe_combs_wrapper(
-    obs_space='real',
-    probe_selection=cfg['probe_selection'],
-    cross_cov=cfg['probe_selection']['cross_cov'],
+    obs_space='real', probe_selection=_cfgps, cross_cov=_cfgps['cross_cov']
 )
 probe_combs_dict_cs = sl.get_probe_combs_wrapper(
-    obs_space='cosebis',
-    probe_selection=cfg['probe_selection'],
-    cross_cov=cfg['probe_selection']['cross_cov'],
+    obs_space='cosebis', probe_selection=_cfgps, cross_cov=_cfgps['cross_cov']
 )
 
 # in case real space or cosebis are required, we must compute the harmonic space
 # non-gaussian covariance. This only needs to be evaluated for the appropriate probes,
 # following the mapping below
 if obs_space == 'real':
-    _cps = cfg['probe_selection']
     probe_combs_dict_hs = sl.get_probe_combs_wrapper(
         obs_space='harmonic',
         probe_selection={
-            'LL': bool(_cps['xip'] or _cps['xim']),
-            'GL': bool(_cps['gt']),
-            'GG': bool(_cps['w']),
+            'LL': bool(_cfgps['xip'] or _cfgps['xim']),
+            'GL': bool(_cfgps['gt']),
+            'GG': bool(_cfgps['w']),
         },
-        cross_cov=cfg['probe_selection']['cross_cov'],
+        cross_cov=_cfgps['cross_cov'],
     )
 elif obs_space == 'cosebis':
-    _cps = cfg['probe_selection']
     probe_combs_dict_hs = sl.get_probe_combs_wrapper(
         obs_space='harmonic',
         probe_selection={
-            'LL': bool(_cps['En'] or _cps['Bn']),
-            'GL': bool(_cps['Psigl']),
-            'GG': bool(_cps['Psigg']),
+            'LL': bool(_cfgps['En'] or _cfgps['Bn']),
+            'GL': bool(_cfgps['Psigl']),
+            'GG': bool(_cfgps['Psigg']),
         },
-        cross_cov=cfg['probe_selection']['cross_cov'],
+        cross_cov=_cfgps['cross_cov'],
     )
 
 
@@ -498,17 +490,15 @@ if obs_space != 'real':
 
 elif cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
     # Otherwise switch on HS probes corresponding to selected RS probes
-    cfg['probe_selection']['LL'] = (
-        cfg['probe_selection']['xip'] or cfg['probe_selection']['xim']
-    )
-    cfg['probe_selection']['GL'] = cfg['probe_selection']['gt']
-    cfg['probe_selection']['GG'] = cfg['probe_selection']['w']
+    _cfgps['LL'] = _cfgps['xip'] or _cfgps['xim']
+    _cfgps['GL'] = _cfgps['gt']
+    _cfgps['GG'] = _cfgps['w']
 
 else:
     # If neither SSC nor cNG are active → turn off all HS probes
-    cfg['probe_selection']['LL'] = False
-    cfg['probe_selection']['GL'] = False
-    cfg['probe_selection']['GG'] = False
+    _cfgps['LL'] = False
+    _cfgps['GL'] = False
+    _cfgps['GG'] = False
 
 
 k_txt_label = 'hoverMpc' if use_h_units else '1overMpc'
@@ -946,9 +936,7 @@ plt.legend()
 
 # ! ============================ Radial kernels ========================================
 ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['precision']['n_samples_wf'])
-ccl_obj.set_kernel_arr(
-    z_grid_wf=z_grid, has_mag_bias=cfg['C_ell']['has_mag_bias']
-)
+ccl_obj.set_kernel_arr(z_grid_wf=z_grid, has_mag_bias=cfg['C_ell']['has_mag_bias'])
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 
 
@@ -1996,9 +1984,7 @@ if cfg['misc']['save_output_as_benchmark']:
         d2CGG_dVddeltab = np.array([])
 
     _bnt_matrix = np.array([]) if bnt_matrix is None else bnt_matrix
-    _mag_bias_2d = (
-        ccl_obj.mag_bias_2d if cfg['C_ell']['has_mag_bias'] else np.array([])
-    )
+    _mag_bias_2d = ccl_obj.mag_bias_2d if cfg['C_ell']['has_mag_bias'] else np.array([])
 
     _ell_dict = {k: v for k, v in vars(bin_obj).items() if isinstance(v, np.ndarray)}
 

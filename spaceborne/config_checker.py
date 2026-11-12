@@ -243,6 +243,26 @@ class SpaceborneConfigChecker:
             'painted',
             'catalogue',
         ), "ensemble_covariance: noise_model must be 'painted' or 'catalogue'"
+        assert ensemble_cov_cfg.get('field_type', 'gaussian') in (
+            'gaussian',
+            'lognormal',
+            'gaussian_shells',
+        ), (
+            "ensemble_covariance: field_type must be 'gaussian', 'lognormal' or "
+            "'gaussian_shells'"
+        )
+        assert ensemble_cov_cfg.get('lognormal_shell_thickness', 150.0) > 0, (
+            'ensemble_covariance: lognormal_shell_thickness must be positive'
+        )
+        assert isinstance(ensemble_cov_cfg.get('lognormal_ncorr', 5), int), (
+            'ensemble_covariance: lognormal_ncorr must be an int'
+        )
+        assert ensemble_cov_cfg.get('lognormal_shift', 1.0) > 0, (
+            'ensemble_covariance: lognormal_shift must be positive'
+        )
+        assert isinstance(
+            ensemble_cov_cfg.get('lognormal_ell_max_nonlimber', 200), int
+        ), 'ensemble_covariance: lognormal_ell_max_nonlimber must be an int'
 
         # OneCovariance
         if 'OneCovariance' in self.cfg:

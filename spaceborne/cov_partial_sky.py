@@ -556,6 +556,7 @@ def compute_ensemble_covariance_parallel(
     lmax_sim: int | None = None,
     noise_model: str = 'catalogue',
     pixwin_nside: int | None = None,
+    lognormal_gen=None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Computes the ensemble covariance from a set of simulated power spectra.
 
@@ -564,11 +565,18 @@ def compute_ensemble_covariance_parallel(
         deconvolved: the signal alms are multiplied by p_ell before the maps are made
         (pixel averaging) and the measured pseudo-alms are divided by it, so the white
         pixel noise ends up as N / p_ell^2, as in the analytic covariance.
+    lognormal_gen : lognormal_sims.LognormalGenerator. If given, the signal maps are
+        projected from its matter shells instead of being Gaussian realisations of
+        the input Cls (which are then not used). Its band limit must be lmax_sim.
     """
 
     SEEDVALUE = np.arange(nreal) if fix_seed else [None] * nreal
     lmax_sim = lmax if lmax_sim is None else lmax_sim
     assert lmax <= lmax_sim <= 3 * nside - 1, 'need lmax <= lmax_sim <= 3*nside-1'
+    if lognormal_gen is not None:
+        assert lognormal_gen.lmax == lmax_sim and lognormal_gen.nside == nside, (
+            'the lognormal generator must be built for the same nside and lmax_sim'
+        )
 
     noise_amp_gg = noise_amp_ll = None
     if noise_model == 'catalogue':
@@ -597,8 +605,9 @@ def compute_ensemble_covariance_parallel(
     sim_cl_LL = np.zeros((nreal, nbl, zbins, zbins))
 
     # * Step I: produce (correlated) maps
+    field_kind = 'Gaussian' if lognormal_gen is None else lognormal_gen.transform
     print(
-        f'Generating {nreal} maps for nside {nside} '
+        f'Generating {nreal} {field_kind} maps for nside {nside} '
         f'and computing pseudo-cls with healpy...'
     )
 
@@ -651,6 +660,7 @@ def compute_ensemble_covariance_parallel(
                 ell_max_edges=ell_max_edges,
                 pw_t=pw_t,
                 pw_e=pw_e,
+                lognormal_gen=lognormal_gen,
             )
             for i in range(nreal)
         )
@@ -702,10 +712,13 @@ def _compute_one_realization(
     ell_max_edges: np.ndarray,
     pw_t: np.ndarray | None = None,
     pw_e: np.ndarray | None = None,
+    lognormal_gen=None,
 ):
     """Worker: one realization → Cls only. Maps are discarded before return.
 
     pw_t, pw_e: pixel windows (to lmax_sim) of the emulated measurement, or None.
+    lognormal_gen: lognormal_sims.LognormalGenerator, or None for Gaussian fields
+        drawn from cl_ring_big_list with healpy.
     """
 
     # Set seed for reproducibility (must be set inside each worker for
@@ -727,26 +740,30 @@ def _compute_one_realization(
     # Reconstruct NmtBin object from edges (nmt_bin_obj objects are not picklable)
     nmt_bin_obj = nmt.NmtBin.from_edges(ell_min_edges, ell_max_edges)
 
-    # ! 1. Generate alms from input Cls
-    # signal is band-limited at lmax_sim >= lmax; the estimator below stops at lmax
-    corr_alms_tot = hp.synalm(cl_ring_big_list, lmax=lmax_sim, new=True)
-    corr_alms_T = corr_alms_tot[::3]
-    corr_alms_E_B = list(zip(corr_alms_tot[1::3], corr_alms_tot[2::3], strict=True))
-    if pw_t is not None:
-        # pixel averaging of the measured maps acts on the field (before the mask)
-        corr_alms_T = [hp.almxfl(alm, pw_t) for alm in corr_alms_T]
-        corr_alms_E_B = [
-            (hp.almxfl(E, pw_e), hp.almxfl(B, pw_e)) for E, B in corr_alms_E_B
-        ]
+    if lognormal_gen is None:
+        # ! 1. Generate alms from input Cls
+        # signal is band-limited at lmax_sim >= lmax; the estimator below stops at lmax
+        corr_alms_tot = hp.synalm(cl_ring_big_list, lmax=lmax_sim, new=True)
+        corr_alms_T = corr_alms_tot[::3]
+        corr_alms_E_B = list(zip(corr_alms_tot[1::3], corr_alms_tot[2::3], strict=True))
+        if pw_t is not None:
+            # pixel averaging of the measured maps acts on the field (before the mask)
+            corr_alms_T = [hp.almxfl(alm, pw_t) for alm in corr_alms_T]
+            corr_alms_E_B = [
+                (hp.almxfl(E, pw_e), hp.almxfl(B, pw_e)) for E, B in corr_alms_E_B
+            ]
 
-    # ! 2. Generate (correlated) maps from alms
-    corr_maps_gg = [hp.alm2map(alm, nside, lmax=lmax_sim) for alm in corr_alms_T]
-    corr_maps_ll = [
-        hp.alm2map_spin([E, B], nside=nside, spin=2, lmax=lmax_sim)
-        for E, B in corr_alms_E_B
-    ]
-    # free alms
-    del corr_alms_tot, corr_alms_T, corr_alms_E_B
+        # ! 2. Generate (correlated) maps from alms
+        corr_maps_gg = [hp.alm2map(alm, nside, lmax=lmax_sim) for alm in corr_alms_T]
+        corr_maps_ll = [
+            hp.alm2map_spin([E, B], nside=nside, spin=2, lmax=lmax_sim)
+            for E, B in corr_alms_E_B
+        ]
+        # free alms
+        del corr_alms_tot, corr_alms_T, corr_alms_E_B
+    else:
+        # ! 1-2. Maps projected from (lognormal) matter shells: non-Gaussian signal
+        corr_maps_gg, corr_maps_ll = lognormal_gen.make_maps(seed, pw_t=pw_t, pw_e=pw_e)
 
     # ! 3. Inject noise at the map level directly to preserve "full resolution"
     # Before I was cutting the noise at ell_max_3x2pt, but the mask-induced mode 
@@ -992,6 +1009,9 @@ class CovNaMaster:
                 'You should probably increase NSIDE or decrease lmax ',
                 stacklevel=2,
             )
+
+        # set from main.py for ensemble_covariance: field_type != 'gaussian'
+        self.lognormal_gen = None
 
         self.cl_3x2pt_unb_5d = _UNSET
         self.ell_max_nmt = _UNSET
@@ -1703,7 +1723,8 @@ class CovNaMaster:
             ) * self.ell_obj.nbl_3x2pt
             print(
                 '\nComputing ensemble covariance from '
-                f'{self.cfg["ensemble_covariance"]["nreal"]} healpy Gaussian '
+                f'{self.cfg["ensemble_covariance"]["nreal"]} '
+                f'{self.cfg["ensemble_covariance"].get("field_type", "gaussian")} '
                 f'realizations. The datevector length is {len_dv}'
             )
 
@@ -1750,6 +1771,7 @@ class CovNaMaster:
                 wsp_path_template=self.cache_path + '/' + self.wsp_fname,
                 fix_seed=self.cfg['ensemble_covariance']['fix_seed'],
                 n_jobs=self.cfg['misc']['num_threads'],
+                lognormal_gen=self.lognormal_gen,
             )
             self.sim_cl_GG, self.sim_cl_GL, self.sim_cl_LL = result
             print(

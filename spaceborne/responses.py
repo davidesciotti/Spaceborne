@@ -347,6 +347,39 @@ class SpaceborneResponses:
         self.r1_gm = self.dPgm_ddeltab / self.pk_gm
         self.r1_gg = self.dPgg_ddeltab / self.pk_gg
 
+    def set_lognormal_resp(self, shift: float, gal_bias_2d: np.ndarray):
+        """Responses of a lognormal matter field with linearly biased galaxies, as
+        simulated by `lognormal_sims` (ensemble_covariance: field_type: lognormal).
+
+        A lognormal field delta = shift * (exp(g - var/2) - 1) responds to a long
+        mode as P -> P * (1 + delta_b / shift)^2, hence dlnPmm/ddelta_b = 2 / shift at
+        all scales and redshifts. Galaxies are delta_g = b1 * delta, measured with
+        respect to the *global* mean density, so the same response applies to gm and
+        gg (no local-mean counterterms).
+
+        gal_bias_2d : (z_grid, zbins) first-order galaxy bias.
+
+        Sets dPmm_ddeltab (k, z), dPgm_ddeltab (k, z, zbins) and
+        dPgg_ddeltab (k, z, zbins, zbins).
+        """
+        assert gal_bias_2d.shape[0] == len(self.z_grid), (
+            'gal_bias_2d must have shape (z_grid, zbins)'
+        )
+        self.k_grid, self.pk_mm = cosmo_lib.pk_from_ccl(
+            k_array=self.k_grid,
+            z_array=self.z_grid,
+            use_h_units=self.use_h_units,
+            cosmo_ccl=self.cosmo_ccl,
+            pk_kind='nonlinear',
+        )
+        self.dPmm_ddeltab = 2 / shift * self.pk_mm
+        self.dPgm_ddeltab = self.dPmm_ddeltab[:, :, None] * gal_bias_2d[None, :, :]
+        self.dPgg_ddeltab = (
+            self.dPmm_ddeltab[:, :, None, None]
+            * gal_bias_2d[None, :, :, None]
+            * gal_bias_2d[None, :, None, :]
+        )
+
     def set_hm_resp(
         self, k_grid, z_grid, galaxy_bias_model, b1g_zi, b1g_zj, include_terasawa_terms
     ):

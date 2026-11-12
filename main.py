@@ -331,6 +331,13 @@ cfg['probe_selection']['Psigg'] = False
 # The two coincide for a binary mask.
 cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
 
+# Signal fields of the ensemble covariance (see config.yaml and lognormal_sims.py)
+cfg['ensemble_covariance'].setdefault('field_type', 'gaussian')
+cfg['ensemble_covariance'].setdefault('lognormal_shell_thickness', 150.0)
+cfg['ensemble_covariance'].setdefault('lognormal_ncorr', 5)
+cfg['ensemble_covariance'].setdefault('lognormal_shift', 1.0)
+cfg['ensemble_covariance'].setdefault('lognormal_ell_max_nonlimber', 200)
+
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
 # convenence settings that have been hardcoded
@@ -1077,6 +1084,76 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
     # and additional useful ones
     cov_nmt_obj.fsky_ab_dict = fsky_ab_dict
 
+    # signal maps projected from lognormal (or Gaussian) matter shells instead of
+    # Gaussian realisations of the Cls
+    ens_cfg = cfg['ensemble_covariance']
+    if (
+        cfg['covariance']['partial_sky_method'] == 'ensemble'
+        and ens_cfg['field_type'] != 'gaussian'
+    ):
+        from spaceborne import lognormal_sims
+
+        if cfg['C_ell']['has_rsd']:
+            warnings.warn(
+                'ensemble_covariance: RSD are not included in the lognormal sims',
+                stacklevel=2,
+            )
+        if cfg['C_ell']['use_input_cls']:
+            warnings.warn(
+                'ensemble_covariance: the lognormal sims are built from the radial '
+                'kernels and the matter power spectrum, not from the input Cls',
+                stacklevel=2,
+            )
+        if cfg['covariance']['SSC'] or cfg['covariance']['cNG']:
+            warnings.warn(
+                'ensemble_covariance: the lognormal ensemble covariance already '
+                'contains the non-Gaussian terms of the sims; the analytic SSC/cNG '
+                'are computed on top of it',
+                stacklevel=2,
+            )
+
+        with sl.timer('\nSetting up the matter shells for the ensemble...'):
+            cov_nmt_obj.lognormal_gen = lognormal_sims.build_generator(
+                cosmo_ccl=ccl_obj.cosmo_ccl,
+                z_grid=z_grid,
+                wf_lensing=ccl_obj.wf_lensing_arr * (1 + mult_shear_bias),
+                wf_galaxy=ccl_obj.wf_galaxy_w_gal_bias_arr,
+                nside=cfg['mask']['nside'],
+                lmax=ell_max_nmt,
+                shell_thickness=ens_cfg['lognormal_shell_thickness'],
+                ncorr=ens_cfg['lognormal_ncorr'],
+                shift=ens_cfg['lognormal_shift'],
+                ell_max_nonlimber=ens_cfg['lognormal_ell_max_nonlimber'],
+                transform={
+                    'lognormal': 'lognormal',
+                    'gaussian_shells': 'gaussian',
+                }[ens_cfg['field_type']],
+                cache_dir=f'{output_path}/cache',
+            )
+        _gen = cov_nmt_obj.lognormal_gen
+        np.savez_compressed(
+            f'{output_path}/ensemble_cov_sim_theory_cls.npz',
+            ells=ells_3x2pt_nmt_unb,
+            cl_LL=_gen.cl_ll,
+            cl_GL=_gen.cl_gl,
+            cl_GG=_gen.cl_gg,
+            chi_edges=_gen.chi_edges,
+        )
+        # the sims realise the discretised spectra: compare them with the theory ones
+        _sel = slice(int(bin_obj.ell_min_3x2pt), ell_max_3x2pt + 1)
+        _diag = np.arange(zbins)
+        print(f'{_gen.n_shells} matter shells; spectra of the sims vs theory C_ells')
+        for _name, _sim, _th in (
+            ('LL', _gen.cl_ll, cl_3x2pt_nmt_unb_5d[0, 0]),
+            ('GG', _gen.cl_gg, cl_3x2pt_nmt_unb_5d[1, 1]),
+        ):
+            _ratio = _sim[_sel][:, _diag, _diag] / _th[_sel][:, _diag, _diag]
+            print(
+                f'  {_name} (auto-bins, science ell range): sims/theory - 1 '
+                f'in [{_ratio.min() - 1:+.3f}, {_ratio.max() - 1:+.3f}], '
+                f'median {np.median(_ratio) - 1:+.3f}'
+            )
+
     # compute partial-sky covariance
     cov_nmt_dict = cov_nmt_obj.build_psky_cov()
 
@@ -1419,10 +1496,24 @@ if cov_terms_and_codes['SSC'] == 'Spaceborne':
         dPgm_ddeltab = resp_obj.dPgm_ddeltab
         dPgg_ddeltab = resp_obj.dPgg_ddeltab
 
+    elif cfg['covariance']['which_pk_responses'] == 'lognormal':
+        # constant response of a lognormal matter field, to compare the SSC with the
+        # covariance of lognormal sims (ensemble_covariance: field_type: lognormal)
+        gal_bias_2d_trisp = ccl_obj.gal_bias_func(z_grid_trisp_ssc)
+        if gal_bias_2d_trisp.ndim == 1:
+            gal_bias_2d_trisp = np.tile(gal_bias_2d_trisp[:, None], zbins)
+        resp_obj.set_lognormal_resp(
+            shift=cfg['ensemble_covariance']['lognormal_shift'],
+            gal_bias_2d=gal_bias_2d_trisp,
+        )
+        dPmm_ddeltab = resp_obj.dPmm_ddeltab
+        dPgm_ddeltab = resp_obj.dPgm_ddeltab
+        dPgg_ddeltab = resp_obj.dPgg_ddeltab
+
     else:
         raise ValueError(
-            'which_pk_responses must be either "halo_model" or "separate_universe". '
-            f' Got {cfg["covariance"]["which_pk_responses"]}.'
+            'which_pk_responses must be "halo_model", "separate_universe" or '
+            f'"lognormal". Got {cfg["covariance"]["which_pk_responses"]}.'
         )
 
     # ! prepare integrands (d2Cxx_dVddeltab)

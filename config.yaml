@@ -294,7 +294,10 @@ covariance:
   # ==================================== SSC cov =======================================
   # Which method to use for the computation of the response of the power spectra to a
   # background density fluctuation, needed for the SSC term.
-  which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe']
+  # 'lognormal' is not a physical model: it is the constant response (2 / lognormal_shift)
+  # of the lognormal matter field simulated with `ensemble_covariance: field_type:
+  # lognormal`, to validate the SSC against those simulations like-for-like.
+  which_pk_responses: halo_model # Type: str. Options: ['halo_model', 'separate_universe', 'lognormal']
 
   # How to model the galaxy field in the non-Gaussian covariance terms, i.e., in the
   # GL and GG SSC responses and in the cNG trispectrum.
@@ -365,6 +368,33 @@ ensemble_covariance:
   nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix
   fix_seed: True # Type: bool. Whether to fix the random seed for reproducible results
   save_sim_cls: True # Type: bool. Whether to save the simulated power spectra
+
+  # Signal fields of the simulations:
+  # - 'gaussian': Gaussian realisations of the C_ells (healpy). Gaussian covariance only.
+  # - 'lognormal': maps projected from lognormal matter shells sampled with GLASS
+  #                (optional dependency: `pip install glass`), using the same radial
+  #                kernels as the C_ells. The covariance includes the non-Gaussian terms
+  #                of a lognormal field: mostly an SSC with a constant response
+  #                dlnP/ddelta_b = 2 / lognormal_shift (see `which_pk_responses`), which
+  #                is *not* the halo-model one, plus a smaller in-survey trispectrum.
+  #                Meant to validate the SSC machinery (footprint, projection, binning),
+  #                not to replace the analytic non-Gaussian terms.
+  # - 'gaussian_shells': as 'lognormal' but with Gaussian shells (same two-point
+  #                statistics, no non-Gaussianity): the null test of 'lognormal'.
+  field_type: gaussian # Type: str. Options: ['gaussian', 'lognormal', 'gaussian_shells']
+  # The options below are only used for field_type != 'gaussian'.
+  # Comoving thickness of the matter shells. The sims realise the C_ells discretised on
+  # the shells (saved in `ensemble_cov_sim_theory_cls.npz`): thinner shells are more
+  # accurate for narrow redshift bins, at a cost proportional to their number.
+  lognormal_shell_thickness: 150.0 # Type: float. Units: Mpc
+  # Number of neighbouring shells each shell is correlated with (at low ell).
+  lognormal_ncorr: 5 # Type: int
+  # Shift of the lognormal distribution (1: standard lognormal matter field).
+  lognormal_shift: 1.0 # Type: float
+  # Below this multipole the shell spectra are computed without the Limber approximation
+  # and include the correlations between shells; this is needed for the variance of the
+  # density on the footprint scale (i.e. for the SSC). Set to -1 to use Limber everywhere.
+  lognormal_ell_max_nonlimber: 200 # Type: int
 
 precision:
   # =============================== harmonic-space cov =================================

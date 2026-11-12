@@ -799,12 +799,25 @@ class TestEllEdgesToInt:
             sl.ell_edges_to_int([10, 16.0, 24, 3000.0]), [10, 16, 24, 3000]
         )
 
-    def test_float_noise_is_not_a_multipole(self):
-        # np.sqrt(10) ** 2 = 10.000000000000002 is ell = 10, not 11
+    def test_no_tolerance(self):
+        # an edge just above an integer excludes it, even if by float noise only:
+        # np.sqrt(10) ** 2 = 10.000000000000002 starts the band at ell = 11
         assert np.sqrt(10) ** 2 > 10
         np.testing.assert_array_equal(
-            sl.ell_edges_to_int([np.sqrt(10) ** 2, 20 - 1e-12]), [10, 20]
+            sl.ell_edges_to_int([np.sqrt(10) ** 2, 20 - 1e-12]), [11, 20]
         )
+
+    def test_same_bands_as_digitize(self):
+        """The integer edges give the bands of np.digitize on the float edges, i.e.
+        those of Heracles (here the sqrt-spaced edges of the DR1 nowcast)."""
+        edges = np.linspace(np.sqrt(10), np.sqrt(2000), 51) ** 2
+        ells = np.arange(3001)
+        band_float = np.digitize(ells, edges)
+        band_int = np.digitize(ells, sl.ell_edges_to_int(edges))
+        np.testing.assert_array_equal(band_int, band_float)
+        # the first band starts at ell = 11 and the last one includes ell = 2000
+        assert ells[band_float == 1][[0, -1]].tolist() == [11, 15]
+        assert ells[band_float == 50][[0, -1]].tolist() == [1927, 2000]
 
 
 class TestBinCovHsGDiag:

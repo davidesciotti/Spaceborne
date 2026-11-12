@@ -2077,7 +2077,7 @@ def _expand_diagonal_to_full(cov_diag):
     return cov_full
 
 
-def ell_edges_to_int(ell_edges, atol: float = 1e-8) -> np.ndarray:
+def ell_edges_to_int(ell_edges) -> np.ndarray:
     """Integer edges of the multipole bands defined by `ell_edges`.
 
     Band k contains the integer multipoles with
@@ -2086,13 +2086,12 @@ def ell_edges_to_int(ell_edges, atol: float = 1e-8) -> np.ndarray:
     truncating the edges would instead move the band boundaries by one multipole.
     Integer edges are returned unchanged.
 
-    Edges within `atol` of an integer are taken to be that integer, to absorb
-    floating-point noise (e.g. np.sqrt(10) ** 2 = 10.000000000000002).
+    This is the assignment of np.digitize(ell, ell_edges), as used by Heracles to bin
+    the spectra and the mixing matrices. No tolerance is applied, on purpose: an edge
+    just above an integer, even by floating-point noise, excludes that multipole
+    (np.sqrt(10) ** 2 = 10.000000000000002 gives 11, as in Heracles).
     """
-    ell_edges = np.asarray(ell_edges, dtype=float)
-    nearest = np.round(ell_edges)
-    is_int = np.isclose(ell_edges, nearest, rtol=0, atol=atol)
-    return np.where(is_int, nearest, np.ceil(ell_edges)).astype(int)
+    return np.ceil(np.asarray(ell_edges, dtype=float)).astype(int)
 
 
 def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):

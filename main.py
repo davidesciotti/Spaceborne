@@ -1138,6 +1138,8 @@ if cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
             cl_GL=_gen.cl_gl,
             cl_GG=_gen.cl_gg,
             chi_edges=_gen.chi_edges,
+            kern_LL=_gen.kern_ll,
+            kern_GG=_gen.kern_gg,
         )
         # the sims realise the discretised spectra: compare them with the theory ones
         _sel = slice(int(bin_obj.ell_min_3x2pt), ell_max_3x2pt + 1)

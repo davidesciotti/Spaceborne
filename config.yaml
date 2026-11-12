@@ -451,12 +451,6 @@ precision:
   # Whether to keep the E->B leakage in the coupled spectra passed to the iNKA.
   iNKA_eb_leakage: False # Type: bool.
 
-  # ======================================= JAX ========================================
-  # Whether to enable 64-bit precision for JAX computations. Setting this to False can result
-  # in noticeable differences with respect to the plain numpy implementation, since the
-  # latter defaults to 64-bit precision.
-  jax_enable_x64: True # Type: bool.
-
   # ======================================= CCL ========================================
   # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
   # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer

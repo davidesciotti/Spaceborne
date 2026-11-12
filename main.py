@@ -281,45 +281,27 @@ use_h_units = False  # whether or not to normalize Megaparsecs by little h
 
 # for the Gaussian covariance computation
 shift_nz_interpolation_kind = 'linear'
-
-
-# these are configs which should not be visible to the user
 cfg['covariance']['n_probes'] = 2
 
+# codes
+cfg['covariance'].setdefault('G_code', 'Spaceborne')
+cfg['covariance'].setdefault('SSC_code', 'Spaceborne')
+cfg['covariance'].setdefault('cNG_code', 'PyCCL')
 
-if 'G_code' not in cfg['covariance']:
-    cfg['covariance']['G_code'] = 'Spaceborne'
-if 'SSC_code' not in cfg['covariance']:
-    cfg['covariance']['SSC_code'] = 'Spaceborne'
-if 'cNG_code' not in cfg['covariance']:
-    cfg['covariance']['cNG_code'] = 'PyCCL'
-
-if 'OneCovariance' not in cfg:
-    cfg['OneCovariance'] = {}
-    cfg['OneCovariance']['compare_against_oc'] = False
-
-cfg['OneCovariance']['path_to_oc_env'] = cfg['OneCovariance'].get(
+# OneCovariance settings
+_cfg_oc = cfg.setdefault('OneCovariance', {})
+_cfg_oc.setdefault(
     'path_to_oc_env', os.environ.get('SPACEBORNE_OC_PYTHON', sys.executable)
 )
-cfg['OneCovariance']['path_to_oc_executable'] = cfg['OneCovariance'].get(
+_cfg_oc.setdefault(
     'path_to_oc_executable', os.environ.get('SPACEBORNE_OC_EXECUTABLE', '')
 )
-cfg['OneCovariance']['consistency_checks'] = cfg['OneCovariance'].get(
-    'consistency_checks', False
-)
-cfg['OneCovariance']['oc_output_filename'] = cfg['OneCovariance'].get(
-    'oc_output_filename', 'cov_oc'
-)
-cfg['OneCovariance']['compare_against_oc'] = cfg['OneCovariance'].get(
-    'compare_against_oc', False
-)
-cfg['misc']['save_output_as_benchmark'] = cfg['misc'].get(
-    'save_output_as_benchmark', False
-)
-cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
-cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
-    'ell_bins_proj_nongauss_cosebis', 10_000
-)
+_cfg_oc.setdefault('consistency_checks', False)
+_cfg_oc.setdefault('oc_output_filename', 'cov_oc')
+_cfg_oc.setdefault('compare_against_oc', False)
+cfg['misc'].setdefault('save_output_as_benchmark', False)
+cfg['misc'].setdefault('bench_filename', 'benchmark')
+cfg['precision'].setdefault('ell_bins_proj_nongauss_cosebis', 10_000)
 
 # Shape noise in the sims:
 # - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
@@ -328,6 +310,13 @@ cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
 #   with the same coupled noise level as the analytic covariance.
 # The two coincide for a binary mask.
 cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
+
+# ======================================= JAX ========================================
+# Whether to enable 64-bit precision for JAX computations. Setting this to False can
+# result in noticeable differences with respect to the plain numpy implementation, since
+# the latter defaults to 64-bit precision.
+cfg['precision'].setdefault('jax_enable_x64', True)
+
 
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 

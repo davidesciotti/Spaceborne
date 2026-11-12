@@ -263,6 +263,8 @@ zbins = len(cfg['nz']['ngal_lenses'])
 output_path = cfg['misc']['output_path']
 clr = cm.rainbow(np.linspace(0, 1, zbins))  # pylint: disable=E1101
 shift_nz = cfg['nz']['shift_nz']
+# set the flags of the unused spaces (and the Psi-statistics) to False
+sl.normalize_probe_selection(cfg['probe_selection'])
 _cfgps = cfg['probe_selection']
 obs_space = _cfgps['space']
 
@@ -318,10 +320,6 @@ cfg['misc']['bench_filename'] = cfg['misc'].get('bench_filename', 'benchmark')
 cfg['precision']['ell_bins_proj_nongauss_cosebis'] = cfg['precision'].get(
     'ell_bins_proj_nongauss_cosebis', 10_000
 )
-
-# Psi-statistics not implemented yet
-_cfgps['Psigl'] = False
-_cfgps['Psigg'] = False
 
 # Shape noise in the sims:
 # - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This

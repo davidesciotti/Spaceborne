@@ -189,6 +189,34 @@ def percival_factor(n_sim, n_data, n_param):
     return beta
 
 
+def normalize_probe_selection(probe_selection: dict) -> None:
+    """Set (in place) the probe flags of the spaces not in use to False, so that
+    downstream code only ever sees bools, whatever the cfg contains for them.
+    Psi-statistics are not implemented yet, so Psigl and Psigg are always False."""
+    flags_by_space = {
+        'harmonic': ('LL', 'GL', 'GG'),
+        'real': ('xip', 'xim', 'gt', 'w'),
+        'cosebis': ('En', 'Bn', 'Psigl', 'Psigg'),
+    }
+    # check that probe_selection['space'] is valid 
+    space = probe_selection['space']
+    if space not in flags_by_space:
+        raise ValueError(
+            f'probe_selection.space must be one of {list(flags_by_space)}, '
+            f'got {space!r}'
+        )
+
+    # hardcode Psigl and Psigg to False, as they are not implemented yet
+    probe_selection['Psigl'] = False
+    probe_selection['Psigg'] = False
+    
+    # set flags of probes of unused spaces to False
+    for _space, flags in flags_by_space.items():
+        if _space != space:
+            for flag in flags:
+                probe_selection[flag] = False
+
+
 def get_probe_combs_wrapper(
     obs_space: str, probe_selection: dict, cross_cov: bool
 ) -> dict:

@@ -164,6 +164,65 @@ class TestCheckCov:
             checker.check_cov()
 
 
+class TestCheckBiasPerBin:
+    """Tests for the 'per_bin' galaxy/magnification bias option in check_options."""
+
+    @staticmethod
+    def _per_bin_cfg(cfg, which, vals):
+        cfg['C_ell']['has_mag_bias'] = True
+        cfg['C_ell'][f'which_{which}_bias'] = 'per_bin'
+        cfg['C_ell'][f'{which}_bias_per_bin'] = vals
+        return cfg
+
+    @pytest.mark.parametrize('which', ['gal', 'mag'])
+    def test_valid_per_bin_ok(self, valid_cfg, which):
+        vals = [1.0] * _zbins(valid_cfg)
+        vals[0] = 2  # ints are accepted too
+        self._per_bin_cfg(valid_cfg, which, vals)
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_options()
+
+    @pytest.mark.parametrize('which', ['gal', 'mag'])
+    def test_wrong_length_raises(self, valid_cfg, which):
+        self._per_bin_cfg(valid_cfg, which, [1.0] * (_zbins(valid_cfg) + 1))
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match=f'{which}_bias_per_bin'):
+            checker.check_options()
+
+    @pytest.mark.parametrize('which', ['gal', 'mag'])
+    def test_missing_key_raises(self, valid_cfg, which):
+        self._per_bin_cfg(valid_cfg, which, None)
+        del valid_cfg['C_ell'][f'{which}_bias_per_bin']
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match=f'{which}_bias_per_bin'):
+            checker.check_options()
+
+    @pytest.mark.parametrize('which', ['gal', 'mag'])
+    def test_non_numeric_raises(self, valid_cfg, which):
+        vals = [1.0] * _zbins(valid_cfg)
+        vals[-1] = True
+        self._per_bin_cfg(valid_cfg, which, vals)
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='numbers'):
+            checker.check_options()
+
+    def test_per_bin_keys_not_required_for_other_options(self, valid_cfg):
+        """Older configs without the *_bias_per_bin keys must keep working."""
+        valid_cfg['C_ell']['has_mag_bias'] = True
+        valid_cfg['C_ell']['which_gal_bias'] = 'polynomial_fit'
+        valid_cfg['C_ell']['which_mag_bias'] = 'polynomial_fit'
+        del valid_cfg['C_ell']['gal_bias_per_bin']
+        del valid_cfg['C_ell']['mag_bias_per_bin']
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_options()
+
+    def test_mag_per_bin_ignored_without_mag_bias(self, valid_cfg):
+        self._per_bin_cfg(valid_cfg, 'mag', [1.0])  # wrong length...
+        valid_cfg['C_ell']['has_mag_bias'] = False  # ...but unused
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_options()
+
+
 class TestCheckNgCovGalBiasModel:
     """Tests for the ng_cov_gal_bias_model check in check_cov."""
 

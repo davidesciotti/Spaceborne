@@ -843,17 +843,34 @@ class SpaceborneConfigChecker:
                 fp = self.cfg['mask'][probe]['footprint_filename']
                 assert os.path.isfile(fp), f'Footprint file for {probe} not found: {fp}'
 
-    def check_options(self) -> None:
-        if self.cfg['C_ell']['has_mag_bias']:
-            assert self.cfg['C_ell']['which_mag_bias'] in [
-                'from_input',
-                'polynomial_fit',
-            ], 'which_mag_bias should be "from_input" or "polynomial_fit"'
+    def _check_bias_per_bin(self, key: str) -> None:
+        """The per-bin bias list is only required when the 'per_bin' option is set."""
+        vals = self.cfg['C_ell'].get(key)
+        assert isinstance(vals, list), (
+            f'C_ell: {key} must be a list of length zbins = {self.zbins}'
+        )
+        assert all(
+            isinstance(x, (int, float)) and not isinstance(x, bool) for x in vals
+        ), f'C_ell: All elements in {key} must be numbers'
+        assert len(vals) == self.zbins, (
+            f'C_ell: {key} must be of length zbins = {self.zbins}, got {len(vals)}'
+        )
 
-        assert self.cfg['C_ell']['which_gal_bias'] in [
-            'from_input',
-            'polynomial_fit',
-        ], 'which_gal_bias should be "from_input" or "polynomial_fit"'
+    def check_options(self) -> None:
+        bias_options = ['from_input', 'polynomial_fit', 'per_bin']
+
+        assert self.cfg['C_ell']['which_gal_bias'] in bias_options, (
+            f'which_gal_bias should be one of {bias_options}'
+        )
+        if self.cfg['C_ell']['which_gal_bias'] == 'per_bin':
+            self._check_bias_per_bin('gal_bias_per_bin')
+
+        if self.cfg['C_ell']['has_mag_bias']:
+            assert self.cfg['C_ell']['which_mag_bias'] in bias_options, (
+                f'which_mag_bias should be one of {bias_options}'
+            )
+            if self.cfg['C_ell']['which_mag_bias'] == 'per_bin':
+                self._check_bias_per_bin('mag_bias_per_bin')
 
     def check_projection_methods(self) -> None:
         """Integration methods for the harmonic -> real-space projection."""

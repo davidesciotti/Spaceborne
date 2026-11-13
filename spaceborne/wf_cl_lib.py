@@ -208,12 +208,41 @@ def magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
     return b0_mag + (b1_mag * z) + (b2_mag * z**2) + (b3_mag * z**3)
 
 
+def s_from_b_mag(b_mag):
+    """Convert the magnification bias b_mag = 5 * s - 2 (the convention used in the
+    config, see https://arxiv.org/pdf/2510.09118) to the logarithmic slope s of the
+    lenses' luminosity function, which is the `mag_bias` expected by CCL.
+    """
+    return (np.asarray(b_mag, dtype=float) + 2) / 5
+
+
 def s_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
     """Wrapper function to output the magnification bias as needed in ccl; function written by Marco"""
-    # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
-    return (
-        magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=poly_fit_values) + 2
-    ) / 5
+    return s_from_b_mag(
+        magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=poly_fit_values)
+    )
+
+
+def bias_const_per_bin(z, values_per_bin):
+    """Redshift-independent bias, with one value per tomographic bin.
+
+    Parameters
+    ----------
+    z : float or array_like
+        Redshift values at which to evaluate the bias.
+    values_per_bin : array_like
+        Bias value for each tomographic bin, shape (zbins,).
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (len(z), zbins), with column i equal to values_per_bin[i].
+
+    """
+    values_per_bin = np.asarray(values_per_bin, dtype=float)
+    assert values_per_bin.ndim == 1, 'values_per_bin must be a 1D array'
+    z = np.atleast_1d(z)
+    return np.tile(values_per_bin, (z.size, 1))
 
 
 def b2g_fs2_fit(z):

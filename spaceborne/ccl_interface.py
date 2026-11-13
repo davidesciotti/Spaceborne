@@ -212,6 +212,34 @@ class CCLInterface:
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
+    def set_gal_bias_tuple_per_bin(self, z_grid_lns, gal_bias_per_bin):
+        """Set a galaxy bias which is constant in redshift within each bin."""
+        gal_bias_per_bin = np.asarray(gal_bias_per_bin, dtype=float)
+        assert gal_bias_per_bin.shape == (self.zbins,), (
+            f'gal_bias_per_bin must have length zbins = {self.zbins}, '
+            f'got shape {gal_bias_per_bin.shape}'
+        )
+        self.gal_bias_func = partial(
+            wf_cl_lib.bias_const_per_bin, values_per_bin=gal_bias_per_bin
+        )
+        self.gal_bias_2d = self.gal_bias_func(z_grid_lns)
+        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
+
+    def set_mag_bias_tuple_per_bin(self, z_grid_lns, mag_bias_per_bin):
+        """Set a magnification bias which is constant in redshift within each bin.
+
+        The input values are the b_mag = 5 * s - 2 (as for the polynomial fit); they
+        are converted here to the s(z) expected by CCL.
+        """
+        mag_bias_per_bin = np.asarray(mag_bias_per_bin, dtype=float)
+        assert mag_bias_per_bin.shape == (self.zbins,), (
+            f'mag_bias_per_bin must have length zbins = {self.zbins}, '
+            f'got shape {mag_bias_per_bin.shape}'
+        )
+        s_per_bin = wf_cl_lib.s_from_b_mag(mag_bias_per_bin)
+        self.mag_bias_2d = np.tile(s_per_bin, (z_grid_lns.size, 1))
+        self.mag_bias_tuple = (z_grid_lns, self.mag_bias_2d)
+
     def save_gal_bias_table_ascii(self, z_grid_lns, filename):
         assert filename.endswith('.ascii'), 'filename must end with.ascii'
         gal_bias_table = np.hstack((z_grid_lns.reshape(-1, 1), self.gal_bias_2d))

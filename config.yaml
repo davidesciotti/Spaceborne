@@ -172,24 +172,31 @@ C_ell:
   cl_GG_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use.
-  # The magnification bias coefficients are the b_mag defined in
+  # The magnification bias coefficients are the `b_mag` defined in
   # https://arxiv.org/pdf/2510.09118, i.e., b_mag(z) = 5*s(z) - 2,
   # where s(z) is the logarithmic slope of the lenses’ luminosity function
   # Options:
+  # - 'per_bin': use one constant (redshift-independent) value per tomographic bin,
+  #              specified in 'gal_bias_per_bin' and 'mag_bias_per_bin'.
+  # - 'polynomial_fit': use a third-order polynomial in z, equal for all bins.
+  #                     The values of the coefficients are specified in
+  #                     'gal_bias_fit_coeff' and 'mag_bias_fit_coeff'.
   # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
-  # - 'polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
-  #                         The actual values of these coefficients can be changed by modifying the values of
-  #                         'gal_bias_fit_coeff' and 'mag_bias_fit_coeff'.
-  which_gal_bias: polynomial_fit # Type: str.
-  which_mag_bias: polynomial_fit # Type: str.
+  which_gal_bias: polynomial_fit # Type: str. Options: ['per_bin', 'polynomial_fit', 'from_input']
+  which_mag_bias: polynomial_fit # Type: str. Options: ['per_bin', 'polynomial_fit', 'from_input']
 
   # Coefficients of the third-order polynomial galaxy and magnification bias.
   # The order is [z^0, z^1, z^2, z^3]
   gal_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
   mag_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
 
+  # Galaxy and magnification bias values for each tomographic bin
+  gal_bias_per_bin: [1.1, 1.3, 1.5] # Type: list[float]. len: zbins
+  mag_bias_per_bin: [-1.0, -0.5, 0.0] # Type: list[float]. len: zbins
+
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
+  # As for the other options, the magnification bias file should contain `b_mag`, not s(z).
   gal_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
   mag_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
 
@@ -455,6 +462,12 @@ precision:
   # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
   # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
   n_samples_wf: 1000 # Type: int
+
+  # ======================================= JAX ========================================
+  # Whether to enable 64-bit precision for JAX computations. Setting this to False can
+  # result in noticeable differences with respect to the plain numpy implementation, since
+  # the latter defaults to 64-bit precision.
+  jax_enable_x64: True # Type: bool.
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.

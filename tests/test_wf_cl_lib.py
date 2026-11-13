@@ -266,6 +266,21 @@ class TestBOfZFits:
         s = wl.s_of_z_fs2_fit(z, 24.5)
         np.testing.assert_allclose(s, (mb + 2) / 5)
 
+    def test_s_from_b_mag(self):
+        # b_mag = 5 s - 2: s = 0.4 is the null-magnification case (b_mag = 0)
+        np.testing.assert_allclose(wl.s_from_b_mag([-2.0, 0.0, 3.0]), [0.0, 0.4, 1.0])
+
+    def test_bias_const_per_bin(self):
+        vals = [1.1, 1.4, 2.0]
+        z = np.linspace(0, 3, 11)
+        out = wl.bias_const_per_bin(z, vals)
+        assert out.shape == (z.size, len(vals))
+        np.testing.assert_array_equal(out, np.tile(vals, (z.size, 1)))
+
+    def test_bias_const_per_bin_scalar_z(self):
+        out = wl.bias_const_per_bin(0.5, [1.0, 2.0])
+        np.testing.assert_array_equal(out, [[1.0, 2.0]])
+
     def test_b2g_fs2_fit_finite_and_close_to_measured_points(self):
         """Spot-check against the measured (z, b2) pairs quoted in the docstring.
 

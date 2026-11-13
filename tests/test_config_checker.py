@@ -498,10 +498,20 @@ class TestCheckNz:
         with pytest.raises(AssertionError):
             checker.check_nz()
 
-    def test_mismatched_dz_shifts_raise(self, valid_cfg):
+    def test_different_dz_shifts_ok(self, valid_cfg):
+        """Sources and lenses are different samples: their shifts are independent."""
         valid_cfg['nz']['shift_nz'] = True
         valid_cfg['nz']['dzWL'] = [0.1, 0.0, 0.0]
         valid_cfg['nz']['dzGC'] = [0.2, 0.0, 0.0]
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_nz()
+
+    @pytest.mark.parametrize('key', ['dzWL', 'dzGC'])
+    def test_wrong_length_dz_shifts_raise(self, valid_cfg, key):
+        valid_cfg['nz']['shift_nz'] = True
+        valid_cfg['nz']['dzWL'] = [0.0] * _zbins(valid_cfg)
+        valid_cfg['nz']['dzGC'] = [0.0] * _zbins(valid_cfg)
+        valid_cfg['nz'][key] = [0.0] * (_zbins(valid_cfg) + 1)
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_nz()

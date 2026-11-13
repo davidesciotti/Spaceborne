@@ -323,7 +323,7 @@ class EllBinning:
                             'of the bands built from its edges, in '
                             f'{np.sum(_diff > 0.05)} of {len(_diff)} bands (largest '
                             f'difference in band {_k}: {_ells_in[_k]} in the file, '
-                            f'{_ells_eff[_k]} used, for the multipoles '
+                            f'{np.round(_ells_eff[_k], 4)} used, for the multipoles '
                             f'{_nmt_bin_obj.get_ell_min(_k)}-'
                             f'{_nmt_bin_obj.get_ell_max(_k)}). The centres in the file '
                             'are ignored: please check that the bands are the '

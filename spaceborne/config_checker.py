@@ -234,13 +234,13 @@ class SpaceborneConfigChecker:
         )
 
         if _cfgnz['shift_nz']:
-            assert isinstance(_cfgnz['dzWL'], list), 'nz: dzWL must be a list'
-            assert isinstance(_cfgnz['dzGC'], list), 'nz: dzGC must be a list'
-            assert all(isinstance(x, float) for x in _cfgnz['dzWL']), (
-                'nz: All elements in dzWL must be floats'
+            assert isinstance(_cfgnz['dz_sources'], list), 'nz: dz_sources must be a list'
+            assert isinstance(_cfgnz['dz_lenses'], list), 'nz: dz_lenses must be a list'
+            assert all(isinstance(x, float) for x in _cfgnz['dz_sources']), (
+                'nz: All elements in dz_sources must be floats'
             )
-            assert all(isinstance(x, float) for x in _cfgnz['dzGC']), (
-                'nz: All elements in dzGC must be floats'
+            assert all(isinstance(x, float) for x in _cfgnz['dz_lenses']), (
+                'nz: All elements in dz_lenses must be floats'
             )
 
         # Mask
@@ -581,8 +581,8 @@ class SpaceborneConfigChecker:
         assert len(_cfnz['ngal_sources']) == len(_cfnz['ngal_lenses'])
 
         if _cfnz['shift_nz']:
-            assert len(_cfnz['dzWL']) == len(_cfnz['ngal_sources'])
-            assert len(_cfnz['dzGC']) == len(_cfnz['ngal_lenses'])
+            assert len(_cfnz['dz_sources']) == len(_cfnz['ngal_sources'])
+            assert len(_cfnz['dz_lenses']) == len(_cfnz['ngal_lenses'])
 
         assert isinstance(_cfnz['ngal_sources'], list), 'n_gal_shear must be a list'
         assert isinstance(_cfnz['ngal_lenses'], list), 'n_gal_clust must be a list'
@@ -605,11 +605,11 @@ class SpaceborneConfigChecker:
             f'ngal_lenses must be of length zbins = {self.zbins}'
         )
         if self.cfg['nz']['shift_nz']:
-            assert len(self.cfg['nz']['dzWL']) == self.zbins, (
-                f'dzWL must be of length zbins = {self.zbins}'
+            assert len(self.cfg['nz']['dz_sources']) == self.zbins, (
+                f'dz_sources must be of length zbins = {self.zbins}'
             )
-            assert len(self.cfg['nz']['dzGC']) == self.zbins, (
-                f'dzGC must be of length zbins = {self.zbins}'
+            assert len(self.cfg['nz']['dz_lenses']) == self.zbins, (
+                f'dz_lenses must be of length zbins = {self.zbins}'
             )
         assert len(self.cfg['covariance']['sigma_eps_i']) == self.zbins, (
             f'sigma_eps_i must be of length zbins = {self.zbins}'

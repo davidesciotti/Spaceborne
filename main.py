@@ -772,7 +772,7 @@ if shift_nz:
     nz_src = wf_cl_lib.shift_nz(
         zgrid_nz_src,
         nz_src,
-        cfg['nz']['dzWL'],
+        cfg['nz']['dz_sources'],
         normalize=False,
         plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
@@ -783,7 +783,7 @@ if shift_nz:
     nz_lns = wf_cl_lib.shift_nz(
         zgrid_nz_lns,
         nz_lns,
-        cfg['nz']['dzGC'],
+        cfg['nz']['dz_lenses'],
         normalize=False,
         plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,

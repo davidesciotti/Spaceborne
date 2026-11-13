@@ -119,8 +119,8 @@ nz:
   normalize_nz: True # Type: bool. Whether to normalize the input n_i(z) if they are not already (within atol=0, rtol=1e-3)
 
   shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-  dzWL: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
-  dzGC: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
+  dz_sources: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
+  dz_lenses: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
@@ -295,7 +295,8 @@ covariance:
   # Should be of length 'zbins'
   sigma_eps_i: [0.26, 0.27, 0.28] # Type: list[float]
 
-  # Whether to include the noise power spectra (shot and shape noise) in the Gaussian term.
+  # Whether to include the noise power spectra (shot and shape noise), i.e., the SN term, 
+  # in the Gaussian covariance
   include_sampling_noise: True # Type: bool
 
   # ==================================== SSC cov =======================================

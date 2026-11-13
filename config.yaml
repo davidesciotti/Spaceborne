@@ -257,7 +257,7 @@ mask:
   nside: 1024 # Type: int
 
   # Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
-  survey_area_deg2: 2700 # Type: int. 
+  survey_area_deg2: 2700 # Type: int.
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -269,8 +269,8 @@ covariance:
   # ================================== Gaussian cov ====================================
   # Method to account for partial sky coverage in the Gaussian term.
   # Options:
-  # - fsky: (Knox approximation): rescale the full-sky covariance by multiplying it by 
-  #         1/fsky. This approximation is commonly used, works best for large survey 
+  # - fsky (Knox approximation): rescale the full-sky covariance by multiplying it by
+  #         1/fsky. This approximation is commonly used, works best for large survey
   #         areas, and it's significantly faster than using NaMaster.
   # - NaMaster: use the NaMaster code to compute the partial-sky covariance through the
   #             NKA or iNKA approximations. This is more accurate, especially for small

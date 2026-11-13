@@ -172,8 +172,6 @@ def b_of_z_fs1_pocinofit(z):
 
 
 def b_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
-    # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
-
     if poly_fit_values is not None:
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
         b0_gal, b1_gal, b2_gal, b3_gal = poly_fit_values
@@ -191,7 +189,6 @@ def b_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
 
 
 def magbias_of_z_fs2_fit(z, magcut_lens, poly_fit_values=None):
-    # from the MCMC for SPV3 google doc: https://docs.google.com/document/d/1WCGhiBrlTsvl1VS-2ngpjirMnAS-ahtnoGX_7h8JoQU/edit
     if poly_fit_values is not None:
         assert len(poly_fit_values) == 4, 'a list of 4 best-fit values must be passed'
         b0_mag, b1_mag, b2_mag, b3_mag = poly_fit_values

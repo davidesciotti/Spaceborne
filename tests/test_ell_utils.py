@@ -135,7 +135,7 @@ class TestEllBinning:
                 'ell_max': 1000,
                 'ell_bins': 10,
             },
-            'covariance': {'partial_sky_method': 'Knox'},
+            'covariance': {'partial_sky_method': 'fsky'},
         }
 
     def test_initialization(self, basic_config):
@@ -143,7 +143,7 @@ class TestEllBinning:
         ell_obj = ell_utils.EllBinning(basic_config)
 
         assert ell_obj.binning_type == 'log'
-        assert ell_obj.partial_sky_method == 'Knox'
+        assert ell_obj.partial_sky_method == 'fsky'
 
     def test_log_binning(self, basic_config):
         """Test logarithmic binning."""

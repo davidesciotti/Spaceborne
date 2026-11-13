@@ -355,8 +355,8 @@ class SpaceborneConfigChecker:
                     "Allowed values are: 'Spaceborne', 'PyCCL', 'OneCovariance'."
                 )
 
-        assert cov_cfg['partial_sky_method'] in ['Knox', 'NaMaster', 'ensemble'], (
-            'covariance: partial_sky_method must be either "Knox", "NaMaster", '
+        assert cov_cfg['partial_sky_method'] in ['fsky', 'NaMaster', 'ensemble'], (
+            'covariance: partial_sky_method must be either "fsky", "NaMaster", '
             'or "ensemble"'
         )
         assert isinstance(cov_cfg['cov_type'], str), (
@@ -735,7 +735,7 @@ class SpaceborneConfigChecker:
                 'If computing the partial-sky covariance with NaMaster, '
                 '`covariance: G_code` should not be set (or set to "Spaceborne").'
             )
-        # Knox has no pixel window
+        # fsky has no pixel window
         if self.cfg['precision'].get('pixwin_nside') is not None:
             assert self.cfg['covariance']['partial_sky_method'] in (
                 'NaMaster',

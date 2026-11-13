@@ -35,7 +35,7 @@ class TestGenerateZippedConfigs:
     def base_config(self):
         return {
             'covariance': {
-                'partial_sky_method': 'Knox',
+                'partial_sky_method': 'fsky',
                 'G': True,
                 'n_probes': 2
             },
@@ -45,7 +45,7 @@ class TestGenerateZippedConfigs:
 
     def test_n_changes_produces_n_configs(self, base_config):
         changes_list = [
-            {'covariance': {'partial_sky_method': 'Knox'}},
+            {'covariance': {'partial_sky_method': 'fsky'}},
             {'covariance': {'partial_sky_method': 'NaMaster'}},
             {'covariance': {'partial_sky_method': 'ensemble'}}
         ]  # fmt: skip
@@ -73,7 +73,7 @@ class TestGenerateZippedConfigs:
 
         configs = batch_run_utils.generate_zipped_configs(base_config, changes_list)
 
-        assert base_config['covariance']['partial_sky_method'] == 'Knox'
+        assert base_config['covariance']['partial_sky_method'] == 'fsky'
         assert configs[0]['covariance']['partial_sky_method'] == 'NaMaster'
         assert configs[1]['covariance']['partial_sky_method'] == 'ensemble'
 

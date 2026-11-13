@@ -374,7 +374,7 @@ class TestCheckNmt:
     def test_coupled_gaussian_requires_namaster_or_ensemble(self, valid_cfg):
         valid_cfg['covariance']['cov_type'] = 'coupled'
         valid_cfg['covariance']['G'] = True
-        valid_cfg['covariance']['partial_sky_method'] = 'Knox'
+        valid_cfg['covariance']['partial_sky_method'] = 'fsky'
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):
             checker.check_nmt()
@@ -395,7 +395,7 @@ class TestCheckNmt:
             checker.check_nmt()
 
     def test_pixwin_nside_requires_namaster_or_ensemble(self, valid_cfg):
-        valid_cfg['covariance']['partial_sky_method'] = 'Knox'
+        valid_cfg['covariance']['partial_sky_method'] = 'fsky'
         valid_cfg['precision']['pixwin_nside'] = 1024
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(AssertionError):

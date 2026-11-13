@@ -1109,7 +1109,7 @@ if obs_space == 'harmonic':
             nl_3x2pt_4d[:, :, np.newaxis, :, :], bin_obj.nbl_3x2pt_unb, axis=2
         )
 
-    # compute Knox Gaussian covariance
+    # compute fsky Gaussian covariance
     if 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_obj.set_gauss_cov(
             cl_3x2pt_5d=cl_3x2pt_5d,

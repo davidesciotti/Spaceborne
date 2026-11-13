@@ -256,7 +256,8 @@ mask:
   # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
   nside: 1024 # Type: int
 
-  survey_area_deg2: 2700 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
+  # Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
+  survey_area_deg2: 2700 # Type: int. 
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -268,17 +269,17 @@ covariance:
   # ================================== Gaussian cov ====================================
   # Method to account for partial sky coverage in the Gaussian term.
   # Options:
-  # - Knox: rescale the full-sky covariance by multiplying it by 1/fsky, where fsky is
-  #         the fraction of sky observed. This approximation is commonly used, works
-  #         best for large survey areas, and it's significantly faster than using NaMaster.
+  # - fsky: (Knox approximation): rescale the full-sky covariance by multiplying it by 
+  #         1/fsky. This approximation is commonly used, works best for large survey 
+  #         areas, and it's significantly faster than using NaMaster.
   # - NaMaster: use the NaMaster code to compute the partial-sky covariance through the
   #             NKA or iNKA approximations. This is more accurate, especially for small
-  #             survey areas, but significantly slower than the Knox approximation.
+  #             survey areas, but significantly slower than the fsky approximation.
   #             It can be sped up quite significantly by setting spin0=True in the
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: Knox # Type: str
+  partial_sky_method: fsky # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
@@ -375,7 +376,7 @@ ensemble_covariance:
 
 precision:
   # =============================== harmonic-space cov =================================
-  # Binning method for the Knox ('1/fsky') harmonic-space Gaussian covariance
+  # Binning method for the `fsky` harmonic-space Gaussian covariance
   # (which is diagonal in ell1, ell2):
   # - True:  Average over all integer multipoles within each bin (exact formula).
   #          Sum over modes and divide by N_modes², where N_modes is the number of

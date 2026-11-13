@@ -220,13 +220,13 @@ C_ell:
   # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl
   cl_CCL_kwargs:
     l_limber: -1 # Type: int
-    limber_integration_method: spline # Type: str
+    limber_integration_method: qag_quad # Type: str
     non_limber_integration_method: FKEM # Type: str
 
 mask:
   # Configs for the survey footprint and weight maps.
 
-  # The footprint can binary or fractional. In the latter case it is assumed that its
+  # The footprint can be binary or fractional. In the latter case it is assumed that its
   # value represents the observed fraction (coverage) of each pixel. It is a single map, common
   # to all redshift bins, and it is used to compute the fsky factors, as
   # fsky = mean(footprint). For the GL probe pair the window is
@@ -295,9 +295,8 @@ covariance:
   # Should be of length 'zbins'
   sigma_eps_i: [0.26, 0.27, 0.28] # Type: list[float]
 
-  # Whether to include the noise power spectra in the computation of the
-  # Gaussian covariance matrix.
-  no_sampling_noise: False # Type: bool
+  # Whether to include the noise power spectra (shot and shape noise) in the Gaussian term.
+  include_sampling_noise: True # Type: bool
 
   # ==================================== SSC cov =======================================
   # Which method to use for the computation of the response of the power spectra to a

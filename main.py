@@ -301,7 +301,6 @@ _cfg_oc.setdefault('oc_output_filename', 'cov_oc')
 _cfg_oc.setdefault('compare_against_oc', False)
 cfg['misc'].setdefault('save_output_as_benchmark', False)
 cfg['misc'].setdefault('bench_filename', 'benchmark')
-cfg['precision'].setdefault('ell_bins_proj_nongauss_cosebis', 10_000)
 
 # Shape noise in the sims:
 # - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
@@ -999,7 +998,7 @@ nl_3x2pt_4d = sl.build_noise(
     sigma_eps2=sigma_eps2,
     ng_shear=ng_shear,
     ng_clust=ng_clust,
-    is_noiseless=cfg['covariance']['no_sampling_noise'],
+    is_noiseless=not cfg['covariance']['include_sampling_noise'],
 )
 
 # create dummy ell axis, the array is just repeated along it

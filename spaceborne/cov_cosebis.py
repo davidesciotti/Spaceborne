@@ -351,7 +351,8 @@ class CovCOSEBIs(CovarianceProjector):
             )
 
         elif term == 'sn':
-            if probe_ab == probe_cd:
+            # SN is quadratic in the noise, so it vanishes with it
+            if probe_ab == probe_cd and self.include_sampling_noise:
                 cov_out_6d = self.cov_sn_cs(amax_abcd=amax_abcd)
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)

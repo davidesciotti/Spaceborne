@@ -430,3 +430,61 @@ class TestProjMixSvaSimpsVectorizedCosebis:
             out, expected, rtol=1e-10, atol=1e-12 * np.abs(expected).max()
         )
         np.testing.assert_array_equal(cov_cs.cov_dict[term]['En', 'Bn']['6d'], 0.0)
+
+
+class TestCosebisSamplingNoiseFlag:
+    """covariance.include_sampling_noise for the COSEBIs SN term, which is built
+    analytically from sigma_eps_i and n_eff (not from nl_3x2pt_4d) and must
+    therefore honour the flag explicitly, as the harmonic-space SN does through nl.
+    The analytic term itself is replaced by a sentinel, since it needs cloelib."""
+
+    N_MODES, ZBINS = 3, 2
+
+    @pytest.fixture
+    def make_cov_cs(self):
+        from spaceborne import sb_lib as sl
+        from spaceborne.cov_cosebis import CovCOSEBIs
+
+        def _make(include_sampling_noise):
+            obj = CovCOSEBIs.__new__(CovCOSEBIs)
+            zpairs_auto, zpairs_cross, _ = sl.get_zpairs(self.ZBINS)
+            ind = sl.build_full_ind('triu', 'row-major', self.ZBINS)
+            obj.zbins = self.ZBINS
+            obj.zpairs_auto, obj.zpairs_cross = zpairs_auto, zpairs_cross
+            obj.ind_auto = ind[:zpairs_auto, :].copy()
+            obj.ind_cross = ind[zpairs_auto : zpairs_auto + zpairs_cross, :].copy()
+            obj.cov_shape_6d = (self.N_MODES, self.N_MODES) + (self.ZBINS,) * 4
+            obj.include_sampling_noise = include_sampling_noise
+            obj.cov_dict = {
+                'sn': {(a, b): {} for a in ('En', 'Bn') for b in ('En', 'Bn')}
+            }
+            obj.sentinel = np.full(obj.cov_shape_6d, 7.0)
+            obj.cov_sn_cs = lambda amax_abcd: obj.sentinel
+            return obj
+
+        return _make
+
+    @pytest.mark.parametrize('probe_abcd', ['EnEn', 'BnBn'])
+    def test_auto_sn_with_noise_is_the_analytic_term(self, make_cov_cs, probe_abcd):
+        from spaceborne import sb_lib as sl
+
+        obj = make_cov_cs(include_sampling_noise=True)
+        obj.compute_cs_cov_term_probe_6d(None, probe_abcd, 'sn', 0.3)
+        probe_2tpl = sl.split_probe_name(probe_abcd, 'cosebis')
+        assert obj.cov_dict['sn'][probe_2tpl]['6d'] is obj.sentinel
+
+    @pytest.mark.parametrize('include_sampling_noise', [True, False])
+    def test_cross_sn_is_zero(self, make_cov_cs, include_sampling_noise):
+        obj = make_cov_cs(include_sampling_noise)
+        obj.compute_cs_cov_term_probe_6d(None, 'EnBn', 'sn', 0.3)
+        np.testing.assert_array_equal(obj.cov_dict['sn']['En', 'Bn']['6d'], 0.0)
+
+    @pytest.mark.parametrize('probe_abcd', ['EnEn', 'BnBn', 'EnBn'])
+    def test_noiseless_sn_is_zero(self, make_cov_cs, probe_abcd):
+        from spaceborne import sb_lib as sl
+
+        obj = make_cov_cs(include_sampling_noise=False)
+        obj.compute_cs_cov_term_probe_6d(None, probe_abcd, 'sn', 0.3)
+        cov_6d = obj.cov_dict['sn'][sl.split_probe_name(probe_abcd, 'cosebis')]['6d']
+        assert cov_6d.shape == obj.cov_shape_6d
+        np.testing.assert_array_equal(cov_6d, 0.0)

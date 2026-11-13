@@ -176,14 +176,14 @@ C_ell:
   # https://arxiv.org/pdf/2510.09118, i.e., b_mag(z) = 5*s(z) - 2,
   # where s(z) is the logarithmic slope of the lenses’ luminosity function
   # Options:
-  # - 'per_bin': use one constant (redshift-independent) value per tomographic bin,
-  #              specified in 'gal_bias_per_bin' and 'mag_bias_per_bin'.
-  # - 'polynomial_fit': use a third-order polynomial in z, equal for all bins.
+  # - `per_bin`: use one constant (redshift-independent) value per tomographic bin,
+  #              specified in `gal_bias_per_bin` and `mag_bias_per_bin`.
+  # - `polynomial_fit`: use a third-order polynomial in z, equal for all bins.
   #                     The values of the coefficients are specified in
-  #                     'gal_bias_fit_coeff' and 'mag_bias_fit_coeff'.
-  # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
-  which_gal_bias: polynomial_fit # Type: str. Options: ['per_bin', 'polynomial_fit', 'from_input']
-  which_mag_bias: polynomial_fit # Type: str. Options: ['per_bin', 'polynomial_fit', 'from_input']
+  #                     `gal_bias_fit_coeff` and `mag_bias_fit_coeff`.
+  # - `from_input`: read the bias from the files specified in `gal_bias_table_filename` and `mag_bias_table_filename`.
+  which_gal_bias: polynomial_fit # Type: str. Options: [`per_bin`, `polynomial_fit`, `from_input`]
+  which_mag_bias: polynomial_fit # Type: str. Options: [`per_bin`, `polynomial_fit`, `from_input`]
 
   # Coefficients of the third-order polynomial galaxy and magnification bias.
   # The order is [z^0, z^1, z^2, z^3]

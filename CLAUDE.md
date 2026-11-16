@@ -25,12 +25,13 @@ implementation. Reading order to understand a run:
    type. There is no hidden default file — the YAML *is* the API. `config_checker.py` validates it.
 2. **Geometry**: `mask_utils.py` — `Mask` objects per probe. Distinguishes the **footprint**
    (binary or fractional coverage; fsky = mean, probe-pair windows = min) from fractional
-   **weight maps** (per-bin, per-probe; used only by the
-   NaMaster partial-sky cov). `footprint_fsky_ab` builds the probe-pair effective fskys.
+   **weight maps** (per-bin, per-probe; used only by the partial-sky Gaussian cov, i.e.
+   `NaMaster` and `ensemble`). The `fsky` G cov, SSC and cNG always use the footprint.
+   `footprint_fsky_ab` builds the probe-pair effective fskys.
 3. **Covariance terms** (each builds a nested `cov_dict`):
    - **Gaussian**: `cov_harmonic_space.py::CovHarmonicSpace.set_gauss_cov` dispatches on
      `covariance.partial_sky_method`:
-     - `Knox` — analytic 1/fsky rescaling (fast).
+     - `fsky` — analytic 1/fsky rescaling (fast).
      - `NaMaster` — `cov_partial_sky.py::CovNaMaster.build_psky_cov`, using NaMaster mode-coupling +
        `gaussian_covariance` under the NKA / **iNKA** approximation (`iNKA`, `spin0`,
        `cov_type: coupled|decoupled`).

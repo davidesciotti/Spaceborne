@@ -487,6 +487,10 @@ class CovarianceProjector:
         self.n_eff_src = self.cfg['nz']['ngal_sources']  # lensing
         self.n_eff_2d = np.vstack((self.n_eff_src, self.n_eff_lns))
         self.sigma_eps_i = np.array(self.cfg['covariance']['sigma_eps_i'])
+        # the MIX term reads the noise from nl_3x2pt_4d (already zeroed if the noise is
+        # excluded), while the SN term is built analytically from sigma_eps_i and n_eff:
+        # it needs this flag to be switched off consistently
+        self.include_sampling_noise = self.cfg['covariance']['include_sampling_noise']
 
     def proj_mix_sva_simps_vectorized(
         self,

@@ -212,13 +212,41 @@ class CCLInterface:
         self.gal_bias_2d = np.repeat(gal_bias_1d.reshape(1, -1), self.zbins, axis=0).T
         self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
 
+    def set_gal_bias_tuple_per_bin(self, z_grid_lns, gal_bias_per_bin):
+        """Set a galaxy bias which is constant in redshift within each bin."""
+        gal_bias_per_bin = np.asarray(gal_bias_per_bin, dtype=float)
+        assert gal_bias_per_bin.shape == (self.zbins,), (
+            f'gal_bias_per_bin must have length zbins = {self.zbins}, '
+            f'got shape {gal_bias_per_bin.shape}'
+        )
+        self.gal_bias_func = partial(
+            wf_cl_lib.bias_const_per_bin, values_per_bin=gal_bias_per_bin
+        )
+        self.gal_bias_2d = self.gal_bias_func(z_grid_lns)
+        self.gal_bias_tuple = (z_grid_lns, self.gal_bias_2d)
+
+    def set_mag_bias_tuple_per_bin(self, z_grid_lns, mag_bias_per_bin):
+        """Set a magnification bias which is constant in redshift within each bin.
+
+        The input values are the b_mag = 5 * s - 2 (as for the polynomial fit); they
+        are converted here to the s(z) expected by CCL.
+        """
+        mag_bias_per_bin = np.asarray(mag_bias_per_bin, dtype=float)
+        assert mag_bias_per_bin.shape == (self.zbins,), (
+            f'mag_bias_per_bin must have length zbins = {self.zbins}, '
+            f'got shape {mag_bias_per_bin.shape}'
+        )
+        s_per_bin = wf_cl_lib.s_from_b_mag(mag_bias_per_bin)
+        self.mag_bias_2d = np.tile(s_per_bin, (z_grid_lns.size, 1))
+        self.mag_bias_tuple = (z_grid_lns, self.mag_bias_2d)
+
     def save_gal_bias_table_ascii(self, z_grid_lns, filename):
         assert filename.endswith('.ascii'), 'filename must end with.ascii'
         gal_bias_table = np.hstack((z_grid_lns.reshape(-1, 1), self.gal_bias_2d))
         np.savetxt(filename, gal_bias_table)
 
     def set_mag_bias_tuple(
-        self, z_grid_lns, has_magnification_bias, magcut_lens, poly_fit_values
+        self, z_grid_lns, has_mag_bias, magcut_lens, poly_fit_values
     ):
         """
         Set the magnification bias values and store in a tuple. In this function,
@@ -229,7 +257,7 @@ class CCLInterface:
         thus the use of np.repeat to construct the 2d array.
         """
 
-        if has_magnification_bias:
+        if has_mag_bias:
             # this is only to ensure compatibility with wf_ccl function. In reality,
             # the same array is given for each bin
             mag_bias_1d = wf_cl_lib.s_of_z_fs2_fit(
@@ -320,7 +348,7 @@ class CCLInterface:
 
         return cl_ab_3d
 
-    def set_kernel_arr(self, z_grid_wf, has_magnification_bias):
+    def set_kernel_arr(self, z_grid_wf, has_mag_bias):
         self.z_grid_wf = z_grid_wf
         a_arr = cosmo_lib.z_to_a(z_grid_wf)
         comoving_distance = ccl.comoving_radial_distance(self.cosmo_ccl, a_arr)
@@ -356,7 +384,7 @@ class CCLInterface:
         self.wf_delta_arr = wf_galaxy_tot_arr[:, 0, :].T
         self.wf_mu_arr = (
             wf_galaxy_tot_arr[:, -1, :].T
-            if has_magnification_bias
+            if has_mag_bias
             else np.zeros_like(self.wf_delta_arr)
         )
 

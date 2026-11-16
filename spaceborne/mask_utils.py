@@ -202,18 +202,6 @@ def up_downgrade_map(map_in, nside_out):
         return map_in
 
 
-def _check_binary(footprint):
-    ones = np.sum(footprint == 1)
-    zeros = np.sum(footprint == 0)
-    total = footprint.size
-    if ones + zeros < 0.95 * total:
-        warnings.warn(
-            'The footprint should be binary, but it seems to contain more than 5% '
-            'of non-binary values (not 0 or 1). Please check the footprint file.',
-            stacklevel=2,
-        )
-
-
 def check_binary(footprint):
     observed = footprint > 0
     n_obs = np.sum(observed)

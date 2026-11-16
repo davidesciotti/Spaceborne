@@ -459,22 +459,23 @@ precision:
   # Whether to keep the E->B leakage in the coupled spectra passed to the iNKA.
   iNKA_eb_leakage: False # Type: bool.
 
-  # ======================================= CCL ========================================
-  # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
-  # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
-  n_samples_wf: 1000 # Type: int
-
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can
   # result in noticeable differences with respect to the plain numpy implementation, since
   # the latter defaults to 64-bit precision.
   jax_enable_x64: True # Type: bool.
 
+  # ======================================= CCL ========================================
+  # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
+  # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
+  n_samples_wf: 1000 # Type: int
+
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.
   spline_params: # Type: dict | None
     A_SPLINE_NA_PK: 200 # Type: int
-  gsl_params: null # Type: dict | None
+  gsl_params: # Type: dict | None
+    INTEGRATION_LIMBER_EPSREL: 1.e-6
 
   # (from CCL docs): whether a separable growth function approximation can be used to
   # calculate the isotropized power spectrum.

@@ -213,7 +213,7 @@ C_ell:
   # https://ccl.readthedocs.io/en/latest/api/pyccl.cosmology.html#pyccl.cosmology.Cosmology.angular_cl
   cl_CCL_kwargs:
     l_limber: -1 # Type: int
-    limber_integration_method: spline # Type: str
+    limber_integration_method: qag_quad # Type: str
     non_limber_integration_method: FKEM # Type: str
 
 mask:
@@ -455,6 +455,13 @@ precision:
   # (from CCL docs): number of points over which to compute the radial kernels (weight functions).
   # See e.g. documentation of https://ccl.readthedocs.io/en/latest/api/pyccl.tracers.html#pyccl.tracers.NumberCountsTracer
   n_samples_wf: 1000 # Type: int
+
+  # ======================================= JAX ========================================
+  # Whether to enable 64-bit precision for JAX computations. Setting this to False can
+  # result in noticeable differences with respect to the plain numpy implementation, since
+  # the latter defaults to 64-bit precision.
+  jax_enable_x64: True # Type: bool
+
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.

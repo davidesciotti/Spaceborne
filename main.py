@@ -311,13 +311,6 @@ cfg['precision'].setdefault('ell_bins_proj_nongauss_cosebis', 10_000)
 # The two coincide for a binary mask.
 cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
 
-# ======================================= JAX ========================================
-# Whether to enable 64-bit precision for JAX computations. Setting this to False can
-# result in noticeable differences with respect to the plain numpy implementation, since
-# the latter defaults to 64-bit precision.
-cfg['precision'].setdefault('jax_enable_x64', True)
-
-
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
 # convenence settings that have been hardcoded

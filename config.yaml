@@ -106,11 +106,12 @@ nz:
   nz_lenses_filename: ../DATA/Spaceborne_jobs_IO/develop/input/nz_demo.txt # Type: str
 
   # Number of galaxies per arcmin**2 for each redshift bin.
-  # For weighted samples, use the effective density n_eff = (sum w)^2 / sum(w^2) / area,
-  # with area the observed (non-zero) area of the footprint.
-  # Should be of length 'zbins'
-  ngal_sources: [8.09216, 7.09215, 6.09215] # Type: list[float]
-  ngal_lenses: [1.09216, 2.09215, 3.09215] # Type: list[float]
+  # For weighted samples, use the effective density 
+  # n_eff = (sum w)^2 / sum(w^2) / A_eff,
+  # with A_eff = fsky * 4pi sr [to be converted to arcmin^2] and fsky calculated
+  # as the mean of the footprint (binary or fractional) over the whole sky
+  ngal_sources: [8.09215, 8.09215, 8.09215] # Type: list[float], len = 'zbins'
+  ngal_lenses: [4.09216, 4.09215, 4.09215] # Type: list[float], len = 'zbins'
 
   # [Note] while it can convenient to manipulate the n(z) at runtime, to guarantee consistent results, it is
   #        generally better to perform all of these steps outside of Spaceborne and to avoid any
@@ -119,8 +120,8 @@ nz:
   normalize_nz: True # Type: bool. Whether to normalize the input n_i(z) if they are not already (within atol=0, rtol=1e-3)
 
   shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-  dz_sources: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
-  dz_lenses: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
+  dz_sources: [0.0, 0.0, 0.0] # Type: list[float], len = 'zbins'. Per-bin shifts for WL (sources).
+  dz_lenses: [0.0, 0.0, 0.0] # Type: list[float], len = 'zbins'. Per-bin shifts for GCph (lenses).
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
@@ -191,8 +192,8 @@ C_ell:
   mag_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
 
   # Galaxy and magnification bias values for each tomographic bin
-  gal_bias_per_bin: [1.1, 1.3, 1.5] # Type: list[float]. len: zbins
-  mag_bias_per_bin: [-1.0, -0.5, 0.0] # Type: list[float]. len: zbins
+  gal_bias_per_bin: [1.1, 1.3, 1.5] # Type: list[float], len = 'zbins'
+  mag_bias_per_bin: [-1.0, -0.5, 0.0] # Type: list[float], len = 'zbins'
 
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
@@ -209,7 +210,7 @@ C_ell:
 
   # Multiplicative shear bias per redshift bin.
   # This is NOT applied to the input Cls, in case they are provided.
-  mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float]
+  mult_shear_bias: [0.0, 0.0, 0.0] # Type: list[float], len = 'zbins'.
 
   # Boolean flags for redshift-space distortions, intrinsic alignment and magnification bias
   has_rsd: False # Type: bool. Enable/disable redshift-space distortions.
@@ -238,7 +239,8 @@ mask:
   # The 'weight_maps_filename' option specifies the path to the weight maps .fits file,
   # which should contain a number of maps equal to the number of redshift bins, for the
   # given probe. If null, the weight maps will not be used.
-  # Note that the weight maps are only used to compute the partial-sky Gaussian covariance with NaMaster.
+  # Note that the weight maps are only used to compute the partial-sky Gaussian
+  # covariance (`partial_sky_method` = 'NaMaster' or 'ensemble')
   # They are assumed to be catalogue sums or visibility maps.
   # The noise entering the NaMaster covariance is rescaled per bin by <w>^2 / (fsky <w^2>), 
   # where the mean <•> is over the full sky
@@ -292,8 +294,7 @@ covariance:
   # Ellipticity dispersion *per component* = sigma_eps_i.
   # total ellipticity dispersion = sigma_eps
   # sigma_eps = (sigma_eps_i * np.sqrt(2))
-  # Should be of length 'zbins'
-  sigma_eps_i: [0.26, 0.27, 0.28] # Type: list[float]
+  sigma_eps_i: [0.26, 0.26, 0.26] # Type: list[float], len = 'zbins'
 
   # Whether to include the noise power spectra (shot and shape noise), i.e., the SN term, 
   # in the Gaussian covariance

@@ -30,7 +30,7 @@ implementation. Reading order to understand a run:
 3. **Covariance terms** (each builds a nested `cov_dict`):
    - **Gaussian**: `cov_harmonic_space.py::CovHarmonicSpace.set_gauss_cov` dispatches on
      `covariance.partial_sky_method`:
-     - `Knox` — analytic 1/fsky rescaling (fast).
+     - `fsky` — analytic 1/fsky rescaling (fast).
      - `NaMaster` — `cov_partial_sky.py::CovNaMaster.build_psky_cov`, using NaMaster mode-coupling +
        `gaussian_covariance` under the NKA / **iNKA** approximation (`iNKA`, `spin0`,
        `cov_type: coupled|decoupled`).

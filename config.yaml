@@ -119,8 +119,8 @@ nz:
   normalize_nz: True # Type: bool. Whether to normalize the input n_i(z) if they are not already (within atol=0, rtol=1e-3)
 
   shift_nz: False # Type: bool. Whether to shift the redshift distributions as n_i(z) -> n_i(z - dz_i)
-  dzWL: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
-  dzGC: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
+  dz_sources: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for WL (sources). Should be of length 'zbins'
+  dz_lenses: [0.0, 0.0, 0.0] # Type: list[float]. Per-bin shifts for GCph (lenses). Should be of length 'zbins'
 
   smooth_nz: False # Type: bool. Whether to smooth the input redshift distributions with a Gaussian kernel
   sigma_smoothing: 10 # Type: int | float. Standard deviation of the Gaussian kernel.
@@ -172,24 +172,31 @@ C_ell:
   cl_GG_filename: ../DATA/Spaceborne_jobs_IO/develop/input/cl_gg.txt # Type: str. Path to the galaxy-galaxy angular PS.
 
   # Which galaxy and magnification bias to use.
-  # The magnification bias coefficients are the b_mag defined in
+  # The magnification bias coefficients are the `b_mag` defined in
   # https://arxiv.org/pdf/2510.09118, i.e., b_mag(z) = 5*s(z) - 2,
   # where s(z) is the logarithmic slope of the lenses’ luminosity function
   # Options:
-  # - 'from_input': read the bias from the files specified in 'gal_bias_table_filename' and 'mag_bias_table_filename'.
-  # - 'polynomial_fit': use the third-order polynomial fits to the galaxy and magnification bias from Flagship 2.
-  #                         The actual values of these coefficients can be changed by modifying the values of
-  #                         'gal_bias_fit_coeff' and 'mag_bias_fit_coeff'.
-  which_gal_bias: polynomial_fit # Type: str.
-  which_mag_bias: polynomial_fit # Type: str.
+  # - `per_bin`: use one constant (redshift-independent) value per tomographic bin,
+  #              specified in `gal_bias_per_bin` and `mag_bias_per_bin`.
+  # - `polynomial_fit`: use a third-order polynomial in z, equal for all bins.
+  #                     The values of the coefficients are specified in
+  #                     `gal_bias_fit_coeff` and `mag_bias_fit_coeff`.
+  # - `from_input`: read the bias from the files specified in `gal_bias_table_filename` and `mag_bias_table_filename`.
+  which_gal_bias: polynomial_fit # Type: str. Options: [`per_bin`, `polynomial_fit`, `from_input`]
+  which_mag_bias: polynomial_fit # Type: str. Options: [`per_bin`, `polynomial_fit`, `from_input`]
 
   # Coefficients of the third-order polynomial galaxy and magnification bias.
   # The order is [z^0, z^1, z^2, z^3]
   gal_bias_fit_coeff: [1.33291, -0.72414, 1.0183, -0.14913] # Type: list[float]
   mag_bias_fit_coeff: [-1.50685, 1.35034, 0.08321, 0.04279] # Type: list[float]
 
+  # Galaxy and magnification bias values for each tomographic bin
+  gal_bias_per_bin: [1.1, 1.3, 1.5] # Type: list[float]. len: zbins
+  mag_bias_per_bin: [-1.0, -0.5, 0.0] # Type: list[float]. len: zbins
+
   # Input files for the galaxy and magnification bias. Should have shape (nz_points, zbins + 1), and sufficient
   # redshift support. These files are only used if `which_gal_bias` or `which_mag_bias` are set to 'from_input'.
+  # As for the other options, the magnification bias file should contain `b_mag`, not s(z).
   gal_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/gal_bias.txt # Type: str
   mag_bias_table_filename: ../DATA/Spaceborne_jobs_IO/develop/input/mag_bias.txt # Type: str
 
@@ -219,7 +226,7 @@ C_ell:
 mask:
   # Configs for the survey footprint and weight maps.
 
-  # The footprint can binary or fractional. In the latter case it is assumed that its
+  # The footprint can be binary or fractional. In the latter case it is assumed that its
   # value represents the observed fraction (coverage) of each pixel. It is a single map, common
   # to all redshift bins, and it is used to compute the fsky factors, as
   # fsky = mean(footprint). For the GL probe pair the window is
@@ -249,7 +256,8 @@ mask:
   # Desired nside of the polar caps, or nside to which up/downgrade the resolution of the input masks.
   nside: 1024 # Type: int
 
-  survey_area_deg2: 2700 # Type: int. Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
+  # Area subtended by the footprint, if 'geometry' is set to 'polar_cap'.
+  survey_area_deg2: 2700 # Type: int.
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
@@ -261,17 +269,17 @@ covariance:
   # ================================== Gaussian cov ====================================
   # Method to account for partial sky coverage in the Gaussian term.
   # Options:
-  # - Knox: rescale the full-sky covariance by multiplying it by 1/fsky, where fsky is
-  #         the fraction of sky observed. This approximation is commonly used, works
-  #         best for large survey areas, and it's significantly faster than using NaMaster.
+  # - fsky (Knox approximation): rescale the full-sky covariance by multiplying it by
+  #         1/fsky. This approximation is commonly used, works best for large survey
+  #         areas, and it's significantly faster than using NaMaster.
   # - NaMaster: use the NaMaster code to compute the partial-sky covariance through the
   #             NKA or iNKA approximations. This is more accurate, especially for small
-  #             survey areas, but significantly slower than the Knox approximation.
+  #             survey areas, but significantly slower than the fsky approximation.
   #             It can be sped up quite significantly by setting spin0=True in the
   #             precision section (at the cost of lower precision)
   # - ensemble: compute the numerical covariance from an ensemble of Gaussian healpy
   #             realizations
-  partial_sky_method: Knox # Type: str
+  partial_sky_method: fsky # Type: str
 
   # Whether to compute the covariance of the coupled or decoupled Cls.
   # Options: ['coupled', 'decoupled']
@@ -287,9 +295,9 @@ covariance:
   # Should be of length 'zbins'
   sigma_eps_i: [0.26, 0.27, 0.28] # Type: list[float]
 
-  # Whether to include the noise power spectra in the computation of the
-  # Gaussian covariance matrix.
-  no_sampling_noise: False # Type: bool
+  # Whether to include the noise power spectra (shot and shape noise), i.e., the SN term, 
+  # in the Gaussian covariance
+  include_sampling_noise: True # Type: bool
 
   # ==================================== SSC cov =======================================
   # Which method to use for the computation of the response of the power spectra to a
@@ -368,7 +376,7 @@ ensemble_covariance:
 
 precision:
   # =============================== harmonic-space cov =================================
-  # Binning method for the Knox ('1/fsky') harmonic-space Gaussian covariance
+  # Binning method for the `fsky` harmonic-space Gaussian covariance
   # (which is diagonal in ell1, ell2):
   # - True:  Average over all integer multipoles within each bin (exact formula).
   #          Sum over modes and divide by N_modes², where N_modes is the number of
@@ -460,8 +468,7 @@ precision:
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can
   # result in noticeable differences with respect to the plain numpy implementation, since
   # the latter defaults to 64-bit precision.
-  jax_enable_x64: True # Type: bool
-
+  jax_enable_x64: True # Type: bool.
 
   # precision parameters for splines and numerical integration, described in
   # https://ccl.readthedocs.io/en/latest/source/notation_and_other_cosmological_conventions.html#controlling-splines-and-numerical-accuracy.

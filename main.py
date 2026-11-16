@@ -301,7 +301,6 @@ _cfg_oc.setdefault('oc_output_filename', 'cov_oc')
 _cfg_oc.setdefault('compare_against_oc', False)
 cfg['misc'].setdefault('save_output_as_benchmark', False)
 cfg['misc'].setdefault('bench_filename', 'benchmark')
-cfg['precision'].setdefault('ell_bins_proj_nongauss_cosebis', 10_000)
 
 # Shape noise in the sims:
 # - painted: homogeneous noise times the weight map (per-pixel variance ∝ w^2). This
@@ -773,7 +772,7 @@ if shift_nz:
     nz_src = wf_cl_lib.shift_nz(
         zgrid_nz_src,
         nz_src,
-        cfg['nz']['dzWL'],
+        cfg['nz']['dz_sources'],
         normalize=False,
         plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
@@ -784,7 +783,7 @@ if shift_nz:
     nz_lns = wf_cl_lib.shift_nz(
         zgrid_nz_lns,
         nz_lns,
-        cfg['nz']['dzGC'],
+        cfg['nz']['dz_lenses'],
         normalize=False,
         plot_nz=True,
         interpolation_kind=shift_nz_interpolation_kind,
@@ -862,8 +861,14 @@ elif cfg['C_ell']['which_gal_bias'] == 'polynomial_fit':
     ccl_obj.set_gal_bias_tuple_spv3(
         z_grid_lns=z_grid, magcut_lens=None, poly_fit_values=galaxy_bias_fit_fiducials
     )
+elif cfg['C_ell']['which_gal_bias'] == 'per_bin':
+    ccl_obj.set_gal_bias_tuple_per_bin(
+        z_grid_lns=z_grid, gal_bias_per_bin=cfg['C_ell']['gal_bias_per_bin']
+    )
 else:
-    raise ValueError('which_gal_bias should be "from_input" or "polynomial_fit"')
+    raise ValueError(
+        'which_gal_bias should be "from_input", "polynomial_fit" or "per_bin"'
+    )
 
 # Check if the galaxy bias is the same in all bins
 # Note: the [0] (inside square brackets) means "select column 0 but keep the array
@@ -887,12 +892,15 @@ if cfg['C_ell']['has_mag_bias']:
         mag_bias_input = np.genfromtxt(cfg['C_ell']['mag_bias_table_filename'])
         # it's safer to use a linear interpolation, in case these functions are top-hats
         # (e.g. when requiring constant bias in each bin, over its redshift support)
-        ccl_obj.mag_bias_2d, ccl_obj.mag_bias_func = sl.check_interpolate_input_tab(
+        b_mag_2d, _ = sl.check_interpolate_input_tab(
             input_tab=mag_bias_input,
             z_grid_out=z_grid,
             zbins=zbins,
             kind=cfg['C_ell']['mag_bias_table_interp_method'],
         )
+        # the table contains b_mag = 5s - 2 (as for the polynomial fit): convert it to
+        # the s expected by CCL
+        ccl_obj.mag_bias_2d = wf_cl_lib.s_from_b_mag(b_mag_2d)
         ccl_obj.mag_bias_tuple = (z_grid, ccl_obj.mag_bias_2d)
     elif cfg['C_ell']['which_mag_bias'] == 'polynomial_fit':
         ccl_obj.set_mag_bias_tuple(
@@ -901,8 +909,14 @@ if cfg['C_ell']['has_mag_bias']:
             magcut_lens=None,
             poly_fit_values=magnification_bias_fit_fiducials,
         )
+    elif cfg['C_ell']['which_mag_bias'] == 'per_bin':
+        ccl_obj.set_mag_bias_tuple_per_bin(
+            z_grid_lns=z_grid, mag_bias_per_bin=cfg['C_ell']['mag_bias_per_bin']
+        )
     else:
-        raise ValueError('which_mag_bias should be "from_input" or "polynomial_fit"')
+        raise ValueError(
+            'which_mag_bias should be "from_input", "polynomial_fit" or "per_bin"'
+        )
 else:
     ccl_obj.mag_bias_tuple = None
 
@@ -984,7 +998,7 @@ nl_3x2pt_4d = sl.build_noise(
     sigma_eps2=sigma_eps2,
     ng_shear=ng_shear,
     ng_clust=ng_clust,
-    is_noiseless=cfg['covariance']['no_sampling_noise'],
+    is_noiseless=not cfg['covariance']['include_sampling_noise'],
 )
 
 # create dummy ell axis, the array is just repeated along it
@@ -1094,7 +1108,7 @@ if obs_space == 'harmonic':
             nl_3x2pt_4d[:, :, np.newaxis, :, :], bin_obj.nbl_3x2pt_unb, axis=2
         )
 
-    # compute Knox Gaussian covariance
+    # compute fsky Gaussian covariance
     if 'Spaceborne' in cov_terms_and_codes.values():
         cov_hs_obj.set_gauss_cov(
             cl_3x2pt_5d=cl_3x2pt_5d,

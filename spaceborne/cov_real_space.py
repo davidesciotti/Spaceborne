@@ -482,12 +482,15 @@ class CovRealSpace(CovarianceProjector):
             cov_out_6d = np.zeros(self.cov_shape_6d)
 
         elif term == 'sn':
-            # this is 0 for
-            # ['xipxim', 'gtxim', 'gtxip', 'wxim', 'wgt', 'wxip']
-            # but is very fast to compute so I don't skip these terms
-            cov_out_6d = self.cov_sn_rs(
-                probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd
-            )
+            if not self.include_sampling_noise:
+                cov_out_6d = np.zeros(self.cov_shape_6d)
+            else:
+                # this is 0 for
+                # ['xipxim', 'gtxim', 'gtxip', 'wxim', 'wgt', 'wxip']
+                # but is very fast to compute so I don't skip these terms
+                cov_out_6d = self.cov_sn_rs(
+                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd
+                )
 
         elif term in ['ssc', 'cng']:
             if cov_hs_ng_dict is None:

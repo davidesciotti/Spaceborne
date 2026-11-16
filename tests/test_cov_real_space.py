@@ -252,7 +252,7 @@ class TestMixNoiseNormalisation:
     NGAL_LENSES = np.array([4.2, 7.9, 9.3])  # arcmin^-2
 
     @classmethod
-    def _nl_4d(cls):
+    def _nl_4d(cls, include_sampling_noise=True):
         """Noise exactly as built in main.py."""
         from spaceborne import sb_lib as sl
 
@@ -262,6 +262,7 @@ class TestMixNoiseNormalisation:
             sigma_eps2=(cls.SIGMA_EPS_I * np.sqrt(2)) ** 2,
             ng_shear=cls.NGAL_SOURCES,
             ng_clust=cls.NGAL_LENSES,
+            is_noiseless=not include_sampling_noise,
         )
 
     @classmethod
@@ -302,11 +303,13 @@ class TestMixNoiseNormalisation:
                 )
 
     @pytest.fixture
-    def cov_rs(self, rng):
-        """A small but complete CovRealSpace, built through __init__."""
+    def cov_rs(self, rng, request):
+        """A small but complete CovRealSpace, built through __init__. Pass
+        include_sampling_noise=False through indirect parametrization."""
         from spaceborne import constants as const
         from spaceborne import sb_lib as sl
 
+        include_sampling_noise = getattr(request, 'param', True)
         zbins, nbl = self.ZBINS, self.NBL
         zpairs_auto, zpairs_cross, _ = sl.get_zpairs(zbins)
         ind = sl.build_full_ind('triu', 'row-major', zbins)
@@ -320,6 +323,7 @@ class TestMixNoiseNormalisation:
                 'SSC': False,
                 'cNG': False,
                 'sigma_eps_i': self.SIGMA_EPS_I.tolist(),
+                'include_sampling_noise': include_sampling_noise,
             },
             'nz': {
                 'ngal_sources': self.NGAL_SOURCES.tolist(),
@@ -358,7 +362,7 @@ class TestMixNoiseNormalisation:
             cfg=cfg,
             pvt_cfg=pvt_cfg,
             cl_3x2pt_5d=cl_3x2pt_5d,
-            nl_3x2pt_4d=self._nl_4d(),
+            nl_3x2pt_4d=self._nl_4d(include_sampling_noise),
             ells_proj_g=ells,
             ells_proj_ng=ells,
         )
@@ -410,3 +414,47 @@ class TestMixNoiseNormalisation:
             assert np.abs(expected).max() > 0
         atol = 1e-12 * np.abs(expected).max()
         np.testing.assert_allclose(out, expected, rtol=1e-10, atol=atol)
+
+    # ------------------------------------------------------------------------- #
+    # covariance.include_sampling_noise
+    # ------------------------------------------------------------------------- #
+    # SN is built analytically from sigma_eps_i and n_eff (not from nl_3x2pt_4d), so
+    # it must honour the flag explicitly, as the harmonic-space SN does through nl.
+    _SN_PROBES = ['xipxip', 'ximxim', 'gtgt', 'ww', 'xipxim', 'xipgt', 'gtw']
+
+    @pytest.mark.parametrize('probe_abcd', _SN_PROBES)
+    def test_sn_with_noise_is_the_analytic_term(self, cov_rs, probe_abcd):
+        from spaceborne import constants as const
+        from spaceborne import sb_lib as sl
+
+        assert cov_rs.include_sampling_noise is True
+        cov_rs.compute_rs_cov_term_probe_6d(None, probe_abcd, 'sn', self.AMAX)
+        probe_2tpl = sl.split_probe_name(probe_abcd, 'real')
+        mu = const.MU_DICT[probe_2tpl[0]]
+        nu = const.MU_DICT[probe_2tpl[1]]
+        expected = cov_rs.cov_sn_rs(
+            *const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd], mu, nu, self.AMAX
+        )
+        np.testing.assert_array_equal(cov_rs.cov_dict['sn'][probe_2tpl]['6d'], expected)
+
+    def test_sn_with_noise_is_nonzero_for_auto_probes(self, cov_rs):
+        # guards the test below against passing trivially
+        for probe_abcd in ['xipxip', 'gtgt', 'ww']:
+            cov_rs.compute_rs_cov_term_probe_6d(None, probe_abcd, 'sn', self.AMAX)
+        for probe_2tpl in [('xip', 'xip'), ('gt', 'gt'), ('w', 'w')]:
+            assert np.any(cov_rs.cov_dict['sn'][probe_2tpl]['6d'] != 0)
+
+    @pytest.mark.parametrize('cov_rs', [False], indirect=True)
+    @pytest.mark.parametrize('probe_abcd', _SN_PROBES)
+    def test_noiseless_gaussian_is_sva_only(self, cov_rs, probe_abcd):
+        """With include_sampling_noise=False, both SN and MIX vanish (as in harmonic
+        space), with the usual 6D shape."""
+        from spaceborne import sb_lib as sl
+
+        assert cov_rs.include_sampling_noise is False
+        probe_2tpl = sl.split_probe_name(probe_abcd, 'real')
+        for term in ['sn', 'mix']:
+            cov_rs.compute_rs_cov_term_probe_6d(None, probe_abcd, term, self.AMAX)
+            cov_6d = cov_rs.cov_dict[term][probe_2tpl]['6d']
+            assert cov_6d.shape == cov_rs.cov_shape_6d
+            np.testing.assert_array_equal(cov_6d, 0.0)

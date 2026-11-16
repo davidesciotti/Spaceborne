@@ -509,6 +509,11 @@ misc:
   output_path: ../DATA/Spaceborne_jobs_IO/develop/output # Type: str. Path to the output directory
   save_figs: True # Type: bool. Whether to save the figs in the folder f'{output_path}/figs'
 
+  # Checks that the code is running in the specified conda environment. If None, no check is performed.
+  conda_env: spaceborne # Type: str | None.
+  # Checks that the code is running in the specified Spaceborne branch/tag. If None, no check is performed.
+  Spaceborne_branch: null # Type: str | None.
+
   # Check whether a newer version of the code is available on GitHub. If offline, it
   # times out after 2 s, without interrupting the run.
   # set to False if running a large batch of cases, or if working offline.

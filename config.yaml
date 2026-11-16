@@ -457,7 +457,7 @@ precision:
   ell_max_nmt: null # Type: int | None
   
   # Whether to keep the E->B leakage in the coupled spectra passed to the iNKA.
-  iNKA_eb_leakage: False # Type: bool.
+  iNKA_eb_leakage: True # Type: bool.
 
   # ======================================= JAX ========================================
   # Whether to enable 64-bit precision for JAX computations. Setting this to False can

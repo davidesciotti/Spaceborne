@@ -511,7 +511,7 @@ class SpaceborneConfigChecker:
             and not isinstance(ell_max_nmt, bool)
             and ell_max_nmt > 0
         ), 'precision: ell_max_nmt must be None or a positive int'
-        assert isinstance(precision_cfg.get('iNKA_eb_leakage', False), bool), (
+        assert isinstance(precision_cfg.get('iNKA_eb_leakage', True), bool), (
             'precision: iNKA_eb_leakage must be a boolean'
         )
         assert isinstance(precision_cfg['n_samples_wf'], int), (

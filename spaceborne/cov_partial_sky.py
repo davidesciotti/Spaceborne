@@ -1547,7 +1547,7 @@ class CovNaMaster:
         # couple_cell([EE, 0, 0, 0]) / fsky. Dropped by default (BB = noise only);
         # EE->EB and TE->TB couplings vanish by parity, so BB is
         # the only non-zero leakage term.
-        eb_leakage = self.cfg['precision'].get('iNKA_eb_leakage', False)
+        eb_leakage = self.cfg['precision']['iNKA_eb_leakage']
         cl_bb_leak = np.zeros_like(cl_ll_4covnmt)
         if self.cfg['precision']['iNKA']:
             # TODO XXX this could be made more efficient by only looping over the auto-combs

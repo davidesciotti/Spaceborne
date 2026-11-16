@@ -1543,10 +1543,8 @@ class CovNaMaster:
         cl_gg_4covnmt = self.cl_3x2pt_unb_5d[1, 1, :, :, :].copy()
         cl_gl_4covnmt = self.cl_3x2pt_unb_5d[1, 0, :, :, :].copy()
         cl_ll_4covnmt = self.cl_3x2pt_unb_5d[0, 0, :, :, :].copy()
-        # E->B leakage of the iNKA spectra (spin-2 only): the BB part of
-        # couple_cell([EE, 0, 0, 0]) / fsky. Dropped by default (BB = noise only);
-        # EE->EB and TE->TB couplings vanish by parity, so BB is
-        # the only non-zero leakage term.
+        
+        # E->B leakage of the iNKA spectra (spin-2 only)
         eb_leakage = self.cfg['precision']['iNKA_eb_leakage']
         cl_bb_leak = np.zeros_like(cl_ll_4covnmt)
         if self.cfg['precision']['iNKA']:

@@ -8,13 +8,14 @@ The key insight is that different statistics share the same integrand building
 (SVA, MIX terms) but differ in how they project from Cl to the observable space.
 """
 
+import warnings
 from collections.abc import Callable
 from functools import partial
 
 import numpy as np
 from scipy.integrate import quad_vec
 from scipy.integrate import simpson as simps
-from scipy.interpolate import make_interp_spline
+from scipy.interpolate import interp1d, make_interp_spline
 
 from spaceborne import constants as const
 
@@ -38,6 +39,150 @@ def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
     n_eff_i_sr = n_eff_i * const.SR_TO_ARCMIN2
     n_eff_j_sr = n_eff_j * const.SR_TO_ARCMIN2
     return 2 * np.pi * theta * survey_area_sr * n_eff_i_sr * n_eff_j_sr
+
+
+# ! ============================= measured pair counts ===============================
+# Pair counts measured on the data (covariance.pair_counts = 'from_input') replace the
+# ideal ones above in the SN term only. Conventions::
+# - the counts are the weighted *effective* counts (sum w_a w_b)^2 / sum (w_a w_b)^2,
+# - auto bins hold the *ordered* count (each pair counted twice, as get_npair), not
+#   the unique-pair count of a single-catalogue treecorr run;
+# - arrays have shape (n_theta, zbins, zbins), GL is (theta, lens bin, source bin);
+# - they are indexed by the harmonic-space probe they refer to: 'LL', 'GL', 'GG'.
+
+
+def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
+    """Read the measured pair counts from a .npz file.
+
+    The file contains 'theta_edges_arcmin', shape (n_theta + 1,), and any of
+    'npair_LL', 'npair_GL', 'npair_GG', each of shape (n_theta, zbins, zbins).
+
+    Returns
+    -------
+    theta_edges_rad : np.ndarray, shape (n_theta + 1,)
+    npair_dict : dict
+        {'LL' | 'GL' | 'GG': array of shape (n_theta, zbins, zbins)}, only for the
+        probes present in the file.
+    """
+
+    # load data into npair_dict and into theta_edges_arcmin
+    with np.load(filename) as data:
+        if 'theta_edges_arcmin' not in data:
+            raise KeyError(f"'theta_edges_arcmin' not found in {filename}")
+        theta_edges_arcmin = np.asarray(data['theta_edges_arcmin'], dtype=float)
+        npair_dict = {
+            key: np.asarray(data[f'npair_{key}'], dtype=float)
+            for key in const.HS_DIAG_PROBES
+            if f'npair_{key}' in data
+        }
+
+    # various sanity checks
+    if theta_edges_arcmin.ndim != 1 or np.any(np.diff(theta_edges_arcmin) <= 0):
+        raise ValueError(f'theta_edges_arcmin in {filename} must be 1D and increasing')
+    if not npair_dict:
+        raise ValueError(f'No npair_LL, npair_GL or npair_GG array found in {filename}')
+
+    expected_shape = (len(theta_edges_arcmin) - 1, zbins, zbins)
+    for key, npair in npair_dict.items():
+        if npair.shape != expected_shape:
+            raise ValueError(
+                f'npair_{key} in {filename} has shape {npair.shape}, expected '
+                f'(n_theta, zbins, zbins) = {expected_shape}'
+            )
+
+        if np.any(npair <= 0) or not np.all(np.isfinite(npair)):
+            raise ValueError(f'npair_{key} in {filename} must be finite and positive')
+        if key in ('LL', 'GG') and not np.allclose(npair, npair.transpose(0, 2, 1)):
+            raise ValueError(
+                f'npair_{key} in {filename} must be symmetric in (zi, zj): please '
+                'provide both triangles'
+            )
+
+    theta_edges_rad = np.deg2rad(theta_edges_arcmin / 60)
+    return theta_edges_rad, npair_dict
+
+
+def _check_theta_range(theta_min, theta_max, theta_edges_in, what):
+    # small tolerance, for edges computed in different ways (e.g. treecorr vs numpy)
+    if theta_min < theta_edges_in[0] * (1 - 1e-8) or (
+        theta_max > theta_edges_in[-1] * (1 + 1e-8)
+    ):
+        raise ValueError(
+            f'The pair counts cover theta = [{theta_edges_in[0]:.6e}, '
+            f'{theta_edges_in[-1]:.6e}] rad, but the {what} needs '
+            f'[{theta_min:.6e}, {theta_max:.6e}] rad: please provide pair counts over '
+            'the full range'
+        )
+
+
+def rebin_pair_counts(
+    npair: np.ndarray, theta_edges_in: np.ndarray, theta_edges_out: np.ndarray
+) -> np.ndarray:
+    """Pair counts in the (coarse) bins defined by theta_edges_out, from the (fine)
+    ones defined by theta_edges_in.
+
+    The cumulative count N(<theta) is interpolated linearly in theta^2 between the
+    input edges, and differenced at the output edges. Fine bins entirely within a
+    coarse bin are therefore just summed, while a fine bin cut by a coarse edge is
+    split proportionally to the ring area on each side, as for a uniform field
+    (dN/dtheta ∝ theta). This is exact for the ideal counts, and for any counts if
+    the output edges are a subset of the input ones.
+    """
+    _check_theta_range(
+        theta_edges_out[0], theta_edges_out[-1], theta_edges_in, 'theta binning'
+    )
+    cumsum = np.concatenate(
+        [np.zeros((1, *npair.shape[1:])), np.cumsum(npair, axis=0)], axis=0
+    )
+    # clip: the range check above allows a tiny tolerance beyond the input edges
+    theta2_out = np.clip(
+        theta_edges_out**2, theta_edges_in[0] ** 2, theta_edges_in[-1] ** 2
+    )
+    cumsum_out = interp1d(theta_edges_in**2, cumsum, axis=0, kind='linear')(theta2_out)
+    return np.diff(cumsum_out, axis=0)
+
+
+def dnpair_from_pair_counts(
+    npair: np.ndarray, theta_edges_in: np.ndarray, theta_out: np.ndarray
+) -> np.ndarray:
+    """dN/dtheta on theta_out from (fine) pair counts.
+
+    dN/dtheta is count / bin width, at the arithmetic bin centres (where it is exact
+    for the ideal counts), linearly interpolated, and extrapolated within the outermost
+    half bins.
+
+    Returns
+    -------
+    np.ndarray, shape (len(theta_out), zbins, zbins)
+    """
+    _check_theta_range(
+        np.min(theta_out), np.max(theta_out), theta_edges_in, 'COSEBIs theta grid'
+    )
+    widths = np.diff(theta_edges_in)
+    centres = 0.5 * (theta_edges_in[1:] + theta_edges_in[:-1])
+    dnpair = npair / widths[:, None, None]
+    interp = interp1d(centres, dnpair, axis=0, kind='linear', fill_value='extrapolate')
+    return interp(theta_out)
+
+
+def warn_if_pair_counts_off(
+    npair_meas: np.ndarray, npair_ideal: np.ndarray, probe_key: str, rtol: float = 0.25
+) -> None:
+    """At the smallest theta, the measured counts should be close to the ideal ones
+    (the survey edges and holes matter little). A ratio of ~1/2 in the auto bins
+    signals unique-pair counts, instead of the expected ordered ones.
+    """
+    ratio = npair_meas[0] / npair_ideal[0]
+    if np.any(np.abs(ratio - 1) > rtol):
+        warnings.warn(
+            f'The measured {probe_key} pair counts differ by more than {rtol:.0%} from '
+            'the ideal ones at the smallest theta (measured/ideal ratio in '
+            f'[{ratio.min():.3f}, {ratio.max():.3f}]). Please check n_eff, the survey '
+            'area and the pair counts. Note that the auto bins must contain the '
+            'ordered counts (each pair counted twice), i.e. twice the output of a '
+            'single-catalogue treecorr run.',
+            stacklevel=2,
+        )
 
 
 def get_delta_tomo(probe_a_ix: int, probe_b_ix: int, zbins: int) -> np.ndarray:
@@ -463,6 +608,7 @@ class CovarianceProjector:
 
         self._set_terms_toloop()
         self._set_neff_and_sigma_eps()
+        self._set_pair_counts()
 
         self.cov_shape_6d = (
             self.nbs,
@@ -491,6 +637,26 @@ class CovarianceProjector:
         # excluded), while the SN term is built analytically from sigma_eps_i and n_eff:
         # it needs this flag to be switched off consistently
         self.include_sampling_noise = self.cfg['covariance']['include_sampling_noise']
+
+    def _set_pair_counts(self):
+        """Pair counts for the SN term: 'analytic' (ideal, from n_eff and the survey
+        area) or 'from_input' (measured, read from file)."""
+        self.pair_counts = self.cfg['covariance']['pair_counts']
+        self.pc_theta_edges_rad, self.pc_npair_dict = None, None
+        if self.pair_counts == 'from_input':
+            self.pc_theta_edges_rad, self.pc_npair_dict = load_pair_counts(
+                self.cfg['covariance']['pair_counts_filename'], self.zbins
+            )
+
+    def _get_measured_pair_counts(self, probe_hs: str) -> np.ndarray:
+        """Measured pair counts for the harmonic-space probe ('LL', 'GL', 'GG'), on
+        the file's theta grid."""
+        if probe_hs not in self.pc_npair_dict:
+            raise KeyError(
+                f'npair_{probe_hs} is needed for the SN term, but it is not in '
+                f'{self.cfg["covariance"]["pair_counts_filename"]}'
+            )
+        return self.pc_npair_dict[probe_hs]
 
     def proj_mix_sva_simps_vectorized(
         self,

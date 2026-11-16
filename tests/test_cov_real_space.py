@@ -302,14 +302,54 @@ class TestMixNoiseNormalisation:
                     atol=0,
                 )
 
+    @classmethod
+    def _write_ideal_pair_counts(cls, tmp_path, unique_autos):
+        """Ideal (ordered) counts, with the same area and n_eff as the analytic SN,
+        on a grid 4x finer than the fixture's theta bins."""
+        from spaceborne import constants as const
+        from spaceborne import cov_projector as cp
+
+        edges_arcmin = np.geomspace(5.0, 300.0, 4 * cls.NBS + 1)
+        edges_rad = np.deg2rad(edges_arcmin / 60)
+        n_eff = {'L': cls.NGAL_SOURCES, 'G': cls.NGAL_LENSES}
+        data = {'theta_edges_arcmin': edges_arcmin}
+        for key in const.HS_DIAG_PROBES:  # 'LL', 'GL', 'GG'
+            probe_a, probe_b = key
+            npair = cp.get_npair(
+                edges_rad[1:, None, None],
+                edges_rad[:-1, None, None],
+                cls.AMAX,
+                n_eff[probe_a][None, :, None],
+                n_eff[probe_b][None, None, :],
+            )
+            if unique_autos and probe_a == probe_b:
+                npair[:, np.arange(cls.ZBINS), np.arange(cls.ZBINS)] /= 2
+            data[f'npair_{key}'] = npair
+        fname = tmp_path / 'pair_counts.npz'
+        np.savez(fname, **data)
+        return str(fname)
+
     @pytest.fixture
-    def cov_rs(self, rng, request):
-        """A small but complete CovRealSpace, built through __init__. Pass
-        include_sampling_noise=False through indirect parametrization."""
+    def cov_rs(self, rng, request, tmp_path):
+        """A small but complete CovRealSpace, built through __init__. Options, as a
+        dict through indirect parametrization:
+        - include_sampling_noise (default True)
+        - pair_counts (default 'analytic'): with 'from_input', the ideal counts are
+          written on a 4x finer grid and read back from file
+        - unique_autos (default False): halve the auto-bin counts in the file, as a
+          single-catalogue treecorr run would give
+        """
         from spaceborne import constants as const
         from spaceborne import sb_lib as sl
 
-        include_sampling_noise = getattr(request, 'param', True)
+        opts = getattr(request, 'param', {})
+        include_sampling_noise = opts.get('include_sampling_noise', True)
+        pair_counts = opts.get('pair_counts', 'analytic')
+        pc_filename = None
+        if pair_counts == 'from_input':
+            pc_filename = self._write_ideal_pair_counts(
+                tmp_path, opts.get('unique_autos', False)
+            )
         zbins, nbl = self.ZBINS, self.NBL
         zpairs_auto, zpairs_cross, _ = sl.get_zpairs(zbins)
         ind = sl.build_full_ind('triu', 'row-major', zbins)
@@ -324,6 +364,8 @@ class TestMixNoiseNormalisation:
                 'cNG': False,
                 'sigma_eps_i': self.SIGMA_EPS_I.tolist(),
                 'include_sampling_noise': include_sampling_noise,
+                'pair_counts': pair_counts,
+                'pair_counts_filename': pc_filename,
             },
             'nz': {
                 'ngal_sources': self.NGAL_SOURCES.tolist(),
@@ -433,7 +475,11 @@ class TestMixNoiseNormalisation:
         mu = const.MU_DICT[probe_2tpl[0]]
         nu = const.MU_DICT[probe_2tpl[1]]
         expected = cov_rs.cov_sn_rs(
-            *const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd], mu, nu, self.AMAX
+            *const.RS_PROBE_NAME_TO_IX_DICT[probe_abcd],
+            mu,
+            nu,
+            self.AMAX,
+            probe_2tpl[0],
         )
         np.testing.assert_array_equal(cov_rs.cov_dict['sn'][probe_2tpl]['6d'], expected)
 
@@ -444,7 +490,9 @@ class TestMixNoiseNormalisation:
         for probe_2tpl in [('xip', 'xip'), ('gt', 'gt'), ('w', 'w')]:
             assert np.any(cov_rs.cov_dict['sn'][probe_2tpl]['6d'] != 0)
 
-    @pytest.mark.parametrize('cov_rs', [False], indirect=True)
+    @pytest.mark.parametrize(
+        'cov_rs', [{'include_sampling_noise': False}], indirect=True
+    )
     @pytest.mark.parametrize('probe_abcd', _SN_PROBES)
     def test_noiseless_gaussian_is_sva_only(self, cov_rs, probe_abcd):
         """With include_sampling_noise=False, both SN and MIX vanish (as in harmonic
@@ -458,3 +506,67 @@ class TestMixNoiseNormalisation:
             cov_6d = cov_rs.cov_dict[term][probe_2tpl]['6d']
             assert cov_6d.shape == cov_rs.cov_shape_6d
             np.testing.assert_array_equal(cov_6d, 0.0)
+
+    # ------------------------------------------------------------------------- #
+    # covariance.pair_counts
+    # ------------------------------------------------------------------------- #
+    @pytest.mark.parametrize('probe_abcd', _SN_PROBES)
+    def test_ideal_pair_counts_from_file_reproduce_analytic_sn(
+        self, rng, tmp_path, probe_abcd
+    ):
+        """Reading the ideal counts from file (on a finer, nested grid) gives the
+        same SN as the analytic counts, for all probes (incl. the GL index order)."""
+        from spaceborne import sb_lib as sl
+
+        class _Req:  # minimal stand-in for pytest's request, to build both objects
+            def __init__(self, param):
+                self.param = param
+
+        sn = {}
+        for pc in ['analytic', 'from_input']:
+            obj = self.cov_rs.__wrapped__(
+                self, rng, _Req({'pair_counts': pc}), tmp_path
+            )
+            obj.compute_rs_cov_term_probe_6d(None, probe_abcd, 'sn', self.AMAX)
+            sn[pc] = obj.cov_dict['sn'][sl.split_probe_name(probe_abcd, 'real')]['6d']
+
+        assert np.any(sn['analytic'] != 0) or probe_abcd in ['xipxim', 'xipgt', 'gtw']
+        np.testing.assert_allclose(sn['from_input'], sn['analytic'], rtol=1e-12)
+
+    @pytest.mark.parametrize(
+        'cov_rs', [{'pair_counts': 'from_input', 'unique_autos': True}], indirect=True
+    )
+    def test_unique_auto_pair_counts_warn(self, cov_rs):
+        with pytest.warns(UserWarning, match='ordered'):
+            cov_rs.compute_rs_cov_term_probe_6d(None, 'xipxip', 'sn', self.AMAX)
+
+    @pytest.mark.parametrize('cov_rs', [{'pair_counts': 'from_input'}], indirect=True)
+    def test_theta_bins_outside_pair_counts_raise(self, cov_rs):
+        cov_rs.theta_edges = cov_rs.theta_edges * 1.5  # beyond 300 arcmin
+        with pytest.raises(ValueError, match='range'):
+            cov_rs.compute_rs_cov_term_probe_6d(None, 'xipxip', 'sn', self.AMAX)
+
+    @pytest.mark.parametrize('cov_rs', [{'pair_counts': 'from_input'}], indirect=True)
+    @pytest.mark.parametrize('probe_abcd', ['xipxip', 'gtgt', 'ww'])
+    def test_sn_uses_the_counts_from_file(self, cov_rs, tmp_path, probe_abcd):
+        """SN is inversely proportional to the pair counts read from file."""
+        from spaceborne import sb_lib as sl
+
+        probe_2tpl = sl.split_probe_name(probe_abcd, 'real')
+        cov_rs.compute_rs_cov_term_probe_6d(None, probe_abcd, 'sn', self.AMAX)
+        sn_1x = cov_rs.cov_dict['sn'][probe_2tpl]['6d'].copy()
+
+        with np.load(cov_rs.cfg['covariance']['pair_counts_filename']) as data:
+            doubled = {
+                k: (v if k == 'theta_edges_arcmin' else 2 * v) for k, v in data.items()
+            }
+        fname = tmp_path / 'pair_counts_2x.npz'
+        np.savez(fname, **doubled)
+        cov_rs.cfg['covariance']['pair_counts_filename'] = str(fname)
+        cov_rs._set_pair_counts()
+
+        with pytest.warns(UserWarning, match='ratio in \\[2.000, 2.000\\]'):
+            cov_rs.compute_rs_cov_term_probe_6d(None, probe_abcd, 'sn', self.AMAX)
+        sn_2x = cov_rs.cov_dict['sn'][probe_2tpl]['6d']
+        assert np.any(sn_1x != 0)
+        np.testing.assert_allclose(sn_2x, sn_1x / 2, rtol=1e-12)

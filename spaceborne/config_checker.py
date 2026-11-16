@@ -234,7 +234,9 @@ class SpaceborneConfigChecker:
         )
 
         if _cfgnz['shift_nz']:
-            assert isinstance(_cfgnz['dz_sources'], list), 'nz: dz_sources must be a list'
+            assert isinstance(_cfgnz['dz_sources'], list), (
+                'nz: dz_sources must be a list'
+            )
             assert isinstance(_cfgnz['dz_lenses'], list), 'nz: dz_lenses must be a list'
             assert all(isinstance(x, float) for x in _cfgnz['dz_sources']), (
                 'nz: All elements in dz_sources must be floats'
@@ -390,6 +392,12 @@ class SpaceborneConfigChecker:
 
         assert isinstance(_covcfg['include_sampling_noise'], bool), (
             'covariance: include_sampling_noise must be a boolean'
+        )
+        assert isinstance(_covcfg['pair_counts'], str), (
+            'covariance: pair_counts must be a string'
+        )
+        assert isinstance(_covcfg['pair_counts_filename'], (str, type(None))), (
+            'covariance: pair_counts_filename must be a string or None'
         )
         assert isinstance(_covcfg['which_pk_responses'], str), (
             'covariance: which_pk_responses must be a string'
@@ -633,6 +641,21 @@ class SpaceborneConfigChecker:
         assert self.cfg['covariance']['row_col_major'] in ('row-major', 'col-major'), (
             'row_col_major must be either "row-major" or "col-major"'
         )
+
+        # the pair counts only enter the real-space and COSEBIs SN term
+        _cfgpc = self.cfg['covariance']['pair_counts']
+        assert _cfgpc in ('analytic', 'from_input'), (
+            'covariance: pair_counts must be either "analytic" or "from_input"'
+        )
+        if _cfgpc == 'from_input' and self.cfg['probe_selection']['space'] in (
+            'real',
+            'cosebis',
+        ):
+            pc_filename = self.cfg['covariance']['pair_counts_filename']
+            assert pc_filename is not None and os.path.isfile(pc_filename), (
+                'covariance: pair_counts is "from_input", but pair_counts_filename '
+                f'({pc_filename}) is not an existing file'
+            )
 
         if self.cfg['covariance']['partial_sky_method'] in ['NaMaster', 'ensemble']:
             assert self.cfg['probe_selection']['space'] == 'harmonic', (

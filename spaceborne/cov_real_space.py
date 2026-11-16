@@ -332,21 +332,35 @@ class CovRealSpace(CovarianceProjector):
         assert len(theta_centers) == self.nbt, 'theta_centers length mismatch'
 
     def cov_sn_rs(
-        self, probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd
+        self,
+        probe_a_ix,
+        probe_b_ix,
+        probe_c_ix,
+        probe_d_ix,
+        mu,
+        nu,
+        amax_abcd,
+        probe_ab,
     ):
-        npair_arr = np.zeros((self.nbt, self.zbins, self.zbins))
-        for theta_ix in range(self.nbt):
-            theta_l = self.theta_edges[theta_ix]
-            theta_u = self.theta_edges[theta_ix + 1]
-            for zi in range(self.zbins):
-                for zj in range(self.zbins):
-                    npair_arr[theta_ix, zi, zj] = cp.get_npair(
-                        theta_u,
-                        theta_l,
-                        amax_abcd,
-                        self.n_eff_2d[probe_a_ix, zi],
-                        self.n_eff_2d[probe_b_ix, zj],
-                    )
+        """probe_ab is the real-space probe of the first pair ('xip', 'gt', ...),
+        whose pair counts enter the SN term."""
+        npair_arr = cp.get_npair(
+            self.theta_edges[1:, None, None],
+            self.theta_edges[:-1, None, None],
+            amax_abcd,
+            self.n_eff_2d[probe_a_ix][None, :, None],
+            self.n_eff_2d[probe_b_ix][None, None, :],
+        )
+
+        if self.pair_counts == 'from_input':
+            probe_ab_hs = const.RS_DIAG_PROBES_TO_HS[probe_ab]
+            npair_meas = cp.rebin_pair_counts(
+                self._get_measured_pair_counts(probe_ab_hs),
+                self.pc_theta_edges_rad,
+                self.theta_edges,
+            )
+            cp.warn_if_pair_counts_off(npair_meas, npair_arr, probe_ab_hs)
+            npair_arr = npair_meas
 
         delta_mu_nu = 1.0 if (mu == nu) else 0.0
         delta_theta = np.eye(self.nbt)
@@ -489,7 +503,14 @@ class CovRealSpace(CovarianceProjector):
                 # ['xipxim', 'gtxim', 'gtxip', 'wxim', 'wgt', 'wxip']
                 # but is very fast to compute so I don't skip these terms
                 cov_out_6d = self.cov_sn_rs(
-                    probe_a_ix, probe_b_ix, probe_c_ix, probe_d_ix, mu, nu, amax_abcd
+                    probe_a_ix,
+                    probe_b_ix,
+                    probe_c_ix,
+                    probe_d_ix,
+                    mu,
+                    nu,
+                    amax_abcd,
+                    probe_ab,
                 )
 
         elif term in ['ssc', 'cng']:

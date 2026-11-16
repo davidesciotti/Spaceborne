@@ -223,6 +223,55 @@ class TestCheckBiasPerBin:
         checker.check_options()
 
 
+class TestCheckPairCounts:
+    """Tests for covariance.pair_counts, in check_cov."""
+
+    @pytest.mark.parametrize('space', ['harmonic', 'real', 'cosebis'])
+    def test_analytic_ok(self, valid_cfg, space):
+        valid_cfg['probe_selection']['space'] = space
+        valid_cfg['covariance']['pair_counts'] = 'analytic'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_cov()
+
+    def test_invalid_option_raises(self, valid_cfg):
+        valid_cfg['covariance']['pair_counts'] = 'ideal'
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='pair_counts'):
+            checker.check_cov()
+
+    @pytest.mark.parametrize('space', ['real', 'cosebis'])
+    def test_from_input_with_existing_file_ok(self, valid_cfg, tmp_path, space):
+        fname = tmp_path / 'pc.npz'
+        fname.write_text('dummy')
+        valid_cfg['probe_selection']['space'] = space
+        valid_cfg['covariance']['pair_counts'] = 'from_input'
+        valid_cfg['covariance']['pair_counts_filename'] = str(fname)
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_cov()
+
+    @pytest.mark.parametrize('space', ['real', 'cosebis'])
+    def test_from_input_with_missing_file_raises(self, valid_cfg, tmp_path, space):
+        valid_cfg['probe_selection']['space'] = space
+        valid_cfg['covariance']['pair_counts'] = 'from_input'
+        valid_cfg['covariance']['pair_counts_filename'] = str(tmp_path / 'nope.npz')
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='pair_counts_filename'):
+            checker.check_cov()
+
+    def test_from_input_file_not_needed_in_harmonic_space(self, valid_cfg, tmp_path):
+        valid_cfg['probe_selection']['space'] = 'harmonic'
+        valid_cfg['covariance']['pair_counts'] = 'from_input'
+        valid_cfg['covariance']['pair_counts_filename'] = str(tmp_path / 'nope.npz')
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        checker.check_cov()
+
+    def test_type_checked(self, valid_cfg):
+        valid_cfg['covariance']['pair_counts'] = 1
+        checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
+        with pytest.raises(AssertionError, match='pair_counts'):
+            checker.check_types()
+
+
 class TestCheckNgCovGalBiasModel:
     """Tests for the ng_cov_gal_bias_model check in check_cov."""
 

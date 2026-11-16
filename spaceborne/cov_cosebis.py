@@ -1,4 +1,3 @@
-import itertools
 import warnings
 
 import numpy as np
@@ -250,17 +249,24 @@ class CovCOSEBIs(CovarianceProjector):
         t_term_2 = np.einsum('ta, tb -> tab', t_minus, t_minus)
         t_term = t_term_1 + t_term_2  # shape (self.nbt, n_modes, n_modes)
 
-        # 3. Compute dnpair (differential pairs per unit angle)
-        npair_arr = np.zeros((self.nbt, self.zbins, self.zbins))
-        for theta_ix, zi, zj in itertools.product(
-            range(self.nbt), range(self.zbins), range(self.zbins)
-        ):
-            npair_arr[theta_ix, zi, zj] = cp.get_dnpair(
-                theta=self.theta_grid_rad[theta_ix],
-                survey_area_sr=amax_abcd,
-                n_eff_i=self.n_eff_src[zi],
-                n_eff_j=self.n_eff_src[zj],
+        # 3. Compute analytical dnpair (differential pairs per unit angle)
+        n_eff_src = np.asarray(self.n_eff_src)
+        npair_arr = cp.get_dnpair(
+            theta=self.theta_grid_rad[:, None, None],
+            survey_area_sr=amax_abcd,
+            n_eff_i=n_eff_src[None, :, None],
+            n_eff_j=n_eff_src[None, None, :],
+        )
+        # compute from input if required
+        if self.pair_counts == 'from_input':
+            dnpair_meas = cp.dnpair_from_pair_counts(
+                self._get_measured_pair_counts('LL'),
+                self.pc_theta_edges_rad,
+                self.theta_grid_rad,
             )
+            # compare and warn if they differ
+            cp.warn_if_pair_counts_off(dnpair_meas, npair_arr, 'LL')
+            npair_arr = dnpair_meas
 
         # * alternatively, you can do
         # for theta_ix, zi, zj in itertools.product(

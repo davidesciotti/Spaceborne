@@ -28,6 +28,8 @@ and COSEBIs Gaussian-covariance projections:
 ``proj_cov_2d`` needs a full pipeline config and is not covered here.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 from scipy.integrate import simpson as simps
@@ -488,3 +490,244 @@ class TestCosebisSamplingNoiseFlag:
         cov_6d = obj.cov_dict['sn'][sl.split_probe_name(probe_abcd, 'cosebis')]['6d']
         assert cov_6d.shape == obj.cov_shape_6d
         np.testing.assert_array_equal(cov_6d, 0.0)
+
+
+# ----------------------------------------------------------------------------- #
+# measured pair counts (covariance.pair_counts = 'from_input')
+# ----------------------------------------------------------------------------- #
+def _analytic_counts(theta_edges, c_ij):
+    """Ideal (ordered) counts pi (th_u^2 - th_l^2) c_ij, with c_ij = A n_i n_j:
+    shape (n_theta, zbins, zbins)."""
+    ring = np.pi * (theta_edges[1:] ** 2 - theta_edges[:-1] ** 2)
+    return ring[:, None, None] * c_ij[None, :, :]
+
+
+class TestRebinPairCounts:
+    """Fine counts are summed into coarse bins whose edges are fine edges."""
+
+    ZBINS = 2
+
+    @pytest.fixture
+    def fine_edges(self):
+        return np.geomspace(1.0, 100.0, 4 * 5 + 1)  # 4 fine bins per coarse bin
+
+    def test_sums_nested_fine_bins(self, fine_edges, rng):
+        npair = rng.uniform(1, 2, (20, self.ZBINS, self.ZBINS))
+        coarse = fine_edges[::4]
+        out = cp.rebin_pair_counts(npair, fine_edges, coarse)
+        assert out.shape == (5, self.ZBINS, self.ZBINS)
+        np.testing.assert_allclose(out, npair.reshape(5, 4, 2, 2).sum(axis=1))
+
+    def test_analytic_counts_are_preserved(self, fine_edges):
+        c_ij = np.array([[3.0, 2.0], [2.0, 5.0]])
+        coarse = np.geomspace(1.0, 100.0, 6)  # geomspace again, not a slice
+        out = cp.rebin_pair_counts(
+            _analytic_counts(fine_edges, c_ij), fine_edges, coarse
+        )
+        np.testing.assert_allclose(out, _analytic_counts(coarse, c_ij), rtol=1e-12)
+
+    def test_subrange_ok(self, fine_edges, rng):
+        npair = rng.uniform(1, 2, (20, self.ZBINS, self.ZBINS))
+        out = cp.rebin_pair_counts(npair, fine_edges, fine_edges[4:13:4])
+        np.testing.assert_allclose(out, npair[4:12].reshape(2, 4, 2, 2).sum(axis=1))
+
+    @pytest.mark.parametrize('coarse', [[0.5, 10.0, 100.0], [1.0, 10.0, 200.0]])
+    def test_out_of_range_raises(self, fine_edges, coarse):
+        npair = np.ones((20, self.ZBINS, self.ZBINS))
+        with pytest.raises(ValueError, match='range'):
+            cp.rebin_pair_counts(npair, fine_edges, np.array(coarse))
+
+    def test_non_nested_edges_exact_for_analytic_counts(self, fine_edges):
+        """Coarse edges falling inside fine bins: the cumulative count is
+        interpolated linearly in theta^2, which is exact for the ideal counts."""
+        c_ij = np.array([[3.0, 2.0], [2.0, 5.0]])
+        coarse = np.geomspace(1.3, 97.0, 8)
+        out = cp.rebin_pair_counts(
+            _analytic_counts(fine_edges, c_ij), fine_edges, coarse
+        )
+        np.testing.assert_allclose(out, _analytic_counts(coarse, c_ij), rtol=1e-12)
+
+    def test_cut_fine_bin_is_split_in_theta_squared(self, rng):
+        """A coarse edge inside a fine bin takes the fraction of its counts
+        proportional to the ring area on each side."""
+        fine = np.array([1.0, 2.0, 3.0])
+        npair = rng.uniform(1, 2, (2, self.ZBINS, self.ZBINS))
+        cut = 2.5
+        frac = (cut**2 - 2.0**2) / (3.0**2 - 2.0**2)
+        out = cp.rebin_pair_counts(npair, fine, np.array([1.0, cut, 3.0]))
+        np.testing.assert_allclose(out[0], npair[0] + frac * npair[1], rtol=1e-14)
+        np.testing.assert_allclose(out[1], (1 - frac) * npair[1], rtol=1e-14)
+        np.testing.assert_allclose(out.sum(axis=0), npair.sum(axis=0), rtol=1e-14)
+
+
+class TestDnpairFromPairCounts:
+    """dN/dtheta = count / bin width at the (arithmetic) bin centres, linearly
+    interpolated. For the ideal counts this is exactly 2 pi theta A n_i n_j."""
+
+    @pytest.fixture
+    def fine_edges(self):
+        return np.geomspace(1.0, 100.0, 301)
+
+    def test_analytic_counts_give_analytic_dnpair(self, fine_edges):
+        c_ij = np.array([[3.0, 2.0], [2.0, 5.0]])
+        theta_out = np.geomspace(1.0, 100.0, 1000)  # includes both end edges
+        out = cp.dnpair_from_pair_counts(
+            _analytic_counts(fine_edges, c_ij), fine_edges, theta_out
+        )
+        expected = 2 * np.pi * theta_out[:, None, None] * c_ij[None, :, :]
+        np.testing.assert_allclose(out, expected, rtol=1e-12)
+
+    @pytest.mark.parametrize('theta_out', [[0.9, 50.0], [2.0, 100.5]])
+    def test_out_of_range_raises(self, fine_edges, theta_out):
+        npair = np.ones((300, 2, 2))
+        with pytest.raises(ValueError, match='range'):
+            cp.dnpair_from_pair_counts(npair, fine_edges, np.array(theta_out))
+
+
+class TestLoadPairCounts:
+    ZBINS = 3
+
+    def _write(self, path, **overrides):
+        edges = np.geomspace(1.0, 300.0, 11)
+        sym = np.ones((10, self.ZBINS, self.ZBINS))
+        data = {
+            'theta_edges_arcmin': edges,
+            'npair_LL': sym,
+            'npair_GL': np.arange(1, 10 * self.ZBINS**2 + 1, dtype=float).reshape(
+                10, self.ZBINS, self.ZBINS
+            ),
+            'npair_GG': 2 * sym,
+        }
+        data.update(overrides)
+        data = {k: v for k, v in data.items() if v is not None}
+        np.savez(path, **data)
+        return str(path)
+
+    def test_loads_and_converts_edges_to_radians(self, tmp_path):
+        fname = self._write(tmp_path / 'pc.npz')
+        edges_rad, npair_dict = cp.load_pair_counts(fname, self.ZBINS)
+        np.testing.assert_allclose(
+            edges_rad, np.deg2rad(np.geomspace(1.0, 300.0, 11) / 60)
+        )
+        assert set(npair_dict) == {'LL', 'GL', 'GG'}
+        assert npair_dict['GL'][0, 0, 1] == 2.0  # [theta, lens bin, source bin]
+
+    def test_missing_probes_are_allowed(self, tmp_path):
+        fname = self._write(tmp_path / 'pc.npz', npair_GL=None, npair_GG=None)
+        _, npair_dict = cp.load_pair_counts(fname, self.ZBINS)
+        assert set(npair_dict) == {'LL'}
+
+    def test_missing_edges_raise(self, tmp_path):
+        fname = self._write(tmp_path / 'pc.npz', theta_edges_arcmin=None)
+        with pytest.raises(KeyError, match='theta_edges_arcmin'):
+            cp.load_pair_counts(fname, self.ZBINS)
+
+    def test_wrong_shape_raises(self, tmp_path):
+        fname = self._write(tmp_path / 'pc.npz', npair_LL=np.ones((10, 2, 2)))
+        with pytest.raises(ValueError, match='npair_LL'):
+            cp.load_pair_counts(fname, self.ZBINS)
+
+    def test_non_positive_counts_raise(self, tmp_path):
+        bad = np.ones((10, self.ZBINS, self.ZBINS))
+        bad[3, 1, 1] = 0.0
+        fname = self._write(tmp_path / 'pc.npz', npair_GG=bad)
+        with pytest.raises(ValueError, match='positive'):
+            cp.load_pair_counts(fname, self.ZBINS)
+
+    def test_asymmetric_auto_probe_raises(self, tmp_path):
+        bad = np.ones((10, self.ZBINS, self.ZBINS))
+        bad[:, 0, 1] = 2.0
+        fname = self._write(tmp_path / 'pc.npz', npair_LL=bad)
+        with pytest.raises(ValueError, match='symmetric'):
+            cp.load_pair_counts(fname, self.ZBINS)
+
+
+class TestWarnIfPairCountsOff:
+    """At the smallest theta the measured and ideal counts should agree; unique
+    (instead of ordered) auto-bin counts give a ratio of 1/2."""
+
+    def test_consistent_counts_do_not_warn(self):
+        ideal = np.full((4, 2, 2), 100.0)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            cp.warn_if_pair_counts_off(ideal * 1.05, ideal, 'LL')
+
+    def test_unique_auto_counts_warn(self):
+        ideal = np.full((4, 2, 2), 100.0)
+        measured = ideal.copy()
+        measured[:, [0, 1], [0, 1]] /= 2
+        with pytest.warns(UserWarning, match='ordered'):
+            cp.warn_if_pair_counts_off(measured, ideal, 'LL')
+
+
+class TestCosebisSnPairCounts:
+    """COSEBIs SN with covariance.pair_counts: the measured dN/dtheta replaces the
+    ideal 2 pi theta A n_i n_j. Uses the real cloelib T_pm, on a small grid."""
+
+    ZBINS, N_MODES, NBT = 2, 2, 200
+    AMAX = 0.3  # sr
+    N_EFF_SRC = np.array([8.0, 11.0])  # arcmin^-2
+    THETA_MIN_ARCMIN, THETA_MAX_ARCMIN = 5.0, 300.0
+
+    def _write_counts(self, tmp_path, scale=1.0, theta_max_arcmin=None):
+        theta_max_arcmin = theta_max_arcmin or self.THETA_MAX_ARCMIN
+        edges_arcmin = np.geomspace(self.THETA_MIN_ARCMIN, theta_max_arcmin, 2001)
+        edges_rad = np.deg2rad(edges_arcmin / 60)
+        npair = scale * cp.get_npair(
+            edges_rad[1:, None, None],
+            edges_rad[:-1, None, None],
+            self.AMAX,
+            self.N_EFF_SRC[None, :, None],
+            self.N_EFF_SRC[None, None, :],
+        )
+        fname = tmp_path / f'pc_{scale}_{theta_max_arcmin}.npz'
+        np.savez(fname, theta_edges_arcmin=edges_arcmin, npair_LL=npair)
+        return str(fname)
+
+    def _make(self, pair_counts, filename=None):
+        pytest.importorskip('cloelib')
+        from spaceborne.cov_cosebis import CovCOSEBIs
+
+        obj = CovCOSEBIs.__new__(CovCOSEBIs)
+        obj._ch = None
+        obj.zbins, obj.nbs = self.ZBINS, self.N_MODES
+        obj.cfg = {
+            'precision': {
+                'theta_min_arcmin_cosebis': self.THETA_MIN_ARCMIN,
+                'theta_max_arcmin_cosebis': self.THETA_MAX_ARCMIN,
+                'theta_steps_cosebis': self.NBT,
+            },
+            'covariance': {
+                'pair_counts': pair_counts,
+                'pair_counts_filename': filename,
+            },
+        }
+        obj._set_theta_binning()
+        obj.n_eff_src = self.N_EFF_SRC.tolist()
+        obj.sigma_eps_i = np.array([0.26, 0.3])
+        obj._set_pair_counts()
+        return obj
+
+    def test_ideal_counts_from_file_reproduce_analytic_sn(self, tmp_path):
+        sn_an = self._make('analytic').cov_sn_cs(self.AMAX)
+        sn_fi = self._make('from_input', self._write_counts(tmp_path)).cov_sn_cs(
+            self.AMAX
+        )
+        assert np.any(sn_an != 0)
+        np.testing.assert_allclose(sn_fi, sn_an, rtol=1e-10)
+
+    def test_sn_uses_the_counts_from_file(self, tmp_path):
+        sn_1x = self._make('from_input', self._write_counts(tmp_path)).cov_sn_cs(
+            self.AMAX
+        )
+        obj_2x = self._make('from_input', self._write_counts(tmp_path, scale=2.0))
+        with pytest.warns(UserWarning, match='ratio'):
+            sn_2x = obj_2x.cov_sn_cs(self.AMAX)
+        np.testing.assert_allclose(sn_2x, sn_1x / 2, rtol=1e-12)
+
+    def test_cosebis_range_outside_pair_counts_raises(self, tmp_path):
+        obj = self._make(
+            'from_input', self._write_counts(tmp_path, theta_max_arcmin=200.0)
+        )
+        with pytest.raises(ValueError, match='range'):
+            obj.cov_sn_cs(self.AMAX)

@@ -785,3 +785,50 @@ class TestSymmetrizeProbeCovDict6d:
         cov_dict = {'g': {'not_a_tuple': {'6d': np.zeros((2, 2, 3, 3, 3, 3))}}}
         with pytest.raises(ValueError, match='Expected 2-tuple key'):
             sl.symmetrize_probe_cov_dict_6d(cov_dict)
+
+
+class TestEllEdgesToInt:
+    def test_ceiling_of_float_edges(self):
+        # [15.9, 23.3) holds ell = 16, ..., 23, i.e. [16, 24)
+        edges = sl.ell_edges_to_int([15.9, 23.3, 32.4, 42.5])
+        np.testing.assert_array_equal(edges, [16, 24, 33, 43])
+        assert np.issubdtype(edges.dtype, np.integer)
+
+    def test_integer_edges_unchanged(self):
+        np.testing.assert_array_equal(
+            sl.ell_edges_to_int([10, 16.0, 24, 3000.0]), [10, 16, 24, 3000]
+        )
+
+    def test_no_tolerance(self):
+        # an edge just above an integer excludes it, even if by float noise only:
+        # np.sqrt(10) ** 2 = 10.000000000000002 starts the band at ell = 11
+        assert np.sqrt(10) ** 2 > 10
+        np.testing.assert_array_equal(
+            sl.ell_edges_to_int([np.sqrt(10) ** 2, 20 - 1e-12]), [11, 20]
+        )
+
+    def test_same_bands_as_digitize(self):
+        """The integer edges give the bands of np.digitize on the float edges, i.e.
+        those of Heracles (here the sqrt-spaced edges of the DR1 nowcast)."""
+        edges = np.linspace(np.sqrt(10), np.sqrt(2000), 51) ** 2
+        ells = np.arange(3001)
+        band_float = np.digitize(ells, edges)
+        band_int = np.digitize(ells, sl.ell_edges_to_int(edges))
+        np.testing.assert_array_equal(band_int, band_float)
+        # the first band starts at ell = 11 and the last one includes ell = 2000
+        assert ells[band_float == 1][[0, -1]].tolist() == [11, 15]
+        assert ells[band_float == 50][[0, -1]].tolist() == [1927, 2000]
+
+
+class TestBinCovHsGDiag:
+    def test_modes_in_band(self):
+        """Band k averages the integer multipoles edge[k] <= ell < edge[k + 1], the
+        same bands as NaMaster (ell_utils.EllBinning)."""
+        ell_values = np.arange(50)
+        # cov = ell on the diagonal: sum over the band / n_modes**2 = mean / n_modes
+        cov = ell_values.astype(float).reshape(1, 1, 1, 1, -1)
+        binned = sl._bin_cov_hs_g_diag(cov, [10.0, 15.9, 23.3, 32.0, 42.1], ell_values)
+        bands = [np.arange(10, 16), np.arange(16, 24), np.arange(24, 32)]
+        bands.append(np.arange(32, 43))
+        expected = [b.mean() / len(b) for b in bands]
+        np.testing.assert_allclose(binned[0, 0, 0, 0], expected)

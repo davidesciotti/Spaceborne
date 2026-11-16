@@ -189,6 +189,34 @@ def percival_factor(n_sim, n_data, n_param):
     return beta
 
 
+def normalize_probe_selection(probe_selection: dict) -> None:
+    """Set (in place) the probe flags of the spaces not in use to False, so that
+    downstream code only ever sees bools, whatever the cfg contains for them.
+    Psi-statistics are not implemented yet, so Psigl and Psigg are always False."""
+    flags_by_space = {
+        'harmonic': ('LL', 'GL', 'GG'),
+        'real': ('xip', 'xim', 'gt', 'w'),
+        'cosebis': ('En', 'Bn', 'Psigl', 'Psigg'),
+    }
+    # check that probe_selection['space'] is valid 
+    space = probe_selection['space']
+    if space not in flags_by_space:
+        raise ValueError(
+            f'probe_selection.space must be one of {list(flags_by_space)}, '
+            f'got {space!r}'
+        )
+
+    # hardcode Psigl and Psigg to False, as they are not implemented yet
+    probe_selection['Psigl'] = False
+    probe_selection['Psigg'] = False
+    
+    # set flags of probes of unused spaces to False
+    for _space, flags in flags_by_space.items():
+        if _space != space:
+            for flag in flags:
+                probe_selection[flag] = False
+
+
 def get_probe_combs_wrapper(
     obs_space: str, probe_selection: dict, cross_cov: bool
 ) -> dict:
@@ -2077,6 +2105,23 @@ def _expand_diagonal_to_full(cov_diag):
     return cov_full
 
 
+def ell_edges_to_int(ell_edges) -> np.ndarray:
+    """Integer edges of the multipole bands defined by `ell_edges`.
+
+    Band k contains the integer multipoles with
+    ell_edges[k] <= ell < ell_edges[k + 1], so its integer edges are the ceiling of
+    the input ones: [15.9, 23.3) holds ell = 16, ..., 23, i.e. [16, 24). Rounding or
+    truncating the edges would instead move the band boundaries by one multipole.
+    Integer edges are returned unchanged.
+
+    This is the assignment of np.digitize(ell, ell_edges), as used by Heracles to bin
+    the spectra and the mixing matrices. No tolerance is applied, on purpose: an edge
+    just above an integer, even by floating-point noise, excludes that multipole
+    (np.sqrt(10) ** 2 = 10.000000000000002 gives 11, as in Heracles).
+    """
+    return np.ceil(np.asarray(ell_edges, dtype=float)).astype(int)
+
+
 def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     """Bin covariance computed at integer ell modes into ell bins.
 
@@ -2085,7 +2130,8 @@ def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     cov_ell_modes : np.ndarray
         Covariance computed at integer ell modes, shape (A, B, C, D, n_ell_modes, i, j, k, l)
     ell_edges : np.ndarray
-        Bin edges, shape (nbl + 1,)
+        Bin edges, shape (nbl + 1,). Bin k contains the integer multipoles with
+        ell_edges[k] <= ell < ell_edges[k + 1] (see `ell_edges_to_int`)
     ell_values : np.ndarray
         Integer ell values, shape (n_ell_modes,)
 
@@ -2107,11 +2153,14 @@ def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     output_shape = (*cov_ell_modes.shape[:4], nbl, *cov_ell_modes.shape[5:])
     cov_binned = np.zeros(output_shape)
 
+    # same convention as the NaMaster bands (ell_utils.EllBinning)
+    ell_edges = ell_edges_to_int(ell_edges)
+
     # Sum over ell modes in each bin and divide by n_modes**2 (i.e., average over the
     # given ell bin)
     for bin_idx in range(nbl):
-        ell_lower = int(ell_edges[bin_idx])
-        ell_upper = int(ell_edges[bin_idx + 1])
+        ell_lower = ell_edges[bin_idx]
+        ell_upper = ell_edges[bin_idx + 1]
 
         # Find which ell modes fall in this bin
         mask = (ell_values >= ell_lower) & (ell_values < ell_upper)

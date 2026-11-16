@@ -339,3 +339,105 @@ class TestNgCovProbeBlockEllOrientation:
 
     def test_offdiagonal_branch_orientation(self, ng_cov_env):
         _check_offdiagonal(ng_cov_env)
+
+
+# ---------------------------------------------------------------------------
+# Per-bin (redshift-independent) galaxy and magnification bias
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def per_bin_env():
+    """Minimal CCLInterface (2 Gaussian lens/source bins) able to run
+    set_kernel_obj, without instantiating the full class."""
+    zbins = 2
+    z = np.linspace(0.001, 2.0, 400)
+    nz_2d = np.column_stack([_gauss_nz(z, z0) for z0 in (0.4, 0.9)])
+
+    obj = object.__new__(ci.CCLInterface)
+    obj.cosmo_ccl = ccl.CosmologyVanillaLCDM()
+    obj.zbins = zbins
+    obj.nz_src_tuple = (z, nz_2d)
+    obj.nz_lns_tuple = (z, nz_2d)
+    obj.zgrid_nz_lns = z
+    obj.ia_bias_tuple = None
+    obj.mag_bias_tuple = None
+    return {'obj': obj, 'z': z, 'zbins': zbins, 'ell': np.geomspace(20, 2000, 6)}
+
+
+class TestPerBinBias:
+    gal_bias = np.array([1.2, 1.7])
+    mag_bias = np.array([-1.0, 0.5])  # b_mag = 5 s - 2
+
+    def test_gal_bias_arrays(self, per_bin_env):
+        obj, z = per_bin_env['obj'], per_bin_env['z']
+        obj.set_gal_bias_tuple_per_bin(z, list(self.gal_bias))
+
+        assert obj.gal_bias_2d.shape == (z.size, per_bin_env['zbins'])
+        np.testing.assert_array_equal(
+            obj.gal_bias_2d, np.tile(self.gal_bias, (z.size, 1))
+        )
+        assert obj.gal_bias_tuple[0] is z
+        # the callable works on any grid (used e.g. for the SSC responses)
+        z_other = np.linspace(0.1, 1.5, 7)
+        np.testing.assert_array_equal(
+            obj.gal_bias_func(z_other), np.tile(self.gal_bias, (z_other.size, 1))
+        )
+
+    def test_mag_bias_converted_to_s(self, per_bin_env):
+        obj, z = per_bin_env['obj'], per_bin_env['z']
+        obj.set_mag_bias_tuple_per_bin(z, list(self.mag_bias))
+
+        s_expected = (self.mag_bias + 2) / 5
+        np.testing.assert_allclose(obj.mag_bias_2d, np.tile(s_expected, (z.size, 1)))
+        assert obj.mag_bias_tuple[1] is obj.mag_bias_2d
+
+    @pytest.mark.parametrize('setter', ['gal', 'mag'])
+    def test_wrong_length_raises(self, per_bin_env, setter):
+        obj, z = per_bin_env['obj'], per_bin_env['z']
+        with pytest.raises(AssertionError, match='zbins'):
+            getattr(obj, f'set_{setter}_bias_tuple_per_bin')(z, [1.0, 1.0, 1.0])
+
+    def test_galaxy_cls_scale_as_bi_bj(self, per_bin_env):
+        """Without RSD and magnification, the galaxy tracer of bin i is b_i times
+        the unit-bias density tracer: C^gg_ij = b_i b_j C^dd_ij."""
+        obj, z, ell = per_bin_env['obj'], per_bin_env['z'], per_bin_env['ell']
+        obj.mag_bias_tuple = None
+        obj.set_gal_bias_tuple_per_bin(z, self.gal_bias)
+        obj.set_kernel_obj(has_rsd=False, n_samples_wf=256)
+
+        cosmo = obj.cosmo_ccl
+        for zi in range(2):
+            for zj in range(zi, 2):
+                cl_gg = ccl.angular_cl(
+                    cosmo, obj.wf_galaxy_obj[zi], obj.wf_galaxy_obj[zj], ell
+                )
+                cl_dd = ccl.angular_cl(
+                    cosmo, obj.wf_density_obj[zi], obj.wf_density_obj[zj], ell
+                )
+                np.testing.assert_allclose(
+                    cl_gg, self.gal_bias[zi] * self.gal_bias[zj] * cl_dd, rtol=1e-10
+                )
+
+    def test_mag_tracer_matches_direct_ccl(self, per_bin_env):
+        """The per-bin magnification tracer equals a CCL NumberCountsTracer built
+        directly with the constant s_i = (b_mag_i + 2) / 5."""
+        obj, z, ell = per_bin_env['obj'], per_bin_env['z'], per_bin_env['ell']
+        obj.set_gal_bias_tuple_per_bin(z, self.gal_bias)
+        obj.set_mag_bias_tuple_per_bin(z, self.mag_bias)
+        obj.set_kernel_obj(has_rsd=False, n_samples_wf=256)
+
+        cosmo = obj.cosmo_ccl
+        for zi in range(2):
+            s_i = (self.mag_bias[zi] + 2) / 5
+            ref = ccl.NumberCountsTracer(
+                cosmo,
+                has_rsd=False,
+                dndz=(z, obj.nz_lns_tuple[1][:, zi]),
+                bias=None,
+                mag_bias=(z, np.full_like(z, s_i)),
+                n_samples=256,
+            )
+            np.testing.assert_allclose(
+                ccl.angular_cl(cosmo, obj.wf_mag_obj[zi], obj.wf_mag_obj[zi], ell),
+                ccl.angular_cl(cosmo, ref, ref, ell),
+                rtol=1e-10,
+            )

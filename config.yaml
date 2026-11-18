@@ -8,6 +8,12 @@
 # [Note] Be careful when using scientific notation: in YAML, `1e-5` is a string, `1.e-5` is a float
 # [Note] Do *not* delete any option from the cfg file, even if you don't use it.
 
+########################################################################################
+########################################################################################
+########################################################################################
+
+# Parameter names follow the cosmology API and cloelib. See, e.g.,
+# https://cosmology.readthedocs.io/projects/api/latest/api/reference.html
 cosmology:
   Omega_m0: 0.32 # Type: float. Total matter density parameter (incl. massive neutrinos), at z=0
   Omega_b0: 0.05 # Type: float. Baryonic density parameter, at z=0

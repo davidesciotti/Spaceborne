@@ -2122,6 +2122,25 @@ def ell_edges_to_int(ell_edges) -> np.ndarray:
     return np.ceil(np.asarray(ell_edges, dtype=float)).astype(int)
 
 
+def n_lm_modes_in_bands(ell_edges) -> np.ndarray:
+    """Number of (ell, m) modes in each band, i.e. the sum of (2 * ell + 1) over the
+    integer multipoles in the band (same assignment as `ell_edges_to_int`).
+
+    For a band containing ell = a, ..., b this is (b + 1)**2 - a**2, i.e.
+    ceil(ell_hi)**2 - ceil(ell_lo)**2. It equals (2 * ell_mean + 1) * n_ells, with
+    ell_mean the arithmetic mean of the integer multipoles in the band and n_ells
+    their number; the usual (2 * ell_center + 1) * delta_ell approximates it.
+    """
+    edges = ell_edges_to_int(ell_edges)
+    n_modes = (edges[1:] ** 2 - edges[:-1] ** 2).astype(float)
+    if np.any(n_modes <= 0):
+        raise ValueError(
+            f'Some ell bands contain no integer multipoles: {edges}. The ell binning '
+            'is too fine for integer multipoles; use fewer / coarser bins.'
+        )
+    return n_modes
+
+
 def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
     """Bin covariance computed at integer ell modes into ell bins.
 
@@ -2142,9 +2161,12 @@ def _bin_cov_hs_g_diag(cov_ell_modes, ell_edges, ell_values):
 
     Notes
     -----
-    This function sums the covariance over all ell modes in each bin and divides
-    by the bin width delta_ell = ell_upper - ell_lower. This matches OneCovariance's
-    approach where the prefactor is 1/((2*ell+1)*fsky*delta_ell).
+    This function sums the covariance over the n_modes integer multipoles in each
+    bin and divides by n_modes**2, i.e. it is the covariance of the unweighted average
+    of the per-ell spectra over the bin. n_modes = ceil(ell_upper) - ceil(ell_lower),
+    which equals the bin width delta_ell = ell_upper - ell_lower only for integer
+    edges (in which case this matches OneCovariance's approach, where the prefactor
+    is 1/((2*ell+1)*fsky*delta_ell)).
     """
     nbl = len(ell_edges) - 1
 
@@ -2223,11 +2245,10 @@ def compute_g_cov(
     nl_5d: np.ndarray,
     fsky: float,
     ell_values: np.ndarray,
-    delta_ell: np.ndarray,
+    ell_edges: np.ndarray,
     split_terms: bool,
     return_only_ell_diagonal: bool = False,
     cov_hs_g_ell_bin_average: bool = True,
-    ell_edges: np.ndarray = None,
 ):
     """Computes the Gaussian (1/fsky) covariance term, splitting into SVA, SN and MIX
     terms if required.
@@ -2242,19 +2263,24 @@ def compute_g_cov(
         Sky fraction
     ell_values : np.ndarray
         Ell values. If cov_hs_g_ell_bin_average=True, these are all integer ell values.
-        If cov_hs_g_ell_bin_average=False, these are bin centers.
-    delta_ell : np.ndarray
-        Bin widths (only used if cov_hs_g_ell_bin_average=False)
+        If cov_hs_g_ell_bin_average=False, these are bin centers, at which the
+        spectra are evaluated.
+    ell_edges : np.ndarray
+        Bin edges, shape (nbl+1,). Band k contains the integer multipoles with
+        ell_edges[k] <= ell < ell_edges[k + 1] (see `ell_edges_to_int`).
     split_terms : bool
         If True, return (cov_sva, cov_sn, cov_mix). If False, return total cov.
     return_only_ell_diagonal : bool
         If True, return diagonal covariance shape (A,B,C,D,L,i,j,k,l).
         If False, return full covariance shape (A,B,C,D,L,M,i,j,k,l).
     cov_hs_g_ell_bin_average : bool
-        If True, sum over integer ell modes and divide by number of modes**2
-        If False, use traditional binned approach: Cov = prefactor / delta_ell
-    ell_edges : np.ndarray, optional
-        Bin edges (required if cov_hs_g_ell_bin_average=False). Shape (nbl+1,)
+        If True, compute the covariance at each integer multipole and average it
+        over the band (sum and divide by n_ells**2): exact for the unweighted
+        average of the per-ell spectra over the band.
+        If False, evaluate the spectra at the bin centers and divide by the total
+        number of (ell, m) modes in the band, sum_{ell in band}(2 ell + 1) (see
+        `n_lm_modes_in_bands`), instead of the approximate
+        (2 * ell_center + 1) * delta_ell.
 
     Returns
     -------
@@ -2275,17 +2301,20 @@ def compute_g_cov(
         f'found {nl_5d.shape=}, and {cl_5d.shape=}'
     )
 
-    if cov_hs_g_ell_bin_average and ell_edges is None:
-        raise ValueError(
-            'ell_edges must be provided when cov_hs_g_ell_bin_average=True'
+    if not cov_hs_g_ell_bin_average:
+        assert len(ell_edges) == len(ell_values) + 1, (
+            f'Expected {len(ell_values) + 1} ell edges for {len(ell_values)} bin '
+            f'centers, found {len(ell_edges)}'
         )
 
     # convenience variables
     clplusn_5d = cl_5d + nl_5d
-    prefactor = 1 / ((2 * ell_values + 1) * fsky)
-
-    if not cov_hs_g_ell_bin_average:
-        prefactor /= delta_ell
+    if cov_hs_g_ell_bin_average:
+        # number of m modes for each integer ell; the average over the band is
+        # taken below by _bin_cov_hs_g_diag
+        prefactor = 1 / ((2 * ell_values + 1) * fsky)
+    else:
+        prefactor = 1 / (n_lm_modes_in_bands(ell_edges) * fsky)
 
     if not split_terms:
         cov = np.asarray(

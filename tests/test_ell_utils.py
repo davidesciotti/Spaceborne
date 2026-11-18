@@ -30,7 +30,7 @@ class TestComputeElls:
         ell_max = 1000
 
         ells, deltas, edges = ell_utils.compute_ells(
-            nbl, ell_min, ell_max, 'ISTF', output_ell_bin_edges=True
+            nbl, ell_min, ell_max, 'ISTF', output_ells_edges=True
         )
 
         assert len(edges) == nbl + 1
@@ -82,7 +82,7 @@ class TestComputeElls:
 
         # Only test for linear binning where deltas = diff(edges)
         ells, deltas, edges = ell_utils.compute_ells(
-            nbl, ell_min, ell_max, 'lin', output_ell_bin_edges=True
+            nbl, ell_min, ell_max, 'lin', output_ells_edges=True
         )
         np.testing.assert_allclose(deltas, np.diff(edges))
 
@@ -246,6 +246,25 @@ class TestEllBinning:
         np.testing.assert_allclose(ell_obj.ells_GC, [12.5, 19.5, 27.5, 37.0])
         np.testing.assert_array_equal(ell_obj.delta_l_GC, [6, 8, 8, 11])
         assert ell_obj.ell_max_GC == 42
+
+    def test_fsky_from_input_float_edges_unbinned_grid(self, basic_config, tmp_path):
+        """Non-NaMaster path: float edges with round-off noise (squares of square
+        roots) give int ell_min/ell_max (the integer edges) and a valid unbinned
+        grid, instead of failing the length check in compute_ells_3x2pt_unbinned."""
+        edges = np.square(np.linspace(np.sqrt(10), np.sqrt(1001), 11))
+        assert edges[0] > 10 and edges[-1] > 1001  # round-off noise
+        path = tmp_path / 'ell_bins.txt'
+        self._write_bins_file(path, edges)
+        basic_config['binning'].update(
+            binning_type='from_input', ell_bins_filename=str(path)
+        )
+        ell_obj = ell_utils.EllBinning(basic_config)
+        ell_obj.build_ell_bins()
+        ell_obj.compute_ells_3x2pt_unbinned()
+
+        assert ell_obj.ell_min_GC == 11 and isinstance(ell_obj.ell_min_GC, int)
+        assert ell_obj.ell_max_GC == 1002 and isinstance(ell_obj.ell_max_GC, int)
+        np.testing.assert_array_equal(ell_obj.ells_3x2pt_unb, np.arange(1003))
 
     def test_namaster_from_input_int_edges_no_warning(self, basic_config, tmp_path):
         """Integer edges with consistent centres: nothing to report."""

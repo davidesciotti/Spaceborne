@@ -15,7 +15,7 @@ def compute_ells(
     ell_min: int,
     ell_max: int,
     binning_type: str,
-    output_ell_bin_edges: bool = False,
+    output_ells_edges: bool = False,
 ):
     """Compute the ell values and the bin widths for a given binning_type.
 
@@ -29,7 +29,7 @@ def compute_ells(
         Maximum ell value.
     binning_type : str
         Binning type to use. Must be either "ISTF" or "ISTNL".
-    output_ell_bin_edges : bool, optional
+    output_ells_edges : bool, optional
         If True, also return the ell bin edges, by default False
 
     Returns
@@ -38,36 +38,36 @@ def compute_ells(
         Central ell values.
     deltas : np.ndarray
         Bin widths
-    ell_bin_edges : np.ndarray, optional
-        ell bin edges. Returned only if output_ell_bin_edges is True.
+    ells_edges : np.ndarray, optional
+        ell bin edges. Returned only if output_ells_edges is True.
 
     """
     if binning_type == 'ISTF':
-        ell_bin_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
-        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0
-        deltas = np.diff(ell_bin_edges)
+        ells_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), nbl + 1)
+        ells = (ells_edges[:-1] + ells_edges[1:]) / 2.0
+        deltas = np.diff(ells_edges)
 
     elif binning_type == 'ISTNL':
-        ell_bin_edges = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
-        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0  # arithmetic mean
+        ells_edges = np.linspace(np.log(ell_min), np.log(ell_max), nbl + 1)
+        ells = (ells_edges[:-1] + ells_edges[1:]) / 2.0  # arithmetic mean
         ells = np.exp(ells)
-        deltas = np.diff(np.exp(ell_bin_edges))
+        deltas = np.diff(np.exp(ells_edges))
 
     elif binning_type == 'lin':
-        ell_bin_edges = np.linspace(ell_min, ell_max, nbl + 1)
-        ells = (ell_bin_edges[:-1] + ell_bin_edges[1:]) / 2.0  # arithmetic mean
-        deltas = np.diff(ell_bin_edges)
+        ells_edges = np.linspace(ell_min, ell_max, nbl + 1)
+        ells = (ells_edges[:-1] + ells_edges[1:]) / 2.0  # arithmetic mean
+        deltas = np.diff(ells_edges)
 
     elif binning_type == 'log':
-        ell_bin_edges = np.geomspace(ell_min, ell_max, nbl + 1)
-        ells = np.sqrt(ell_bin_edges[:-1] * ell_bin_edges[1:])  # geometric mean
-        deltas = np.diff(ell_bin_edges)
+        ells_edges = np.geomspace(ell_min, ell_max, nbl + 1)
+        ells = np.sqrt(ells_edges[:-1] * ells_edges[1:])  # geometric mean
+        deltas = np.diff(ells_edges)
 
     else:
         raise ValueError('recipe must be either "ISTF", "ISTNL", "lin" or "log"')
 
-    if output_ell_bin_edges:
-        return ells, deltas, ell_bin_edges
+    if output_ells_edges:
+        return ells, deltas, ells_edges
 
     return ells, deltas
 
@@ -77,28 +77,28 @@ def compute_ells_oc(
     ell_min: int,
     ell_max: int,
     binning_type: str,
-    output_ell_bin_edges: bool = False,
+    output_ells_edges: bool = False,
 ):
     """Computes ell grid as done in OneCovariance"""
 
     if binning_type == 'lin':
-        ell_bin_edges = np.linspace(ell_min, ell_max, nbl + 1).astype(int)
-        ells = 0.5 * (ell_bin_edges[1:] + ell_bin_edges[:-1])
+        ells_edges = np.linspace(ell_min, ell_max, nbl + 1).astype(int)
+        ells = 0.5 * (ells_edges[1:] + ells_edges[:-1])
 
     elif binning_type == 'log':
         # log-spaced bin edges and geometric mean for the bin centers
         # OC casts the ell bin edges to int
-        ell_bin_edges = np.unique(np.geomspace(ell_min, ell_max, nbl + 1).astype(int))
+        ells_edges = np.unique(np.geomspace(ell_min, ell_max, nbl + 1).astype(int))
         # this is the geometric mean
-        ells = np.exp(0.5 * (np.log(ell_bin_edges[1:]) + np.log(ell_bin_edges[:-1])))
+        ells = np.exp(0.5 * (np.log(ells_edges[1:]) + np.log(ells_edges[:-1])))
 
     else:
         raise ValueError('binning_type must be either "lin" or "log"')
 
-    deltas = np.diff(ell_bin_edges)
+    deltas = np.diff(ells_edges)
 
-    if output_ell_bin_edges:
-        return ells, deltas, ell_bin_edges
+    if output_ells_edges:
+        return ells, deltas, ells_edges
 
     return ells, deltas
 
@@ -175,7 +175,7 @@ class EllBinning:
                 ell_min=self.ell_min_WL,
                 ell_max=self.ell_max_WL,
                 binning_type=self.binning_type,
-                output_ell_bin_edges=True,
+                output_ells_edges=True,
             )
 
             self.ells_GC, self.delta_l_GC, self.ell_edges_GC = compute_ells(
@@ -183,7 +183,7 @@ class EllBinning:
                 ell_min=self.ell_min_GC,
                 ell_max=self.ell_max_GC,
                 binning_type=self.binning_type,
-                output_ell_bin_edges=True,
+                output_ells_edges=True,
             )
 
         elif self.binning_type == 'from_input':
@@ -204,10 +204,15 @@ class EllBinning:
             # assign nbl, ell_min and ell_max
             self.nbl_WL = len(self.ells_WL)
             self.nbl_GC = len(self.ells_GC)
-            self.ell_min_WL = ell_edges_lo_WL[0]
-            self.ell_min_GC = ell_edges_lo_GC[0]
-            self.ell_max_WL = ell_edges_hi_WL[-1]
-            self.ell_max_GC = ell_edges_hi_GC[-1]
+            # integer edges of the multipoles in the bands (see sl.ell_edges_to_int),
+            # since the edges in the file can be floats (possibly with round-off
+            # noise, e.g. squares of square roots): ell_max is the (exclusive) upper
+            # edge, as for the 'lin' and 'log' binnings, and must be an int to build
+            # the unbinned ell grid. Unchanged for integer edges
+            self.ell_min_WL = int(sl.ell_edges_to_int(ell_edges_lo_WL[0]))
+            self.ell_min_GC = int(sl.ell_edges_to_int(ell_edges_lo_GC[0]))
+            self.ell_max_WL = int(sl.ell_edges_to_int(ell_edges_hi_WL[-1]))
+            self.ell_max_GC = int(sl.ell_edges_to_int(ell_edges_hi_GC[-1]))
 
             # sanity check
             if not np.all(ell_edges_lo_WL < ell_edges_hi_WL):
@@ -241,7 +246,7 @@ class EllBinning:
                 ell_min=ell_min_ref,
                 ell_max=ell_max_ref,
                 binning_type='ISTF',
-                output_ell_bin_edges=True,
+                output_ells_edges=True,
             )
 
             self.ells_WL = self.ells_ref[self.ells_ref < self.ell_max_WL].copy()

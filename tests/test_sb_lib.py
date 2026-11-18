@@ -820,6 +820,77 @@ class TestEllEdgesToInt:
         assert ells[band_float == 50][[0, -1]].tolist() == [1927, 2000]
 
 
+class TestNLmModesInBands:
+    def test_brute_force(self):
+        """sum of (2 ell + 1) over the integer ells of each band (float edges)."""
+        edges = np.geomspace(10, 3000, 21)
+        ells = np.arange(3001)
+        band = np.digitize(ells, edges) - 1
+        expected = [np.sum(2 * ells[band == k] + 1) for k in range(20)]
+        np.testing.assert_array_equal(sl.n_lm_modes_in_bands(edges), expected)
+
+    def test_float_edges(self):
+        # [12.2, 14.9) holds ell = 13, 14: 27 + 29 modes, not (2 * 13.55 + 1) * 2.7
+        np.testing.assert_array_equal(sl.n_lm_modes_in_bands([12.2, 14.9]), [56])
+
+    def test_integer_edges(self):
+        """Integer edges: (2 * ell_mean + 1) * delta_ell, ell_mean the mean of the
+        integer ells in the band (= mean of the edges - 1/2)."""
+        edges = np.array([11, 16, 24, 32, 43])
+        ell_mean = (edges[:-1] + edges[1:] - 1) / 2
+        np.testing.assert_allclose(
+            sl.n_lm_modes_in_bands(edges), (2 * ell_mean + 1) * np.diff(edges)
+        )
+
+    def test_empty_band_raises(self):
+        with pytest.raises(ValueError, match='no integer multipoles'):
+            sl.n_lm_modes_in_bands([10.2, 10.7, 20])
+
+
+class TestComputeGCovModes:
+    """Gaussian fsky cov, bin-centre path: 2 (C + N)^2 / (fsky * N_lm_modes)."""
+
+    @staticmethod
+    def _cl_nl(nbl):
+        rng = np.random.default_rng(0)
+        cl = rng.uniform(1, 2, (1, 1, nbl, 2, 2))
+        cl = cl + cl.transpose(0, 1, 2, 4, 3)
+        nl = np.zeros_like(cl)
+        nl[..., 0, 0] = nl[..., 1, 1] = 0.3
+        return cl, nl
+
+    def test_integer_edges_match_knox_with_delta_ell(self):
+        """Integer edges and centres at the mean of the integer ells: same as the
+        usual 1 / ((2 ell + 1) fsky delta_ell)."""
+        edges = np.array([11, 16, 24, 32, 43])
+        ells = (edges[:-1] + edges[1:] - 1) / 2
+        cl, nl = self._cl_nl(len(ells))
+        cov = sl.compute_g_cov(
+            cl, nl, 0.3, ells, edges, split_terms=False,
+            return_only_ell_diagonal=True, cov_hs_g_ell_bin_average=False,
+        )  # fmt: skip
+        clpn = cl + nl
+        expected = (clpn[0, 0, :, 0, 0] ** 2 + clpn[0, 0, :, 0, 0] ** 2) / (
+            (2 * ells + 1) * 0.3 * np.diff(edges)
+        )
+        np.testing.assert_allclose(cov[0, 0, 0, 0, :, 0, 0, 0, 0], expected)
+
+    def test_float_edges_use_integer_mode_count(self):
+        edges = np.array([12.2, 14.9, 20.5])
+        ells = np.sqrt(edges[:-1] * edges[1:])
+        cl, nl = self._cl_nl(len(ells))
+        cov = sl.compute_g_cov(
+            cl, nl, 1.0, ells, edges, split_terms=False,
+            return_only_ell_diagonal=True, cov_hs_g_ell_bin_average=False,
+        )  # fmt: skip
+        clpn = cl[0, 0, :, 0, 0] + nl[0, 0, :, 0, 0]
+        # ell = 13, 14 and ell = 15, ..., 20
+        n_modes = np.array([27 + 29, np.sum(2 * np.arange(15, 21) + 1)])
+        np.testing.assert_allclose(
+            cov[0, 0, 0, 0, :, 0, 0, 0, 0], 2 * clpn**2 / n_modes
+        )
+
+
 class TestBinCovHsGDiag:
     def test_modes_in_band(self):
         """Band k averages the integer multipoles edge[k] <= ell < edge[k + 1], the

@@ -109,14 +109,12 @@ class CovHarmonicSpace:
             _cl_5d = cl_3x2pt_unb_5d
             _nl_5d = nl_3x2pt_unb_5d
             _ell_values = self.bin_obj.ells_3x2pt_unb
-            _ell_edges = self.bin_obj.ell_edges_3x2pt
         else:
             # evaluate the covariance at the center of the ell bin and normalise by
-            # delta_ell
+            # the number of (ell, m) modes in the band (computed from the edges)
             _cl_5d = cl_3x2pt_5d
             _nl_5d = nl_3x2pt_5d
             _ell_values = self.bin_obj.ells_3x2pt
-            _ell_edges = None
 
         # ! compute 3x2pt fsky Gaussian covariance: by default, split SVA, SN and MIX
         # the Gaussian HS cov is computed for all probes at once, still
@@ -125,11 +123,10 @@ class CovHarmonicSpace:
             nl_5d=_nl_5d,
             fsky=1.0,  # fsky is now probe-dependent and will be applied later!
             ell_values=_ell_values,
-            delta_ell=self.bin_obj.delta_l_3x2pt,
+            ell_edges=self.bin_obj.ell_edges_3x2pt,
             split_terms=True,
             return_only_ell_diagonal=False,
             cov_hs_g_ell_bin_average=self.cfg['precision']['cov_hs_g_ell_bin_average'],
-            ell_edges=_ell_edges,
         )
 
         # assign the different probes in the 10d array to the appropriate dict keys

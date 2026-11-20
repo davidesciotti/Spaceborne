@@ -165,9 +165,9 @@ if '__file__' in globals():
 else:  # interactive (ipykernel): no __file__
     sb_root_path = os.getcwd()
 
-if cfg['misc'].get('Spaceborne_branch') is not None:
+if cfg['misc'].get('version') is not None:
     sl.assert_repo_branch(
-        repo_path=sb_root_path, expected_branch=cfg['misc']['Spaceborne_branch']
+        repo_path=sb_root_path, expected_branch=cfg['misc']['version']
     )
 
 if cfg['misc'].get('conda_env') is not None:

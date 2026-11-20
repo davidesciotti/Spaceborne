@@ -96,7 +96,7 @@ def assert_repo_branch(repo_path: str, expected_branch: str) -> None:
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         raise RuntimeError(
             f'Cannot check the Spaceborne branch: {repo_path} is not a git repository '
-            'or git is not installed. Set misc.Spaceborne_branch: null to skip the '
+            'or git is not installed. Set misc.version: null to skip the '
             'check.'
         ) from e
 

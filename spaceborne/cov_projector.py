@@ -304,6 +304,11 @@ def proj_cov_2d(
         )
 
     if integration_method == 'quad':
+        if ells_proj[0] <= 0:
+            raise ValueError(
+                'ells_proj must be strictly positive for quad: the covariance is '
+                'splined in log(ell)'
+            )
         ell_min = ells_proj[0]
         ell_max = ells_proj[-1]
 
@@ -316,29 +321,33 @@ def proj_cov_2d(
         cov_ell1ell2 = cov_hs_ng_4d.reshape(nbl, nbl, zpairs_flat)
         ell2_integral = np.zeros((nbl, zpairs_flat))
 
+        # the covariance is splined in log(ell), where it is smoother; the
+        # integration variable is still ell
+        log_ells_proj = np.log(ells_proj)
+
         # Inner integral (d\ell2)
         for i in range(nbl):
             # for each ell1, interpolate along ell2
             cov_ell1ell2_interp_func = make_interp_spline(
-                ells_proj, cov_ell1ell2[i], k=3, axis=0
+                log_ells_proj, cov_ell1ell2[i], k=3, axis=0
             )
 
             # define callable of ell2 as required by quad. note that the kernel,
             # which is the oscillatory part, is not interpolated!
             def ell2_integrand_func(ells_2, _interp=cov_ell1ell2_interp_func):
-                return ells_2 * kernel_2_func_of_ell(ells_2) * _interp(ells_2)
+                return ells_2 * kernel_2_func_of_ell(ells_2) * _interp(np.log(ells_2))
 
             # evaluate integral
             ell2_integral[i], _ = quad_vec(ell2_integrand_func, ell_min, ell_max)
 
         # now do the same along ell1: interpolate the result...
         ell2_integral_interp_func = make_interp_spline(
-            ells_proj, ell2_integral, k=3, axis=0
+            log_ells_proj, ell2_integral, k=3, axis=0
         )
 
         # define callable of ell1
         def ell1_integrand_func(ells_1, _interp=ell2_integral_interp_func):
-            return ells_1 * kernel_1_func_of_ell(ells_1) * _interp(ells_1)
+            return ells_1 * kernel_1_func_of_ell(ells_1) * _interp(np.log(ells_1))
 
         # integrate again
         outer_result, _ = quad_vec(ell1_integrand_func, ell_min, ell_max)
@@ -371,6 +380,83 @@ def proj_cov_2d(
     return cov_out
 
 
+def quad_projection_weights(
+    ells_proj: np.ndarray,
+    kernel_funcs: list[Callable[[float], float]],
+    epsrel: float = 1e-10,
+) -> np.ndarray:
+    r"""Weights that project a function sampled on ``ells_proj`` with quad_vec:
+
+        w[s, j] = \int d\ell \ell k(\ell; s) B_j(\ln \ell)
+
+    where B_j is the cubic spline (``make_interp_spline``) through the unit vector
+    e_j on ``log(ells_proj)``: the function is interpolated in log(ell), where it is
+    smoother (and where a geomspace grid is uniform), while the integral is still in
+    ell. Since the spline is linear in the data, f(\ell) = \sum_j B_j(\ln \ell) f_j,
+    and so
+
+        \int d\ell \ell k(\ell; s) f(\ell) = \sum_j w[s, j] f_j
+
+    for *any* f sampled on ``ells_proj``. The weights only depend on the kernels and
+    on the ell grid, so the expensive (oscillatory) integration is done once and
+    reused for every probe, zpair and covariance term.
+
+    Parameters
+    ----------
+    ells_proj : np.ndarray, shape (nbl,)
+        Multipoles at which the function to project is sampled; strictly increasing.
+    kernel_funcs : list of callables, length nbs
+        Projection kernels as functions of (scalar) ell, one per scale bin.
+    epsrel : float
+        Relative tolerance of quad_vec, which applies to the norm of the whole weight
+        vector. Tighter than the 1e-8 default so that the small weights get a good
+        relative accuracy too.
+
+    Returns
+    -------
+    np.ndarray, shape (nbs, nbl)
+    """
+    nbl = len(ells_proj)
+    if ells_proj[0] <= 0:
+        raise ValueError(
+            'ells_proj must be strictly positive: the spline basis is in log(ell)'
+        )
+    # evaluated at a single log(ell), returns (B_0, ..., B_{nbl-1})
+    spline_basis = make_interp_spline(np.log(ells_proj), np.eye(nbl), k=3, axis=0)
+
+    weights = np.zeros((len(kernel_funcs), nbl))
+    for s, kernel in enumerate(kernel_funcs):
+
+        def integrand(ell, kernel=kernel):
+            return ell * kernel(ell) * spline_basis(np.log(ell))
+
+        weights[s], _ = quad_vec(integrand, ells_proj[0], ells_proj[-1], epsrel=epsrel)
+
+    return weights
+
+
+def proj_cov_2d_with_weights(
+    cov_hs_ng_4d: np.ndarray, weights_1: np.ndarray, weights_2: np.ndarray
+) -> np.ndarray:
+    r"""Project a harmonic-space covariance with the weights from
+    ``quad_projection_weights``:
+
+        cov[s1, s2] = \sum_ij w_1[s1, i] w_2[s2, j] cov_hs(\ell_i, \ell_j)
+
+    Parameters
+    ----------
+    cov_hs_ng_4d : np.ndarray, shape (nbl, nbl, zpairs_ab, zpairs_cd)
+    weights_1, weights_2 : np.ndarray, shape (nbs, nbl)
+
+    Returns
+    -------
+    np.ndarray, shape (nbs, nbs, zpairs_ab, zpairs_cd)
+    """
+    return np.einsum(
+        'ai,bj,ijcd->abcd', weights_1, weights_2, cov_hs_ng_4d, optimize=True
+    )
+
+
 def proj_cov_2d_quad_all_scales(
     ells_proj: np.ndarray,
     cov_hs_ng_4d: np.ndarray,
@@ -382,27 +468,11 @@ def proj_cov_2d_quad_all_scales(
 
         cov[s1, s2] = \int d\ell_1 \ell_1 k_1(\ell_1; s1)
                       \int d\ell_2 \ell_2 k_2(\ell_2; s2) cov_hs(\ell_1, \ell_2)
-                      └──────────────── inner(\ell_1; s2) ────────────────┘
 
-    Calling ``proj_cov_2d`` once per (s1, s2) costs nbs^2 * (nbl + 1) adaptive
-    integrations. Here it costs nbs + 1, thanks to three observations:
-
-    1. the inner integral depends on s2 but not on s1, so it is computed once per s2
-       rather than once per (s1, s2);
-    2. quad_vec integrates vector-valued functions, so the loop over ell_1 in the
-       inner integral becomes a single integration of a vector with one entry per
-       (ell_1, zpair);
-    3. for the same reason, the outer integral is a single integration of a vector
-       with one entry per (s1, s2, zpair).
-
-    The (zpair_ab, zpair_cd) axes are flattened into a single zpair axis throughout.
-
-    Notes
-    -----
-    Batching changes where quad_vec subdivides the integration range, since it
-    refines on the norm of the whole output vector: the results agree with the
-    one-(s1, s2)-at-a-time version to within the quad_vec tolerance, but are not
-    bitwise identical.
+    ``proj_cov_2d`` interpolates cov_hs with a cubic spline in log(ell_2) and then the
+    inner integral in log(ell_1). Both splines are linear in the data, so the double
+    integral is exactly ``W_1 @ cov_hs @ W_2.T`` (for each zpair), with W the weights
+    from ``quad_projection_weights``.
 
     Parameters
     ----------
@@ -427,111 +497,9 @@ def proj_cov_2d_quad_all_scales(
     if len(kernel_1_funcs) != len(kernel_2_funcs):
         raise ValueError('kernel_1_funcs and kernel_2_funcs must have the same length')
 
-    zpairs_ab, zpairs_cd = cov_hs_ng_4d.shape[2], cov_hs_ng_4d.shape[3]
-    nbs = len(kernel_1_funcs)
-
-    # flatten the two zpair axes: (nbl, nbl, zpairs_ab, zpairs_cd) -> (nbl, nbl, zpairs)
-    cov_ell1ell2 = cov_hs_ng_4d.reshape(nbl, nbl, zpairs_ab * zpairs_cd)
-
-    # inner integral, over ell2. Shape (nbs, nbl, zpairs) = (s2, ell1, zpair)
-    inner = _quad_inner_integral_over_ell2(ells_proj, cov_ell1ell2, kernel_2_funcs)
-
-    # outer integral, over ell1. Shape (nbs, nbs, zpairs) = (s1, s2, zpair)
-    cov_out = _quad_outer_integral_over_ell1(ells_proj, inner, kernel_1_funcs)
-
-    return cov_out.reshape(nbs, nbs, zpairs_ab, zpairs_cd)
-
-
-def _quad_inner_integral_over_ell2(
-    ells_proj: np.ndarray,
-    cov_ell1ell2: np.ndarray,
-    kernel_2_funcs: list[Callable[[float], float]],
-) -> np.ndarray:
-    r"""For each scale bin s2, compute
-
-        inner(\ell_1; s2) = \int d\ell_2 \ell_2 k_2(\ell_2; s2) cov(\ell_1, \ell_2)
-
-    for all ell_1 and zpairs at once.
-
-    Parameters
-    ----------
-    ells_proj : np.ndarray, shape (nbl,)
-    cov_ell1ell2 : np.ndarray, shape (nbl, nbl, zpairs), axes (ell1, ell2, zpair)
-    kernel_2_funcs : list of callables, length nbs
-
-    Returns
-    -------
-    np.ndarray, shape (nbs, nbl, zpairs), axes (s2, ell1, zpair)
-    """
-    ell_min, ell_max = ells_proj[0], ells_proj[-1]
-
-    # Interpolate the covariance along ell2 (axis 1). Evaluated at a single ell2, the
-    # spline returns the whole (ell1, zpair) slice, shape (nbl, zpairs): this is what
-    # lets quad_vec integrate over ell2 for all ell1 at once.
-    # Only the covariance is interpolated: the oscillatory kernel is evaluated
-    # exactly at every point quad_vec asks for.
-    cov_spline_in_ell2 = make_interp_spline(ells_proj, cov_ell1ell2, k=3, axis=1)
-
-    # The loop over s2 is deliberately not batched like the outer integral: the
-    # vector here is already nbl times larger, and quad_vec keeps one copy of it per
-    # subinterval, so adding an s2 axis would multiply the memory by nbs.
-    inner = []
-    for kernel_2 in kernel_2_funcs:
-
-        def integrand(ell2, kernel_2=kernel_2):
-            return ell2 * kernel_2(ell2) * cov_spline_in_ell2(ell2)  # (nbl, zpairs)
-
-        integral, _ = quad_vec(integrand, ell_min, ell_max)
-        inner.append(integral)
-
-    return np.stack(inner, axis=0)
-
-
-def _quad_outer_integral_over_ell1(
-    ells_proj: np.ndarray,
-    inner: np.ndarray,
-    kernel_1_funcs: list[Callable[[float], float]],
-    epsrel: float = 1e-10,
-) -> np.ndarray:
-    r"""For all scale-bin pairs (s1, s2) at once, compute
-
-        cov(s1, s2) = \int d\ell_1 \ell_1 k_1(\ell_1; s1) inner(\ell_1; s2)
-
-    Parameters
-    ----------
-    ells_proj : np.ndarray, shape (nbl,)
-    inner : np.ndarray, shape (nbs, nbl, zpairs), axes (s2, ell1, zpair)
-        Output of ``_quad_inner_integral_over_ell2``.
-    kernel_1_funcs : list of callables, length nbs
-    epsrel : float
-        Relative tolerance of quad_vec. Tighter than its 1e-8 default because it
-        applies to the norm of the whole (s1, s2, zpair) vector, so the entries much
-        smaller than the largest one (e.g. the large-theta bins, down to ~1e-6 of the
-        maximum) would otherwise get a correspondingly poorer relative accuracy.
-        With 1e-10 they are at least as accurate as with one integration per (s1, s2)
-        at the default tolerance, for ~25% more integrand evaluations.
-
-    Returns
-    -------
-    np.ndarray, shape (nbs, nbs, zpairs), axes (s1, s2, zpair)
-    """
-    ell_min, ell_max = ells_proj[0], ells_proj[-1]
-
-    # Interpolate the inner integral along ell1 (axis 1). Evaluated at a single ell1,
-    # the spline returns shape (nbs, zpairs), i.e. every (s2, zpair).
-    inner_spline_in_ell1 = make_interp_spline(ells_proj, inner, k=3, axis=1)
-
-    def integrand(ell1):
-        # all the s1 kernels at this ell1, shape (nbs,)
-        kernels_1 = np.array([kernel_1(ell1) for kernel_1 in kernel_1_funcs])
-        # inner integral at this ell1, shape (nbs, zpairs)
-        inner_at_ell1 = inner_spline_in_ell1(ell1)
-
-        # broadcast to (s1, s2, zpair)
-        return ell1 * kernels_1[:, None, None] * inner_at_ell1[None, :, :]
-
-    cov_out, _ = quad_vec(integrand, ell_min, ell_max, epsrel=epsrel)
-    return cov_out
+    weights_1 = quad_projection_weights(ells_proj, kernel_1_funcs)
+    weights_2 = quad_projection_weights(ells_proj, kernel_2_funcs)
+    return proj_cov_2d_with_weights(cov_hs_ng_4d, weights_1, weights_2)
 
 
 class CovarianceProjector:
@@ -599,6 +567,10 @@ class CovarianceProjector:
         self.nbs = pvt_cfg['nbs']  # "nbs" = number of scale (theta or n) bins
         self.n_jobs = cfg['misc']['num_threads']
         self.n_probes_hs = 2
+
+        # quad NG projection weights, one (nbs, nbl) array per Bessel order mu;
+        # filled on first use by proj_ng_quad
+        self.quad_weights = {}
 
         # both real space and COSEBIs covariances are becessarily split into
         # sva, sn and mix
@@ -817,8 +789,9 @@ class CovarianceProjector:
     ) -> np.ndarray:
         """Project a harmonic-space non-Gaussian covariance block with quad_vec.
 
-        Builds the projection kernels for every scale bin and calls
-        ``proj_cov_2d_quad_all_scales``.
+        Same result as ``proj_cov_2d_quad_all_scales``, but the projection weights
+        (the expensive part) are computed once per Bessel order and reused for all
+        the probe blocks and covariance terms.
 
         Parameters
         ----------
@@ -839,17 +812,21 @@ class CovarianceProjector:
                 f'got obs_space={self.obs_space!r}. Use simps instead.'
             )
 
-        def kernels_for_all_scale_bins(order):
-            return [
-                self.get_projection_kernel_func_of_ell(
-                    scale_ix=s, obs_space=self.obs_space, mu=order, kernel_func_kw={}
+        for order in (mu, nu):
+            if order not in self.quad_weights:
+                kernel_funcs = [
+                    self.get_projection_kernel_func_of_ell(
+                        scale_ix=s,
+                        obs_space=self.obs_space,
+                        mu=order,
+                        kernel_func_kw={},
+                    )
+                    for s in range(self.nbs)
+                ]
+                self.quad_weights[order] = quad_projection_weights(
+                    self.ells_proj_ng, kernel_funcs
                 )
-                for s in range(self.nbs)
-            ]
 
-        return proj_cov_2d_quad_all_scales(
-            ells_proj=self.ells_proj_ng,
-            cov_hs_ng_4d=cov_hs_ng_4d,
-            kernel_1_funcs=kernels_for_all_scale_bins(mu),
-            kernel_2_funcs=kernels_for_all_scale_bins(nu),
+        return proj_cov_2d_with_weights(
+            cov_hs_ng_4d, self.quad_weights[mu], self.quad_weights[nu]
         )

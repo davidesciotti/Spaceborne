@@ -119,8 +119,9 @@ def p_ph(z_p, z, c_in, z_in, sigma_in, c_out, z_out, sigma_out, f_out):
 
 
 def nz_smail(z, z_0, n_gal):
+    if n_gal is None:
+        n_gal = 1
     return n_gal * (z / z_0) ** 2 * np.exp(-((z / z_0) ** (3 / 2)))
-    # return  (z / z_0) ** 2 * np.exp(-(z / z_0) ** (3 / 2))
 
 
 def convolve_nz_with_p_ph(

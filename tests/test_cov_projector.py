@@ -18,8 +18,8 @@ and COSEBIs Gaussian-covariance projections:
   all 16 probe combinations, against the explicit formula of the per-element
   implementation it replaced.
 
-* ``proj_cov_2d_quad_all_scales`` -- the batched NG quad projection, checked
-  against an analytic mu=0 case and against one scale pair at a time.
+* ``proj_cov_2d_quad_all_scales`` -- the NG quad projection (spline-basis weights),
+  checked against an analytic mu=0 case and against one scale pair at a time.
 * ``proj_mix_sva_simps_vectorized`` -- the vectorised Gaussian projection,
   checked against a brute-force per-element Simpson integral, including the
   COSEBIs W_n(ell) kernel path (on a minimal ``CovCOSEBIs`` stub, so no cloelib
@@ -242,7 +242,7 @@ def _real_space_kernels(mu, nbs=3):
 
 
 class TestProjCov2dQuadAllScales:
-    """The non-Gaussian quad projection, batched over scale bins and ell_1."""
+    """The non-Gaussian quad projection, via spline-basis weights."""
 
     @staticmethod
     def _binavg_j0_gaussian(s, thetal, thetau):
@@ -274,7 +274,7 @@ class TestProjCov2dQuadAllScales:
         np.testing.assert_allclose(out[..., 0, 0], np.outer(v, v), rtol=5e-6, atol=0)
 
     def test_matches_one_scale_pair_at_a_time(self):
-        """Batching over (s1, s2) and ell_1 reproduces proj_cov_2d(..., 'quad'),
+        """The weights reproduce proj_cov_2d(..., 'quad'),
         including for zpairs whose amplitude is 1e-4 of the largest one, and for
         non-square (zpairs_ab, zpairs_cd)."""
         nbl, nbs = 30, 2

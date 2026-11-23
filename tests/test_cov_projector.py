@@ -561,8 +561,8 @@ class TestRebinPairCounts:
 
 
 class TestDnpairFromPairCounts:
-    """dN/dtheta = count / bin width at the (arithmetic) bin centres, linearly
-    interpolated. For the ideal counts this is exactly 2 pi theta A n_i n_j."""
+    """dN/dtheta = count / bin width at the (arithmetic) bin centres, interpolated
+    linearly in log-log. For the ideal counts this is exactly 2 pi theta A n_i n_j."""
 
     @pytest.fixture
     def fine_edges(self):
@@ -582,6 +582,21 @@ class TestDnpairFromPairCounts:
         npair = np.ones((300, 2, 2))
         with pytest.raises(ValueError, match='range'):
             cp.dnpair_from_pair_counts(npair, fine_edges, np.array(theta_out))
+
+    def test_positive_at_edges_for_steep_counts(self):
+        """A linear extrapolation to the outer edge would give 1 - (4 - 1) / 2 < 0
+        here (rates 1 and 4 at the centres 1.5 and 2.5)."""
+        npair = np.array([1.0, 4.0])[:, None, None]
+        out = cp.dnpair_from_pair_counts(
+            npair, np.array([1.0, 2.0, 3.0]), np.array([1.0, 3.0])
+        )
+        assert np.all(np.isfinite(out)) and np.all(out > 0)
+
+    def test_non_positive_counts_raise(self, fine_edges):
+        npair = np.ones((300, 2, 2))
+        npair[5, 0, 0] = 0.0
+        with pytest.raises(ValueError, match='positive'):
+            cp.dnpair_from_pair_counts(npair, fine_edges, np.array([2.0, 50.0]))
 
 
 class TestLoadPairCounts:
@@ -625,6 +640,20 @@ class TestLoadPairCounts:
     def test_wrong_shape_raises(self, tmp_path):
         fname = self._write(tmp_path / 'pc.npz', npair_LL=np.ones((10, 2, 2)))
         with pytest.raises(ValueError, match='npair_LL'):
+            cp.load_pair_counts(fname, self.ZBINS)
+
+    @pytest.mark.parametrize(
+        'edges', [[1.0, np.nan, 3.0], [0.0, 1.0, 3.0], [1.0, 3.0, 2.0]]
+    )
+    def test_invalid_edges_raise(self, tmp_path, edges):
+        fname = self._write(
+            tmp_path / 'pc.npz',
+            theta_edges_arcmin=np.array(edges),
+            npair_LL=np.ones((2, self.ZBINS, self.ZBINS)),
+            npair_GL=None,
+            npair_GG=None,
+        )
+        with pytest.raises(ValueError, match='theta_edges_arcmin'):
             cp.load_pair_counts(fname, self.ZBINS)
 
     def test_non_positive_counts_raise(self, tmp_path):

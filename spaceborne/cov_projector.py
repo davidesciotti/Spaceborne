@@ -20,6 +20,8 @@ from scipy.interpolate import interp1d, make_interp_spline
 from spaceborne import constants as const
 
 
+# ! ============================= pair counts ===============================
+# Analytical
 def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
     r"""Compute total (ideal) number of pairs in a theta bin, i.e., N(theta).
     N(θ) = π (θ_u^2 - θ_l^2) * A * n_i * n_j
@@ -41,16 +43,12 @@ def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
     return 2 * np.pi * theta * survey_area_sr * n_eff_i_sr * n_eff_j_sr
 
 
-# ! ============================= measured pair counts ===============================
-# Pair counts measured on the data (covariance.pair_counts = 'from_input') replace the
-# ideal ones above in the SN term only. Conventions::
+# Measured on the data. Conventions:
 # - the counts are the weighted *effective* counts (sum w_a w_b)^2 / sum (w_a w_b)^2,
 # - auto bins hold the *ordered* count (each pair counted twice, as get_npair), not
 #   the unique-pair count of a single-catalogue treecorr run;
 # - arrays have shape (n_theta, zbins, zbins), GL is (theta, lens bin, source bin);
 # - they are indexed by the harmonic-space probe they refer to: 'LL', 'GL', 'GG'.
-
-
 def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
     """Read the measured pair counts from a .npz file.
 
@@ -77,8 +75,16 @@ def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
         }
 
     # various sanity checks
-    if theta_edges_arcmin.ndim != 1 or np.any(np.diff(theta_edges_arcmin) <= 0):
-        raise ValueError(f'theta_edges_arcmin in {filename} must be 1D and increasing')
+    if (
+        theta_edges_arcmin.ndim != 1
+        or not np.all(np.isfinite(theta_edges_arcmin))
+        or theta_edges_arcmin[0] <= 0
+        or np.any(np.diff(theta_edges_arcmin) <= 0)
+    ):
+        raise ValueError(
+            f'theta_edges_arcmin in {filename} must be 1D, finite, positive and '
+            'increasing'
+        )
     if not npair_dict:
         raise ValueError(f'No npair_LL, npair_GL or npair_GG array found in {filename}')
 
@@ -148,8 +154,10 @@ def dnpair_from_pair_counts(
     """dN/dtheta on theta_out from (fine) pair counts.
 
     dN/dtheta is count / bin width, at the arithmetic bin centres (where it is exact
-    for the ideal counts), linearly interpolated, and extrapolated within the outermost
-    half bins.
+    for the ideal counts), interpolated linearly in log-log, and extrapolated within
+    the outermost half bins. Interpolating in log-log keeps dN/dtheta positive (also
+    in the extrapolated half bins, where a linear extrapolation can turn negative),
+    and is still exact for the ideal dN/dtheta ∝ theta.
 
     Returns
     -------
@@ -158,11 +166,15 @@ def dnpair_from_pair_counts(
     _check_theta_range(
         np.min(theta_out), np.max(theta_out), theta_edges_in, 'COSEBIs theta grid'
     )
+    if np.any(npair <= 0) or not np.all(np.isfinite(npair)):
+        raise ValueError('The pair counts must be finite and positive')
     widths = np.diff(theta_edges_in)
     centres = 0.5 * (theta_edges_in[1:] + theta_edges_in[:-1])
-    dnpair = npair / widths[:, None, None]
-    interp = interp1d(centres, dnpair, axis=0, kind='linear', fill_value='extrapolate')
-    return interp(theta_out)
+    log_dnpair = np.log(npair / widths[:, None, None])
+    interp = interp1d(
+        np.log(centres), log_dnpair, axis=0, kind='linear', fill_value='extrapolate'
+    )
+    return np.exp(interp(np.log(theta_out)))
 
 
 def warn_if_pair_counts_off(

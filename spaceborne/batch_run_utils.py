@@ -5,8 +5,8 @@ from copy import deepcopy
 import yaml
 
 
-def create_paths(ROOT, job_name):
-    sb_root_path = f'{ROOT}/Spaceborne'
+def create_paths(ROOT, job_name, sb_root_subpath='Spaceborne'):
+    sb_root_path = f'{ROOT}/{sb_root_subpath}'
     io_path = f'{ROOT}/DATA/Spaceborne_jobs_IO/{job_name}'
     configs_path = f'{io_path}/generated_configs'
     return {

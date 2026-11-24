@@ -209,8 +209,14 @@ class CovCOSEBIs(CovarianceProjector):
         # L = ell1, M = ell2, p = zpairs_ab, q = zpairs_cd, n = mode_n, m = mode_m
         return np.einsum('nL,mM,LMpq->nmpq', proj_mat, proj_mat, cov_hs_ng_4d)
 
-    def cov_sn_cs(self, amax_abcd: float) -> np.ndarray:
-        """Compute the COSEBIs shape noise covariance term."""
+    def cov_sn_cs(self, amax_abcd: float, eb_cross: bool = False) -> np.ndarray:
+        """Compute the COSEBIs shape noise covariance term.
+
+        The theta kernel is [T+a T+b + T-a T-b] for (En, En) and (Bn, Bn), and
+        [T+a T+b - T-a T-b] for the cross-covariance (En, Bn) (eb_cross=True). The
+        latter vanishes for the ideal dN/dtheta ∝ theta, but not for the measured
+        pair counts.
+        """
 
         # firstly, construct the prefactor outside of the \theta integral
         first_term = np.einsum('i,j->ij', self.sigma_eps_i**2, self.sigma_eps_i**2) / 2
@@ -243,11 +249,12 @@ class CovCOSEBIs(CovarianceProjector):
             t_minus[:, n] = np.array([float(x) for x in t_minus[:, n]])
             t_plus[:, n] = np.array([float(x) for x in t_plus[:, n]])
 
-        # construct term in square brackets: [𝑇+𝑎(𝜃)𝑇+𝑏(𝜃) + 𝑇−𝑎(𝜃)𝑇−𝑏(𝜃)]
-        # t is the theta index, a and b the mode indices
+        # construct term in square brackets: [𝑇+𝑎(𝜃)𝑇+𝑏(𝜃) ± 𝑇−𝑎(𝜃)𝑇−𝑏(𝜃)]
+        # (+ for EE and BB, - for EB); t is the theta index, a and b the mode indices
         t_term_1 = np.einsum('ta, tb -> tab', t_plus, t_plus)
         t_term_2 = np.einsum('ta, tb -> tab', t_minus, t_minus)
-        t_term = t_term_1 + t_term_2  # shape (self.nbt, n_modes, n_modes)
+        # shape (self.nbt, n_modes, n_modes)
+        t_term = t_term_1 - t_term_2 if eb_cross else t_term_1 + t_term_2
 
         # 3. Compute analytical dnpair (differential pairs per unit angle)
         n_eff_src = np.asarray(self.n_eff_src)
@@ -357,8 +364,11 @@ class CovCOSEBIs(CovarianceProjector):
             )
 
         elif term == 'sn':
-            if probe_ab == probe_cd and self.include_sampling_noise:
-                cov_out_6d = self.cov_sn_cs(amax_abcd=amax_abcd)
+            if self.include_sampling_noise:
+                # the EB cross term is non-zero for non-ideal (e.g. measured) counts
+                cov_out_6d = self.cov_sn_cs(
+                    amax_abcd=amax_abcd, eb_cross=probe_ab != probe_cd
+                )
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 

@@ -461,7 +461,10 @@ class TestCosebisSamplingNoiseFlag:
                 'sn': {(a, b): {} for a in ('En', 'Bn') for b in ('En', 'Bn')}
             }
             obj.sentinel = np.full(obj.cov_shape_6d, 7.0)
-            obj.cov_sn_cs = lambda amax_abcd: obj.sentinel
+            obj.sentinel_eb = np.full(obj.cov_shape_6d, -3.0)
+            obj.cov_sn_cs = lambda amax_abcd, eb_cross=False: (
+                obj.sentinel_eb if eb_cross else obj.sentinel
+            )
             return obj
 
         return _make
@@ -475,11 +478,10 @@ class TestCosebisSamplingNoiseFlag:
         probe_2tpl = sl.split_probe_name(probe_abcd, 'cosebis')
         assert obj.cov_dict['sn'][probe_2tpl]['6d'] is obj.sentinel
 
-    @pytest.mark.parametrize('include_sampling_noise', [True, False])
-    def test_cross_sn_is_zero(self, make_cov_cs, include_sampling_noise):
-        obj = make_cov_cs(include_sampling_noise)
+    def test_cross_sn_is_the_eb_term(self, make_cov_cs):
+        obj = make_cov_cs(include_sampling_noise=True)
         obj.compute_cs_cov_term_probe_6d(None, 'EnBn', 'sn', 0.3)
-        np.testing.assert_array_equal(obj.cov_dict['sn']['En', 'Bn']['6d'], 0.0)
+        assert obj.cov_dict['sn']['En', 'Bn']['6d'] is obj.sentinel_eb
 
     @pytest.mark.parametrize('probe_abcd', ['EnEn', 'BnBn', 'EnBn'])
     def test_noiseless_sn_is_zero(self, make_cov_cs, probe_abcd):
@@ -753,6 +755,28 @@ class TestCosebisSnPairCounts:
         with pytest.warns(UserWarning, match='ratio'):
             sn_2x = obj_2x.cov_sn_cs(self.AMAX)
         np.testing.assert_allclose(sn_2x, sn_1x / 2, rtol=1e-12)
+
+    def test_eb_sn_vanishes_for_ideal_counts(self, tmp_path):
+        obj = self._make('from_input', self._write_counts(tmp_path))
+        sn_auto = obj.cov_sn_cs(self.AMAX)
+        sn_eb = obj.cov_sn_cs(self.AMAX, eb_cross=True)
+        assert np.abs(sn_eb).max() < 1e-3 * np.abs(sn_auto).max()
+
+    def test_eb_sn_nonzero_for_non_ideal_counts(self, tmp_path):
+        # counts falling with theta, as for a footprint with edges and holes
+        fname = self._write_counts(tmp_path)
+        with np.load(fname) as data:
+            edges, npair = data['theta_edges_arcmin'], data['npair_LL']
+        centres = 0.5 * (edges[1:] + edges[:-1])
+        npair = npair * (1 - 0.4 * centres / centres[-1])[:, None, None]
+        np.savez(fname, theta_edges_arcmin=edges, npair_LL=npair)
+        obj = self._make('from_input', fname)
+        sn_auto = obj.cov_sn_cs(self.AMAX)
+        sn_eb = obj.cov_sn_cs(self.AMAX, eb_cross=True)
+        assert np.abs(sn_eb).max() > 1e-2 * np.abs(sn_auto).max()
+        # EE + EB = 2 x (T+ T+ part only), whatever the counts
+        sn_pp = 0.5 * (sn_auto + sn_eb)
+        assert np.all(np.diagonal(sn_pp[:, :, 0, 0, 0, 0]) > 0)
 
     def test_cosebis_range_outside_pair_counts_raises(self, tmp_path):
         obj = self._make(

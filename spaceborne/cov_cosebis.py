@@ -212,9 +212,11 @@ class CovCOSEBIs(CovarianceProjector):
     def cov_sn_cs(self, amax_abcd: float, eb_cross: bool = False) -> np.ndarray:
         """Compute the COSEBIs shape noise covariance term.
 
-        The theta kernel is [T+a T+b + T-a T-b] for (En, En) and (Bn, Bn), and
-        [T+a T+b - T-a T-b] for the cross-covariance (En, Bn) (eb_cross=True). The
-        latter vanishes for the ideal dN/dtheta ∝ theta, but not for the measured
+        The theta kernel is
+        * [T+a T+b + T-a T-b] for (En, En) and (Bn, Bn)
+        * [T+a T+b - T-a T-b] for (En, Bn) (eb_cross=True).
+
+        The latter vanishes for the ideal dN/dtheta ∝ theta, but not for the measured
         pair counts.
         """
 
@@ -249,7 +251,7 @@ class CovCOSEBIs(CovarianceProjector):
             t_minus[:, n] = np.array([float(x) for x in t_minus[:, n]])
             t_plus[:, n] = np.array([float(x) for x in t_plus[:, n]])
 
-        # construct term in square brackets: [𝑇+𝑎(𝜃)𝑇+𝑏(𝜃) ± 𝑇−𝑎(𝜃)𝑇−𝑏(𝜃)]
+        # construct term in square brackets: [T+a T+b \pm T-a T-b]
         # (+ for EE and BB, - for EB); t is the theta index, a and b the mode indices
         t_term_1 = np.einsum('ta, tb -> tab', t_plus, t_plus)
         t_term_2 = np.einsum('ta, tb -> tab', t_minus, t_minus)
@@ -364,11 +366,26 @@ class CovCOSEBIs(CovarianceProjector):
             )
 
         elif term == 'sn':
-            if self.include_sampling_noise:
-                # the EB cross term is non-zero for non-ideal (e.g. measured) counts
-                cov_out_6d = self.cov_sn_cs(
-                    amax_abcd=amax_abcd, eb_cross=probe_ab != probe_cd
-                )
+            # user switches off SN
+            if not self.include_sampling_noise:
+                cov_out_6d = np.zeros(self.cov_shape_6d)
+
+            # case: include_sampling_noise is True AND probe_ab == probe_cd
+            # (En x En) and (Bn x Bn) cases
+            elif probe_ab == probe_cd:
+                cov_out_6d = self.cov_sn_cs(amax_abcd=amax_abcd, eb_cross=False)
+
+            # case: include_sampling_noise is True
+            #       AND probe_ab != probe_cd
+            #       AND pair_counts == 'from_input'
+            # ExB SN vanishes for analytic (ideal) pair counts, but not for the
+            # measured ones
+            elif self.pair_counts == 'from_input':
+                cov_out_6d = self.cov_sn_cs(amax_abcd=amax_abcd, eb_cross=True)
+
+            # case: include_sampling_noise is True
+            #       AND probe_ab != probe_cd
+            #       AND pair_counts != 'from_input'
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 

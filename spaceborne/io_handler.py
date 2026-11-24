@@ -390,7 +390,7 @@ def check_ells_for_spline(ells):
 class IOHandler:
     """Handles loading of input data (n(z) and Cls) from various file formats.
 
-    Supports both Spaceborne (.txt/.dat) and Euclidlib (.fits) formats,
+    Supports both Spaceborne (.txt/.dat/.ascii) and Euclidlib (.fits) formats,
     automatically detecting the format based on file extensions.
 
     Args:
@@ -459,12 +459,11 @@ class IOHandler:
 
     def get_nz_fmt(self):
         """Get the format of the input nz files"""
-        nz_cfg = self.cfg['nz']  # shorten name
 
-        ext_src = get_file_ext(nz_cfg['nz_sources_filename'])
-        ext_lns = get_file_ext(nz_cfg['nz_lenses_filename'])
+        ext_src = get_file_ext(self.cfg['nz']['nz_sources_filename'])
+        ext_lns = get_file_ext(self.cfg['nz']['nz_lenses_filename'])
 
-        if ext_src == ext_lns and ext_src in ('.txt', '.dat'):
+        if ext_src == ext_lns and ext_src in ('.txt', '.dat', '.ascii'):
             self.nz_fmt = 'spaceborne'
 
         elif ext_src == ext_lns == '.fits':
@@ -473,8 +472,8 @@ class IOHandler:
         else:
             raise ValueError(
                 'Unsupported or inconsistent format for input nz: all input files '
-                'should use the .txt, .dat, .fits or .fits.gz extensions (and all '
-                'extensions must be the same)'
+                'should use the .txt, .dat, .ascii, .fits or .fits.gz extensions '
+                '(and all extensions must be the same)'
             )
 
     def get_cl_fmt(self):
@@ -493,15 +492,17 @@ class IOHandler:
                 'No Cl filenames provided for the selected probes'
             )
             extensions = [get_file_ext(fname) for fname in cl_filenames_to_check]
-            assert all(ext in ['.txt', '.dat', '.fits'] for ext in extensions), (
-                'Input Cl filenames must end with .txt, .dat, .fits or .fits.gz'
-            )
+            assert all(
+                ext in ['.txt', '.dat', '.ascii', '.fits'] for ext in extensions
+            ), 'Input Cl filenames must end with .txt, .dat, .ascii, .fits or .fits.gz'
             assert all(x == extensions[0] for x in extensions), (
                 'All input Cl files must have the same extension'
             )
 
-            if all(ext == '.txt' for ext in extensions) or all(
-                ext == '.dat' for ext in extensions
+            if (
+                all(ext == '.txt' for ext in extensions)
+                or all(ext == '.dat' for ext in extensions)
+                or all(ext == '.ascii' for ext in extensions)
             ):
                 self.cl_fmt = 'spaceborne'
 
@@ -511,8 +512,8 @@ class IOHandler:
             else:
                 raise ValueError(
                     'Unsupported or inconsistent format for input cls: all input files '
-                    'should use the .txt, .dat, .fits or .fits.gz extensions (and all extensions'
-                    ' must be the same)'
+                    'should use the .txt, .dat, .ascii, .fits or .fits.gz extensions '
+                    '(and all extensions must be the same)'
                 )
         else:
             self.cl_fmt = None

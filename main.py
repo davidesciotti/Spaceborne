@@ -1801,11 +1801,6 @@ if cfg['covariance']['save_full_cov']:
 
 if cfg['covariance']['save_cov_fits'] and obs_space == 'harmonic':
     io_obj.save_cov_euclidlib(cov_dict=_cov_dict)
-if cfg['covariance']['save_cov_fits'] and obs_space != 'harmonic':
-    raise ValueError(
-        'Official Euclid .fits format is only supported for harmonic space '
-        'for the moment'
-    )
 
 print(f'\nCovariance matrices saved in {output_path}\n')
 

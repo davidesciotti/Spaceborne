@@ -631,16 +631,26 @@ class SpaceborneConfigChecker:
             ), 'Value mismatch for logT_AGN in the parameters definition'
 
     def check_cov(self) -> None:
-        assert self.cfg['covariance']['ng_cov_gal_bias_model'] in (
-            'linear_bias',
-            'HOD',
-        ), 'ng_cov_gal_bias_model must be either "linear_bias" or "HOD"'
-        assert self.cfg['covariance']['triu_tril'] in ('triu', 'tril'), (
+        _cfgcov = self.cfg['covariance']
+        assert _cfgcov['ng_cov_gal_bias_model'] in ('linear_bias', 'HOD'), (
+            'ng_cov_gal_bias_model must be either "linear_bias" or "HOD"'
+        )
+        assert _cfgcov['triu_tril'] in ('triu', 'tril'), (
             'triu_tril must be either "triu" or "tril"'
         )
-        assert self.cfg['covariance']['row_col_major'] in ('row-major', 'col-major'), (
+        assert _cfgcov['row_col_major'] in ('row-major', 'col-major'), (
             'row_col_major must be either "row-major" or "col-major"'
         )
+
+        if (
+            _cfgcov['save_cov_fits']
+            and self.cfg['probe_selection']['space'] != 'harmonic'
+        ):
+            warnings.warn(
+                'Official Euclid .fits output format is only supported for harmonic '
+                'space covariance matrices for the moment',
+                stacklevel=1,
+            )
 
         # the pair counts only enter the real-space and COSEBIs SN term
         _cfgpc = self.cfg['covariance']['pair_counts']

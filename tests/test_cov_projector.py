@@ -438,7 +438,9 @@ class TestCosebisSamplingNoiseFlag:
     """covariance.include_sampling_noise for the COSEBIs SN term, which is built
     analytically from sigma_eps_i and n_eff (not from nl_3x2pt_4d) and must
     therefore honour the flag explicitly, as the harmonic-space SN does through nl.
-    The analytic term itself is replaced by a sentinel, since it needs cloelib."""
+    The E×B SN is computed only for measured pair counts (it vanishes for the ideal
+    ones). The analytic term itself is replaced by a sentinel, since it needs
+    cloelib."""
 
     N_MODES, ZBINS = 3, 2
 
@@ -447,7 +449,7 @@ class TestCosebisSamplingNoiseFlag:
         from spaceborne import sb_lib as sl
         from spaceborne.cov_cosebis import CovCOSEBIs
 
-        def _make(include_sampling_noise):
+        def _make(include_sampling_noise, pair_counts='analytic'):
             obj = CovCOSEBIs.__new__(CovCOSEBIs)
             zpairs_auto, zpairs_cross, _ = sl.get_zpairs(self.ZBINS)
             ind = sl.build_full_ind('triu', 'row-major', self.ZBINS)
@@ -457,6 +459,7 @@ class TestCosebisSamplingNoiseFlag:
             obj.ind_cross = ind[zpairs_auto : zpairs_auto + zpairs_cross, :].copy()
             obj.cov_shape_6d = (self.N_MODES, self.N_MODES) + (self.ZBINS,) * 4
             obj.include_sampling_noise = include_sampling_noise
+            obj.pair_counts = pair_counts
             obj.cov_dict = {
                 'sn': {(a, b): {} for a in ('En', 'Bn') for b in ('En', 'Bn')}
             }
@@ -469,25 +472,36 @@ class TestCosebisSamplingNoiseFlag:
 
         return _make
 
+    @pytest.mark.parametrize('pair_counts', ['analytic', 'from_input'])
     @pytest.mark.parametrize('probe_abcd', ['EnEn', 'BnBn'])
-    def test_auto_sn_with_noise_is_the_analytic_term(self, make_cov_cs, probe_abcd):
+    def test_auto_sn_with_noise_is_the_analytic_term(
+        self, make_cov_cs, probe_abcd, pair_counts
+    ):
         from spaceborne import sb_lib as sl
 
-        obj = make_cov_cs(include_sampling_noise=True)
+        obj = make_cov_cs(include_sampling_noise=True, pair_counts=pair_counts)
         obj.compute_cs_cov_term_probe_6d(None, probe_abcd, 'sn', 0.3)
         probe_2tpl = sl.split_probe_name(probe_abcd, 'cosebis')
         assert obj.cov_dict['sn'][probe_2tpl]['6d'] is obj.sentinel
 
-    def test_cross_sn_is_the_eb_term(self, make_cov_cs):
-        obj = make_cov_cs(include_sampling_noise=True)
+    def test_cross_sn_with_measured_counts_is_the_eb_term(self, make_cov_cs):
+        obj = make_cov_cs(include_sampling_noise=True, pair_counts='from_input')
         obj.compute_cs_cov_term_probe_6d(None, 'EnBn', 'sn', 0.3)
         assert obj.cov_dict['sn']['En', 'Bn']['6d'] is obj.sentinel_eb
 
+    def test_cross_sn_with_analytic_counts_is_exactly_zero(self, make_cov_cs):
+        obj = make_cov_cs(include_sampling_noise=True, pair_counts='analytic')
+        obj.compute_cs_cov_term_probe_6d(None, 'EnBn', 'sn', 0.3)
+        cov_6d = obj.cov_dict['sn']['En', 'Bn']['6d']
+        assert cov_6d.shape == obj.cov_shape_6d
+        np.testing.assert_array_equal(cov_6d, 0.0)
+
+    @pytest.mark.parametrize('pair_counts', ['analytic', 'from_input'])
     @pytest.mark.parametrize('probe_abcd', ['EnEn', 'BnBn', 'EnBn'])
-    def test_noiseless_sn_is_zero(self, make_cov_cs, probe_abcd):
+    def test_noiseless_sn_is_zero(self, make_cov_cs, probe_abcd, pair_counts):
         from spaceborne import sb_lib as sl
 
-        obj = make_cov_cs(include_sampling_noise=False)
+        obj = make_cov_cs(include_sampling_noise=False, pair_counts=pair_counts)
         obj.compute_cs_cov_term_probe_6d(None, probe_abcd, 'sn', 0.3)
         cov_6d = obj.cov_dict['sn'][sl.split_probe_name(probe_abcd, 'cosebis')]['6d']
         assert cov_6d.shape == obj.cov_shape_6d

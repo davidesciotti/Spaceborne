@@ -198,7 +198,7 @@ def normalize_probe_selection(probe_selection: dict) -> None:
         'real': ('xip', 'xim', 'gt', 'w'),
         'cosebis': ('En', 'Bn', 'Psigl', 'Psigg'),
     }
-    # check that probe_selection['space'] is valid 
+    # check that probe_selection['space'] is valid
     space = probe_selection['space']
     if space not in flags_by_space:
         raise ValueError(
@@ -209,7 +209,7 @@ def normalize_probe_selection(probe_selection: dict) -> None:
     # hardcode Psigl and Psigg to False, as they are not implemented yet
     probe_selection['Psigl'] = False
     probe_selection['Psigg'] = False
-    
+
     # set flags of probes of unused spaces to False
     for _space, flags in flags_by_space.items():
         if _space != space:
@@ -726,47 +726,39 @@ def compare_2d_covs(
     cov_b,
     name_a,
     name_b,
-    title,
-    diff_threshold,
-    compare_cov_2d=True,
-    compare_corr_2d=True,
+    title='',
+    diff_threshold=None,
+    diff_bounds=(0.1, 1, 5, 10, 50, 100),
+    compare_2d=True,
     compare_diag=True,
     compare_flat=True,
     compare_spectrum=True,
 ):
-    # compare covariance
-    if compare_cov_2d:
-        compare_arrays(
-            cov_a,
-            cov_b,
-            name_a,
-            name_b,
-            log_array=True,
-            log_diff=False,
-            abs_val=True,
-            plot_diff_threshold=diff_threshold,
-            title=title,
-            early_return=False,
-        )
+    """Compare two 2D covariance matrices A and B.
 
-    # compare correlation
-    if compare_corr_2d:
-        corr_a = cov2corr(cov_a)
-        corr_b = cov2corr(cov_b)
-        matshow_arr_kw = {'cmap': 'RdBu_r', 'vmin': -1, 'vmax': 1}
-        compare_arrays(
-            corr_a,
-            corr_b,
-            name_a,
-            name_b,
-            log_array=False,
-            log_diff=False,
-            matshow_arr_kw=matshow_arr_kw,
-            plot_diff_hist=False,
-            plot_diff_threshold=diff_threshold,
-            title=title,
-            early_return=False,
-        )
+    With compare_2d, prints a summary and plots a 3x2 figure:
+    - log10 |A| and log10 |B| (same colour scale),
+    - the correlation matrices of A and B,
+    - the element-wise symmetric relative difference 2 (A - B) / (|A| + |B|) (see
+      sym_rel_diff), in percent (so in [-200, 200]), and the difference in units of
+      the correlation coefficient (A - B) / sqrt(D_ii D_jj) (see corr_units_diff), in
+      percentage points, i.e. 100 x the absolute difference (on the diagonal, it
+      equals the symmetric relative difference of the variances; off the diagonal,
+      it is approximately the difference of the correlation coefficients).
+    The differences are shown with discrete diverging colour bands at ±diff_bounds;
+    white is |diff| < diff_bounds[0] (or < diff_threshold, if larger; the same
+    threshold is applied to both panels, in their own units), grey is NaN (only one
+    of the two elements is NaN).
+
+    compare_diag and compare_flat plot the diagonals and all the elements.
+    compare_spectrum plots the generalised eigenvalues lambda of (A, B) (see
+    generalised_eigvals), the ratios of the variances of A and B along the
+    directions of data space that diagonalise both: they bound the ratio of any
+    error bar computed with A and with B, sigma_A / sigma_B, to [sqrt(lambda_min),
+    sqrt(lambda_max)]. All lambda = 1 iff A = B.
+    """
+    if compare_2d:
+        _plot_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold, diff_bounds)
 
     # compare cov diag
     if compare_diag:
@@ -796,8 +788,8 @@ def compare_2d_covs(
 
     # compare SB against mat - cov spectrum
     if compare_spectrum:
-        eig_a = np.linalg.eigvals(cov_a)
-        eig_b = np.linalg.eigvals(cov_b)
+        eig_a = np.linalg.eigvalsh(cov_a)[::-1]
+        eig_b = np.linalg.eigvalsh(cov_b)[::-1]
         compare_funcs(
             x=None,
             y={f'eig {name_a}': eig_a, f'eig {name_b}': eig_b},
@@ -1729,6 +1721,85 @@ def percent_diff_nan(array_1, array_2, eraseNaN=True, log=False, abs_val=False):
     return diff
 
 
+def _equal_elements(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Elements to be considered equal: same value (including both zero or the same
+    infinity), or both NaN."""
+    return (a == b) | (np.isnan(a) & np.isnan(b))
+
+
+def sym_rel_diff(a, b) -> np.ndarray:
+    """Bounded, symmetric relative difference 2 (a - b) / (|a| + |b|), in [-2, 2].
+
+    Unlike a / b - 1, it needs no reference array (swapping a and b only flips the
+    sign) and it is finite where either array vanishes. For small differences it
+    reduces to (a - b) / |b|: the sign is that of a - b, also for negative elements
+    (where a / b - 1 has the opposite sign); ±2 means that one of the two elements
+    is zero, or that they have opposite sign (or that only one of them is infinite).
+    Equal elements (including both zero, the same infinity, or both NaN) give 0;
+    the result is NaN where only one of the two is NaN.
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        diff = 2 * (a - b) / (np.abs(a) + np.abs(b))
+        # only one of the two infinite, or opposite infinities: maximal difference
+        inf_mismatch = (np.isinf(a) | np.isinf(b)) & (a != b)
+        diff = np.where(inf_mismatch, 2 * np.sign(a - b), diff)
+    return np.where(_equal_elements(a, b), 0.0, diff)
+
+
+def corr_units_diff(cov_a, cov_b) -> np.ndarray:
+    """Difference between two covariance matrices in units of the correlation
+    coefficient: (A_ij - B_ij) / sqrt(D_ii D_jj), with D the mean of the two
+    (absolute) diagonals.
+
+    Each element is weighted by how much it matters (relative to the variances of
+    the two data points it couples), so that large relative differences in
+    negligible off-diagonal elements do not dominate. For correlation matrices it is
+    just the difference of the correlation coefficients. Equal elements (including
+    both NaN) give 0.
+    """
+    a = np.asarray(cov_a, dtype=float)
+    b = np.asarray(cov_b, dtype=float)
+    assert a.ndim == 2 and a.shape[0] == a.shape[1] and a.shape == b.shape, (
+        'corr_units_diff needs two square matrices with the same shape'
+    )
+    diag_mean = 0.5 * (np.abs(np.diag(a)) + np.abs(np.diag(b)))
+    with np.errstate(divide='ignore', invalid='ignore'):
+        diff = (a - b) / np.sqrt(np.outer(diag_mean, diag_mean))
+    return np.where(_equal_elements(a, b), 0.0, diff)
+
+
+def _signed_diff_cmap_norm(bounds):
+    """Diverging discrete colormap and norm for a signed difference: the bands are
+    the symmetric edges ±bounds, the central band (|diff| < bounds[0]) is white,
+    values beyond ±bounds[-1] get the 'extend' colours and NaNs are grey."""
+    from matplotlib.colors import BoundaryNorm, ListedColormap
+
+    bounds = np.sort(np.abs(np.asarray(bounds, dtype=float)))
+    edges = np.concatenate([-bounds[::-1], bounds])
+    n_bands = len(edges) - 1  # odd: the central band is the white one
+    # two extra colours for the under/over (extend) values
+    colors = plt.get_cmap('RdBu_r')(np.linspace(0, 1, n_bands + 2))
+    colors[(n_bands + 2) // 2] = (1.0, 1.0, 1.0, 1.0)
+    cmap = ListedColormap(colors[1:-1]).with_extremes(
+        under=colors[0], over=colors[-1], bad='lightgrey'
+    )
+    return cmap, BoundaryNorm(edges, cmap.N), edges
+
+
+def _plot_signed_diff(fig, ax, diff, bounds, threshold, title, fontsize):
+    """Matshow of a signed difference with discrete symmetric bands (see
+    _signed_diff_cmap_norm); |diff| < threshold is shown as white."""
+    diff = np.array(diff, dtype=float)
+    if threshold is not None:
+        diff[np.abs(diff) < threshold] = 0.0
+    cmap, norm, edges = _signed_diff_cmap_norm(bounds)
+    im = ax.matshow(diff, cmap=cmap, norm=norm)
+    fig.colorbar(im, ax=ax, extend='both', ticks=edges)
+    ax.set_title(title, fontsize=fontsize)
+
+
 def diff_threshold_check(diff, threshold):
     boolean = np.any(np.abs(diff) > threshold)
     print(f'has any element of the arrays a disagreement > {threshold}%? ', boolean)
@@ -1795,127 +1866,80 @@ def smape(y_true, y_pred):
     return smape
 
 
-def compare_arrays(
-    A,
-    B,
-    name_A='A',
-    name_B='B',
-    plot_diff=True,
-    plot_array=True,
-    log_array=True,
-    log_diff=False,
-    abs_val=False,
-    plot_diff_threshold=None,
-    white_where_zero=True,
-    plot_diff_hist=False,
-    matshow_arr_kw=None,
-    early_return=True,
-    title='',
-):
+def _plot_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold, diff_bounds):
+    """The summary and the 3x2 figure of compare_2d_covs."""
     fontsize = 25
-
-    if matshow_arr_kw is None:
-        matshow_arr_kw = {}
-
-    rtols = [0, 1e-3, 1e-2, 5e-2]
-    for rtol in rtols:
-        if np.allclose(A, B, rtol=rtol, atol=0):
-            print(
-                f'{name_A} and {name_B} are close within '
-                f'relative tolerance of {rtol * 100}% ✅'
-            )
-            if early_return:
-                return
-            break
-    else:
-        # runs only if the loop never 'break'-s (i.e., not close at any rtol)
-        diff_AB = percent_diff_nan(A, B, eraseNaN=True, abs_val=abs_val)
-        higher_rtol = rtols[-1] * 100  # in percent
-        max_diff = np.max(diff_AB)
-        no_outliers = np.sum(diff_AB > higher_rtol)
-        additional_info = (
-            f'\nMax discrepancy: {max_diff:.2f}%;'
-            f'\nNumber of elements with discrepancy > {higher_rtol}%: {no_outliers}'
-            f'\nFraction of elements with discrepancy > {higher_rtol}%: '
-            f'{no_outliers / diff_AB.size:.5f}'
-        )
-        print(
-            f'{name_A} and {name_B} differ by more than {higher_rtol}% ❌:'
-            f'{additional_info}'
-        )
-
-    # Check that arrays are 2D if any plotting is requested.
-    if plot_diff or plot_array:
-        assert A.ndim == 2 and B.ndim == 2, 'Plotting is only implemented for 2D arrays'
-
-    # Determine number of rows:
-    nrows = (1 if plot_array else 0) + (1 if plot_diff else 0)
-    ncols = 2  # Always show 2 panels per row
-
-    fig, ax = plt.subplots(
-        nrows, ncols, figsize=(17, 7 * nrows), constrained_layout=True
+    A, B = np.asarray(cov_a, dtype=float), np.asarray(cov_b, dtype=float)
+    assert A.ndim == 2 and A.shape[0] == A.shape[1] and A.shape == B.shape, (
+        'cov_a and cov_b must be square 2D arrays with equal shapes'
     )
 
-    # Ensure ax is always 2D
-    if nrows == 1:
-        ax = np.expand_dims(ax, axis=0)  # Convert row array to 2D
-    if ncols == 1:
-        ax = np.expand_dims(ax, axis=1)  # Convert column array to 2D
+    # summary
+    rel_ab = sym_rel_diff(A, B) * 100  # percent
+    corr_units_ab = corr_units_diff(A, B) * 100  # percentage points
+    abs_rel = np.abs(rel_ab[np.isfinite(rel_ab)])
+    abs_corr_units = np.abs(corr_units_ab[np.isfinite(corr_units_ab)])
 
-    # If plotting arrays, prepare data and plot in first row.
-    if plot_array:
-        A_toplot, B_toplot = A.copy(), B.copy()
-        if abs_val:
-            A_toplot, B_toplot = np.abs(A_toplot), np.abs(B_toplot)
-        if log_array:
-            A_toplot, B_toplot = np.log10(A_toplot), np.log10(B_toplot)
+    fro_diff = np.linalg.norm(cov_a - cov_b, ord='fro')
+    fro_diff_rel = fro_diff / np.linalg.norm(cov_b, ord='fro')
+    print(f'Absolute Frobenius difference: {fro_diff:.4e}')
+    print(f'Relative Frobenius difference: {fro_diff_rel:.4e}')
 
-        im = ax[0, 0].matshow(A_toplot, **matshow_arr_kw)
-        ax[0, 0].set_title(f'{name_A}', fontsize=fontsize)
-        fig.colorbar(im, ax=ax[0, 0])
+    if abs_rel.max() < 1e-5:
+        print(f'{name_a} and {name_b} agree to 1e-7 ✅')
+    else:
+        print(
+            f'{name_a} vs {name_b}:\n'
+            f'  symmetric relative difference: max = {abs_rel.max():.3g}%; '
+            f'fraction of elements above 1%: {np.mean(abs_rel > 1):.5f}, above 5%: '
+            f'{np.mean(abs_rel > 5):.5f}\n'
+            f'  correlation units: max = {abs_corr_units.max():.3g} pp; fraction of '
+            f'elements above 1 pp: {np.mean(abs_corr_units > 1):.5f}'
+        )
 
-        im = ax[0, 1].matshow(B_toplot, **matshow_arr_kw)
-        ax[0, 1].set_title(f'{name_B}', fontsize=fontsize)
-        fig.colorbar(im, ax=ax[0, 1])
+    fig, ax = plt.subplots(3, 2, figsize=(17, 21), constrained_layout=True)
 
-    # If plotting differences, prepare diff data and plot in next row.
-    if plot_diff:
-        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=abs_val)
-        diff_BA = percent_diff_nan(B, A, eraseNaN=True, log=False, abs_val=abs_val)
+    # row 1: log10 |cov|, on a common colour scale
+    with np.errstate(divide='ignore', invalid='ignore'):
+        logs = np.log10(np.abs(A)), np.log10(np.abs(B))
+    finite = np.concatenate([lg[np.isfinite(lg)] for lg in logs])
+    vmin, vmax = (finite.min(), finite.max()) if finite.size else (None, None)
+    for _ax, lg, name in zip(ax[0], logs, (name_a, name_b), strict=True):
+        im = _ax.matshow(lg, vmin=vmin, vmax=vmax)
+        _ax.set_title(f'log10 |{name}|', fontsize=fontsize)
+        fig.colorbar(im, ax=_ax)
 
-        if plot_diff_threshold is not None:
-            # Mask out small differences (set them to white via the colormap's
-            # "bad" color)
-            diff_AB = np.ma.masked_where(np.abs(diff_AB) < plot_diff_threshold, diff_AB)
-            diff_BA = np.ma.masked_where(np.abs(diff_BA) < plot_diff_threshold, diff_BA)
+    # row 2: correlation matrices
+    for _ax, cov, name in zip(ax[1], (A, B), (name_a, name_b), strict=True):
+        im = _ax.matshow(cov2corr(cov), cmap='RdBu_r', vmin=-1, vmax=1)
+        _ax.set_title(f'corr {name}', fontsize=fontsize)
+        fig.colorbar(im, ax=_ax)
 
-        if log_diff:
-            # Replace nonpositive with nan to avoid -inf
-            diff_AB = np.log10(np.abs(diff_AB))
-            diff_BA = np.log10(np.abs(diff_BA))
-
-        im = ax[1, 0].matshow(diff_AB)
-        ax[1, 0].set_title('(A/B - 1) * 100', fontsize=fontsize)
-        fig.colorbar(im, ax=ax[1, 0])
-
-        im = ax[1, 1].matshow(diff_BA)
-        ax[1, 1].set_title('(B/A - 1) * 100', fontsize=fontsize)
-        fig.colorbar(im, ax=ax[1, 1])
+    # row 3: differences
+    _plot_signed_diff(
+        fig,
+        ax[2, 0],
+        rel_ab,
+        diff_bounds,
+        diff_threshold,
+        '2(A - B) / (|A| + |B|) [%]',
+        fontsize,
+    )
+    _plot_signed_diff(
+        fig,
+        ax[2, 1],
+        corr_units_ab,
+        diff_bounds,
+        diff_threshold,
+        '(A - B) / ' + r'$\sqrt{\rho_{ii} \rho_{jj}}$',
+        fontsize,
+    )
 
     fig.suptitle(
-        f'log_array={log_array}, abs_val={abs_val}, log_diff={log_diff}\n'
-        f'plot_diff_threshold={plot_diff_threshold}%\n{title}',
+        f'A = {name_a}, B = {name_b}; diff_threshold={diff_threshold}\n{title}',
         fontsize=fontsize,
     )
     plt.show()
-
-    if plot_diff_hist:
-        diff_AB = percent_diff_nan(A, B, eraseNaN=True, log=False, abs_val=False)
-        plt.figure()
-        plt.hist(diff_AB.flatten(), bins=30, log=True, density=True)
-        plt.xlabel('% difference')
-        plt.ylabel('frequency')
-        plt.show()
 
 
 def matshow(

@@ -832,3 +832,185 @@ class TestBinCovHsGDiag:
         bands.append(np.arange(32, 43))
         expected = [b.mean() / len(b) for b in bands]
         np.testing.assert_allclose(binned[0, 0, 0, 0], expected)
+
+
+# ----------------------------------------------------------------------------- #
+# sym_rel_diff / corr_units_diff / compare_2d_covs
+# ----------------------------------------------------------------------------- #
+class TestSymRelDiff:
+    """Bounded, symmetric relative difference 2 (a - b) / (|a| + |b|)."""
+
+    def test_antisymmetric_and_bounded(self, rng):
+        a, b = rng.normal(size=(2, 50, 50))
+        d = sl.sym_rel_diff(a, b)
+        np.testing.assert_allclose(sl.sym_rel_diff(b, a), -d)
+        assert np.all(np.abs(d) <= 2 + 1e-12)
+
+    def test_small_differences_reduce_to_relative_difference(self):
+        # (b - a) / |a|: the sign is that of b - a, also for negative elements
+        a = np.array([1.0, -3.0, 2e-20])
+        b = a * (1 + 1e-4)
+        np.testing.assert_allclose(
+            sl.sym_rel_diff(b, a), (b - a) / np.abs(a), rtol=1e-3
+        )
+
+    def test_zero_and_sign_flip_give_the_bounds(self):
+        np.testing.assert_array_equal(
+            sl.sym_rel_diff([1.0, 0.0, 2.0], [0.0, -1.0, -2.0]), [2.0, 2.0, 2.0]
+        )
+
+    def test_equal_elements_give_zero(self):
+        a = np.array([0.0, np.inf, -np.inf, np.nan, 5.0])
+        np.testing.assert_array_equal(sl.sym_rel_diff(a, a.copy()), 0.0)
+
+    def test_infinite_and_nan_mismatches(self):
+        out = sl.sym_rel_diff(
+            [np.inf, 1.0, np.inf, np.nan], [1.0, -np.inf, -np.inf, 1.0]
+        )
+        np.testing.assert_array_equal(out[:3], [2.0, 2.0, 2.0])
+        assert np.isnan(out[3])
+
+
+class TestCorrUnitsDiff:
+    """Covariance difference in units of the correlation coefficient."""
+
+    def test_correlation_matrices_give_plain_difference(self, rng):
+        x = rng.normal(size=(200, 5))
+        ca, cb = np.corrcoef(x.T), np.corrcoef(x[:100].T)
+        np.testing.assert_allclose(sl.corr_units_diff(ca, cb), ca - cb, atol=1e-14)
+
+    def test_invariant_under_rescaling_of_the_data_vector(self, rng):
+        x = rng.normal(size=(200, 4))
+        cov_a, cov_b = np.cov(x.T), np.cov(x[:150].T)
+        s = np.array([1.0, 1e3, 1e-5, 7.0])  # e.g. different units per element
+        np.testing.assert_allclose(
+            sl.corr_units_diff(cov_a * np.outer(s, s), cov_b * np.outer(s, s)),
+            sl.corr_units_diff(cov_a, cov_b),
+            rtol=1e-10,
+            atol=1e-14,
+        )
+
+    def test_exact_zeros_in_one_matrix_stay_finite(self):
+        cov_a = np.array([[1.0, 1e-6], [1e-6, 4.0]])
+        cov_b = np.diag([1.0, 4.0])
+        out = sl.corr_units_diff(cov_a, cov_b)
+        np.testing.assert_allclose(out, [[0, 5e-7], [5e-7, 0]], atol=1e-15)
+
+    def test_equal_and_nan_elements(self):
+        a = np.array([[1.0, np.nan], [np.nan, 2.0]])
+        np.testing.assert_array_equal(sl.corr_units_diff(a, a.copy()), 0.0)
+
+
+class TestGeneralisedEigvals:
+    """Eigenvalues of B^-1 A: variance ratios along the directions of data space
+    that diagonalise both."""
+
+    def _cov(self, rng, n=6):
+        x = rng.normal(size=(300, n))
+        return np.cov(x.T)
+
+    def test_identical_and_rescaled(self, rng):
+        cov = self._cov(rng)
+        np.testing.assert_allclose(sl.generalised_eigvals(cov, cov.copy()), 1.0)
+        np.testing.assert_allclose(sl.generalised_eigvals(3 * cov, cov), 3.0)
+
+    def test_bounds_the_variance_ratio_of_any_combination(self, rng):
+        cov_a, cov_b = self._cov(rng), self._cov(rng)
+        lam = sl.generalised_eigvals(cov_a, cov_b)
+        x = rng.normal(size=(1000, 6))
+        ratio = np.einsum('ki,ij,kj->k', x, cov_a, x) / np.einsum(
+            'ki,ij,kj->k', x, cov_b, x
+        )
+        assert lam[0] - 1e-12 <= ratio.min() and ratio.max() <= lam[-1] + 1e-12
+
+    def test_invariant_under_linear_transformation(self, rng):
+        cov_a, cov_b = self._cov(rng), self._cov(rng)
+        t = rng.normal(size=(6, 6))
+        np.testing.assert_allclose(
+            sl.generalised_eigvals(t @ cov_a @ t.T, t @ cov_b @ t.T),
+            sl.generalised_eigvals(cov_a, cov_b),
+            rtol=1e-8,
+        )
+
+
+class TestCompare2dCovs:
+    """compare_2d_covs: summary and plots run, also with exact zeros in one of the
+    two matrices."""
+
+    @pytest.fixture(autouse=True)
+    def _no_show(self, monkeypatch):
+        import matplotlib.pyplot as plt
+
+        monkeypatch.setattr(plt, 'show', lambda: None)
+        yield
+        plt.close('all')
+
+    def _covs(self, rng):
+        x = rng.normal(size=(300, 6))
+        cov_a = np.cov(x.T)
+        cov_b = cov_a * (1 + 0.1 * rng.normal(size=(6, 6)))
+        cov_b = 0.5 * (cov_b + cov_b.T)
+        cov_b[0, 1] = cov_b[1, 0] = 0.0
+        return cov_a, cov_b
+
+    @pytest.mark.parametrize('diff_threshold', [None, 1])
+    def test_runs_and_prints_summary(self, rng, capsys, diff_threshold):
+        cov_a, cov_b = self._covs(rng)
+        sl.compare_2d_covs(cov_a, cov_b, 'A', 'B', diff_threshold=diff_threshold)
+        out = capsys.readouterr().out
+        assert 'symmetric relative difference: max' in out
+        assert 'correlation units: max' in out
+
+    def test_identical_covs(self, rng, capsys):
+        cov_a, _ = self._covs(rng)
+        sl.compare_2d_covs(cov_a, cov_a.copy(), 'A', 'B')
+        assert 'agree' in capsys.readouterr().out
+
+    def test_compare_2d_false_skips_the_matrix_figure(self, rng, capsys):
+        cov_a, cov_b = self._covs(rng)
+        sl.compare_2d_covs(
+            cov_a,
+            cov_b,
+            'A',
+            'B',
+            compare_2d=False,
+            compare_diag=False,
+            compare_flat=False,
+            compare_spectrum=False,
+        )
+        assert capsys.readouterr().out == ''
+
+    def test_spectrum_summary(self, rng, capsys):
+        cov_a, _ = self._covs(rng)
+        sl.compare_2d_covs(
+            2 * cov_a,
+            cov_a,
+            'A',
+            'B',
+            compare_2d=False,
+            compare_diag=False,
+            compare_flat=False,
+        )
+        assert 'generalised eigenvalues lambda in [2, 2]' in capsys.readouterr().out
+
+    def test_spectrum_with_non_positive_definite_b_warns(self, rng):
+        cov_a, _ = self._covs(rng)
+        with pytest.warns(UserWarning, match='generalised eigenvalues'):
+            sl.compare_2d_covs(
+                cov_a,
+                -cov_a,
+                'A',
+                'B',
+                compare_2d=False,
+                compare_diag=False,
+                compare_flat=False,
+            )
+
+    def test_cmap_central_band_is_white_and_bands_symmetric(self):
+        cmap, norm, edges = sl._signed_diff_cmap_norm((1, 5, 10))
+        np.testing.assert_array_equal(edges, [-10, -5, -1, 1, 5, 10])
+        assert len(edges) - 1 == cmap.N
+        assert cmap(norm(0.0)) == (1.0, 1.0, 1.0, 1.0)
+        # opposite values get mirrored colours (red vs blue)
+        assert cmap(norm(7.0))[0] > cmap(norm(7.0))[2]
+        assert cmap(norm(-7.0))[2] > cmap(norm(-7.0))[0]

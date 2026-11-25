@@ -432,9 +432,6 @@ class SpaceborneConfigChecker:
             "Section 'PyCCL' must be a dictionary"
         )
         pyccl_cfg = self.cfg['PyCCL']
-        assert isinstance(pyccl_cfg['cov_integration_method'], str), (
-            'PyCCL: cov_integration_method must be a string'
-        )
         assert isinstance(pyccl_cfg['use_default_k_a_grids'], bool), (
             'PyCCL: use_default_k_a_grids must be a boolean'
         )

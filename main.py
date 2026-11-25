@@ -1519,7 +1519,6 @@ if compute_ccl_ssc or compute_ccl_cng:
         ccl_obj.compute_ng_cov_3x2pt(
             which_ng_cov=which_ng_cov,
             ells=ell_grid,
-            integration_method=cfg['PyCCL']['cov_integration_method'],
             unique_probe_combs=unique_probe_combs_hs,
             nonreq_probe_combs=nonreq_probe_combs_hs,
             ind_dict=ind_dict,

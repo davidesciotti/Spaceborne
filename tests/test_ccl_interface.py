@@ -196,7 +196,6 @@ def _ccl_cov_cng(env, tracer1, tracer2, tracer3, tracer4):
         tracer4=tracer4,
         ell2=env['ell'],
         fsky=1.0,
-        integration_method='qag_quad',
     )
 
 
@@ -230,7 +229,6 @@ def _check_diagonal_same_pair_ratio(env):
         sigma2_b_tpl=None,
         ind_AB=ind,
         ind_CD=ind,
-        integration_method='qag_quad',
         symmetrize_zpairs=True,
     )
     ratio = cov[1, 0, 0, 0] / cov[0, 1, 0, 0]
@@ -264,7 +262,6 @@ def _check_diagonal_cross_pair(env):
         sigma2_b_tpl=None,
         ind_AB=ind,
         ind_CD=ind,
-        integration_method='qag_quad',
         symmetrize_zpairs=True,
     )
 
@@ -301,7 +298,6 @@ def _check_offdiagonal(env):
         sigma2_b_tpl=None,
         ind_AB=ind,
         ind_CD=ind,
-        integration_method='qag_quad',
         symmetrize_zpairs=False,
     )
 

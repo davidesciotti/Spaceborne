@@ -751,11 +751,7 @@ def compare_2d_covs(
     of the two elements is NaN).
 
     compare_diag and compare_flat plot the diagonals and all the elements.
-    compare_spectrum plots the generalised eigenvalues lambda of (A, B) (see
-    generalised_eigvals), the ratios of the variances of A and B along the
-    directions of data space that diagonalise both: they bound the ratio of any
-    error bar computed with A and with B, sigma_A / sigma_B, to [sqrt(lambda_min),
-    sqrt(lambda_max)]. All lambda = 1 iff A = B.
+    compare_spectrum plots the eigenvalues of (A, B)
     """
     if compare_2d:
         _plot_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold, diff_bounds)

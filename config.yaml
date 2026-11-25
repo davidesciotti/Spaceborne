@@ -263,8 +263,8 @@ mask:
 
 covariance:
   G: True # Type: bool. Enable/disable the Gaussian covariance term.
-  SSC: True # Type: bool. Enable/disable the super-sample covariance (SSC) term
-  cNG: False # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
+  SSC: False # Type: bool. Enable/disable the super-sample covariance (SSC) term
+  cNG: True # Type: bool. Enable/disable the connected non-Gaussian (cNG) covariance term
 
   BNT_transform: False # Type: bool. Whether to BNT-transform the covariance
 
@@ -382,13 +382,6 @@ covariance:
   load_cached_nmt_workspaces: False # Type: bool. Whether to load the NaMaster workspaces from the cache, if they have already been computed.
 
 PyCCL:
-  # (from CCL docs): integration method to be used for the Limber integrals.
-  # Options:
-  # - 'qag_quad' (GSL's qag method backed up by quad when it fails)
-  # - 'spline' (the integrand is splined and then integrated analytically).
-  # [Note] The former could give errors.
-  cov_integration_method: qag_quad # Type: str
-
   # Whether or not to use the default k and a grids used in CCL.
   # Setting this to True will make the computation of the cNG trispectrum slower
   use_default_k_a_grids: False # Type: bool.

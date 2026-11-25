@@ -1,9 +1,11 @@
 """This module should be run with pyccl >= v3.2.1"""
 
+import warnings
 from functools import partial
 
 import numpy as np
 import pyccl as ccl
+from pyccl import CCLError
 from tqdm import tqdm
 
 from spaceborne import constants as const
@@ -605,7 +607,6 @@ class CCLInterface:
         sigma2_b_tpl: tuple | None,
         ind_AB: np.ndarray,
         ind_CD: np.ndarray,
-        integration_method: str,
         symmetrize_zpairs: bool,
     ):
         zpairs_AB = ind_AB.shape[0]
@@ -625,44 +626,48 @@ class CCLInterface:
 
         cov_ng_4D = np.zeros((nbl, nbl, zpairs_AB, zpairs_CD))
 
-        # Diagonal probe blocks case e.g. LLLL, GGGG, GLGL where (A,B) == (C,D)
-        if symmetrize_zpairs:
-            for ij in range(zpairs_AB):
-                for kl in range(ij, zpairs_CD):  # Note: loop starts from ij
+        failed_blocks = []
+        for ij in range(zpairs_AB):
+            # Diagonal probe blocks case (e.g. LLLL, GGGG, GLGL, aka (A,B) == (C,D))
+            # are symmetric under ij <-> kl, so only the upper triangle needs
+            # to be filled
+            kl_start = ij if symmetrize_zpairs else 0
+            for kl in range(kl_start, zpairs_CD):
+                zi, zj = ind_AB[ij, -2], ind_AB[ij, -1]
+                zk, zl = ind_CD[kl, -2], ind_CD[kl, -1]
+                kw = {
+                    'tracer1': kernel_A[zi],
+                    'tracer2': kernel_B[zj],
+                    'ell': ell,
+                    't_of_kk_a': trisp_abcd,
+                    'fsky': fsky,
+                    'tracer3': kernel_C[zk],
+                    'tracer4': kernel_D[zl],
+                    'ell2': None,
+                    **sigma2_b_arg,
+                }
+                try:
                     res = ccl_ng_cov_func(
-                        self.cosmo_ccl,
-                        tracer1=kernel_A[ind_AB[ij, -2]],
-                        tracer2=kernel_B[ind_AB[ij, -1]],
-                        ell=ell,
-                        t_of_kk_a=trisp_abcd,
-                        fsky=fsky,
-                        tracer3=kernel_C[ind_CD[kl, -2]],
-                        tracer4=kernel_D[ind_CD[kl, -1]],
-                        ell2=None,
-                        integration_method=integration_method,
-                        **sigma2_b_arg,
+                        self.cosmo_ccl, integration_method='qag_quad', **kw
                     )
-                    cov_ng_4D[:, :, ij, kl] = res.T
-                    if kl != ij:
-                        cov_ng_4D[:, :, kl, ij] = res
+                except CCLError:
+                    self.cosmo_ccl.cosmo.status_message = ''
+                    failed_blocks.append((int(zi), int(zj), int(zk), int(zl)))
+                    res = ccl_ng_cov_func(
+                        self.cosmo_ccl, integration_method='spline', **kw
+                    )
 
-        # Off-diagonal probe blocks case e.g. LLGL, LLGG, etc.
-        else:
-            for ij in range(zpairs_AB):
-                for kl in range(zpairs_CD):
-                    cov_ng_4D[:, :, ij, kl] = ccl_ng_cov_func(
-                        self.cosmo_ccl,
-                        tracer1=kernel_A[ind_AB[ij, -2]],
-                        tracer2=kernel_B[ind_AB[ij, -1]],
-                        ell=ell,
-                        t_of_kk_a=trisp_abcd,
-                        fsky=fsky,
-                        tracer3=kernel_C[ind_CD[kl, -2]],
-                        tracer4=kernel_D[ind_CD[kl, -1]],
-                        ell2=None,
-                        integration_method=integration_method,
-                        **sigma2_b_arg,
-                    ).T
+                cov_ng_4D[:, :, ij, kl] = res.T
+                if symmetrize_zpairs and kl != ij:
+                    cov_ng_4D[:, :, kl, ij] = res
+
+        if failed_blocks:
+            warnings.warn(
+                f'{which_ng_cov} cov: qag_quad integration failed for '
+                f'{len(failed_blocks)} (zi, zj, zk, zl) combinations, '
+                f'fell back to spline: {failed_blocks}',
+                stacklevel=2,
+            )
 
         return cov_ng_4D
 
@@ -670,7 +675,6 @@ class CCLInterface:
         self,
         which_ng_cov,
         ells,
-        integration_method,
         unique_probe_combs,
         nonreq_probe_combs,
         ind_dict,
@@ -737,7 +741,6 @@ class CCLInterface:
                 sigma2_b_tpl=_sigma2_b_tpl,
                 ind_AB=ind_dict[probe_ab],
                 ind_CD=ind_dict[probe_cd],
-                integration_method=integration_method,
                 symmetrize_zpairs=symmetrize_zpairs,
             )
 

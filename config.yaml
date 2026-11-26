@@ -410,7 +410,11 @@ precision:
   log10_k_max: 2.5 # Type: float. Units: 1/Mpc
   k_steps: 250 # Type: int. Around 250 should be enough
 
-  # z range used across the code. The grid includes the endpoints, as it's computed with
+  # z range used across the code to compute the power spectrum, trispectrum, IA, 
+  # galaxy and magnification bias, etc. 
+  # Note that the input n(z) are not clipped to this range: the Cls use
+  # their full support.
+  # The grid includes the endpoints, as it's computed with
   # z_steps = int(np.ceil((z_max - z_min) / delta_z)) + 1
   # np.linspace(z_min, z_max, z_steps)
   # so the actual delta_z may be slightly smaller (but not larger) than the input delta_z

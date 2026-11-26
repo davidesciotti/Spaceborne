@@ -508,10 +508,10 @@ class TestCheckPyccl:
         with pytest.raises(ValueError, match='does not support magnification'):
             checker.check_pyccl()
 
-    def test_hod_cng_without_magnification_warns(self, valid_cfg):
+    def test_hod_cng_without_magnification_raises(self, valid_cfg):
         checker = self._pyccl_cfg(valid_cfg, False, True, False, False)
         valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'HOD'
-        with pytest.warns(UserWarning, match='2-halo'):
+        with pytest.raises(ValueError, match='is not supported'):
             checker.check_pyccl()
 
     def test_linear_bias_cng_does_not_warn(self, valid_cfg):

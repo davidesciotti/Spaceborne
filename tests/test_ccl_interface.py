@@ -343,7 +343,7 @@ class TestNgCovProbeBlockEllOrientation:
 @pytest.fixture
 def per_bin_env():
     """Minimal CCLInterface (2 Gaussian lens/source bins) able to run
-    set_kernel_obj, without instantiating the full class."""
+    set_wf_objs, without instantiating the full class."""
     zbins = 2
     z = np.linspace(0.001, 2.0, 400)
     nz_2d = np.column_stack([_gauss_nz(z, z0) for z0 in (0.4, 0.9)])
@@ -398,7 +398,7 @@ class TestPerBinBias:
         obj, z, ell = per_bin_env['obj'], per_bin_env['z'], per_bin_env['ell']
         obj.mag_bias_tuple = None
         obj.set_gal_bias_tuple_per_bin(z, self.gal_bias)
-        obj.set_kernel_obj(has_rsd=False, n_samples_wf=256)
+        obj.set_wf_objs(has_rsd=False, n_samples_wf=256)
 
         cosmo = obj.cosmo_ccl
         for zi in range(2):
@@ -419,7 +419,7 @@ class TestPerBinBias:
         obj, z, ell = per_bin_env['obj'], per_bin_env['z'], per_bin_env['ell']
         obj.set_gal_bias_tuple_per_bin(z, self.gal_bias)
         obj.set_mag_bias_tuple_per_bin(z, self.mag_bias)
-        obj.set_kernel_obj(has_rsd=False, n_samples_wf=256)
+        obj.set_wf_objs(has_rsd=False, n_samples_wf=256)
 
         cosmo = obj.cosmo_ccl
         for zi in range(2):

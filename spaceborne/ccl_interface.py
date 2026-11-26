@@ -278,21 +278,18 @@ class CCLInterface:
             # mag_bias_tuple = (zgrid_nz, mag_bias_2d)
             self.mag_bias_tuple = None
 
-    def set_kernel_obj(self, has_rsd, n_samples_wf):
-
-        unit_bias_tuple = (self.zgrid_nz_lns, np.ones_like(self.zgrid_nz_lns))
-
-        self.wf_lensing_obj = []
-        self.wf_galaxy_obj = []
-        self.wf_density_obj = []  # density-only (no gal bias, no mag, no RSD)
-        self.wf_mag_obj = []  # magnification-only (no matter, no RSD)
+    def _build_wf_objs(self, nz_src_tuple, nz_lns_tuple, has_rsd, n_samples_wf):
+        """CCL tracers for the given (z, n(z)) tuples. Returns a dict with the lists
+        'lensing', 'galaxy', 'density' (no gal bias, no mag, no RSD) and 'mag'
+        (magnification-only, empty if there is no magnification bias)."""
+        wf_objs = {'lensing': [], 'galaxy': [], 'density': [], 'mag': []}
 
         for zi in range(self.zbins):
             # ! Lensing
-            self.wf_lensing_obj.append(
+            wf_objs['lensing'].append(
                 ccl.tracers.WeakLensingTracer(
                     cosmo=self.cosmo_ccl,
-                    dndz=(self.nz_src_tuple[0], self.nz_src_tuple[1][:, zi]),
+                    dndz=(nz_src_tuple[0], nz_src_tuple[1][:, zi]),
                     ia_bias=self.ia_bias_tuple,
                     use_A_ia=False,
                     n_samples=n_samples_wf,
@@ -305,37 +302,47 @@ class CCLInterface:
                 mag_bias_arg = self.mag_bias_tuple
             else:
                 mag_bias_arg = (self.mag_bias_tuple[0], self.mag_bias_tuple[1][:, zi])
-                self.wf_mag_obj.append(
+                wf_objs['mag'].append(
                     ccl.tracers.NumberCountsTracer(
                         cosmo=self.cosmo_ccl,
                         has_rsd=False,
-                        dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zi]),
+                        dndz=(nz_lns_tuple[0], nz_lns_tuple[1][:, zi]),
                         bias=None,
                         mag_bias=mag_bias_arg,
                         n_samples=n_samples_wf,
                     )
                 )
 
-            self.wf_galaxy_obj.append(
+            wf_objs['galaxy'].append(
                 ccl.tracers.NumberCountsTracer(
                     cosmo=self.cosmo_ccl,
                     has_rsd=has_rsd,
-                    dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zi]),
+                    dndz=(nz_lns_tuple[0], nz_lns_tuple[1][:, zi]),
                     bias=(self.gal_bias_tuple[0], self.gal_bias_tuple[1][:, zi]),
                     mag_bias=mag_bias_arg,
                     n_samples=n_samples_wf,
                 )
             )
-            self.wf_density_obj.append(
+            wf_objs['density'].append(
                 ccl.tracers.NumberCountsTracer(
                     cosmo=self.cosmo_ccl,
                     has_rsd=False,
-                    dndz=(self.nz_lns_tuple[0], self.nz_lns_tuple[1][:, zi]),
-                    bias=unit_bias_tuple,
+                    dndz=(nz_lns_tuple[0], nz_lns_tuple[1][:, zi]),
+                    bias=(nz_lns_tuple[0], np.ones_like(nz_lns_tuple[0])),  # unit bias!
                     mag_bias=None,
                     n_samples=n_samples_wf,
                 )
             )
+        return wf_objs
+
+    def set_wf_objs(self, has_rsd, n_samples_wf):
+        wf_objs = self._build_wf_objs(
+            self.nz_src_tuple, self.nz_lns_tuple, has_rsd, n_samples_wf
+        )
+        self.wf_lensing_obj = wf_objs['lensing']
+        self.wf_galaxy_obj = wf_objs['galaxy']
+        self.wf_density_obj = wf_objs['density']
+        self.wf_mag_obj = wf_objs['mag']
 
     def compute_cls(self, ell_grid, p_of_k_a, kernel_a, kernel_b, cl_ccl_kwargs: dict):
         cl_ab_3d = wf_cl_lib.cl_ccl(
@@ -698,6 +705,9 @@ class CCLInterface:
         # key of cov_dict
         ng_term = which_ng_cov.lower()
 
+        # NB: the tracers are built from the full n(z), so for n(z) tabulated from z = 0
+        # the CCL covariance integrals start at chi = 0. This is harmless for the SSC
+        # and the linear-bias cNG, but makes the HOD cNG diverge (see check_pyccl)
         if which_ng_cov == 'SSC':
             kernel_dict = {'L': self.wf_lensing_obj, 'G': self.wf_density_obj}
         elif which_ng_cov == 'cNG' and self.ng_cov_gal_bias_model == 'linear_bias':

@@ -523,8 +523,6 @@ else:
 
 
 # ! ============================== k and z grids (k is in 1/Mpc) =======================
-# TODO should zmin and zmax be inferred from the nz tables?
-# TODO -> not necessarily true for all the different zsteps
 z_grid = np.linspace(
     cfg['precision']['z_min'],
     cfg['precision']['z_max'],
@@ -929,7 +927,7 @@ plt.legend()
 
 
 # ! ============================ Radial kernels ========================================
-ccl_obj.set_kernel_obj(cfg['C_ell']['has_rsd'], cfg['precision']['n_samples_wf'])
+ccl_obj.set_wf_objs(cfg['C_ell']['has_rsd'], cfg['precision']['n_samples_wf'])
 ccl_obj.set_kernel_arr(z_grid_wf=z_grid, has_mag_bias=cfg['C_ell']['has_mag_bias'])
 ccl_obj.wf_galaxy_arr = ccl_obj.wf_galaxy_wo_gal_bias_arr
 

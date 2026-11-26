@@ -833,15 +833,22 @@ class SpaceborneConfigChecker:
                 "ng_cov_gal_bias_model: 'linear_bias' or disable magnification bias."
             )
 
-        # pyccl.halos.pk_4pt.halomod_trispectrum_2h_13 (checked up to v3.3.3) takes
-        # shortcuts that are wrong for mixed matter/galaxy profiles
+        # The PyCCL HOD cNG is not reliable:
+        # - the HOD trispectrum decays slowly at high k, and the CCL Limber integral
+        #   starts at chi = 0 for n(z) with support at z -> 0 (e.g. DR1): the integral
+        #   diverges, and the result depends on the integration step (GG elements off
+        #   by up to x2600, sigma(b_g) by ~3% on DR1);
+        # - pyccl.halos.pk_4pt.halomod_trispectrum_2h_13 (checked up to v3.3.3) takes
+        #   shortcuts that are wrong for mixed matter/galaxy profiles;
+        # - the HOD is not consistent with the linear galaxy bias used in the C_ells.
         if pyccl_cng and cov_cfg['ng_cov_gal_bias_model'] == 'HOD':
-            warnings.warn(
-                'The PyCCL cNG with ng_cov_gal_bias_model: HOD uses the HOD '
-                'trispectrum, whose 2-halo (1+3) term could have a bug in CCL for mixed'
-                ' matter/galaxy profiles (e.g. the LLGG and GLGG blocks). The HOD is '
-                'also not consistent with the linear galaxy bias used in the C_ells.',
-                stacklevel=2,
+            raise ValueError(
+                'The PyCCL cNG with ng_cov_gal_bias_model: HOD is not supported: its '
+                'Limber integral diverges at small comoving distance for n(z) with '
+                'support at z ~ 0, its 2-halo (1+3) term could have a bug in CCL for '
+                'mixed matter/galaxy profiles, and the HOD is not consistent with the '
+                'linear galaxy bias of the C_ells. Please use ng_cov_gal_bias_model: '
+                "'linear_bias' for the moment."
             )
         if cov_cfg['ng_cov_gal_bias_model'] == 'HOD':
             warnings.warn(

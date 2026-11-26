@@ -421,7 +421,7 @@ precision:
 
   # Precision for the P(k) projection to get the Cls, the computation of sigma2_b,
   # and SSC projection. Should be quite high, mostly to trace the rapid variation of
-  # the sigma2_b function, especially when not using the KE approximation
+  # the sigma2_b function, especially when not using the TH approximation
   delta_z: 3.e-4 # Type: float. Around 3.e-4 should be enough.
 
   # Precision for the computation of SSC and cNG trispectra.

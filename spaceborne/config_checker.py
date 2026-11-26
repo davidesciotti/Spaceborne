@@ -789,7 +789,7 @@ class SpaceborneConfigChecker:
             compare_against_oc or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
         ):
             raise ValueError(
-                'The KE approximation for the SSC term is disabled in the '
+                'The TH approximation for the SSC term is disabled in the '
                 'configuration, but OneCovariance uses it. '
                 'Results for GGL and GG might be inconsistent.'
             )

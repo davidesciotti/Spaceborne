@@ -320,7 +320,7 @@ class TestClIntegralPrefactor:
             cl.cl_integral_prefactor(1.0, 'bogus', use_h_units=False, cosmo_ccl=cosmo)
 
     def test_ke_to_euclid_ratio_is_inverse_r_squared(self, cosmo):
-        """The KE-approximation prefactor differs from the Euclid one by 1/r^2."""
+        """The TH-approximation prefactor differs from the Euclid one by 1/r^2."""
         z = np.array([0.5, 1.0, 2.0])
         r = cl.ccl_comoving_distance(z, use_h_units=False, cosmo_ccl=cosmo)
         euclid = cl.cl_integral_prefactor(

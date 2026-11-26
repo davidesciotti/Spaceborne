@@ -206,7 +206,7 @@ def ssc_integral_4D_simps_jax(
 
 
 @jit
-def ssc_integral_4D_simps_jax_ke_approx(
+def ssc_integral_4D_simps_jax_th_approx(
     d2ClAB_dVddeltab: jnp.ndarray,
     d2ClCD_dVddeltab: jnp.ndarray,
     cl_integral_prefactor: jnp.ndarray,
@@ -235,16 +235,16 @@ def ssc_integral_4D_simps_jax_ke_approx(
 
 class SpaceborneSSC:
     def __init__(self, cfg, pvt_cfg, ccl_obj, z_grid):
-        self.use_ke_approx = cfg['precision']['use_TH_approximation']
+        self.use_th_approx = cfg['precision']['use_TH_approximation']
         self.z_grid = z_grid
         self.ccl_obj = ccl_obj
         self.k_min = 10 ** cfg['precision']['log10_k_min']
         self.k_max = 10 ** cfg['precision']['log10_k_max']
 
         # set some useful attributes
-        if self.use_ke_approx:
-            self.ssc_func = ssc_integral_4D_simps_jax_ke_approx
-            self.cl_integral_convention_ssc = 'Euclid_KE_approximation'
+        if self.use_th_approx:
+            self.ssc_func = ssc_integral_4D_simps_jax_th_approx
+            self.cl_integral_convention_ssc = 'Euclid_TH_approximation'
         else:
             self.ssc_func = ssc_integral_4D_simps_jax
             self.cl_integral_convention_ssc = 'Euclid'
@@ -270,10 +270,10 @@ class SpaceborneSSC:
         self.cov_dict = cd.create_cov_dict(req_terms, _req_probe_combs_2d, dims=dims)
 
     def sigma2_b_func(self, cl_footp_norm_abcd: np.ndarray) -> np.ndarray:
-        """sigma2_b(z) with the KE approximation (from CCL), sigma2_b(z1, z2)
+        """sigma2_b(z) with the TH approximation (from CCL), sigma2_b(z1, z2)
         otherwise.
         """
-        if self.use_ke_approx:
+        if self.use_th_approx:
             a_grid, sigma2_b = self.ccl_obj.sigma2_b_func(
                 z_grid=self.z_grid, cl_footp_norm_abcd=cl_footp_norm_abcd
             )

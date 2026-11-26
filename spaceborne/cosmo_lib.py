@@ -236,7 +236,7 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
     - Option 2: Euclid convention. Euclid kernels and integration
     "prefactor" = dr/dz / r(z)**2 = c/H0 / (E(z)*r(z)**2)
     this is because dr/dz = c/H(z) = c/(H0*E(z))
-    - Option 3: Euclid_KE_approximation. In this case you only need one of these
+    - Option 3: Euclid_TH_approximation. In this case you only need one of these
     prefactors in the integral (since it's
     a simple integral over distance). The dr_1/r_1^2 * dr_2/r_2^2 of the previous
     case becomes dr/r**4, in this way
@@ -254,7 +254,7 @@ def cl_integral_prefactor(z, cl_integral_convention, use_h_units, cosmo_ccl):
         cl_integral_prefactor = (
             1 / r_of_z**2 * dr_dz
         )  # this is not dV/dz! that's why I don't write dV in the function name
-    elif cl_integral_convention == 'Euclid_KE_approximation':
+    elif cl_integral_convention == 'Euclid_TH_approximation':
         cl_integral_prefactor = (
             1 / r_of_z**4 * dr_dz
         )  # this is not dV/dz! that's why I don't write dV in the function name

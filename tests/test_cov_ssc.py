@@ -345,7 +345,7 @@ def _brute_force_ssc_2d(d_ab, d_cd, pref, sigma2, dz, weights):
 
 
 def _brute_force_ssc_ke(d_ab, d_cd, pref, sigma2, dz, weights):
-    """Explicit loop reference for the KE-approximation (1D sigma2)."""
+    """Explicit loop reference for the TH-approximation (1D sigma2)."""
     nbl, zp_ab, _ = d_ab.shape
     zp_cd = d_cd.shape[1]
     zsteps = pref.size
@@ -387,7 +387,7 @@ def ssc_inputs(rng):
 # ssc_integral_4D_simps_jax  (2D sigma2)
 # ----------------------------------------------------------------------------- #
 class TestSscIntegral2D:
-    """Tests for the full (non-KE) Simpson-rule SSC integral."""
+    """Tests for the full (non-TH) Simpson-rule SSC integral."""
 
     def _call(self, p):
         return np.array(
@@ -453,8 +453,8 @@ class TestSscIntegral2D:
 # ----------------------------------------------------------------------------- #
 # ssc_integral_4D_simps_jax_ke_approx  (1D sigma2)
 # ----------------------------------------------------------------------------- #
-class TestSscIntegralKE:
-    """Tests for the KE-approximation Simpson-rule SSC integral."""
+class TestSscIntegralTH:
+    """Tests for the TH-approximation Simpson-rule SSC integral."""
 
     def _call(self, p):
         return np.array(

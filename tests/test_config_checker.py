@@ -471,7 +471,7 @@ class TestCheckOnecov:
 
     def test_ssc_without_ke_and_oc_raises(self, valid_cfg):
         valid_cfg['covariance']['SSC'] = True
-        valid_cfg['precision']['use_KE_approximation'] = False
+        valid_cfg['precision']['use_TH_approximation'] = False
         valid_cfg['covariance']['SSC_code'] = 'OneCovariance'
         checker = config_checker.SpaceborneConfigChecker(valid_cfg, _zbins(valid_cfg))
         with pytest.raises(ValueError):
@@ -503,9 +503,11 @@ class TestCheckPyccl:
         checker.check_pyccl()
 
     def test_hod_cng_with_magnification_raises(self, valid_cfg):
+        # the general HOD cNG error comes first: the magnification-specific check
+        # after it is unreachable while the PyCCL HOD cNG is not supported
         checker = self._pyccl_cfg(valid_cfg, False, True, True, False)
         valid_cfg['covariance']['ng_cov_gal_bias_model'] = 'HOD'
-        with pytest.raises(ValueError, match='does not support magnification'):
+        with pytest.raises(ValueError, match='is not supported'):
             checker.check_pyccl()
 
     def test_hod_cng_without_magnification_raises(self, valid_cfg):

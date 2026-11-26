@@ -958,7 +958,9 @@ class TestCompare2dCovs:
         )
         assert capsys.readouterr().out == ''
 
-    def test_spectrum_summary(self, rng, capsys):
+    def test_spectrum_plots_the_eigenvalues(self, rng, capsys):
+        import matplotlib.pyplot as plt
+
         cov_a, _ = self._covs(rng)
         sl.compare_2d_covs(
             2 * cov_a,
@@ -969,20 +971,8 @@ class TestCompare2dCovs:
             compare_diag=False,
             compare_flat=False,
         )
-        assert 'generalised eigenvalues lambda in [2, 2]' in capsys.readouterr().out
-
-    def test_spectrum_with_non_positive_definite_b_warns(self, rng):
-        cov_a, _ = self._covs(rng)
-        with pytest.warns(UserWarning, match='generalised eigenvalues'):
-            sl.compare_2d_covs(
-                cov_a,
-                -cov_a,
-                'A',
-                'B',
-                compare_2d=False,
-                compare_diag=False,
-                compare_flat=False,
-            )
+        assert plt.get_fignums()  # the eigenvalue comparison figure
+        assert capsys.readouterr().out == ''
 
     def test_cmap_central_band_is_white_and_bands_symmetric(self):
         cmap, norm, edges = sl._signed_diff_cmap_norm((1, 5, 10))

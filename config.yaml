@@ -429,8 +429,8 @@ precision:
   delta_z_trisp_SSC: 1.e-2 # Type: float. Around 1.e-2 should be enough.
   delta_z_trisp_cNG: 5.e-2 # Type: float. Around 5.e-2 should be enough.
 
-  # Whether or not to use the single-redshift integral approximation for the SSC.
-  use_KE_approximation: False # Type: bool.
+  # Whether or not to use the single-redshift (Takada-Hu) integral approximation for the SSC.
+  use_TH_approximation: False # Type: bool.
 
   # ================================ real-space/COSEBIs ================================
   # ell binning used for the projection of the covariance from harmonic space to real space.

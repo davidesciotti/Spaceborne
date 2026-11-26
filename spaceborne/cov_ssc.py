@@ -235,7 +235,7 @@ def ssc_integral_4D_simps_jax_ke_approx(
 
 class SpaceborneSSC:
     def __init__(self, cfg, pvt_cfg, ccl_obj, z_grid):
-        self.use_ke_approx = cfg['precision']['use_KE_approximation']
+        self.use_ke_approx = cfg['precision']['use_TH_approximation']
         self.z_grid = z_grid
         self.ccl_obj = ccl_obj
         self.k_min = 10 ** cfg['precision']['log10_k_min']

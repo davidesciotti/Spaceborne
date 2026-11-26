@@ -478,12 +478,12 @@ class SpaceborneConfigChecker:
         assert isinstance(_cfgprc['delta_z_trisp_cNG'], float), (
             'precision: delta_z_trisp_cNG must be a float'
         )
-        assert isinstance(_cfgprc['use_KE_approximation'], bool), (
-            'precision: use_KE_approximation must be a boolean'
+        assert isinstance(_cfgprc['use_TH_approximation'], bool), (
+            'precision: use_TH_approximation must be a boolean'
         )
         assert isinstance(_cfgprc['iNKA'], bool), 'precision: iNKA must be a boolean'
         assert isinstance(_cfgprc['spin0'], bool), 'precision: spin0 must be a boolean'
-        assert isinstance(_cfgprc['use_default_ccl_k_a_grids'], bool), (
+        assert isinstance(_cfgprc.get('use_default_ccl_k_a_grids', False), bool), (
             'precision: use_default_ccl_k_a_grids must be a boolean'
         )
 
@@ -784,7 +784,7 @@ class SpaceborneConfigChecker:
 
         if (
             self.cfg['covariance']['SSC']
-            and not self.cfg['precision']['use_KE_approximation']
+            and not self.cfg['precision']['use_TH_approximation']
         ) and (
             compare_against_oc or self.cfg['covariance']['SSC_code'] == 'OneCovariance'
         ):

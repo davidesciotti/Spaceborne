@@ -1870,28 +1870,42 @@ def _plot_2d_covs(cov_a, cov_b, name_a, name_b, title, diff_threshold, diff_boun
         'cov_a and cov_b must be square 2D arrays with equal shapes'
     )
 
-    # summary
+    # summary. Elements that cannot be compared (NaN in only one of the two matrices,
+    # or a non-finite diagonal for the correlation units) are counted rather than
+    # dropped, and prevent the 'agree' verdict
     rel_ab = sym_rel_diff(A, B) * 100  # percent
     corr_units_ab = corr_units_diff(A, B) * 100  # percentage points
-    abs_rel = np.abs(rel_ab[np.isfinite(rel_ab)])
-    abs_corr_units = np.abs(corr_units_ab[np.isfinite(corr_units_ab)])
+    rel_finite, corr_finite = np.isfinite(rel_ab), np.isfinite(corr_units_ab)
+    abs_rel = np.abs(rel_ab[rel_finite])
+    abs_corr_units = np.abs(corr_units_ab[corr_finite])
+    n_not_compared = int(np.sum(~(rel_finite & corr_finite)))
 
     fro_diff = np.linalg.norm(cov_a - cov_b, ord='fro')
     fro_diff_rel = fro_diff / np.linalg.norm(cov_b, ord='fro')
     print(f'Absolute Frobenius difference: {fro_diff:.4e}')
     print(f'Relative Frobenius difference: {fro_diff_rel:.4e}')
 
-    if abs_rel.max() < 1e-5:
+    if n_not_compared == 0 and abs_rel.max() < 1e-5:
         print(f'{name_a} and {name_b} agree to 1e-7 ✅')
     else:
-        print(
-            f'{name_a} vs {name_b}:\n'
-            f'  symmetric relative difference: max = {abs_rel.max():.3g}%; '
-            f'fraction of elements above 1%: {np.mean(abs_rel > 1):.5f}, above 5%: '
-            f'{np.mean(abs_rel > 5):.5f}\n'
-            f'  correlation units: max = {abs_corr_units.max():.3g} pp; fraction of '
-            f'elements above 1 pp: {np.mean(abs_corr_units > 1):.5f}'
-        )
+        lines = [f'{name_a} vs {name_b}:']
+        if n_not_compared:
+            lines.append(
+                f'  {n_not_compared} of {A.size} elements cannot be compared (NaN '
+                'in only one of the two matrices, or non-finite diagonal)'
+            )
+        if abs_rel.size:
+            lines.append(
+                f'  symmetric relative difference: max = {abs_rel.max():.3g}%; '
+                f'fraction of elements above 1%: {np.mean(abs_rel > 1):.5f}, above '
+                f'5%: {np.mean(abs_rel > 5):.5f}'
+            )
+        if abs_corr_units.size:
+            lines.append(
+                f'  correlation units: max = {abs_corr_units.max():.3g} pp; fraction '
+                f'of elements above 1 pp: {np.mean(abs_corr_units > 1):.5f}'
+            )
+        print('\n'.join(lines))
 
     fig, ax = plt.subplots(3, 2, figsize=(17, 21), constrained_layout=True)
 

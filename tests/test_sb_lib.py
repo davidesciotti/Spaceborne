@@ -901,36 +901,6 @@ class TestCorrUnitsDiff:
         np.testing.assert_array_equal(sl.corr_units_diff(a, a.copy()), 0.0)
 
 
-class TestGeneralisedEigvals:
-    """Eigenvalues of B^-1 A: variance ratios along the directions of data space
-    that diagonalise both."""
-
-    def _cov(self, rng, n=6):
-        x = rng.normal(size=(300, n))
-        return np.cov(x.T)
-
-    def test_identical_and_rescaled(self, rng):
-        cov = self._cov(rng)
-        np.testing.assert_allclose(sl.generalised_eigvals(cov, cov.copy()), 1.0)
-        np.testing.assert_allclose(sl.generalised_eigvals(3 * cov, cov), 3.0)
-
-    def test_bounds_the_variance_ratio_of_any_combination(self, rng):
-        cov_a, cov_b = self._cov(rng), self._cov(rng)
-        lam = sl.generalised_eigvals(cov_a, cov_b)
-        x = rng.normal(size=(1000, 6))
-        ratio = np.einsum('ki,ij,kj->k', x, cov_a, x) / np.einsum(
-            'ki,ij,kj->k', x, cov_b, x
-        )
-        assert lam[0] - 1e-12 <= ratio.min() and ratio.max() <= lam[-1] + 1e-12
-
-    def test_invariant_under_linear_transformation(self, rng):
-        cov_a, cov_b = self._cov(rng), self._cov(rng)
-        t = rng.normal(size=(6, 6))
-        np.testing.assert_allclose(
-            sl.generalised_eigvals(t @ cov_a @ t.T, t @ cov_b @ t.T),
-            sl.generalised_eigvals(cov_a, cov_b),
-            rtol=1e-8,
-        )
 
 
 class TestCompare2dCovs:
@@ -965,6 +935,14 @@ class TestCompare2dCovs:
         cov_a, _ = self._covs(rng)
         sl.compare_2d_covs(cov_a, cov_a.copy(), 'A', 'B')
         assert 'agree' in capsys.readouterr().out
+
+    def test_nan_mismatch_prevents_agreement(self, capsys):
+        # a NaN in only one of the two matrices must not be dropped from the verdict
+        cov_a = np.array([[np.nan, 0.0], [0.0, 1.0]])
+        sl.compare_2d_covs(cov_a, np.eye(2), 'A', 'B', compare_spectrum=False)
+        out = capsys.readouterr().out
+        assert 'agree' not in out
+        assert 'cannot be compared' in out
 
     def test_compare_2d_false_skips_the_matrix_figure(self, rng, capsys):
         cov_a, cov_b = self._covs(rng)

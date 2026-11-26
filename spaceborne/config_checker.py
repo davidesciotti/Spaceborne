@@ -427,109 +427,92 @@ class SpaceborneConfigChecker:
             'covariance: save_mcms must be a boolean'
         )
 
-        # PyCCL
-        assert isinstance(self.cfg['PyCCL'], dict), (
-            "Section 'PyCCL' must be a dictionary"
-        )
-        pyccl_cfg = self.cfg['PyCCL']
-        assert isinstance(pyccl_cfg['use_default_k_a_grids'], bool), (
-            'PyCCL: use_default_k_a_grids must be a boolean'
-        )
-
         # precision
-        assert isinstance(self.cfg['precision'], dict), (
-            "Section 'precision' must be a dictionary"
-        )
-        precision_cfg = self.cfg['precision']
-        assert isinstance(precision_cfg['ell_min_proj'], int), (
+        _cfgprc = self.cfg['precision']
+        assert isinstance(_cfgprc, dict), "Section 'precision' must be a dictionary"
+        assert isinstance(_cfgprc['ell_min_proj'], int), (
             'precision: ell_min_proj must be an int'
         )
-        assert isinstance(precision_cfg['ell_max_proj'], int), (
+        assert isinstance(_cfgprc['ell_max_proj'], int), (
             'precision: ell_max_proj must be an int'
         )
-        assert isinstance(precision_cfg['ell_bins_proj_gauss'], int), (
+        assert isinstance(_cfgprc['ell_bins_proj_gauss'], int), (
             'precision: ell_bins_proj_gauss must be an int'
         )
-        assert isinstance(precision_cfg['theta_max_arcmin_cosebis'], int), (
+        assert isinstance(_cfgprc['theta_max_arcmin_cosebis'], int), (
             'precision: theta_max_arcmin_cosebis must be an int'
         )
-        assert isinstance(precision_cfg['theta_steps_cosebis'], int), (
+        assert isinstance(_cfgprc['theta_steps_cosebis'], int), (
             'precision: theta_steps_cosebis must be an int'
         )
-        assert isinstance(precision_cfg['ell_bins_proj_nongauss'], int), (
+        assert isinstance(_cfgprc['ell_bins_proj_nongauss'], int), (
             'precision: ell_bins_proj_nongauss must be an int'
         )
-        assert isinstance(precision_cfg['ell_bins_proj_nongauss_cosebis'], int), (
+        assert isinstance(_cfgprc['ell_bins_proj_nongauss_cosebis'], int), (
             'precision: ell_bins_proj_nongauss_cosebis must be an int'
         )
-        assert isinstance(precision_cfg['proj_gauss_integration_method'], str), (
+        assert isinstance(_cfgprc['proj_gauss_integration_method'], str), (
             'precision: proj_gauss_integration_method must be a string'
         )
-        assert isinstance(precision_cfg['proj_nongauss_integration_method'], str), (
+        assert isinstance(_cfgprc['proj_nongauss_integration_method'], str), (
             'precision: proj_nongauss_integration_method must be a string'
         )
-        assert isinstance(precision_cfg['jax_enable_x64'], bool), (
+        assert isinstance(_cfgprc['jax_enable_x64'], bool), (
             'precision: jax_enable_x64 must be a boolean'
         )
-        assert isinstance(precision_cfg['log10_k_min'], float), (
+        assert isinstance(_cfgprc['log10_k_min'], float), (
             'precision: log10_k_min must be a float'
         )
-        assert isinstance(precision_cfg['log10_k_max'], float), (
+        assert isinstance(_cfgprc['log10_k_max'], float), (
             'precision: log10_k_max must be a float'
         )
-        assert isinstance(precision_cfg['k_steps'], int), (
-            'precision: k_steps must be an int'
-        )
-        assert isinstance(precision_cfg['z_min'], float), (
-            'precision: z_min must be a float'
-        )
-        assert isinstance(precision_cfg['z_max'], float), (
-            'precision: z_max must be a float'
-        )
-        assert isinstance(precision_cfg['delta_z'], float), (
+        assert isinstance(_cfgprc['k_steps'], int), 'precision: k_steps must be an int'
+        assert isinstance(_cfgprc['z_min'], float), 'precision: z_min must be a float'
+        assert isinstance(_cfgprc['z_max'], float), 'precision: z_max must be a float'
+        assert isinstance(_cfgprc['delta_z'], float), (
             'precision: delta_z must be a float'
         )
-        assert isinstance(precision_cfg['delta_z_trisp_SSC'], float), (
+        assert isinstance(_cfgprc['delta_z_trisp_SSC'], float), (
             'precision: delta_z_trisp_SSC must be a float'
         )
-        assert isinstance(precision_cfg['delta_z_trisp_cNG'], float), (
+        assert isinstance(_cfgprc['delta_z_trisp_cNG'], float), (
             'precision: delta_z_trisp_cNG must be a float'
         )
-        assert isinstance(precision_cfg['use_KE_approximation'], bool), (
+        assert isinstance(_cfgprc['use_KE_approximation'], bool), (
             'precision: use_KE_approximation must be a boolean'
         )
-        assert isinstance(precision_cfg['iNKA'], bool), (
-            'precision: iNKA must be a boolean'
+        assert isinstance(_cfgprc['iNKA'], bool), 'precision: iNKA must be a boolean'
+        assert isinstance(_cfgprc['spin0'], bool), 'precision: spin0 must be a boolean'
+        assert isinstance(_cfgprc['use_default_ccl_k_a_grids'], bool), (
+            'precision: use_default_ccl_k_a_grids must be a boolean'
         )
-        assert isinstance(precision_cfg['spin0'], bool), (
-            'precision: spin0 must be a boolean'
-        )
-        pixwin_nside = precision_cfg.get('pixwin_nside')
+
+        pixwin_nside = _cfgprc.get('pixwin_nside')
         assert pixwin_nside is None or (
             isinstance(pixwin_nside, int)
             and pixwin_nside > 0
             and pixwin_nside & (pixwin_nside - 1) == 0
         ), 'precision: pixwin_nside must be None or a power of 2'
-        ell_max_nmt = precision_cfg.get('ell_max_nmt')
+        ell_max_nmt = _cfgprc.get('ell_max_nmt')
         assert ell_max_nmt is None or (
             isinstance(ell_max_nmt, int)
             and not isinstance(ell_max_nmt, bool)
             and ell_max_nmt > 0
         ), 'precision: ell_max_nmt must be None or a positive int'
-        assert isinstance(precision_cfg.get('iNKA_eb_leakage', True), bool), (
+        assert isinstance(_cfgprc.get('iNKA_eb_leakage', True), bool), (
             'precision: iNKA_eb_leakage must be a boolean'
         )
-        assert isinstance(precision_cfg['n_samples_wf'], int), (
+        assert isinstance(_cfgprc['n_samples_wf'], int), (
             'precision: n_samples_wf must be an int'
         )
-        assert isinstance(precision_cfg['spline_params'], (dict, type(None))), (
+        assert isinstance(_cfgprc['spline_params'], (dict, type(None))), (
             'precision: spline_params must be a dictionary or None'
         )
 
-        assert isinstance(precision_cfg['gsl_params'], (dict, type(None))), (
+        assert isinstance(_cfgprc['gsl_params'], (dict, type(None))), (
             'precision: gsl_params must be a dictionary or None'
         )
-        assert isinstance(precision_cfg['spline_params'], (dict, type(None))), (
+        assert isinstance(_cfgprc['spline_params'], (dict, type(None))), (
             'precision: spline_params must be a dictionary or None'
         )
 

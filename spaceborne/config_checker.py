@@ -654,9 +654,11 @@ class SpaceborneConfigChecker:
         assert _cfgpc in ('analytic', 'from_input'), (
             'covariance: pair_counts must be either "analytic" or "from_input"'
         )
-        if _cfgpc == 'from_input' and self.cfg['probe_selection']['space'] in (
-            'real',
-            'cosebis',
+        if (
+            _cfgpc == 'from_input'
+            and self.cfg['probe_selection']['space'] in ('real', 'cosebis')
+            and self.cfg['covariance']['G']
+            and self.cfg['covariance']['include_sampling_noise']
         ):
             pc_filename = self.cfg['covariance']['pair_counts_filename']
             assert pc_filename is not None and os.path.isfile(pc_filename), (
@@ -823,16 +825,6 @@ class SpaceborneConfigChecker:
                 "Please set SSC_code: 'Spaceborne' or disable magnification bias."
             )
 
-        # same for the HOD cNG, whose galaxy legs are paired with the HOD trispectrum.
-        # The linear-bias cNG pairs the full galaxy kernel with the matter
-        # trispectrum, and is therefore correct
-        if pyccl_cng and cov_cfg['ng_cov_gal_bias_model'] == 'HOD' and has_mag:
-            raise ValueError(
-                'The PyCCL cNG with ng_cov_gal_bias_model: HOD does not support '
-                'magnification bias yet. Please set '
-                "ng_cov_gal_bias_model: 'linear_bias' or disable magnification bias."
-            )
-
         # The PyCCL HOD cNG is not reliable:
         # - the HOD trispectrum decays slowly at high k, and the CCL Limber integral
         #   starts at chi = 0 for n(z) with support at z -> 0 (e.g. DR1): the integral
@@ -850,6 +842,17 @@ class SpaceborneConfigChecker:
                 'linear galaxy bias of the C_ells. Please use ng_cov_gal_bias_model: '
                 "'linear_bias' for the moment."
             )
+
+        # same for the HOD cNG, whose galaxy legs are paired with the HOD trispectrum.
+        # The linear-bias cNG pairs the full galaxy kernel with the matter
+        # trispectrum, and is therefore correct
+        if pyccl_cng and cov_cfg['ng_cov_gal_bias_model'] == 'HOD' and has_mag:
+            raise ValueError(
+                'The PyCCL cNG with ng_cov_gal_bias_model: HOD does not support '
+                'magnification bias yet. Please set '
+                "ng_cov_gal_bias_model: 'linear_bias' or disable magnification bias."
+            )
+
         if cov_cfg['ng_cov_gal_bias_model'] == 'HOD':
             warnings.warn(
                 'At the moment, the Cls use linear galaxy bias, so selecting '

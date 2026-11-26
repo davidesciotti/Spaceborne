@@ -313,14 +313,17 @@ covariance:
   # Path to .npz file with the measured pair counts, used only if pair_counts is 'from_input'.
   # It must contain the following keys and shapes:
   # - 'theta_edges_arcmin': shape (n_theta + 1,)
-  # - 'npair_LL', 'npair_GL', 'npair_GG': shape (n_theta, zbins, zbins), only for the
-  #   requested probes ('npair_LL' only, for COSEBIs). LL and GG must be symmetric in the bins.
-  # The counts must be:
-  # - the weighted effective counts, (sum w_a w_b)^2 / sum (w_a w_b)^2.
-  # - the ordered counts (each pair counted twice) in the auto bins, i.e. twice the
+  # - 'sum_w_<probe>', 'sum_w2_<probe>' for probe = LL, GL, GG: shape (n_theta, zbins, zbins),
+  #   only for the requested probes (for COSEBIs, LL only). LL and GG must be symmetric 
+  #   in the tomographic bins.
+  # These are, per theta bin, the sums over the pairs of the weight products,
+  # sum_w = sum w_a w_b, and of their squares, sum_w2 = sum (w_a w_b)^2 (in treecorr: the
+  # 'weight' of a run with weights w and of one with weights w^2. Both equal the number
+  # of pairs for unit weights). The effective pair count is sum_w^2 / sum_w2. They must be:
+  # - the ordered sums (each pair counted twice) in the auto bins, i.e. twice the
   #   output of a single-catalogue treecorr run.
-  # - measured on a fine theta grid covering the 2PCF and COSEBIs theta ranges: the
-  #   counts are rebinned into the 2PCF bins and differentiated for the COSEBIs dN/dtheta.
+  # - measured on a fine theta grid covering the 2PCF and COSEBIs theta ranges: they are
+  #   rebinned into the 2PCF bins and differentiated for the COSEBIs dN/dtheta.
   pair_counts_filename: null # Type: str | None
 
   # ==================================== SSC cov =======================================
@@ -380,11 +383,6 @@ covariance:
   save_mcms: False # Type: bool.
   save_nmt_wsp_to_cache: False # Type: bool. Whether to save the NaMaster workspaces to the cache (the files can be heavy).
   load_cached_nmt_workspaces: False # Type: bool. Whether to load the NaMaster workspaces from the cache, if they have already been computed.
-
-PyCCL:
-  # Whether or not to use the default k and a grids used in CCL.
-  # Setting this to True will make the computation of the cNG trispectrum slower
-  use_default_k_a_grids: False # Type: bool.
 
 ensemble_covariance:
   nreal: 10000 # Type: int. Number of realizations for the ensemble covariance matrix

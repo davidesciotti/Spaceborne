@@ -268,8 +268,9 @@ class CovCOSEBIs(CovarianceProjector):
         )
         # compute from input if required
         if self.pair_counts == 'from_input':
+            # effective counts of the fine bins (see dnpair_from_pair_counts)
             dnpair_meas = cp.dnpair_from_pair_counts(
-                self._get_measured_pair_counts('LL'),
+                cp.effective_pair_counts(*self._get_measured_pair_sums('LL')),
                 self.pc_theta_edges_rad,
                 self.theta_grid_rad,
             )

@@ -354,8 +354,8 @@ class CovRealSpace(CovarianceProjector):
 
         if self.pair_counts == 'from_input':
             probe_ab_hs = const.RS_DIAG_PROBES_TO_HS[probe_ab]
-            npair_meas = cp.rebin_pair_counts(
-                self._get_measured_pair_counts(probe_ab_hs),
+            npair_meas = cp.rebin_effective_pair_counts(
+                *self._get_measured_pair_sums(probe_ab_hs),
                 self.pc_theta_edges_rad,
                 self.theta_edges,
             )

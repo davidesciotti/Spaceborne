@@ -44,35 +44,50 @@ def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
 
 
 # Measured on the data. Conventions:
-# - the counts are the weighted *effective* counts (sum w_a w_b)^2 / sum (w_a w_b)^2,
-# - auto bins hold the *ordered* count (each pair counted twice, as get_npair), not
-#   the unique-pair count of a single-catalogue treecorr run;
+# - for each (fine) theta bin, the file holds the sums over the pairs of the weight
+#   products, sum_w = sum w_a w_b, and of their squares, sum_w2 = sum (w_a w_b)^2.
+#   The effective pair count is sum_w^2 / sum_w2 (= the number of pairs for unit
+#   weights). Unlike the effective counts, the two sums are additive, so they can be
+#   rebinned exactly (see rebin_effective_pair_counts);
+# - auto bins hold the *ordered* sums (each pair counted twice, as get_npair), not
+#   the unique-pair ones of a single-catalogue treecorr run;
 # - arrays have shape (n_theta, zbins, zbins), GL is (theta, lens bin, source bin);
 # - they are indexed by the harmonic-space probe they refer to: 'LL', 'GL', 'GG'.
-def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
-    """Read the measured pair counts from a .npz file.
+PAIR_SUMS = ('sum_w', 'sum_w2')
 
-    The file contains 'theta_edges_arcmin', shape (n_theta + 1,), and any of
-    'npair_LL', 'npair_GL', 'npair_GG', each of shape (n_theta, zbins, zbins).
+
+def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
+    """Read the measured pair weight sums from a .npz file.
+
+    The file contains 'theta_edges_arcmin', shape (n_theta + 1,), and, for any of the
+    probes 'LL', 'GL', 'GG', the two arrays 'sum_w_<probe>' and 'sum_w2_<probe>',
+    each of shape (n_theta, zbins, zbins).
 
     Returns
     -------
     theta_edges_rad : np.ndarray, shape (n_theta + 1,)
-    npair_dict : dict
-        {'LL' | 'GL' | 'GG': array of shape (n_theta, zbins, zbins)}, only for the
-        probes present in the file.
+    pair_sums_dict : dict
+        {'LL' | 'GL' | 'GG': (sum_w, sum_w2)}, only for the probes present in the
+        file, each array of shape (n_theta, zbins, zbins).
     """
 
-    # load data into npair_dict and into theta_edges_arcmin
+    # load data into pair_sums_dict and into theta_edges_arcmin
     with np.load(filename) as data:
         if 'theta_edges_arcmin' not in data:
             raise KeyError(f"'theta_edges_arcmin' not found in {filename}")
         theta_edges_arcmin = np.asarray(data['theta_edges_arcmin'], dtype=float)
-        npair_dict = {
-            key: np.asarray(data[f'npair_{key}'], dtype=float)
-            for key in const.HS_DIAG_PROBES
-            if f'npair_{key}' in data
-        }
+        pair_sums_dict = {}
+        for key in const.HS_DIAG_PROBES:
+            present = [f'{s}_{key}' in data for s in PAIR_SUMS]
+            if any(present) and not all(present):
+                raise KeyError(
+                    f'{filename} must contain both sum_w_{key} and sum_w2_{key}, '
+                    'or neither'
+                )
+            if all(present):
+                pair_sums_dict[key] = tuple(
+                    np.asarray(data[f'{s}_{key}'], dtype=float) for s in PAIR_SUMS
+                )
 
     # various sanity checks
     if (
@@ -85,27 +100,38 @@ def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
             f'theta_edges_arcmin in {filename} must be 1D, finite, positive and '
             'increasing'
         )
-    if not npair_dict:
-        raise ValueError(f'No npair_LL, npair_GL or npair_GG array found in {filename}')
+    if not pair_sums_dict:
+        raise ValueError(
+            f'No sum_w_<probe>, sum_w2_<probe> arrays (probe = LL, GL, GG) found in '
+            f'{filename}'
+        )
 
     expected_shape = (len(theta_edges_arcmin) - 1, zbins, zbins)
-    for key, npair in npair_dict.items():
-        if npair.shape != expected_shape:
-            raise ValueError(
-                f'npair_{key} in {filename} has shape {npair.shape}, expected '
-                f'(n_theta, zbins, zbins) = {expected_shape}'
-            )
-
-        if np.any(npair <= 0) or not np.all(np.isfinite(npair)):
-            raise ValueError(f'npair_{key} in {filename} must be finite and positive')
-        if key in ('LL', 'GG') and not np.allclose(npair, npair.transpose(0, 2, 1)):
-            raise ValueError(
-                f'npair_{key} in {filename} must be symmetric in (zi, zj): please '
-                'provide both triangles'
-            )
+    for key, sums in pair_sums_dict.items():
+        for name, arr in zip(PAIR_SUMS, sums, strict=True):
+            if arr.shape != expected_shape:
+                raise ValueError(
+                    f'{name}_{key} in {filename} has shape {arr.shape}, expected '
+                    f'(n_theta, zbins, zbins) = {expected_shape}'
+                )
+            if np.any(arr <= 0) or not np.all(np.isfinite(arr)):
+                raise ValueError(
+                    f'{name}_{key} in {filename} must be finite and positive'
+                )
+            if key in ('LL', 'GG') and not np.allclose(arr, arr.transpose(0, 2, 1)):
+                raise ValueError(
+                    f'{name}_{key} in {filename} must be symmetric in (zi, zj): '
+                    'please provide both triangles'
+                )
 
     theta_edges_rad = np.deg2rad(theta_edges_arcmin / 60)
-    return theta_edges_rad, npair_dict
+    return theta_edges_rad, pair_sums_dict
+
+
+def effective_pair_counts(sum_w: np.ndarray, sum_w2: np.ndarray) -> np.ndarray:
+    """Effective number of pairs, (sum w_a w_b)^2 / sum (w_a w_b)^2: the shape-noise
+    variance of a weighted pair estimator is sigma_eps^4 / (effective count)."""
+    return sum_w**2 / sum_w2
 
 
 def _check_theta_range(theta_min, theta_max, theta_edges_in, what):
@@ -124,8 +150,10 @@ def _check_theta_range(theta_min, theta_max, theta_edges_in, what):
 def rebin_pair_counts(
     npair: np.ndarray, theta_edges_in: np.ndarray, theta_edges_out: np.ndarray
 ) -> np.ndarray:
-    """Pair counts in the (coarse) bins defined by theta_edges_out, from the (fine)
-    ones defined by theta_edges_in.
+    """An additive per-bin pair quantity (pair counts, or sums of pair weights) in
+    the (coarse) bins defined by theta_edges_out, from the (fine) ones defined by
+    theta_edges_in. Not for effective counts, which are not additive: use
+    rebin_effective_pair_counts.
 
     The cumulative count N(<theta) is interpolated linearly in theta^2 between the
     input edges, and differenced at the output edges. Fine bins entirely within a
@@ -148,10 +176,33 @@ def rebin_pair_counts(
     return np.diff(cumsum_out, axis=0)
 
 
+def rebin_effective_pair_counts(
+    sum_w: np.ndarray,
+    sum_w2: np.ndarray,
+    theta_edges_in: np.ndarray,
+    theta_edges_out: np.ndarray,
+) -> np.ndarray:
+    """Effective pair counts in the (coarse) bins defined by theta_edges_out, from the
+    weight sums in the (fine) bins defined by theta_edges_in.
+
+    The two sums are rebinned separately (they are additive), and only then combined
+    into sum_w^2 / sum_w2. Summing the fine effective counts instead would
+    overestimate the coarse ones wherever the pair weights vary across the merged
+    fine bins (sum_i x_i^2 / y_i >= (sum_i x_i)^2 / sum_i y_i).
+    """
+    sum_w_out = rebin_pair_counts(sum_w, theta_edges_in, theta_edges_out)
+    sum_w2_out = rebin_pair_counts(sum_w2, theta_edges_in, theta_edges_out)
+    return effective_pair_counts(sum_w_out, sum_w2_out)
+
+
 def dnpair_from_pair_counts(
     npair: np.ndarray, theta_edges_in: np.ndarray, theta_out: np.ndarray
 ) -> np.ndarray:
     """dN/dtheta on theta_out from (fine) pair counts.
+
+    For weighted pairs, pass the effective counts of the fine bins: the effective pair
+    density (d sum_w / dtheta)^2 / (d sum_w2 / dtheta) is their count / bin width, in
+    the limit of fine bins.
 
     dN/dtheta is count / bin width, at the arithmetic bin centres (where it is exact
     for the ideal counts), interpolated linearly in log-log, and extrapolated within
@@ -626,21 +677,24 @@ class CovarianceProjector:
         """Pair counts for the SN term: 'analytic' (ideal, from n_eff and the survey
         area) or 'from_input' (measured, read from file)."""
         self.pair_counts = self.cfg['covariance']['pair_counts']
-        self.pc_theta_edges_rad, self.pc_npair_dict = None, None
-        if self.pair_counts == 'from_input':
-            self.pc_theta_edges_rad, self.pc_npair_dict = load_pair_counts(
+        self.pc_theta_edges_rad, self.pc_pair_sums_dict = None, None
+        if (
+            self.pair_counts == 'from_input'
+            and self.cfg['covariance']['include_sampling_noise']
+        ):
+            self.pc_theta_edges_rad, self.pc_pair_sums_dict = load_pair_counts(
                 self.cfg['covariance']['pair_counts_filename'], self.zbins
             )
 
-    def _get_measured_pair_counts(self, probe_hs: str) -> np.ndarray:
-        """Measured pair counts for the harmonic-space probe ('LL', 'GL', 'GG'), on
-        the file's theta grid."""
-        if probe_hs not in self.pc_npair_dict:
+    def _get_measured_pair_sums(self, probe_hs: str) -> tuple[np.ndarray, np.ndarray]:
+        """Measured pair weight sums (sum_w, sum_w2) for the harmonic-space probe
+        ('LL', 'GL', 'GG'), on the file's theta grid."""
+        if probe_hs not in self.pc_pair_sums_dict:
             raise KeyError(
-                f'npair_{probe_hs} is needed for the SN term, but it is not in '
-                f'{self.cfg["covariance"]["pair_counts_filename"]}'
+                f'sum_w_{probe_hs} and sum_w2_{probe_hs} are needed for the SN term, '
+                f'but they are not in {self.cfg["covariance"]["pair_counts_filename"]}'
             )
-        return self.pc_npair_dict[probe_hs]
+        return self.pc_pair_sums_dict[probe_hs]
 
     def proj_mix_sva_simps_vectorized(
         self,

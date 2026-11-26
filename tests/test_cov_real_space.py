@@ -305,7 +305,7 @@ class TestMixNoiseNormalisation:
     @classmethod
     def _write_ideal_pair_counts(cls, tmp_path, unique_autos):
         """Ideal (ordered) counts, with the same area and n_eff as the analytic SN,
-        on a grid 4x finer than the fixture's theta bins."""
+        on a grid 4x finer than the fixture's theta bins (as unit-weight sums)."""
         from spaceborne import constants as const
         from spaceborne import cov_projector as cp
 
@@ -324,7 +324,9 @@ class TestMixNoiseNormalisation:
             )
             if unique_autos and probe_a == probe_b:
                 npair[:, np.arange(cls.ZBINS), np.arange(cls.ZBINS)] /= 2
-            data[f'npair_{key}'] = npair
+            # unit weights: both weight sums equal the number of pairs
+            data[f'sum_w_{key}'] = npair
+            data[f'sum_w2_{key}'] = npair
         fname = tmp_path / 'pair_counts.npz'
         np.savez(fname, **data)
         return str(fname)

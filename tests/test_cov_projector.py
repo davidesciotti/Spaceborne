@@ -576,6 +576,31 @@ class TestRebinPairCounts:
         np.testing.assert_allclose(out.sum(axis=0), npair.sum(axis=0), rtol=1e-14)
 
 
+class TestRebinEffectivePairCounts:
+    """The weight sums are rebinned separately, and combined only at the end."""
+
+    def test_unequal_weights_are_combined_exactly(self):
+        # two fine bins with pair weights [1, 1] and [10, 10], merged into one:
+        # each has 2 effective pairs, the merged bin 22^2 / 202 (not 2 + 2)
+        sum_w = np.array([2.0, 20.0])[:, None, None]
+        sum_w2 = np.array([2.0, 200.0])[:, None, None]
+        edges = np.array([1.0, 2.0, 3.0])
+        out = cp.rebin_effective_pair_counts(sum_w, sum_w2, edges, np.array([1.0, 3.0]))
+        np.testing.assert_allclose(out[0, 0, 0], 22**2 / 202, rtol=1e-14)
+        fine = cp.effective_pair_counts(sum_w, sum_w2)
+        assert out[0, 0, 0] < fine.sum()  # summing the effective counts overestimates
+
+    def test_unit_weights_reduce_to_rebinned_counts(self, rng):
+        npair = rng.uniform(1, 2, (20, 2, 2))
+        fine = np.geomspace(1.0, 100.0, 21)
+        coarse = np.geomspace(1.3, 97.0, 6)
+        np.testing.assert_allclose(
+            cp.rebin_effective_pair_counts(npair, npair, fine, coarse),
+            cp.rebin_pair_counts(npair, fine, coarse),
+            rtol=1e-12,
+        )
+
+
 class TestDnpairFromPairCounts:
     """dN/dtheta = count / bin width at the (arithmetic) bin centres, interpolated
     linearly in log-log. For the ideal counts this is exactly 2 pi theta A n_i n_j."""
@@ -621,14 +646,13 @@ class TestLoadPairCounts:
     def _write(self, path, **overrides):
         edges = np.geomspace(1.0, 300.0, 11)
         sym = np.ones((10, self.ZBINS, self.ZBINS))
-        data = {
-            'theta_edges_arcmin': edges,
-            'npair_LL': sym,
-            'npair_GL': np.arange(1, 10 * self.ZBINS**2 + 1, dtype=float).reshape(
-                10, self.ZBINS, self.ZBINS
-            ),
-            'npair_GG': 2 * sym,
-        }
+        gl = np.arange(1, 10 * self.ZBINS**2 + 1, dtype=float).reshape(
+            10, self.ZBINS, self.ZBINS
+        )
+        data = {'theta_edges_arcmin': edges}
+        for key, arr in {'LL': sym, 'GL': gl, 'GG': 2 * sym}.items():
+            data[f'sum_w_{key}'] = arr
+            data[f'sum_w2_{key}'] = 0.5 * arr
         data.update(overrides)
         data = {k: v for k, v in data.items() if v is not None}
         np.savez(path, **data)
@@ -636,17 +660,30 @@ class TestLoadPairCounts:
 
     def test_loads_and_converts_edges_to_radians(self, tmp_path):
         fname = self._write(tmp_path / 'pc.npz')
-        edges_rad, npair_dict = cp.load_pair_counts(fname, self.ZBINS)
+        edges_rad, pair_sums_dict = cp.load_pair_counts(fname, self.ZBINS)
         np.testing.assert_allclose(
             edges_rad, np.deg2rad(np.geomspace(1.0, 300.0, 11) / 60)
         )
-        assert set(npair_dict) == {'LL', 'GL', 'GG'}
-        assert npair_dict['GL'][0, 0, 1] == 2.0  # [theta, lens bin, source bin]
+        assert set(pair_sums_dict) == {'LL', 'GL', 'GG'}
+        sum_w, sum_w2 = pair_sums_dict['GL']
+        assert sum_w[0, 0, 1] == 2.0  # [theta, lens bin, source bin]
+        assert sum_w2[0, 0, 1] == 1.0
 
     def test_missing_probes_are_allowed(self, tmp_path):
-        fname = self._write(tmp_path / 'pc.npz', npair_GL=None, npair_GG=None)
-        _, npair_dict = cp.load_pair_counts(fname, self.ZBINS)
-        assert set(npair_dict) == {'LL'}
+        fname = self._write(
+            tmp_path / 'pc.npz',
+            sum_w_GL=None,
+            sum_w2_GL=None,
+            sum_w_GG=None,
+            sum_w2_GG=None,
+        )
+        _, pair_sums_dict = cp.load_pair_counts(fname, self.ZBINS)
+        assert set(pair_sums_dict) == {'LL'}
+
+    def test_only_one_of_the_two_sums_raises(self, tmp_path):
+        fname = self._write(tmp_path / 'pc.npz', sum_w2_GL=None)
+        with pytest.raises(KeyError, match='sum_w_GL and sum_w2_GL'):
+            cp.load_pair_counts(fname, self.ZBINS)
 
     def test_missing_edges_raise(self, tmp_path):
         fname = self._write(tmp_path / 'pc.npz', theta_edges_arcmin=None)
@@ -654,8 +691,8 @@ class TestLoadPairCounts:
             cp.load_pair_counts(fname, self.ZBINS)
 
     def test_wrong_shape_raises(self, tmp_path):
-        fname = self._write(tmp_path / 'pc.npz', npair_LL=np.ones((10, 2, 2)))
-        with pytest.raises(ValueError, match='npair_LL'):
+        fname = self._write(tmp_path / 'pc.npz', sum_w_LL=np.ones((10, 2, 2)))
+        with pytest.raises(ValueError, match='sum_w_LL'):
             cp.load_pair_counts(fname, self.ZBINS)
 
     @pytest.mark.parametrize(
@@ -665,9 +702,12 @@ class TestLoadPairCounts:
         fname = self._write(
             tmp_path / 'pc.npz',
             theta_edges_arcmin=np.array(edges),
-            npair_LL=np.ones((2, self.ZBINS, self.ZBINS)),
-            npair_GL=None,
-            npair_GG=None,
+            sum_w_LL=np.ones((2, self.ZBINS, self.ZBINS)),
+            sum_w2_LL=np.ones((2, self.ZBINS, self.ZBINS)),
+            sum_w_GL=None,
+            sum_w2_GL=None,
+            sum_w_GG=None,
+            sum_w2_GG=None,
         )
         with pytest.raises(ValueError, match='theta_edges_arcmin'):
             cp.load_pair_counts(fname, self.ZBINS)
@@ -675,14 +715,14 @@ class TestLoadPairCounts:
     def test_non_positive_counts_raise(self, tmp_path):
         bad = np.ones((10, self.ZBINS, self.ZBINS))
         bad[3, 1, 1] = 0.0
-        fname = self._write(tmp_path / 'pc.npz', npair_GG=bad)
+        fname = self._write(tmp_path / 'pc.npz', sum_w2_GG=bad)
         with pytest.raises(ValueError, match='positive'):
             cp.load_pair_counts(fname, self.ZBINS)
 
     def test_asymmetric_auto_probe_raises(self, tmp_path):
         bad = np.ones((10, self.ZBINS, self.ZBINS))
         bad[:, 0, 1] = 2.0
-        fname = self._write(tmp_path / 'pc.npz', npair_LL=bad)
+        fname = self._write(tmp_path / 'pc.npz', sum_w_LL=bad)
         with pytest.raises(ValueError, match='symmetric'):
             cp.load_pair_counts(fname, self.ZBINS)
 
@@ -726,7 +766,10 @@ class TestCosebisSnPairCounts:
             self.N_EFF_SRC[None, None, :],
         )
         fname = tmp_path / f'pc_{scale}_{theta_max_arcmin}.npz'
-        np.savez(fname, theta_edges_arcmin=edges_arcmin, npair_LL=npair)
+        # unit weights: both weight sums equal the number of pairs
+        np.savez(
+            fname, theta_edges_arcmin=edges_arcmin, sum_w_LL=npair, sum_w2_LL=npair
+        )
         return str(fname)
 
     def _make(self, pair_counts, filename=None):
@@ -745,6 +788,7 @@ class TestCosebisSnPairCounts:
             'covariance': {
                 'pair_counts': pair_counts,
                 'pair_counts_filename': filename,
+                'include_sampling_noise': True,
             },
         }
         obj._set_theta_binning()
@@ -780,10 +824,10 @@ class TestCosebisSnPairCounts:
         # counts falling with theta, as for a footprint with edges and holes
         fname = self._write_counts(tmp_path)
         with np.load(fname) as data:
-            edges, npair = data['theta_edges_arcmin'], data['npair_LL']
+            edges, npair = data['theta_edges_arcmin'], data['sum_w_LL']
         centres = 0.5 * (edges[1:] + edges[:-1])
         npair = npair * (1 - 0.4 * centres / centres[-1])[:, None, None]
-        np.savez(fname, theta_edges_arcmin=edges, npair_LL=npair)
+        np.savez(fname, theta_edges_arcmin=edges, sum_w_LL=npair, sum_w2_LL=npair)
         obj = self._make('from_input', fname)
         sn_auto = obj.cov_sn_cs(self.AMAX)
         sn_eb = obj.cov_sn_cs(self.AMAX, eb_cross=True)

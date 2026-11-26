@@ -310,6 +310,11 @@ cfg['misc'].setdefault('bench_filename', 'benchmark')
 # The two coincide for a binary mask.
 cfg['ensemble_covariance'].setdefault('noise_model', 'catalogue')
 
+# Whether or not to use the default k and a grids used in CCL.
+# Setting this to True will make the computation of the cNG trispectrum slower,
+# and gain extremely little in precision
+cfg['precision'].setdefault('use_default_ccl_k_a_grids', False)
+
 # ! ======================== END HARDCODED OPTIONS/PARAMETERS ==========================
 
 # convenence settings that have been hardcoded
@@ -619,7 +624,7 @@ if not np.all(np.diff(z_grid_trisp_ssc) > 0):
 if not np.all(np.diff(z_grid_trisp_cng) > 0):
     raise ValueError('z grid is not in ascending order!')
 
-if cfg['PyCCL']['use_default_k_a_grids']:
+if cfg['precision']['use_default_ccl_k_a_grids']:
     ccl_obj.a_grid_trisp_ssc = a_default_grid_ccl
     ccl_obj.a_grid_trisp_cng = a_default_grid_ccl
     ccl_obj.logn_k_grid_trisp_ssc = lk_default_grid_ccl

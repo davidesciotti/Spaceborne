@@ -672,7 +672,7 @@ class CCLInterface:
             warnings.warn(
                 f'{which_ng_cov} cov: qag_quad integration failed for '
                 f'{len(failed_blocks)} (zi, zj, zk, zl) combinations, '
-                f'fell back to spline: {failed_blocks}',
+                f'fell back to spline',
                 stacklevel=2,
             )
 

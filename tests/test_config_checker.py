@@ -469,7 +469,7 @@ class TestCheckOnecov:
         with pytest.raises(ValueError):
             checker.check_onecov()
 
-    def test_ssc_without_ke_and_oc_raises(self, valid_cfg):
+    def test_ssc_without_th_and_oc_raises(self, valid_cfg):
         valid_cfg['covariance']['SSC'] = True
         valid_cfg['precision']['use_TH_approximation'] = False
         valid_cfg['covariance']['SSC_code'] = 'OneCovariance'

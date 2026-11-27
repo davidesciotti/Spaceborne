@@ -319,17 +319,17 @@ class TestClIntegralPrefactor:
         with pytest.raises(ValueError, match='Euclid.*PySSC'):
             cl.cl_integral_prefactor(1.0, 'bogus', use_h_units=False, cosmo_ccl=cosmo)
 
-    def test_ke_to_euclid_ratio_is_inverse_r_squared(self, cosmo):
+    def test_th_to_euclid_ratio_is_inverse_r_squared(self, cosmo):
         """The TH-approximation prefactor differs from the Euclid one by 1/r^2."""
         z = np.array([0.5, 1.0, 2.0])
         r = cl.ccl_comoving_distance(z, use_h_units=False, cosmo_ccl=cosmo)
         euclid = cl.cl_integral_prefactor(
             z, 'Euclid', use_h_units=False, cosmo_ccl=cosmo
         )
-        ke = cl.cl_integral_prefactor(
-            z, 'Euclid_KE_approximation', use_h_units=False, cosmo_ccl=cosmo
+        th = cl.cl_integral_prefactor(
+            z, 'Euclid_TH_approximation', use_h_units=False, cosmo_ccl=cosmo
         )
-        np.testing.assert_allclose(ke / euclid, 1.0 / r**2, rtol=1e-10)
+        np.testing.assert_allclose(th / euclid, 1.0 / r**2, rtol=1e-10)
 
     def test_euclid_prefactor_positive(self, cosmo):
         z = np.array([0.3, 1.0, 2.5])

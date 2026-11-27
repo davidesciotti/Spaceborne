@@ -15,7 +15,7 @@ down without standing up the full pipeline:
 * ``interp_uniform`` / ``linear_pk_transforms`` -- the small numerical building
   blocks ``sigma2_z1z2`` is built from.
 
-* ``ssc_integral_4D_simps_jax`` / ``..._ke_approx`` -- the JAX Simpson-rule
+* ``ssc_integral_4D_simps_jax`` / ``..._th_approx`` -- the JAX Simpson-rule
   contractions that assemble the 4D covariance. We check them against an explicit
   brute-force ``for``-loop reference (non-circular), plus the symmetry and
   linearity that follow from the einsum structure.
@@ -344,7 +344,7 @@ def _brute_force_ssc_2d(d_ab, d_cd, pref, sigma2, dz, weights):
     return out
 
 
-def _brute_force_ssc_ke(d_ab, d_cd, pref, sigma2, dz, weights):
+def _brute_force_ssc_th(d_ab, d_cd, pref, sigma2, dz, weights):
     """Explicit loop reference for the TH-approximation (1D sigma2)."""
     nbl, zp_ab, _ = d_ab.shape
     zp_cd = d_cd.shape[1]
@@ -451,14 +451,14 @@ class TestSscIntegral2D:
 
 
 # ----------------------------------------------------------------------------- #
-# ssc_integral_4D_simps_jax_ke_approx  (1D sigma2)
+# ssc_integral_4D_simps_jax_th_approx  (1D sigma2)
 # ----------------------------------------------------------------------------- #
 class TestSscIntegralTH:
     """Tests for the TH-approximation Simpson-rule SSC integral."""
 
     def _call(self, p):
         return np.array(
-            cov_ssc.ssc_integral_4D_simps_jax_ke_approx(
+            cov_ssc.ssc_integral_4D_simps_jax_th_approx(
                 jnp.array(p['d_ab']), jnp.array(p['d_cd']),
                 jnp.array(p['pref']), jnp.array(p['sigma2_1d']),
                 p['dz'], jnp.array(p['weights']),
@@ -476,7 +476,7 @@ class TestSscIntegralTH:
     def test_matches_brute_force(self, ssc_inputs):
         """The jitted einsum equals an explicit nested-loop reference."""
         out = self._call(ssc_inputs)
-        ref = _brute_force_ssc_ke(
+        ref = _brute_force_ssc_th(
             ssc_inputs['d_ab'], ssc_inputs['d_cd'], ssc_inputs['pref'],
             ssc_inputs['sigma2_1d'], ssc_inputs['dz'], ssc_inputs['weights'],
         )
@@ -492,7 +492,7 @@ class TestSscIntegralTH:
         sig = rng.standard_normal(zsteps)
 
         out = np.array(
-            cov_ssc.ssc_integral_4D_simps_jax_ke_approx(
+            cov_ssc.ssc_integral_4D_simps_jax_th_approx(
                 jnp.array(d), jnp.array(d), jnp.array(pref),
                 jnp.array(sig), 0.1, jnp.array(weights),
             )
@@ -506,7 +506,7 @@ class TestSscIntegralTH:
         p = ssc_inputs
         base = self._call(p)
         scaled = np.array(
-            cov_ssc.ssc_integral_4D_simps_jax_ke_approx(
+            cov_ssc.ssc_integral_4D_simps_jax_th_approx(
                 jnp.array(-2.0 * p['d_ab']), jnp.array(p['d_cd']),
                 jnp.array(p['pref']), jnp.array(p['sigma2_1d']),
                 p['dz'], jnp.array(p['weights']),

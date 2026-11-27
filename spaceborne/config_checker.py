@@ -953,6 +953,14 @@ class SpaceborneConfigChecker:
                     f'the configured {forced_keys} will be ignored.',
                     stacklevel=2,
                 )
+                
+    def check_implemented(self) -> None:
+        """Check that the requested configuration is implemented."""
+        if self.cfg['covariance']['which_pk_responses'] == 'separate_universe':
+            raise NotImplementedError(
+                'The separate universe response needs updating. '
+                'Please use "which_pk_responses: halo_model" for the moment.'
+            )
 
     def run_all_checks(self) -> None:
         self.check_types()
@@ -970,3 +978,4 @@ class SpaceborneConfigChecker:
         self.check_cosmo()
         self.check_cov()
         self.check_projection_methods()
+        self.check_implemented()

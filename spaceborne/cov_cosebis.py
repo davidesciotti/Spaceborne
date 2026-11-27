@@ -253,50 +253,38 @@ class CovCOSEBIs(CovarianceProjector):
 
         # construct term in square brackets: [T+a T+b \pm T-a T-b]
         # (+ for EE and BB, - for EB); t is the theta index, a and b the mode indices
-        t_term_1 = np.einsum('ta, tb -> tab', t_plus, t_plus)
-        t_term_2 = np.einsum('ta, tb -> tab', t_minus, t_minus)
+        t_plus_plus = np.einsum('ta, tb -> tab', t_plus, t_plus)
+        t_minus_minus = np.einsum('ta, tb -> tab', t_minus, t_minus)
         # shape (self.nbt, n_modes, n_modes)
-        t_term = t_term_1 - t_term_2 if eb_cross else t_term_1 + t_term_2
+        if eb_cross:
+            t_term = t_plus_plus - t_minus_minus
+        else:
+            t_term = t_plus_plus + t_minus_minus
 
-        # 3. Compute analytical dnpair (differential pairs per unit angle)
+        # 3. Compute dnpair (differential pairs per unit angle), analytical or measured
         n_eff_src = np.asarray(self.n_eff_src)
-        npair_arr = cp.get_dnpair(
+        dnpair_ideal = cp.dnpairs_analytical(
             theta=self.theta_grid_rad[:, None, None],
             survey_area_sr=amax_abcd,
             n_eff_i=n_eff_src[None, :, None],
             n_eff_j=n_eff_src[None, None, :],
         )
-        # compute from input if required
+
         if self.pair_counts == 'from_input':
             # effective counts of the fine bins (see dnpair_from_pair_counts)
-            dnpair_meas = cp.dnpair_from_pair_counts(
-                cp.effective_pair_counts(*self._get_measured_pair_sums('LL')),
-                self.pc_theta_edges_rad,
-                self.theta_grid_rad,
+            sum_w, sum_w2 = self._get_measured_pair_sums('LL')
+            dnpair = cp.dnpair_from_pair_counts(
+                sum_w**2 / sum_w2, self.pc_theta_edges_rad, self.theta_grid_rad
             )
-            # compare and warn if they differ
-            cp.warn_if_pair_counts_off(dnpair_meas, npair_arr, 'LL')
-            npair_arr = dnpair_meas
-
-        # * alternatively, you can do
-        # for theta_ix, zi, zj in itertools.product(
-        #     range(self.nbt), range(self.zbins), range(self.zbins)
-        # ):
-        #     npair_arr[theta_ix, zi, zj] = cp.get_npair(
-        #         theta_1_u=self.theta_edges_rad[theta_ix],
-        #         theta_1_l=self.theta_edges_rad[theta_ix + 1],
-        #         survey_area_sr=amax_abcd,
-        #         n_eff_i=self.n_eff_src[zi],
-        #         n_eff_j=self.n_eff_src[zj],
-        #     )
-        # dtheta = np.diff(self.theta_edges_rad)
-        # npair_arr /= dtheta[:, None, None]
+            cp.warn_if_pair_counts_off(dnpair, dnpair_ideal, 'LL')
+        else:
+            dnpair = dnpair_ideal
 
         # 4. Broadcast shapes, construct integrand and integrate
         integrand = (
             self.theta_grid_rad[:, None, None, None, None] ** 2
             * t_term[:, :, :, None, None]
-            / npair_arr[:, None, None, :, :]
+            / dnpair[:, None, None, :, :]
         )
 
         integral = simps(y=integrand, x=self.theta_grid_rad, axis=0)
@@ -367,26 +355,14 @@ class CovCOSEBIs(CovarianceProjector):
             )
 
         elif term == 'sn':
-            # user switches off SN
             if not self.include_sampling_noise:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
-
-            # case: include_sampling_noise is True AND probe_ab == probe_cd
-            # (En x En) and (Bn x Bn) cases
-            elif probe_ab == probe_cd:
+            elif probe_ab == probe_cd:  # (En, En) and (Bn, Bn)
                 cov_out_6d = self.cov_sn_cs(amax_abcd=amax_abcd, eb_cross=False)
-
-            # case: include_sampling_noise is True
-            #       AND probe_ab != probe_cd
-            #       AND pair_counts == 'from_input'
-            # ExB SN vanishes for analytic (ideal) pair counts, but not for the
-            # measured ones
             elif self.pair_counts == 'from_input':
+                # (En, Bn): the E x B SN vanishes for the analytic (ideal) pair
+                # counts, but not for the measured ones
                 cov_out_6d = self.cov_sn_cs(amax_abcd=amax_abcd, eb_cross=True)
-
-            # case: include_sampling_noise is True
-            #       AND probe_ab != probe_cd
-            #       AND pair_counts != 'from_input'
             else:
                 cov_out_6d = np.zeros(self.cov_shape_6d)
 

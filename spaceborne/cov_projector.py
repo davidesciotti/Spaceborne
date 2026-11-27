@@ -22,8 +22,9 @@ from spaceborne import constants as const
 
 # ! ============================= pair counts ===============================
 # Analytical
-def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
-    r"""Compute total (ideal) number of pairs in a theta bin, i.e., N(theta).
+def npairs_analytical(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
+    r"""Compute total ("analytical"/"ideal") number of pairs in a theta bin,
+    i.e.:
     N(θ) = π (θ_u^2 - θ_l^2) * A * n_i * n_j
          = \int_{θ_l}^{θ_u} dθ (dN(θ)/dθ)
     """
@@ -34,7 +35,7 @@ def get_npair(theta_1_u, theta_1_l, survey_area_sr, n_eff_i, n_eff_j):
     )
 
 
-def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
+def dnpairs_analytical(theta, survey_area_sr, n_eff_i, n_eff_j):
     r"""Compute differential (ideal) number of pairs, i.e. dN(theta)/dtheta.
     dN(θ)/dθ = 2π θ * A * n_i * n_j
     """
@@ -49,8 +50,8 @@ def get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j):
 #   The effective pair count is sum_w^2 / sum_w2 (= the number of pairs for unit
 #   weights). Unlike the effective counts, the two sums are additive, so they can be
 #   rebinned exactly (see rebin_effective_pair_counts);
-# - auto bins hold the *ordered* sums (each pair counted twice, as get_npair), not
-#   the unique-pair ones of a single-catalogue treecorr run;
+# - auto bins hold the *ordered* sums (each pair counted twice, as in
+#   npairs_analytical), not the unique-pair ones of a single-catalogue treecorr run;
 # - arrays have shape (n_theta, zbins, zbins), GL is (theta, lens bin, source bin);
 # - they are indexed by the harmonic-space probe they refer to: 'LL', 'GL', 'GG'.
 PAIR_SUMS = ('sum_w', 'sum_w2')
@@ -70,8 +71,6 @@ def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
         {'LL' | 'GL' | 'GG': (sum_w, sum_w2)}, only for the probes present in the
         file, each array of shape (n_theta, zbins, zbins).
     """
-
-    # load data into pair_sums_dict and into theta_edges_arcmin
     with np.load(filename) as data:
         if 'theta_edges_arcmin' not in data:
             raise KeyError(f"'theta_edges_arcmin' not found in {filename}")
@@ -79,17 +78,17 @@ def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
         pair_sums_dict = {}
         for key in const.HS_DIAG_PROBES:
             present = [f'{s}_{key}' in data for s in PAIR_SUMS]
-            if any(present) and not all(present):
+            if not any(present):
+                continue
+            if not all(present):
                 raise KeyError(
                     f'{filename} must contain both sum_w_{key} and sum_w2_{key}, '
                     'or neither'
                 )
-            if all(present):
-                pair_sums_dict[key] = tuple(
-                    np.asarray(data[f'{s}_{key}'], dtype=float) for s in PAIR_SUMS
-                )
+            pair_sums_dict[key] = tuple(
+                np.asarray(data[f'{s}_{key}'], dtype=float) for s in PAIR_SUMS
+            )
 
-    # various sanity checks
     if (
         theta_edges_arcmin.ndim != 1
         or not np.all(np.isfinite(theta_edges_arcmin))
@@ -118,6 +117,7 @@ def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
                 raise ValueError(
                     f'{name}_{key} in {filename} must be finite and positive'
                 )
+            # LL and GG are symmetric in (zi, zj), GL is not
             if key in ('LL', 'GG') and not np.allclose(arr, arr.transpose(0, 2, 1)):
                 raise ValueError(
                     f'{name}_{key} in {filename} must be symmetric in (zi, zj): '
@@ -128,20 +128,16 @@ def load_pair_counts(filename: str, zbins: int) -> tuple[np.ndarray, dict]:
     return theta_edges_rad, pair_sums_dict
 
 
-def effective_pair_counts(sum_w: np.ndarray, sum_w2: np.ndarray) -> np.ndarray:
-    """Effective number of pairs, (sum w_a w_b)^2 / sum (w_a w_b)^2: the shape-noise
-    variance of a weighted pair estimator is sigma_eps^4 / (effective count)."""
-    return sum_w**2 / sum_w2
-
-
 def _check_theta_range(theta_min, theta_max, theta_edges_in, what):
+    """Raise if [theta_min, theta_max] (the range needed by `what`) is not covered by
+    the pair-count edges theta_edges_in."""
+    theta_lo, theta_hi = theta_edges_in[0], theta_edges_in[-1]
     # small tolerance, for edges computed in different ways (e.g. treecorr vs numpy)
-    if theta_min < theta_edges_in[0] * (1 - 1e-8) or (
-        theta_max > theta_edges_in[-1] * (1 + 1e-8)
-    ):
+    rtol = 1e-8
+    if theta_min < theta_lo * (1 - rtol) or theta_max > theta_hi * (1 + rtol):
         raise ValueError(
-            f'The pair counts cover theta = [{theta_edges_in[0]:.6e}, '
-            f'{theta_edges_in[-1]:.6e}] rad, but the {what} needs '
+            f'The pair counts cover theta = [{theta_lo:.6e}, {theta_hi:.6e}] rad, '
+            f'but the {what} needs '
             f'[{theta_min:.6e}, {theta_max:.6e}] rad: please provide pair counts over '
             'the full range'
         )
@@ -192,7 +188,7 @@ def rebin_effective_pair_counts(
     """
     sum_w_out = rebin_pair_counts(sum_w, theta_edges_in, theta_edges_out)
     sum_w2_out = rebin_pair_counts(sum_w2, theta_edges_in, theta_edges_out)
-    return effective_pair_counts(sum_w_out, sum_w2_out)
+    return sum_w_out**2 / sum_w2_out
 
 
 def dnpair_from_pair_counts(
@@ -200,15 +196,15 @@ def dnpair_from_pair_counts(
 ) -> np.ndarray:
     """dN/dtheta on theta_out from (fine) pair counts.
 
-    For weighted pairs, pass the effective counts of the fine bins: the effective pair
-    density (d sum_w / dtheta)^2 / (d sum_w2 / dtheta) is their count / bin width, in
-    the limit of fine bins.
-
     dN/dtheta is count / bin width, at the arithmetic bin centres (where it is exact
     for the ideal counts), interpolated linearly in log-log, and extrapolated within
     the outermost half bins. Interpolating in log-log keeps dN/dtheta positive (also
     in the extrapolated half bins, where a linear extrapolation can turn negative),
     and is still exact for the ideal dN/dtheta ∝ theta.
+
+    For weighted pairs, pass the effective counts of the fine bins, sum_w^2 / sum_w2:
+    the effective pair density (d sum_w / dtheta)^2 / (d sum_w2 / dtheta) is their
+    count / bin width, in the limit of fine bins.
 
     Returns
     -------
@@ -246,10 +242,6 @@ def warn_if_pair_counts_off(
             'single-catalogue treecorr run.',
             stacklevel=2,
         )
-
-
-def get_delta_tomo(probe_a_ix: int, probe_b_ix: int, zbins: int) -> np.ndarray:
-    return np.eye(zbins) if probe_a_ix == probe_b_ix else np.zeros((zbins, zbins))
 
 
 # ! ==================== build Cl integrand for SVA and MIX covs =====================
@@ -563,6 +555,10 @@ def proj_cov_2d_quad_all_scales(
     weights_1 = quad_projection_weights(ells_proj, kernel_1_funcs)
     weights_2 = quad_projection_weights(ells_proj, kernel_2_funcs)
     return proj_cov_2d_with_weights(cov_hs_ng_4d, weights_1, weights_2)
+
+
+def get_delta_tomo(probe_a_ix: int, probe_b_ix: int, zbins: int) -> np.ndarray:
+    return np.eye(zbins) if probe_a_ix == probe_b_ix else np.zeros((zbins, zbins))
 
 
 class CovarianceProjector:

@@ -315,7 +315,7 @@ class TestMixNoiseNormalisation:
         data = {'theta_edges_arcmin': edges_arcmin}
         for key in const.HS_DIAG_PROBES:  # 'LL', 'GL', 'GG'
             probe_a, probe_b = key
-            npair = cp.get_npair(
+            npair = cp.npairs_analytical(
                 edges_rad[1:, None, None],
                 edges_rad[:-1, None, None],
                 cls.AMAX,

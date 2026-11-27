@@ -344,7 +344,7 @@ class CovRealSpace(CovarianceProjector):
     ):
         """probe_ab is the real-space probe of the first pair ('xip', 'gt', ...),
         whose pair counts enter the SN term."""
-        npair_arr = cp.get_npair(
+        npair_ideal = cp.npairs_analytical(
             self.theta_edges[1:, None, None],
             self.theta_edges[:-1, None, None],
             amax_abcd,
@@ -354,13 +354,13 @@ class CovRealSpace(CovarianceProjector):
 
         if self.pair_counts == 'from_input':
             probe_ab_hs = const.RS_DIAG_PROBES_TO_HS[probe_ab]
-            npair_meas = cp.rebin_effective_pair_counts(
-                *self._get_measured_pair_sums(probe_ab_hs),
-                self.pc_theta_edges_rad,
-                self.theta_edges,
+            sum_w, sum_w2 = self._get_measured_pair_sums(probe_ab_hs)
+            npair = cp.rebin_effective_pair_counts(
+                sum_w, sum_w2, self.pc_theta_edges_rad, self.theta_edges
             )
-            cp.warn_if_pair_counts_off(npair_meas, npair_arr, probe_ab_hs)
-            npair_arr = npair_meas
+            cp.warn_if_pair_counts_off(npair, npair_ideal, probe_ab_hs)
+        else:
+            npair = npair_ideal
 
         delta_mu_nu = 1.0 if (mu == nu) else 0.0
         delta_theta = np.eye(self.nbt)
@@ -389,7 +389,7 @@ class CovRealSpace(CovarianceProjector):
             * delta_theta[:, :, None, None, None, None]
             * term
             * t_arr[None, None, :, :, None, None]
-            / npair_arr[:, None, :, :, None, None]
+            / npair[:, None, :, :, None, None]
         )
         return cov_sn_rs_6d
 

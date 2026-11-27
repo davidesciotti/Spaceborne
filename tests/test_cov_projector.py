@@ -3,9 +3,9 @@
 These are the statistic-agnostic building blocks shared by the real-space
 and COSEBIs Gaussian-covariance projections:
 
-* ``get_npair`` / ``get_dnpair`` -- the (ideal) pair-count normal is a
-  textbook area integral, N(theta) = pi (theta_u^2 - theta_l^2) * A * n_i *
-  n_j; we check the closed form directly and cross-check it against a
+* ``npairs_analytical`` / ``dnpairs_analytical`` -- the (ideal) pair-count
+  normal is a textbook area integral, N(theta) = pi (theta_u^2 - theta_l^2) *
+  A * n_i * n_j; we check the closed form directly and cross-check it against a
   Simpson integral of the differential dN/dtheta over the same annulus.
 * ``get_delta_tomo`` -- Kronecker delta in tomographic bin space, identity
   for a probe with itself and zero across different probes.
@@ -44,9 +44,9 @@ def rng():
 
 
 # ----------------------------------------------------------------------------- #
-# get_npair / get_dnpair
+# npairs_analytical / dnpairs_analytical
 # ----------------------------------------------------------------------------- #
-class TestGetNpair:
+class TestNpairsAnalytical:
     """Tests for the ideal (analytic) pair-count in a theta annulus."""
 
     def test_matches_analytic_formula(self):
@@ -54,7 +54,7 @@ class TestGetNpair:
         survey_area_sr = 0.5
         n_eff_i, n_eff_j = 3.0, 5.0
 
-        out = cp.get_npair(theta_u, theta_l, survey_area_sr, n_eff_i, n_eff_j)
+        out = cp.npairs_analytical(theta_u, theta_l, survey_area_sr, n_eff_i, n_eff_j)
 
         from spaceborne import constants as const
 
@@ -64,39 +64,39 @@ class TestGetNpair:
         np.testing.assert_allclose(out, expected)
 
     def test_zero_width_annulus_gives_zero_pairs(self):
-        out = cp.get_npair(1.0, 1.0, 0.5, 3.0, 5.0)
+        out = cp.npairs_analytical(1.0, 1.0, 0.5, 3.0, 5.0)
         assert out == 0.0
 
     def test_scales_linearly_with_area(self):
-        base = cp.get_npair(2.0, 1.0, 1.0, 3.0, 5.0)
-        scaled = cp.get_npair(2.0, 1.0, 2.5, 3.0, 5.0)
+        base = cp.npairs_analytical(2.0, 1.0, 1.0, 3.0, 5.0)
+        scaled = cp.npairs_analytical(2.0, 1.0, 2.5, 3.0, 5.0)
         np.testing.assert_allclose(scaled, 2.5 * base)
 
 
-class TestGetDnpair:
+class TestDnpairsAnalytical:
     """Tests for the differential (ideal) pair-count dN(theta)/dtheta."""
 
-    def test_integrates_to_get_npair(self):
-        """dnpair integrated over [theta_l, theta_u] reproduces get_npair."""
+    def test_integrates_to_npairs_analytical(self):
+        """dnpair integrated over [theta_l, theta_u] reproduces npairs_analytical."""
         theta_l, theta_u = 1.0, 2.0
         survey_area_sr = 0.5
         n_eff_i, n_eff_j = 3.0, 5.0
 
-        npair = cp.get_npair(theta_u, theta_l, survey_area_sr, n_eff_i, n_eff_j)
+        npair = cp.npairs_analytical(theta_u, theta_l, survey_area_sr, n_eff_i, n_eff_j)
 
         theta = np.linspace(theta_l, theta_u, 20_000)
-        dnpair = cp.get_dnpair(theta, survey_area_sr, n_eff_i, n_eff_j)
+        dnpair = cp.dnpairs_analytical(theta, survey_area_sr, n_eff_i, n_eff_j)
         integral = simps(y=dnpair, x=theta)
 
         np.testing.assert_allclose(integral, npair, rtol=1e-8)
 
     def test_zero_at_theta_zero(self):
-        out = cp.get_dnpair(0.0, 0.5, 3.0, 5.0)
+        out = cp.dnpairs_analytical(0.0, 0.5, 3.0, 5.0)
         assert out == 0.0
 
     def test_positive_for_positive_theta(self):
         theta = np.array([0.1, 1.0, 10.0])
-        out = cp.get_dnpair(theta, 0.5, 3.0, 5.0)
+        out = cp.dnpairs_analytical(theta, 0.5, 3.0, 5.0)
         assert np.all(out > 0)
 
 
@@ -587,7 +587,7 @@ class TestRebinEffectivePairCounts:
         edges = np.array([1.0, 2.0, 3.0])
         out = cp.rebin_effective_pair_counts(sum_w, sum_w2, edges, np.array([1.0, 3.0]))
         np.testing.assert_allclose(out[0, 0, 0], 22**2 / 202, rtol=1e-14)
-        fine = cp.effective_pair_counts(sum_w, sum_w2)
+        fine = sum_w**2 / sum_w2
         assert out[0, 0, 0] < fine.sum()  # summing the effective counts overestimates
 
     def test_unit_weights_reduce_to_rebinned_counts(self, rng):
@@ -758,7 +758,7 @@ class TestCosebisSnPairCounts:
         theta_max_arcmin = theta_max_arcmin or self.THETA_MAX_ARCMIN
         edges_arcmin = np.geomspace(self.THETA_MIN_ARCMIN, theta_max_arcmin, 2001)
         edges_rad = np.deg2rad(edges_arcmin / 60)
-        npair = scale * cp.get_npair(
+        npair = scale * cp.npairs_analytical(
             edges_rad[1:, None, None],
             edges_rad[:-1, None, None],
             self.AMAX,

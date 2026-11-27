@@ -633,17 +633,16 @@ class SpaceborneConfigChecker:
             )
 
         # the pair counts only enter the real-space and COSEBIs SN term
-        _cfgpc = self.cfg['covariance']['pair_counts']
-        assert _cfgpc in ('analytic', 'from_input'), (
+        assert _cfgcov['pair_counts'] in ('analytic', 'from_input'), (
             'covariance: pair_counts must be either "analytic" or "from_input"'
         )
         if (
-            _cfgpc == 'from_input'
+            _cfgcov['pair_counts'] == 'from_input'
             and self.cfg['probe_selection']['space'] in ('real', 'cosebis')
-            and self.cfg['covariance']['G']
-            and self.cfg['covariance']['include_sampling_noise']
+            and _cfgcov['G']
+            and _cfgcov['include_sampling_noise']
         ):
-            pc_filename = self.cfg['covariance']['pair_counts_filename']
+            pc_filename = _cfgcov['pair_counts_filename']
             assert pc_filename is not None and os.path.isfile(pc_filename), (
                 'covariance: pair_counts is "from_input", but pair_counts_filename '
                 f'({pc_filename}) is not an existing file'
